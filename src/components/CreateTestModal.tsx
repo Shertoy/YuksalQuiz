@@ -31,12 +31,12 @@ interface CreateTestModalProps {
 }
 
 export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => {
-  const { profile, createTestPackage, addCustomUniversity, customUniversities } = useQuizStore();
+  const { profile, createTestPackage, addCustomUniversity, customUniversities, universities } = useQuizStore();
   const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
-  const [selectedUniversity, setSelectedUniversity] = useState(TOP_UNIVERSITIES[0]);
+  const [selectedUniversity, setSelectedUniversity] = useState(universities?.[0] || TOP_UNIVERSITIES[0]);
   const [isCustomUni, setIsCustomUni] = useState(false);
   const [customUniName, setCustomUniName] = useState('');
   const [department, setDepartment] = useState<DepartmentType>('Axborot Texnologiyalari');

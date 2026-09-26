@@ -225,7 +225,37 @@ export interface LeaderboardUser {
   weeklyActiveHours: number;
   correctAnswersCount?: number;
   bestTime?: string;
+  bestTimeSeconds?: number;
+  accuracyPercentage?: number;
+  totalQuestionsAttempted?: number;
   isCurrentUser?: boolean;
 }
 
+export type LeaderboardScope = 'otm' | 'region' | 'uzbekistan';
+
+export interface UniversityLeaderboardEntry {
+  id: string;
+  name: string;
+  shortName: string;
+  type: 'otm' | 'center';
+  region: string;
+  activeStudentsCount: number;
+  averageAccuracy: number;
+  averageTime: string;
+  averageTimeSeconds: number;
+  totalCorrectAnswers: number;
+}
+
 export type TabType = 'home' | 'tests' | 'results' | 'leaderboard' | 'profile' | 'wallet';
+
+export type TransactionType = 'deposit' | 'voucher' | 'referral' | 'coin' | 'author_reward';
+
+export interface WalletTransaction {
+  id: string;
+  type: TransactionType;
+  title: string;
+  amount: number;
+  unit: 'so\'m' | 'tanga';
+  isPositive: boolean;
+  date: string;
+}

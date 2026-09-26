@@ -14,6 +14,7 @@ import {
   ChevronRight,
   School,
   Share2,
+  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
@@ -35,6 +36,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [dailyClaimedMessage, setDailyClaimedMessage] = useState<string | null>(null);
   const [isCoinFlying, setIsCoinFlying] = useState(false);
   const [coinGlow, setCoinGlow] = useState(false);
+  const [isDailyDisappearing, setIsDailyDisappearing] = useState(false);
+  const [isVoucherDismissed, setIsVoucherDismissed] = useState(false);
 
   // Check if claimed today (24h lockout)
   const today = new Date().toISOString().split('T')[0];
@@ -50,7 +53,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const rank = getRankInfo(profile.completedTestsCount);
 
-  // Handle daily streak claim with flying coin visual animation
+  // Handle daily streak claim with flying coin visual animation and smooth exit
   const handleClaimDailyStreak = () => {
     if (isClaimedToday) {
       setDailyClaimedMessage('Bugungi bonus allaqachon olingan. Ertaga yana tashrif buyuring!');
@@ -74,6 +77,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       });
 
       setDailyClaimedMessage(`Tabriklaymiz! +1 tanga hisobingizga qo'shildi (${result.streakCount}-kunlik seriya)`);
+
+      // Trigger disappearing animation after celebration
+      setTimeout(() => {
+        setIsDailyDisappearing(true);
+      }, 1500);
+
       setTimeout(() => {
         setCoinGlow(false);
         setDailyClaimedMessage(null);
@@ -158,41 +167,49 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* Daily Streak & Interactive Bonus Card */}
-      <div className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 dark:from-orange-500/15 dark:to-amber-500/10 border border-orange-500/20 rounded-2xl p-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/30 shrink-0">
-            <Flame className="w-5 h-5 fill-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                {t.dailyBonusTitle}
-              </h3>
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400">
-                {profile.streak} {t.streak}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {t.dailyBonusDesc}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          disabled={isClaimedToday || isCoinFlying}
-          onClick={handleClaimDailyStreak}
-          className={`px-3 py-2 rounded-xl font-bold text-xs shadow-md transition-all transform active:scale-95 flex items-center gap-1 shrink-0 ${
-            isClaimedToday
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
-              : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
+      {/* Daily Streak & Interactive Bonus Card - Disappears upon claim with animation & hidden today */}
+      {(!isClaimedToday || isDailyDisappearing) && (
+        <div
+          className={`bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 dark:from-orange-500/15 dark:to-amber-500/10 border border-orange-500/20 rounded-2xl p-3.5 flex items-center justify-between transition-all duration-700 ease-in-out ${
+            isDailyDisappearing
+              ? 'opacity-0 -translate-y-4 scale-95 max-h-0 py-0 my-0 border-0 overflow-hidden pointer-events-none'
+              : 'max-h-40 opacity-100'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{isClaimedToday ? t.claimedToday : t.claimDailyBonus}</span>
-        </button>
-      </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/30 shrink-0">
+              <Flame className="w-5 h-5 fill-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t.dailyBonusTitle}
+                </h3>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                  {profile.streak} {t.streak}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t.dailyBonusDesc}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isClaimedToday || isCoinFlying}
+            onClick={handleClaimDailyStreak}
+            className={`px-3 py-2 rounded-xl font-bold text-xs shadow-md transition-all transform active:scale-95 flex items-center gap-1 shrink-0 ${
+              isClaimedToday
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+                : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isClaimedToday ? t.claimedToday : t.claimDailyBonus}</span>
+          </button>
+        </div>
+      )}
 
       {/* Interactive Toast Message */}
       {dailyClaimedMessage && (
@@ -201,43 +218,61 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* Action Voucher Card */}
-      <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl p-4 shadow-xl shadow-indigo-950/20 space-y-3 relative overflow-hidden border border-indigo-700/50">
-        <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
+      {/* Action Voucher Card - Only shown if voucher > 0, no active subscription, and not dismissed */}
+      {profile.voucherBalance > 0 &&
+        (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') &&
+        !isVoucherDismissed && (
+          <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl p-4 shadow-xl shadow-indigo-950/20 space-y-3 relative overflow-hidden border border-indigo-700/50 animate-in fade-in">
+            <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
 
-        <div className="flex items-start gap-3 relative z-10">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-emerald-500/25 shrink-0 mt-0.5">
-            <Ticket className="w-5 h-5 text-white" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-extrabold text-white">
-                35 000 so'm vaucheringiz faol!
-              </h3>
-              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
-                Faol
-              </span>
+            <div className="flex items-start justify-between relative z-10">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-emerald-500/25 shrink-0 mt-0.5">
+                  <Ticket className="w-5 h-5 text-white" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-extrabold text-white">
+                      35 000 so'm vaucheringiz faol!
+                    </h3>
+                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
+                      Faol
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
+                    6 oylik obunani ochish uchun yana 15 000 so'm to'lang yoki 10 ta do'stingizni taklif qiling.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  setIsVoucherDismissed(true);
+                }}
+                className="p-1 rounded-lg text-indigo-300 hover:text-white hover:bg-white/10 transition-colors ml-2 shrink-0"
+                title="Yopish"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
-              6 oylik obunani ochish uchun yana 15 000 so'm to'lang yoki 10 ta do'stingizni taklif qiling.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2 pt-1 relative z-10">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('medium');
-              setActiveTab('wallet');
-            }}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-          >
-            <span>{t.activateOfferBtn}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+            <div className="flex items-center gap-2 pt-1 relative z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  setActiveTab('wallet');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+              >
+                <span>{t.activateOfferBtn}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
@@ -303,44 +338,70 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <h3 className="font-black text-sm text-slate-900 dark:text-white">
             Tavsiya etilgan testlar
           </h3>
-          <button
-            onClick={() => setActiveTab('tests')}
-            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Barchasi &rarr;
-          </button>
+          {testPackages.length > 0 && (
+            <button
+              onClick={() => setActiveTab('tests')}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Barchasi &rarr;
+            </button>
+          )}
         </div>
 
-        <div className="space-y-2">
-          {testPackages.slice(0, 3).map((pkg) => (
-            <div
-              key={pkg.id}
-              onClick={() => onStartTest(pkg, pkg.blocks[0]?.id || '')}
-              className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all active:scale-[0.99]"
+        {testPackages.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-3">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              Hozircha testlar mavjud emas
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto leading-relaxed">
+              Ilk testni o'zingiz tuzing! Boshqa talabalar testingizni yechganda har bir urinish uchun sizga +100 so'm rag'batlantirish mablag'i to'lanadi.
+            </p>
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenCreateModal();
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-900/70 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                    {pkg.title}
-                  </h4>
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
-                    <span>{pkg.university}</span>
-                    <span>•</span>
-                    <span>{pkg.blocks.length} blok ({pkg.totalQuestions} savol)</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>+ Yangi test tuzish</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {testPackages.slice(0, 3).map((pkg) => (
+              <div
+                key={pkg.id}
+                onClick={() => onStartTest(pkg, pkg.blocks[0]?.id || '')}
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-900/70 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                      {pkg.title}
+                    </h4>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                      <span>{pkg.university}</span>
+                      <span>•</span>
+                      <span>{pkg.blocks.length} blok ({pkg.totalQuestions} savol)</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
-                <span>Boshlash</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                  <span>Boshlash</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

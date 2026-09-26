@@ -7,6 +7,9 @@ import {
   TestAttempt,
   MistakeItem,
   LeaderboardUser,
+  LeaderboardScope,
+  TOP_UNIVERSITIES,
+  WalletTransaction,
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
@@ -24,8 +27,11 @@ interface QuizState {
   testAttempts: TestAttempt[];
   mistakes: MistakeItem[];
   leaderboard: LeaderboardUser[];
-  leaderboardScope: 'region' | 'uzbekistan';
+  leaderboardScope: LeaderboardScope;
   customUniversities: string[];
+  universities: string[];
+  pendingUniversities: string[];
+  transactions: WalletTransaction[];
   soundEnabled: boolean;
   tamperDetected: boolean;
 
@@ -33,7 +39,13 @@ interface QuizState {
   setTheme: (theme: 'dark' | 'light') => void;
   setLanguage: (language: Language) => void;
   setActiveTab: (tab: TabType) => void;
-  setLeaderboardScope: (scope: 'region' | 'uzbekistan') => void;
+  setLeaderboardScope: (scope: LeaderboardScope) => void;
+  addTransaction: (tx: Omit<WalletTransaction, 'id' | 'date'>) => void;
+  addUniversity: (name: string) => void;
+  updateUniversity: (oldName: string, newName: string) => void;
+  deleteUniversity: (name: string) => void;
+  approvePendingUniversity: (name: string) => void;
+  rejectPendingUniversity: (name: string) => void;
   registerUser: (
     data: Omit<
       UserProfile,
@@ -111,8 +123,56 @@ export const useQuizStore = create<QuizState>()(
       leaderboard: INITIAL_LEADERBOARD_USERS,
       leaderboardScope: 'uzbekistan',
       customUniversities: [],
+      universities: TOP_UNIVERSITIES,
+      pendingUniversities: [],
+      transactions: [],
       soundEnabled: true,
       tamperDetected: false,
+
+      addTransaction: (tx) => {
+        const newTx: WalletTransaction = {
+          ...tx,
+          id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        };
+        set({ transactions: [newTx, ...(get().transactions || [])] });
+      },
+
+      addUniversity: (name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const list = get().universities;
+        if (!list.includes(trimmed)) {
+          set({ universities: [trimmed, ...list] });
+        }
+      },
+
+      updateUniversity: (oldName: string, newName: string) => {
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        set({
+          universities: get().universities.map((u) => (u === oldName ? trimmed : u)),
+        });
+      },
+
+      deleteUniversity: (name: string) => {
+        set({
+          universities: get().universities.filter((u) => u !== name),
+        });
+      },
+
+      approvePendingUniversity: (name: string) => {
+        get().addUniversity(name);
+        set({
+          pendingUniversities: get().pendingUniversities.filter((p) => p !== name),
+        });
+      },
+
+      rejectPendingUniversity: (name: string) => {
+        set({
+          pendingUniversities: get().pendingUniversities.filter((p) => p !== name),
+        });
+      },
 
       setTheme: (theme) => {
         set({ theme });
@@ -173,6 +233,14 @@ export const useQuizStore = create<QuizState>()(
         soundFX.playCoin();
 
         set({ profile: newProfile });
+
+        get().addTransaction({
+          type: 'voucher',
+          title: "Boshlang'ich talaba vaucheri",
+          amount: 35000,
+          unit: "so'm",
+          isPositive: true,
+        });
       },
 
       checkDailyStreak: () => {
@@ -213,6 +281,15 @@ export const useQuizStore = create<QuizState>()(
         triggerHaptic('success');
         soundFX.playCoin();
         set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'coin',
+          title: 'Kunlik seriya bonusi (+1 tanga)',
+          amount: 1,
+          unit: 'tanga',
+          isPositive: true,
+        });
+
         return { streakAwarded: true, streakCount: newStreak };
       },
 
@@ -240,9 +317,11 @@ export const useQuizStore = create<QuizState>()(
         const trimmed = name.trim();
         if (!trimmed) return;
         const list = get().customUniversities;
-        if (!list.includes(trimmed)) {
-          set({ customUniversities: [...list, trimmed] });
-        }
+        const pending = get().pendingUniversities;
+        set({
+          customUniversities: list.includes(trimmed) ? list : [...list, trimmed],
+          pendingUniversities: pending.includes(trimmed) ? pending : [trimmed, ...pending],
+        });
       },
 
       createTestPackage: (pkg: TestPackage) => {
@@ -282,6 +361,14 @@ export const useQuizStore = create<QuizState>()(
             lastLoginDate: updatedProfile.lastLoginDate,
             walletBalance: updatedProfile.walletBalance,
             voucherBalance: updatedProfile.voucherBalance,
+          });
+
+          get().addTransaction({
+            type: 'author_reward',
+            title: "Test mualliflik rag'bati",
+            amount,
+            unit: "so'm",
+            isPositive: true,
           });
         }
 
@@ -471,6 +558,25 @@ export const useQuizStore = create<QuizState>()(
         soundFX.playCoin();
 
         set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'deposit',
+          title: `${plan === '6_months' ? '6 oylik' : '1 yillik'} Premium obuna to'lovi`,
+          amount: remainingToPay,
+          unit: "so'm",
+          isPositive: false,
+        });
+
+        if (voucherUsed > 0) {
+          get().addTransaction({
+            type: 'voucher',
+            title: "Vaucher chegirmasi qo'llandi",
+            amount: voucherUsed,
+            unit: "so'm",
+            isPositive: false,
+          });
+        }
+
         return {
           success: true,
           message: voucherUsed > 0
@@ -502,6 +608,15 @@ export const useQuizStore = create<QuizState>()(
         triggerHaptic('success');
         soundFX.playCoin();
         set({ profile: updated });
+
+        get().addTransaction({
+          type: 'referral',
+          title: "Do'stni taklif qilish bonusi",
+          amount: bonus,
+          unit: "so'm",
+          isPositive: true,
+        });
+
         return { bonusAdded: bonus, newTotal: updated.walletBalance };
       },
 
@@ -514,6 +629,59 @@ export const useQuizStore = create<QuizState>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+
+        // Clear out any old pre-seeded mock tests so tests are strictly created by users
+        state.testPackages = (state.testPackages || []).filter(
+          (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && pkg.isCommunityCreated
+        );
+
+        if (!state.universities || state.universities.length === 0) {
+          state.universities = TOP_UNIVERSITIES;
+        }
+        if (!state.pendingUniversities) {
+          state.pendingUniversities = [];
+        }
+        if (!state.transactions) {
+          state.transactions = [];
+        }
+
+        // Initialize transaction history if empty for registered users
+        if (state.profile && state.profile.isRegistered && state.transactions.length === 0) {
+          state.transactions = [
+            {
+              id: 'tx-init-voucher',
+              type: 'voucher',
+              title: "Boshlang'ich talaba vaucheri",
+              amount: 35000,
+              unit: "so'm",
+              isPositive: true,
+              date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
+            },
+          ];
+          if (state.profile.coins > 0) {
+            state.transactions.push({
+              id: 'tx-init-coins',
+              type: 'coin',
+              title: 'Kunlik seriya bonusi',
+              amount: state.profile.coins,
+              unit: 'tanga',
+              isPositive: true,
+              date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
+            });
+          }
+          if ((state.profile.referralCount || 0) > 0) {
+            state.transactions.push({
+              id: 'tx-init-ref',
+              type: 'referral',
+              title: "Do'stlarni taklif qilish bonusi",
+              amount: state.profile.referralCount * 1500,
+              unit: "so'm",
+              isPositive: true,
+              date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
+            });
+          }
+        }
+
         const p = state.profile;
         if (p && p.isRegistered) {
           const isValid = verifyIntegritySignature(

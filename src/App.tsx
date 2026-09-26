@@ -12,6 +12,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { CreateTestModal } from './components/CreateTestModal';
 import { ProfileView } from './components/ProfileView';
 import { WalletView } from './components/WalletView';
+import { AdminPanelModal } from './components/AdminPanelModal';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
 
@@ -32,6 +33,9 @@ export const App: React.FC = () => {
 
   // Create test modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Admin panel modal
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // Initialize Telegram WebApp and Theme Synchronization
   useEffect(() => {
@@ -108,7 +112,7 @@ export const App: React.FC = () => {
       <OnboardingModal />
 
       {/* Top Navbar */}
-      <Navbar />
+      <Navbar onOpenAdminModal={() => setIsAdminModalOpen(true)} />
 
       {/* Main Scrollable Container with Safe pb-32 to prevent bottom navigation overlap */}
       <main className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 pb-32 relative scroll-smooth">
@@ -157,6 +161,12 @@ export const App: React.FC = () => {
       {isCreateModalOpen && (
         <CreateTestModal onClose={() => setIsCreateModalOpen(false)} />
       )}
+
+      {/* Admin Panel Modal */}
+      <AdminPanelModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+      />
 
       {/* Persistent Bottom Navigation Bar */}
       {!activeTestPkg && <BottomNav />}
