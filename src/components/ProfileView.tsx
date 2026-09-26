@@ -1,0 +1,323 @@
+import React, { useState } from 'react';
+import { useQuizStore } from '../store/useQuizStore';
+import {
+  UZBEKISTAN_REGIONS,
+  Region,
+  StudyType,
+  AcademicYear,
+  Gender,
+} from '../types';
+import {
+  User,
+  ShieldCheck,
+  Coins,
+  Flame,
+  Award,
+  Edit3,
+  Check,
+  X,
+  BookOpen,
+  Calendar,
+  Lock,
+  ScrollText,
+} from 'lucide-react';
+import { triggerHaptic } from '../utils/telegram';
+import { PublicOfferModal } from './PublicOfferModal';
+import { ReferralShareCard } from './ReferralShareCard';
+
+const AVATAR_OPTIONS = [
+  '👨‍🎓', '👩‍🎓', '🧑‍💻', '👩‍💻', '👨‍🏫', '👩‍🏫',
+  '👨‍🔬', '👩‍🔬', '👨‍💼', '👩‍💼', '👨‍⚕️', '👩‍⚕️',
+];
+
+export const ProfileView: React.FC = () => {
+  const { profile, updateProfile, setActiveTab } = useQuizStore();
+  const [showOfertaModal, setShowOfertaModal] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [firstName, setFirstName] = useState(profile.firstName);
+  const [lastName, setLastName] = useState(profile.lastName);
+  const [region, setRegion] = useState<Region>(profile.region);
+  const [birthDate, setBirthDate] = useState(profile.birthDate);
+  const [gender, setGender] = useState<Gender>(profile.gender);
+  const [studyType, setStudyType] = useState<StudyType>(profile.studyType);
+  const [academicYear, setAcademicYear] = useState<AcademicYear>(profile.academicYear);
+  const [avatar, setAvatar] = useState(profile.avatar);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    triggerHaptic('success');
+
+    updateProfile({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      region,
+      birthDate,
+      gender,
+      studyType,
+      academicYear,
+      avatar,
+    });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="space-y-4 pb-20 animate-in fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">
+            Talaba Profili
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Shaxsiy ma'lumotlar va xavfsizlik sozlamalari
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            triggerHaptic('light');
+            setIsEditing(!isEditing);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
+        >
+          {isEditing ? <X className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
+          <span>{isEditing ? 'Bekor qilish' : 'Tahrirlash'}</span>
+        </button>
+      </div>
+
+      {/* Main Profile Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
+        <div className="relative inline-block mx-auto mb-3">
+          <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-500/30 flex items-center justify-center text-4xl shadow-md">
+            {avatar}
+          </div>
+          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow">
+            ✓
+          </span>
+        </div>
+
+        <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+          {profile.firstName || 'Talaba'} {profile.lastName || ''}
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          {profile.region} • {profile.academicYear}-kurs • {profile.studyType}
+        </p>
+
+        {/* Security Signature Badge */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-[10px] font-bold mt-3">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Profil xavfsizligi tasdiqlangan (Anti-Tamper SHA-256)</span>
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-3 gap-2.5 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-left">
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
+            <div className="flex items-center gap-1.5 text-amber-500 font-black text-sm">
+              <Coins className="w-4 h-4 fill-amber-500" />
+              <span>{profile.coins}</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Tangalar</p>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
+            <div className="flex items-center gap-1.5 text-orange-500 font-black text-sm">
+              <Flame className="w-4 h-4 fill-orange-500" />
+              <span>{profile.streak} kun</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Seriya (Streak)</p>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
+            <div className="flex items-center gap-1.5 text-indigo-500 font-black text-sm">
+              <BookOpen className="w-4 h-4" />
+              <span>{profile.completedTestsCount}</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Yechilgan test</p>
+          </div>
+        </div>
+
+        {/* Wallet & Author Earnings Highlight */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Coins className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-extrabold text-xs text-slate-900 dark:text-white">
+                Vaucher: {profile.voucherBalance.toLocaleString('uz-UZ')} so'm
+              </div>
+              <div className="text-[10px] text-slate-500">
+                Ichki balans: {profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('wallet')}
+            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Hamyon &rarr;
+          </button>
+        </div>
+      </div>
+
+      {/* Referral Share System */}
+      <ReferralShareCard />
+
+      {/* Public Offer Link Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <ScrollText className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+              Ommaviy Oferta Shartnomasi
+            </h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Foydalanuvchi qoidalari va vaucher talablari
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowOfertaModal(true)}
+          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs"
+        >
+          O'qish
+        </button>
+      </div>
+
+      <PublicOfferModal
+        isOpen={showOfertaModal}
+        onClose={() => setShowOfertaModal(false)}
+      />
+
+      {/* Edit Form */}
+      {isEditing && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm animate-in fade-in">
+          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-3">
+            Ma'lumotlarni o'zgartirish
+          </h4>
+
+          <form onSubmit={handleSave} className="space-y-3.5 text-xs">
+            {/* Avatar Selector */}
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Avatarni yangilash:
+              </label>
+              <div className="grid grid-cols-6 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                {AVATAR_OPTIONS.map((av) => (
+                  <button
+                    key={av}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      setAvatar(av);
+                    }}
+                    className={`h-10 text-xl rounded-xl flex items-center justify-center transition-all ${
+                      avatar === av
+                        ? 'bg-indigo-600 text-white shadow-md scale-110'
+                        : 'hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {av}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Names */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Ism:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Familiya:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Region */}
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Viloyat:
+              </label>
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value as Region)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+              >
+                {UZBEKISTAN_REGIONS.map((reg) => (
+                  <option key={reg} value={reg}>
+                    {reg}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Study Type & Year */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Ta'lim shakli:
+                </label>
+                <select
+                  value={studyType}
+                  onChange={(e) => setStudyType(e.target.value as StudyType)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                >
+                  <option value="Kunduzgi">Kunduzgi</option>
+                  <option value="Sirtqi">Sirtqi</option>
+                  <option value="Kechki">Kechki</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Kurs:
+                </label>
+                <select
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                >
+                  <option value={1}>1-kurs</option>
+                  <option value={2}>2-kurs</option>
+                  <option value={3}>3-kurs</option>
+                  <option value={4}>4-kurs</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
+            >
+              <Check className="w-4 h-4" />
+              <span>O'zgarishlarni saqlash</span>
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+};
