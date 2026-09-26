@@ -11,6 +11,7 @@ import {
   MAIN_CATEGORIES,
 } from '../types';
 import { splitQuestionsIntoBlocks } from '../utils/testSplitter';
+import { sanitizeText } from '../utils/security';
 import {
   X,
   Plus,
@@ -277,29 +278,37 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
       return;
     }
 
-    const finalUniversity = isCustomUni ? customUniName.trim() : selectedUniversity;
+    const finalUniversity = sanitizeText(isCustomUni ? customUniName.trim() : selectedUniversity);
     if (isCustomUni) {
-      addCustomUniversity(customUniName.trim());
+      addCustomUniversity(finalUniversity);
     }
 
-    const validQuestions = questions.filter((q) => q.text.trim().length > 0);
+    const validQuestions = questions
+      .filter((q) => q.text.trim().length > 0)
+      .map((q) => ({
+        ...q,
+        text: sanitizeText(q.text),
+        options: q.options.map((opt) => sanitizeText(opt)),
+        explanation: q.explanation ? sanitizeText(q.explanation) : undefined,
+      }));
+
     const testBlocks = splitQuestionsIntoBlocks(validQuestions);
 
     const newPackage: TestPackage = {
       id: 'pkg-' + Math.random().toString(36).substring(2, 9),
-      title: title.trim(),
+      title: sanitizeText(title.trim()),
       category,
       university: finalUniversity,
       isCustomUniversity: isCustomUni,
       isPendingReview: isCustomUni,
       department,
       isPublic,
-      password: isPublic ? undefined : password.trim(),
+      password: isPublic ? undefined : sanitizeText(password.trim()),
       totalQuestions: validQuestions.length,
       blocks: testBlocks,
       createdAt: new Date().toISOString().split('T')[0],
       authorId: profile.id,
-      authorName: `${profile.firstName} ${profile.lastName}`.trim() || 'Talaba',
+      authorName: sanitizeText(`${profile.firstName} ${profile.lastName}`.trim() || 'Talaba'),
       isCommunityCreated: true,
       authorWalletBalance: 0,
     };

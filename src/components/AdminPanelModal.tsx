@@ -14,9 +14,14 @@ import {
   Bell,
   Send,
   BookOpen,
+  Database,
+  Download,
+  Upload,
+  ShieldAlert,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { TestPackage, MainCategory, DepartmentType, DEPARTMENTS } from '../types';
+import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -37,9 +42,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     deleteAnnouncement,
     testPackages,
     createTestPackage,
+    clearAllTests,
+    restoreBackupData,
   } = useQuizStore();
 
-  const [activeTab, setActiveTab] = useState<'universities' | 'pending' | 'news' | 'tests'>('universities');
+  const [activeTab, setActiveTab] = useState<'universities' | 'pending' | 'news' | 'tests' | 'security'>('universities');
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
@@ -55,6 +62,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [testTitle, setTestTitle] = useState('');
   const [testUni, setTestUni] = useState(universities[0] || 'TATU');
   const [testDept, setTestDept] = useState<DepartmentType>('Axborot Texnologiyalari');
+
+  const handleExportBackup = () => {
+    triggerHaptic('medium');
+    const storeState = useQuizStore.getState();
+    const backupJson = exportEncryptedBackup(storeState);
+    const blob = new Blob([backupJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const todayStr = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `YuksalQuiz_Backup_${todayStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Zaxira fayli kompyuteringizga yuklab olindi!');
+  };
+
+  const handleImportBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const result = importEncryptedBackup(content);
+      if (result.success && result.data) {
+        restoreBackupData(result.data);
+        triggerHaptic('success');
+        showNotification("Zaxiradan muvaffaqiyatli tiklandi!");
+      } else {
+        triggerHaptic('error');
+        showNotification(result.error || "Zaxirani tiklashda xatolik yuz berdi!");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   if (!isOpen) return null;
 
@@ -214,20 +256,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         )}
 
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-4 gap-1 p-2 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-[11px]">
+        <div className="grid grid-cols-5 gap-1 p-2 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-[10px]">
           <button
             onClick={() => {
               triggerHaptic('selection');
               setActiveTab('universities');
             }}
-            className={`py-2 px-1 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
               activeTab === 'universities'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Building2 className="w-3.5 h-3.5" />
-            <span className="truncate">OTMlar ({universities.length})</span>
+            <span className="truncate">OTMlar</span>
           </button>
 
           <button
@@ -235,7 +277,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('pending');
             }}
-            className={`py-2 px-1 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all relative ${
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all relative ${
               activeTab === 'pending'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -253,14 +295,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('news');
             }}
-            className={`py-2 px-1 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
               activeTab === 'news'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span className="truncate">Yangiliklar</span>
+            <span className="truncate">Yangilik</span>
           </button>
 
           <button
@@ -268,7 +310,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('tests');
             }}
-            className={`py-2 px-1 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
               activeTab === 'tests'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -276,6 +318,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span className="truncate">Testlar</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('security');
+            }}
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+              activeTab === 'security'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span className="truncate">Xavfsizlik</span>
           </button>
         </div>
 
@@ -650,6 +707,132 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 <span className="font-bold text-indigo-600 dark:text-indigo-400">
                   {testPackages.length} ta
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Security & Backup Management Tab */}
+          {activeTab === 'security' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                      Xavfsizlik & Zaxira Markazi
+                    </h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Tizim xavfsizlik protokollari va ma'lumotlar zaxirasi
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                  100% Himoyalangan
+                </span>
+              </div>
+
+              {/* Status Indicators */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>SHA-256 Anti-Tamper</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Balans va tangalar o'zgartirilishdan himoyalangan.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Brute-Force Rate Limiter</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Admin login parolini terish hujumidan 15 min blok.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>XSS & Script Sanitizer</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Foydalanuvchi kiritgan testlar va maydonlar tozalanadi.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Anti-Cheat Engine</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Savollarga tezlik monitoringi va botlarga qarshi filtr.
+                  </p>
+                </div>
+              </div>
+
+              {/* Backup & Recovery Actions */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
+                <div>
+                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Database className="w-4 h-4 text-indigo-500" />
+                    <span>Ma'lumotlar Zaxirasi (Disaster Recovery)</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    "Shuncha harakat yo'q bo'lmasin": Barcha ma'lumotlarni kompyuterga saqlab qo'yish yoki qayta tiklash
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 font-bold text-xs flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center"
+                  >
+                    <Download className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Zaxirani yuklab olish (JSON)</span>
+                  </button>
+
+                  <label className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center cursor-pointer">
+                    <Upload className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    <span>Zaxirani tiklash (Yuklash)</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleImportBackupFile}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Emergency Danger Zone */}
+              <div className="p-4 rounded-3xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 space-y-2">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-extrabold text-xs">
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>Favqulodda Holat (Testlarni tozalash)</span>
+                </div>
+                <p className="text-[10px] text-rose-600/80 dark:text-rose-400">
+                  Foydalanuvchilar o'zlari test tuzishlari uchun tizimdagi barcha testlarni bitta bosishda tozalash.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("Barcha mavjud testlarni tozalashni tasdiqlaysizmi?")) {
+                      clearAllTests();
+                      triggerHaptic('warning');
+                      showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                >
+                  Barcha testlarni tozalash
+                </button>
               </div>
             </div>
           )}

@@ -34,6 +34,7 @@ interface QuizState {
   pendingUniversities: string[];
   transactions: WalletTransaction[];
   announcements: Announcement[];
+  readAnnouncementIds: string[];
   soundEnabled: boolean;
   tamperDetected: boolean;
 
@@ -45,6 +46,7 @@ interface QuizState {
   addTransaction: (tx: Omit<WalletTransaction, 'id' | 'date'>) => void;
   addAnnouncement: (item: Omit<Announcement, 'id' | 'date'>) => void;
   deleteAnnouncement: (id: string) => void;
+  markAnnouncementsAsRead: () => void;
   addUniversity: (name: string) => void;
   updateUniversity: (oldName: string, newName: string) => void;
   deleteUniversity: (name: string) => void;
@@ -78,6 +80,8 @@ interface QuizState {
   applySubscription: (plan: '6_months' | '1_year') => { success: boolean; message: string };
   addReferralBonus: () => { bonusAdded: number; newTotal: number };
   resetTamperWarning: () => void;
+  clearAllTests: () => void;
+  restoreBackupData: (data: any) => void;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -140,6 +144,7 @@ export const useQuizStore = create<QuizState>()(
           isRead: false,
         },
       ],
+      readAnnouncementIds: [],
       soundEnabled: true,
       tamperDetected: false,
 
@@ -164,6 +169,27 @@ export const useQuizStore = create<QuizState>()(
 
       deleteAnnouncement: (id: string) => {
         set({ announcements: get().announcements.filter((a) => a.id !== id) });
+      },
+
+      markAnnouncementsAsRead: () => {
+        const allIds = (get().announcements || []).map((a) => a.id);
+        set({ readAnnouncementIds: allIds });
+      },
+
+      clearAllTests: () => {
+        set({ testPackages: [] });
+      },
+
+      restoreBackupData: (data: any) => {
+        if (!data) return;
+        set({
+          profile: data.profile || get().profile,
+          universities: data.universities || get().universities,
+          customUniversities: data.customUniversities || get().customUniversities,
+          testPackages: data.testPackages || [],
+          transactions: data.transactions || get().transactions,
+          announcements: data.announcements || get().announcements,
+        });
       },
 
       addUniversity: (name: string) => {
@@ -719,6 +745,14 @@ export const useQuizStore = create<QuizState>()(
               isPositive: true,
               date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
             });
+          }
+        }
+
+        if (state) {
+          // Ensure no preloaded mock tests exist in user storage
+          state.testPackages = [];
+          if (!state.readAnnouncementIds) {
+            state.readAnnouncementIds = [];
           }
         }
 

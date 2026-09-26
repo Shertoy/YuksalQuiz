@@ -10,9 +10,26 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
-  const { theme, setTheme, soundEnabled, toggleSound, tamperDetected, resetTamperWarning, setActiveTab, announcements } = useQuizStore();
+  const {
+    theme,
+    setTheme,
+    soundEnabled,
+    toggleSound,
+    tamperDetected,
+    resetTamperWarning,
+    setActiveTab,
+    announcements,
+    readAnnouncementIds,
+    markAnnouncementsAsRead,
+  } = useQuizStore();
   const { language, setLanguage } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+
+  // Compute unread announcements count
+  const unreadAnnouncements = (announcements || []).filter(
+    (a) => !(readAnnouncementIds || []).includes(a.id)
+  );
+  const unreadCount = unreadAnnouncements.length;
 
   const handleThemeToggle = () => {
     triggerHaptic('light');
@@ -23,6 +40,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
     triggerHaptic('selection');
     setLanguage(lang);
     setIsLangMenuOpen(false);
+  };
+
+  const handleOpenNotifications = () => {
+    triggerHaptic('light');
+    markAnnouncementsAsRead();
+    onOpenNotifications?.();
   };
 
   return (
@@ -150,18 +173,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
             {onOpenNotifications && (
               <button
                 type="button"
-                onClick={() => {
-                  triggerHaptic('light');
-                  onOpenNotifications();
-                }}
+                onClick={handleOpenNotifications}
                 className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors relative"
                 title="Bildirishnomalar va Yangiliklar"
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4 text-indigo-500" />
-                {announcements && announcements.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-xs">
-                    {announcements.length}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-3.5 px-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-in zoom-in-75">
+                    {unreadCount}
                   </span>
                 )}
               </button>

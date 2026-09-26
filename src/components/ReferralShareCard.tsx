@@ -68,24 +68,27 @@ export const ReferralShareCard: React.FC = () => {
       <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-amber-400/20 blur-xl pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-inner">
+      <div className="relative z-10 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-inner shrink-0">
             <Gift className="w-5 h-5 text-amber-300" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="font-extrabold text-sm tracking-tight leading-tight">
               Telegram Referal Tizimi
             </h3>
-            <p className="text-[11px] text-indigo-100">
-              Har bir taklif qilingan talaba uchun +1 500 so'm
+            <p className="text-[11px] text-indigo-100 mt-0.5 leading-snug">
+              Har bir taklif uchun{' '}
+              <span className="font-extrabold text-amber-300 whitespace-nowrap">
+                +1 500 so'm
+              </span>
             </p>
           </div>
         </div>
 
-        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase tracking-wider">
-          +1 500 UZS
-        </span>
+        <div className="shrink-0 flex items-center px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
+          <span>+1 500 UZS</span>
+        </div>
       </div>
 
       {/* Toast notification banner */}
@@ -98,8 +101,8 @@ export const ReferralShareCard: React.FC = () => {
       {/* Live Stats Counters */}
       <div className="grid grid-cols-2 gap-2.5 bg-black/20 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-center">
         <div>
-          <div className="flex items-center justify-center gap-1.5 text-base font-black text-white">
-            <Users className="w-4 h-4 text-sky-300" />
+          <div className="flex items-center justify-center gap-1.5 text-base font-black text-white whitespace-nowrap">
+            <Users className="w-4 h-4 text-sky-300 shrink-0" />
             <span>{referralCount} ta</span>
           </div>
           <p className="text-[10px] text-indigo-200 uppercase font-semibold tracking-wider mt-0.5">
@@ -108,9 +111,9 @@ export const ReferralShareCard: React.FC = () => {
         </div>
 
         <div>
-          <div className="flex items-center justify-center gap-1 text-base font-black text-amber-300">
-            <Coins className="w-4 h-4 fill-amber-300" />
-            <span>{referralEarnings.toLocaleString('uz-UZ')} so'm</span>
+          <div className="flex items-center justify-center gap-1 text-base font-black text-amber-300 whitespace-nowrap">
+            <Coins className="w-4 h-4 fill-amber-300 shrink-0" />
+            <span className="whitespace-nowrap">{referralEarnings.toLocaleString('uz-UZ')} so'm</span>
           </div>
           <p className="text-[10px] text-indigo-200 uppercase font-semibold tracking-wider mt-0.5">
             Referaldan ishlangan mablag'

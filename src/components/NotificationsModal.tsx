@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
-import { Bell, X, Sparkles, AlertCircle, Info, Calendar } from 'lucide-react';
+import { Bell, X, Sparkles, AlertCircle, Info, Calendar, CheckCheck } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
 interface NotificationsModalProps {
@@ -9,7 +9,13 @@ interface NotificationsModalProps {
 }
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
-  const { announcements } = useQuizStore();
+  const { announcements, readAnnouncementIds, markAnnouncementsAsRead } = useQuizStore();
+
+  useEffect(() => {
+    if (isOpen) {
+      markAnnouncementsAsRead();
+    }
+  }, [isOpen, markAnnouncementsAsRead]);
 
   if (!isOpen) return null;
 

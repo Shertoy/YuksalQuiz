@@ -148,10 +148,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             </div>
             <div>
               <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                Vaucher: {profile.voucherBalance.toLocaleString('uz-UZ')} so'm
+                {profile.voucherBalance > 0
+                  ? `Vaucher: ${profile.voucherBalance.toLocaleString('uz-UZ')} so'm`
+                  : `Hamyon balansi: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm`}
               </div>
               <div className="text-[10px] text-slate-500">
-                Hamyon balansi: {profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm
+                {profile.voucherBalance > 0
+                  ? `Hamyon: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`
+                  : `Referal: ${(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`}
               </div>
             </div>
           </div>
