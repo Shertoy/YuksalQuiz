@@ -158,17 +158,17 @@ export const Leaderboard: React.FC = () => {
   const uniList = sortedUniversities.slice(3);
 
   // Format student metric value
-  const formatMetricValue = (u: LeaderboardUser) => {
+  const formatMetricValue = (u: LeaderboardUser, isPodium: boolean = false) => {
     if (metric === 'percentage') {
       const acc = u.accuracyPercentage ?? 80;
       const time = u.bestTime || '02:45';
       return (
-        <div className="flex flex-col items-end">
-          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
+          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-0.5">
             <Percent className="w-3 h-3" />
             <span>{acc}%</span>
           </span>
-          <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">
+          <span className="text-[10px] text-slate-400 font-semibold flex items-center justify-center gap-0.5">
             <Clock className="w-2.5 h-2.5 text-indigo-400" />
             <span>{time}</span>
           </span>
@@ -179,7 +179,7 @@ export const Leaderboard: React.FC = () => {
     if (metric === 'correct') {
       const count = u.correctAnswersCount ?? u.testsCompleted * 22;
       return (
-        <div className="flex flex-col items-end">
+        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-extrabold text-xs text-indigo-600 dark:text-indigo-400">
             {count.toLocaleString('uz-UZ')} ta
           </span>
@@ -196,10 +196,10 @@ export const Leaderboard: React.FC = () => {
   };
 
   // Format university metric value
-  const formatUniMetricValue = (uni: UniversityLeaderboardEntry) => {
+  const formatUniMetricValue = (uni: UniversityLeaderboardEntry, isPodium: boolean = false) => {
     if (metric === 'percentage') {
       return (
-        <div className="flex flex-col items-end">
+        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
             {uni.averageAccuracy}% aniqlik
           </span>
@@ -209,7 +209,7 @@ export const Leaderboard: React.FC = () => {
     }
     if (metric === 'weekly') {
       return (
-        <div className="flex flex-col items-end">
+        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-black text-xs text-orange-600 dark:text-orange-400">
             {uni.activeStudentsCount.toLocaleString('uz-UZ')} talaba
           </span>
@@ -218,7 +218,7 @@ export const Leaderboard: React.FC = () => {
       );
     }
     return (
-      <div className="flex flex-col items-end">
+      <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
         <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">
           {uni.totalCorrectAnswers.toLocaleString('uz-UZ')} ta
         </span>
@@ -438,32 +438,32 @@ export const Leaderboard: React.FC = () => {
 
           {/* Universities Olympic Podium (Top 3) */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex items-end justify-center gap-2 pt-6 pb-2">
+            <div className="flex items-end justify-center gap-1.5 pt-6 pb-2">
               {/* 2nd Place (Silver) */}
               {uniSecond && (
-                <div className="flex-1 flex flex-col items-center text-center">
+                <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 text-xs shadow-sm mb-2 relative">
                     <Building2 className="w-5 h-5 text-slate-500" />
                     <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-black text-[10px] flex items-center justify-center shadow-md">
                       2
                     </span>
                   </div>
-                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
                     {uniSecond.shortName}
                   </h4>
-                  <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                  <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
                     {uniSecond.region}
                   </p>
-                  <div className="h-24 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                  <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
                     <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
-                    {formatUniMetricValue(uniSecond)}
+                    {formatUniMetricValue(uniSecond, true)}
                   </div>
                 </div>
               )}
 
               {/* 1st Place (Gold, Tallest + Crown) */}
               {uniFirst && (
-                <div className="flex-1 flex flex-col items-center text-center relative -mt-4">
+                <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                   <div className="relative mb-2">
                     <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-amber-300 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-400/20">
@@ -473,37 +473,37 @@ export const Leaderboard: React.FC = () => {
                       1
                     </span>
                   </div>
-                  <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                  <h4 className="font-black text-xs text-slate-900 dark:text-white truncate w-full text-center">
                     {uniFirst.shortName}
                   </h4>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold line-clamp-1 mb-1">
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate w-full text-center mb-1">
                     {uniFirst.region}
                   </p>
-                  <div className="h-32 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
+                  <div className="h-20 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
                     <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1-o'rin</span>
-                    {formatUniMetricValue(uniFirst)}
+                    {formatUniMetricValue(uniFirst, true)}
                   </div>
                 </div>
               )}
 
               {/* 3rd Place (Bronze) */}
               {uniThird && (
-                <div className="flex-1 flex flex-col items-center text-center">
+                <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-amber-700/50 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 text-xs shadow-sm mb-2 relative">
                     <Building2 className="w-5 h-5 text-amber-700" />
                     <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-amber-700 text-white font-black text-[10px] flex items-center justify-center shadow-md">
                       3
                     </span>
                   </div>
-                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
                     {uniThird.shortName}
                   </h4>
-                  <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                  <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
                     {uniThird.region}
                   </p>
-                  <div className="h-20 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                  <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
                     <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
-                    {formatUniMetricValue(uniThird)}
+                    {formatUniMetricValue(uniThird, true)}
                   </div>
                 </div>
               )}
@@ -570,10 +570,10 @@ export const Leaderboard: React.FC = () => {
           {/* Top 3 Olympic Podium for Students */}
           {sortedUsers.length >= 3 && (
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div className="flex items-end justify-center gap-2 pt-6 pb-2">
+              <div className="flex items-end justify-center gap-1.5 pt-6 pb-2">
                 {/* 2nd Place (Silver) */}
                 {second && (
-                  <div className="flex-1 flex flex-col items-center text-center">
+                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
                     <div className="relative mb-2">
                       <UserAvatar
                         avatar={second.avatar}
@@ -585,22 +585,22 @@ export const Leaderboard: React.FC = () => {
                         2
                       </span>
                     </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
                       {second.name}
                     </h4>
-                    <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
                       {second.region}
                     </p>
-                    <div className="h-24 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                    <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
                       <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
-                      {formatMetricValue(second)}
+                      {formatMetricValue(second, true)}
                     </div>
                   </div>
                 )}
 
                 {/* 1st Place (Gold, Tallest + Crown) */}
                 {first && (
-                  <div className="flex-1 flex flex-col items-center text-center relative -mt-4">
+                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                     <div className="relative mb-2">
                       <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
                       <UserAvatar
@@ -613,22 +613,22 @@ export const Leaderboard: React.FC = () => {
                         1
                       </span>
                     </div>
-                    <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                    <h4 className="font-black text-xs text-slate-900 dark:text-white truncate w-full text-center">
                       {first.name}
                     </h4>
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold line-clamp-1 mb-1">
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate w-full text-center mb-1">
                       {first.region}
                     </p>
-                    <div className="h-32 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
+                    <div className="h-20 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
                       <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1-o'rin</span>
-                      {formatMetricValue(first)}
+                      {formatMetricValue(first, true)}
                     </div>
                   </div>
                 )}
 
                 {/* 3rd Place (Bronze) */}
                 {third && (
-                  <div className="flex-1 flex flex-col items-center text-center">
+                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
                     <div className="relative mb-2">
                       <UserAvatar
                         avatar={third.avatar}
@@ -640,15 +640,15 @@ export const Leaderboard: React.FC = () => {
                         3
                       </span>
                     </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
                       {third.name}
                     </h4>
-                    <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
                       {third.region}
                     </p>
-                    <div className="h-20 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                    <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
                       <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
-                      {formatMetricValue(third)}
+                      {formatMetricValue(third, true)}
                     </div>
                   </div>
                 )}

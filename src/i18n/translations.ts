@@ -217,8 +217,8 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Parol noto\'g\'ri! Qayta urinib ko\'ring.',
 
     walletTitle: 'Talaba Hamyoni',
-    walletSubtitle: 'Ichki balans, vaucherlar va ta\'limiy obunalar',
-    internalBalance: 'Ichki balans',
+    walletSubtitle: 'Hamyon balansi, vaucherlar va ta\'limiy obunalar',
+    internalBalance: 'Hamyon balansi',
     voucherBalance: 'Vaucher balansi',
     authorEarnings: 'Mualliflik daromadi',
     guardrailNoticeTitle: 'Eslatma:',
@@ -347,8 +347,8 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Неверный пароль! Попробуйте снова.',
 
     walletTitle: 'Кошелек студента',
-    walletSubtitle: 'Внутренний баланс, ваучеры и образовательные подписки',
-    internalBalance: 'Внутренний баланс',
+    walletSubtitle: 'Баланс кошелька, ваучеры и образовательные подписки',
+    internalBalance: 'Баланс кошелька',
     voucherBalance: 'Баланс ваучера',
     authorEarnings: 'Доход автора',
     guardrailNoticeTitle: 'Внимание:',
@@ -477,8 +477,8 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Incorrect password! Please try again.',
 
     walletTitle: 'Student Wallet',
-    walletSubtitle: 'Internal balance, vouchers, and educational plans',
-    internalBalance: 'Internal Balance',
+    walletSubtitle: 'Wallet balance, vouchers, and educational plans',
+    internalBalance: 'Wallet Balance',
     voucherBalance: 'Voucher Balance',
     authorEarnings: 'Author Earnings',
     guardrailNoticeTitle: 'Notice:',

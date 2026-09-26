@@ -332,45 +332,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* Recent / Recommended Tests */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h3 className="font-black text-sm text-slate-900 dark:text-white">
-            Tavsiya etilgan testlar
-          </h3>
-          {testPackages.length > 0 && (
+      {/* Recommended Tests - Only shown if active test packages exist */}
+      {testPackages.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-black text-sm text-slate-900 dark:text-white">
+              Tavsiya etilgan testlar
+            </h3>
             <button
               onClick={() => setActiveTab('tests')}
               className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
             >
               Barchasi &rarr;
             </button>
-          )}
-        </div>
-
-        {testPackages.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-3">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              Hozircha testlar mavjud emas
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto leading-relaxed">
-              Ilk testni o'zingiz tuzing! Boshqa talabalar testingizni yechganda har bir urinish uchun sizga +100 so'm rag'batlantirish mablag'i to'lanadi.
-            </p>
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                onOpenCreateModal();
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>+ Yangi test tuzish</span>
-            </button>
           </div>
-        ) : (
+
           <div className="space-y-2">
             {testPackages.slice(0, 3).map((pkg) => (
               <div
@@ -401,8 +377,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

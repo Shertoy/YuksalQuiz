@@ -10,6 +10,7 @@ import {
   LeaderboardScope,
   TOP_UNIVERSITIES,
   WalletTransaction,
+  Announcement,
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
@@ -32,6 +33,7 @@ interface QuizState {
   universities: string[];
   pendingUniversities: string[];
   transactions: WalletTransaction[];
+  announcements: Announcement[];
   soundEnabled: boolean;
   tamperDetected: boolean;
 
@@ -41,6 +43,8 @@ interface QuizState {
   setActiveTab: (tab: TabType) => void;
   setLeaderboardScope: (scope: LeaderboardScope) => void;
   addTransaction: (tx: Omit<WalletTransaction, 'id' | 'date'>) => void;
+  addAnnouncement: (item: Omit<Announcement, 'id' | 'date'>) => void;
+  deleteAnnouncement: (id: string) => void;
   addUniversity: (name: string) => void;
   updateUniversity: (oldName: string, newName: string) => void;
   deleteUniversity: (name: string) => void;
@@ -126,6 +130,16 @@ export const useQuizStore = create<QuizState>()(
       universities: TOP_UNIVERSITIES,
       pendingUniversities: [],
       transactions: [],
+      announcements: [
+        {
+          id: 'ann-1',
+          title: 'YuksalQuiz v2.0 ga xush kelibsiz! 🚀',
+          message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
+          date: '2026-09-27',
+          tag: 'yangilik',
+          isRead: false,
+        },
+      ],
       soundEnabled: true,
       tamperDetected: false,
 
@@ -136,6 +150,20 @@ export const useQuizStore = create<QuizState>()(
           date: new Date().toISOString().replace('T', ' ').substring(0, 16),
         };
         set({ transactions: [newTx, ...(get().transactions || [])] });
+      },
+
+      addAnnouncement: (item) => {
+        const newAnn: Announcement = {
+          ...item,
+          id: 'ann-' + Date.now(),
+          date: new Date().toISOString().split('T')[0],
+          isRead: false,
+        };
+        set({ announcements: [newAnn, ...(get().announcements || [])] });
+      },
+
+      deleteAnnouncement: (id: string) => {
+        set({ announcements: get().announcements.filter((a) => a.id !== id) });
       },
 
       addUniversity: (name: string) => {
@@ -643,6 +671,18 @@ export const useQuizStore = create<QuizState>()(
         }
         if (!state.transactions) {
           state.transactions = [];
+        }
+        if (!state.announcements || state.announcements.length === 0) {
+          state.announcements = [
+            {
+              id: 'ann-1',
+              title: 'YuksalQuiz v2.0 ga xush kelibsiz! 🚀',
+              message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
+              date: '2026-09-27',
+              tag: 'yangilik',
+              isRead: false,
+            },
+          ];
         }
 
         // Initialize transaction history if empty for registered users

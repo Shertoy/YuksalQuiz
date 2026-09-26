@@ -1,35 +1,29 @@
 import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
-import { Home, BookOpen, CheckSquare, Trophy, Wallet } from 'lucide-react';
+import { Home, BookOpen, Trophy, Wallet, User } from 'lucide-react';
 import { TabType } from '../types';
 
 interface NavItem {
   id: TabType;
-  labelKey: 'navHome' | 'navTests' | 'navWallet' | 'myProgress' | 'navRating';
+  labelKey: 'navHome' | 'navTests' | 'navWallet' | 'navRating' | 'navProfile';
   icon: React.ComponentType<{ className?: string }>;
-  badge?: number;
 }
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, mistakes } = useQuizStore();
+  const { activeTab, setActiveTab } = useQuizStore();
   const { t } = useTranslation();
 
   const navItems: NavItem[] = [
     { id: 'home', labelKey: 'navHome', icon: Home },
     { id: 'tests', labelKey: 'navTests', icon: BookOpen },
     { id: 'wallet', labelKey: 'navWallet', icon: Wallet },
-    {
-      id: 'results',
-      labelKey: 'myProgress',
-      icon: CheckSquare,
-      badge: mistakes.length > 0 ? mistakes.length : undefined,
-    },
     { id: 'leaderboard', labelKey: 'navRating', icon: Trophy },
+    { id: 'profile', labelKey: 'navProfile', icon: User },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 pb-safe transition-colors">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 pb-safe transition-colors">
       <div className="max-w-md mx-auto px-2 py-1.5 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -46,13 +40,6 @@ export const BottomNav: React.FC = () => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
-              {/* Badge for Mistakes */}
-              {item.badge !== undefined && (
-                <span className="absolute top-0.5 right-2 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-[10px] text-white font-bold flex items-center justify-center shadow-sm">
-                  {item.badge > 99 ? '99+' : item.badge}
-                </span>
-              )}
-
               <div
                 className={`p-1 rounded-xl transition-colors ${
                   isActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''

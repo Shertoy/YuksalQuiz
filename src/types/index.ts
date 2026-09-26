@@ -246,6 +246,15 @@ export interface UniversityLeaderboardEntry {
   totalCorrectAnswers: number;
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  tag?: 'yangilik' | 'eslatma' | 'muhim';
+  isRead?: boolean;
+}
+
 export type TabType = 'home' | 'tests' | 'results' | 'leaderboard' | 'profile' | 'wallet';
 
 export type TransactionType = 'deposit' | 'voucher' | 'referral' | 'coin' | 'author_reward';

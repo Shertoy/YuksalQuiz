@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, ShieldCheck } from 'lucide-react';
+import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
 interface NavbarProps {
-  onOpenAdminModal?: () => void;
+  onOpenNotifications?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminModal }) => {
-  const { theme, setTheme, soundEnabled, toggleSound, tamperDetected, resetTamperWarning, setActiveTab, pendingUniversities } = useQuizStore();
+export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
+  const { theme, setTheme, soundEnabled, toggleSound, tamperDetected, resetTamperWarning, setActiveTab, announcements } = useQuizStore();
   const { language, setLanguage } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
@@ -146,21 +146,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminModal }) => {
               )}
             </button>
 
-            {/* Admin Panel Trigger */}
-            {onOpenAdminModal && (
+            {/* Notifications Trigger */}
+            {onOpenNotifications && (
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic('medium');
-                  onOpenAdminModal();
+                  triggerHaptic('light');
+                  onOpenNotifications();
                 }}
                 className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors relative"
-                title="OTMlar Admin Paneli"
-                aria-label="Admin Panel"
+                title="Bildirishnomalar va Yangiliklar"
+                aria-label="Notifications"
               >
-                <ShieldCheck className="w-4 h-4 text-indigo-500" />
-                {pendingUniversities && pendingUniversities.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                <Bell className="w-4 h-4 text-indigo-500" />
+                {announcements && announcements.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-xs">
+                    {announcements.length}
+                  </span>
                 )}
               </button>
             )}

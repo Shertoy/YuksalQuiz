@@ -20,6 +20,8 @@ import {
   Calendar,
   Lock,
   ScrollText,
+  CheckSquare,
+  ChevronRight,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
@@ -27,7 +29,11 @@ import { ReferralShareCard } from './ReferralShareCard';
 import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 
-export const ProfileView: React.FC = () => {
+interface ProfileViewProps {
+  onOpenAdminLogin?: () => void;
+}
+
+export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) => {
   const { profile, updateProfile, setActiveTab } = useQuizStore();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
@@ -145,7 +151,7 @@ export const ProfileView: React.FC = () => {
                 Vaucher: {profile.voucherBalance.toLocaleString('uz-UZ')} so'm
               </div>
               <div className="text-[10px] text-slate-500">
-                Ichki balans: {profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm
+                Hamyon balansi: {profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm
               </div>
             </div>
           </div>
@@ -161,6 +167,34 @@ export const ProfileView: React.FC = () => {
 
       {/* Referral Share System */}
       <ReferralShareCard />
+
+      {/* My Results & Mistakes Analytics Card */}
+      <div
+        onClick={() => {
+          triggerHaptic('light');
+          setActiveTab('results');
+        }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <CheckSquare className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+              Mening natijalarim va tahlillar
+            </h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Yechilgan testlar, xatolar ustida ishlash va statistika
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+          <span>Ko'rish</span>
+          <ChevronRight className="w-4 h-4" />
+        </div>
+      </div>
 
       {/* Public Offer Link Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between">
@@ -190,6 +224,24 @@ export const ProfileView: React.FC = () => {
         isOpen={showOfertaModal}
         onClose={() => setShowOfertaModal(false)}
       />
+
+      {/* Admin Portal Entry */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            onOpenAdminLogin?.();
+          }}
+          className="w-full py-3 px-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-between transition-all active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Admin tizimiga kirish</span>
+          </div>
+          <span className="text-[10px] text-slate-400 font-medium">Boshqaruv paneli &rarr;</span>
+        </button>
+      </div>
 
       {/* Edit Form */}
       {isEditing && (

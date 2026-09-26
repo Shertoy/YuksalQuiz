@@ -13,6 +13,8 @@ import { CreateTestModal } from './components/CreateTestModal';
 import { ProfileView } from './components/ProfileView';
 import { WalletView } from './components/WalletView';
 import { AdminPanelModal } from './components/AdminPanelModal';
+import { NotificationsModal } from './components/NotificationsModal';
+import { AdminLoginModal } from './components/AdminLoginModal';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
 
@@ -34,7 +36,11 @@ export const App: React.FC = () => {
   // Create test modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Admin panel modal
+  // Notifications modal
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // Admin login and panel modal
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // Initialize Telegram WebApp and Theme Synchronization
@@ -112,7 +118,7 @@ export const App: React.FC = () => {
       <OnboardingModal />
 
       {/* Top Navbar */}
-      <Navbar onOpenAdminModal={() => setIsAdminModalOpen(true)} />
+      <Navbar onOpenNotifications={() => setIsNotificationsOpen(true)} />
 
       {/* Main Scrollable Container with Safe pb-32 to prevent bottom navigation overlap */}
       <main className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 pb-32 relative scroll-smooth">
@@ -152,7 +158,9 @@ export const App: React.FC = () => {
             {activeTab === 'results' && <ResultsAndMistakes />}
             {activeTab === 'wallet' && <WalletView />}
             {activeTab === 'leaderboard' && <Leaderboard />}
-            {activeTab === 'profile' && <ProfileView />}
+            {activeTab === 'profile' && (
+              <ProfileView onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />
+            )}
           </>
         )}
       </main>
@@ -161,6 +169,22 @@ export const App: React.FC = () => {
       {isCreateModalOpen && (
         <CreateTestModal onClose={() => setIsCreateModalOpen(false)} />
       )}
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+      />
+
+      {/* Admin Login Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={() => {
+          setIsAdminLoginOpen(false);
+          setIsAdminModalOpen(true);
+        }}
+      />
 
       {/* Admin Panel Modal */}
       <AdminPanelModal
