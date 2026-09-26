@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   TOP_UNIVERSITIES,
   DEPARTMENTS,
@@ -16,11 +17,12 @@ import {
   Trash2,
   Lock,
   Unlock,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
-  FileText,
   Layers,
+  Coins,
+  FileText,
+  AlertCircle,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
@@ -30,6 +32,7 @@ interface CreateTestModalProps {
 
 export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => {
   const { profile, createTestPackage, addCustomUniversity, customUniversities } = useQuizStore();
+  const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
@@ -40,7 +43,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
   const [isPublic, setIsPublic] = useState(true);
   const [password, setPassword] = useState('');
 
-  // Mode: manual builder or fast import
+  // Mode: manual builder or bulk parser
   const [inputMode, setInputMode] = useState<'manual' | 'bulk'>('manual');
 
   // Manual questions
@@ -57,16 +60,30 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
   // Bulk import text
   const [bulkText, setBulkText] = useState('');
   const [bulkError, setBulkError] = useState('');
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
 
-  // Calculate live blocks preview
+  // Form field validation errors
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+  // Auto-calculated test blocks
   const liveBlocks = splitQuestionsIntoBlocks(questions);
+
+  const clearFieldError = (key: string) => {
+    if (errors[key]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
 
   const handleAddQuestion = () => {
     triggerHaptic('light');
     setQuestions([
       ...questions,
       {
-        id: 'q-' + (questions.length + 1) + '-' + Math.random().toString(36).substring(2, 6),
+        id: `q-${questions.length + 1}-${Math.random().toString(36).substring(2, 7)}`,
         text: '',
         options: ['', '', '', ''],
         correctOptionIndex: 0,
@@ -82,12 +99,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
   };
 
   const updateQuestionText = (idx: number, text: string) => {
+    clearFieldError(`q-${idx}`);
     const updated = [...questions];
     updated[idx].text = text;
     setQuestions(updated);
   };
 
   const updateOptionText = (qIdx: number, optIdx: number, text: string) => {
+    clearFieldError(`q-${qIdx}-opt-${optIdx}`);
     const updated = [...questions];
     updated[qIdx].options[optIdx] = text;
     setQuestions(updated);
@@ -100,98 +119,170 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
     setQuestions(updated);
   };
 
+  const handleAddOption = (qIdx: number) => {
+    if (questions[qIdx].options.length >= 6) return;
+    triggerHaptic('light');
+    const updated = [...questions];
+    updated[qIdx].options.push('');
+    setQuestions(updated);
+  };
+
+  const handleRemoveOption = (qIdx: number, optIdx: number) => {
+    if (questions[qIdx].options.length <= 2) return;
+    triggerHaptic('light');
+    const updated = [...questions];
+    updated[qIdx].options = updated[qIdx].options.filter((_, i) => i !== optIdx);
+    if (updated[qIdx].correctOptionIndex >= updated[qIdx].options.length) {
+      updated[qIdx].correctOptionIndex = 0;
+    }
+    setQuestions(updated);
+  };
+
   const updateExplanation = (qIdx: number, exp: string) => {
     const updated = [...questions];
     updated[qIdx].explanation = exp;
     setQuestions(updated);
   };
 
-  // Fast Bulk Load Demo (e.g. 50 questions or 110 questions for instant testing!)
-  const loadDemoQuestions = (count: number) => {
-    triggerHaptic('medium');
-    const demo: Question[] = [];
-    for (let i = 1; i <= count; i++) {
-      demo.push({
-        id: `demo-q-${i}`,
-        text: `${title || 'Namunaviy fan'} bo'yicha ${i}-savol matni?`,
-        options: [
-          `To'g'ri variant javobi (${i})`,
-          `Noto'g'ri variant B`,
-          `Noto'g'ri variant C`,
-          `Noto'g'ri variant D`,
-        ],
-        correctOptionIndex: 0,
-        explanation: `Ushbu ${i}-savol uchun qisqacha o'quv-uslubiy tushuntirish berilgan.`,
-      });
-    }
-    setQuestions(demo);
-  };
-
-  // Bulk import parser (parses questions separated by blank lines or numbers)
+  // Robust bulk parser for ==== and ++++ delimiters with flexible fallback
   const handleParseBulkText = () => {
-    if (!bulkText.trim()) return;
+    const trimmed = bulkText.trim();
+    if (!trimmed) {
+      setBulkError(t.fieldRequired);
+      return;
+    }
+
     try {
       const parsed: Question[] = [];
-      const blocks = bulkText.split(/\n\s*\n/);
 
-      blocks.forEach((b, idx) => {
-        const lines = b.split('\n').map((l) => l.trim()).filter(Boolean);
-        if (lines.length >= 3) {
-          const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
-          const optLines = lines.slice(1, 5);
-          const options = optLines.map((opt) => opt.replace(/^[A-D][\.\)]\s*/i, ''));
+      if (trimmed.includes('++++')) {
+        // Primary format with ++++ question separator and ==== option separator
+        const rawBlocks = trimmed.split(/\+{4,}/).map((b) => b.trim()).filter(Boolean);
 
-          while (options.length < 4) {
-            options.push(`Variant ${options.length + 1}`);
+        rawBlocks.forEach((blockStr, qIdx) => {
+          const parts = blockStr.split(/={4,}/).map((p) => p.trim()).filter(Boolean);
+          if (parts.length >= 2) {
+            const qText = parts[0];
+            const rawOptions = parts.slice(1);
+            let correctIndex = 0;
+            const options: string[] = [];
+
+            rawOptions.forEach((opt, oIdx) => {
+              if (opt.startsWith('#')) {
+                correctIndex = oIdx;
+                options.push(opt.substring(1).trim());
+              } else {
+                options.push(opt);
+              }
+            });
+
+            while (options.length < 4) {
+              options.push(`Variant ${options.length + 1}`);
+            }
+
+            parsed.push({
+              id: `bulk-q-${qIdx + 1}-${Math.random().toString(36).substring(2, 6)}`,
+              text: qText,
+              options,
+              correctOptionIndex: correctIndex,
+              explanation: '',
+            });
           }
+        });
+      } else {
+        // Fallback: blank-line separated questions
+        const blocks = trimmed.split(/\n\s*\n/);
+        blocks.forEach((b, idx) => {
+          const lines = b.split('\n').map((l) => l.trim()).filter(Boolean);
+          if (lines.length >= 2) {
+            const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
+            const rawOptions = lines.slice(1);
+            let correctIndex = 0;
+            const options: string[] = [];
 
-          parsed.push({
-            id: `bulk-q-${idx + 1}`,
-            text: qText,
-            options,
-            correctOptionIndex: 0,
-            explanation: '',
-          });
-        }
-      });
+            rawOptions.forEach((opt, oIdx) => {
+              let optText = opt;
+              if (optText.startsWith('#')) {
+                correctIndex = oIdx;
+                optText = optText.substring(1).trim();
+              } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
+                optText = optText.replace(/^[A-D][\.\)]\s*/i, '');
+              }
+              options.push(optText);
+            });
+
+            while (options.length < 4) {
+              options.push(`Variant ${options.length + 1}`);
+            }
+
+            parsed.push({
+              id: `bulk-q-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`,
+              text: qText,
+              options: options.slice(0, 4),
+              correctOptionIndex: correctIndex >= 4 ? 0 : correctIndex,
+              explanation: '',
+            });
+          }
+        });
+      }
 
       if (parsed.length > 0) {
         setQuestions(parsed);
         setInputMode('manual');
         setBulkError('');
+        setBulkSuccessMsg(`${parsed.length} ${t.parsedQuestionsCount}`);
         triggerHaptic('success');
       } else {
-        setBulkError('Format aniqlanmadi. Har bir savol va variantlarni qatorma-qator yozing.');
+        setBulkError('Format aniqlanmadi. Har bir savol va javoblar orasiga ====, savollar oxiriga ++++ yozing.');
+        triggerHaptic('error');
       }
     } catch {
-      setBulkError('Matnni o\'qishda xatolik yuz berdi.');
+      setBulkError('Matnni tahlil qilishda xatolik yuz berdi.');
+      triggerHaptic('error');
     }
   };
 
   const handleSaveTest = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors: Record<string, boolean> = {};
+
     if (!title.trim()) {
-      alert('Iltimos, fan nomini kiriting');
+      newErrors.title = true;
+    }
+
+    if (isCustomUni && !customUniName.trim()) {
+      newErrors.customUni = true;
+    }
+
+    if (!isPublic && !password.trim()) {
+      newErrors.password = true;
+    }
+
+    // Validate questions and options
+    questions.forEach((q, qIdx) => {
+      if (!q.text.trim()) {
+        newErrors[`q-${qIdx}`] = true;
+      }
+      q.options.forEach((opt, oIdx) => {
+        if (!opt.trim()) {
+          newErrors[`q-${qIdx}-opt-${oIdx}`] = true;
+        }
+      });
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      triggerHaptic('warning');
       return;
     }
 
     const finalUniversity = isCustomUni ? customUniName.trim() : selectedUniversity;
-    if (isCustomUni && !customUniName.trim()) {
-      alert('Iltimos, OTM nomini kiriting');
-      return;
-    }
-
     if (isCustomUni) {
       addCustomUniversity(customUniName.trim());
     }
 
-    // Ensure questions have text
     const validQuestions = questions.filter((q) => q.text.trim().length > 0);
-    if (validQuestions.length === 0) {
-      alert('Kamida bitta to\'liq savol kiritilishi shart');
-      return;
-    }
-
     const testBlocks = splitQuestionsIntoBlocks(validQuestions);
 
     const newPackage: TestPackage = {
@@ -214,41 +305,46 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
     };
 
     createTestPackage(newPackage);
+    triggerHaptic('success');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 my-6">
+    <div className="fixed inset-0 z-40 flex items-start justify-center p-3 pb-32 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 my-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Layers className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Yangi Test To'plami Yaratish
+                {t.createTestModalTitle}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Test tuzing, muallif bo'ling va har bir yechimdan +100 so'm ishlang
+                {t.createTestModalDesc}
               </p>
             </div>
           </div>
 
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900"
+            onClick={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
+            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSaveTest} className="space-y-4 text-xs">
+        {/* Form with noValidate to block native browser tooltips */}
+        <form noValidate onSubmit={handleSaveTest} className="space-y-4 text-xs">
           {/* Category Selection */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Kategoriya (Yo'nalish):
+              {t.categoryLabel}
             </label>
             <select
               value={category}
@@ -263,25 +359,37 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
             </select>
           </div>
 
-          {/* Title */}
+          {/* Test Title */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Fan / Test nomi:
+              {t.testTitleLabel}
             </label>
             <input
               type="text"
-              required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                clearFieldError('title');
+              }}
               placeholder="Masalan: Raqamli iqtisodiyot va Big Data"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
+              className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                errors.title
+                  ? 'border-rose-500 focus:ring-rose-500'
+                  : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+              }`}
             />
+            {errors.title && (
+              <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{t.fieldRequired}</span>
+              </p>
+            )}
           </div>
 
           {/* University Selection with Custom OTM */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Universitet (OTM):
+              {t.universityLabel}
             </label>
             <select
               value={isCustomUni ? 'custom' : selectedUniversity}
@@ -308,17 +416,29 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
               <option value="custom">+ Yangi OTM (Ro'yxatda yo'q)</option>
             </select>
 
-            {/* Custom University input flagged for admin panel review */}
+            {/* Custom University input */}
             {isCustomUni && (
               <div className="mt-2 space-y-1.5 animate-in fade-in">
                 <input
                   type="text"
-                  required
                   value={customUniName}
-                  onChange={(e) => setCustomUniName(e.target.value)}
-                  placeholder="Yangi OTM to'liq nomini kiriting..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-indigo-400 text-slate-900 dark:text-white font-medium"
+                  onChange={(e) => {
+                    setCustomUniName(e.target.value);
+                    clearFieldError('customUni');
+                  }}
+                  placeholder={t.customUniPlaceholder}
+                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border font-medium text-slate-900 dark:text-white ${
+                    errors.customUni
+                      ? 'border-rose-500 focus:ring-rose-500'
+                      : 'border-indigo-400 focus:ring-indigo-500'
+                  }`}
                 />
+                {errors.customUni && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{t.fieldRequired}</span>
+                  </p>
+                )}
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 text-[11px] font-semibold border border-purple-200 dark:border-purple-800">
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                   <span>Admin paneli tekshiruviga yuboriladi</span>
@@ -331,7 +451,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Yo'nalish / Kafedra:
+                {t.departmentLabel}
               </label>
               <select
                 value={department}
@@ -348,7 +468,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
 
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Kirish huquqi (Access):
+                {t.accessLabel}
               </label>
               <div className="grid grid-cols-2 gap-1">
                 <button
@@ -361,7 +481,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
                   }`}
                 >
                   <Unlock className="w-3 h-3" />
-                  <span>Ochiq</span>
+                  <span>{t.publicAccess}</span>
                 </button>
                 <button
                   type="button"
@@ -373,7 +493,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
                   }`}
                 >
                   <Lock className="w-3 h-3" />
-                  <span>Yopiq</span>
+                  <span>{t.privateAccess}</span>
                 </button>
               </div>
             </div>
@@ -383,203 +503,249 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
           {!isPublic && (
             <div className="animate-in fade-in">
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Maxfiy test paroli:
+                {t.testPasswordLabel}
               </label>
               <input
                 type="text"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Talabalar uchun parolni kiriting (masalan: 2026)"
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-amber-400 text-slate-900 dark:text-white font-medium"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearFieldError('password');
+                }}
+                placeholder={t.testPasswordPlaceholder}
+                className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white font-medium ${
+                  errors.password
+                    ? 'border-rose-500 focus:ring-rose-500'
+                    : 'border-amber-400 focus:ring-amber-500'
+                }`}
               />
+              {errors.password && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{t.fieldRequired}</span>
+                </p>
+              )}
             </div>
           )}
 
-          {/* Smart Question Splitting Live Banner */}
-          <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-3.5">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-950 dark:text-indigo-200">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                <span>Aqlli Savollarni Bo'lish Tizimi</span>
+          {/* Clean Auto-Split & Author Reward Card */}
+          <div className="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/80 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4" />
               </div>
-              <span className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">
-                Jami: {questions.length} ta savol
-              </span>
-            </div>
-
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-2.5">
-              Savollar soni ko'p bo'lsa (masalan 150 ta), ular avtomatik 20-25 tadan bloklarga ("Test 1", "Test 2", ...) bo'linadi va ketma-ket ochilish tizimi qo'llaniladi.
-            </p>
-
-            {/* Blocks Pills Preview */}
-            <div className="flex flex-wrap gap-1.5">
-              {liveBlocks.map((b) => (
-                <span
-                  key={b.id}
-                  className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 text-[10px] font-bold"
-                >
-                  {b.title}: {b.questions.length} ta savol (O'tish: {b.passingScore} ta)
-                </span>
-              ))}
-            </div>
-
-            {/* Quick Demo Preload Buttons */}
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60">
-              <span className="text-[10px] font-semibold text-slate-500">Tezkor sinov:</span>
-              <button
-                type="button"
-                onClick={() => loadDemoQuestions(25)}
-                className="px-2 py-1 rounded bg-indigo-200/60 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-[10px] font-bold hover:bg-indigo-300"
-              >
-                25 ta savol
-              </button>
-              <button
-                type="button"
-                onClick={() => loadDemoQuestions(50)}
-                className="px-2 py-1 rounded bg-indigo-200/60 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-[10px] font-bold hover:bg-indigo-300"
-              >
-                50 ta (2x25)
-              </button>
-              <button
-                type="button"
-                onClick={() => loadDemoQuestions(110)}
-                className="px-2 py-1 rounded bg-indigo-200/60 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-[10px] font-bold hover:bg-indigo-300"
-              >
-                110 ta (5x22)
-              </button>
-              <button
-                type="button"
-                onClick={() => loadDemoQuestions(150)}
-                className="px-2 py-1 rounded bg-indigo-200/60 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-[10px] font-bold hover:bg-indigo-300"
-              >
-                150 ta (6x25)
-              </button>
+              <div>
+                <p className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200 leading-tight">
+                  {t.authorRewardNotice}
+                </p>
+                <p className="text-[10px] text-indigo-700 dark:text-indigo-400 mt-0.5">
+                  Jami: <strong className="text-slate-900 dark:text-white">{questions.length}</strong> ta savol ({liveBlocks.length} ta blok)
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Input Mode Selector */}
+          {/* Input Mode Switcher */}
           <div className="flex items-center justify-between pt-1">
             <span className="font-bold text-slate-700 dark:text-slate-300">
-              Savollarni kiritish usuli:
+              Savollarni kiritish:
             </span>
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl">
               <button
                 type="button"
                 onClick={() => setInputMode('manual')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
+                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
                   inputMode === 'manual'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
-                Bittalab kiritish
+                {t.inputModeManual}
               </button>
               <button
                 type="button"
                 onClick={() => setInputMode('bulk')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
+                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
                   inputMode === 'bulk'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
-                Ommaviy nusxalash (Bulk)
+                {t.inputModeBulk}
               </button>
             </div>
           </div>
 
-          {/* Mode: Bulk Import */}
+          {/* Bulk Import Mode */}
           {inputMode === 'bulk' ? (
             <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span>{t.pasteLabel}</span>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                  Format: #to'g'ri, ====, ++++
+                </span>
+              </div>
               <textarea
-                rows={6}
+                rows={8}
                 value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                placeholder={`1. Makroiqtisodiy muvozanat nima?\nA) Yalpi talab va taklif tengligi\nB) Byudjet daromadi\nC) Valyuta zaxirasi\nD) Savdo defitsiti\n\n2. Keyingi savol...`}
-                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px]"
+                onChange={(e) => {
+                  setBulkText(e.target.value);
+                  setBulkError('');
+                  setBulkSuccessMsg('');
+                }}
+                placeholder={t.bulkPlaceholder}
+                className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
               />
-              {bulkError && <p className="text-rose-500 text-[11px] font-semibold">{bulkError}</p>}
+              {bulkError && (
+                <p className="text-rose-500 text-[11px] font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{bulkError}</span>
+                </p>
+              )}
+              {bulkSuccessMsg && (
+                <p className="text-emerald-500 text-[11px] font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{bulkSuccessMsg}</span>
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleParseBulkText}
-                className="w-full py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
               >
-                Matnni tahlil qilish va qo'shish
+                <FileText className="w-3.5 h-3.5" />
+                <span>{t.parseBtn}</span>
               </button>
             </div>
           ) : (
-            /* Mode: Manual question cards (Showing first few with scroll) */
-            <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
-              {questions.map((q, qIdx) => (
-                <div
-                  key={q.id}
-                  className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                      Savol #{qIdx + 1}
-                    </span>
-                    {questions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveQuestion(qIdx)}
-                        className="text-rose-500 hover:text-rose-700 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
+            /* Manual Question Cards */
+            <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+              {questions.map((q, qIdx) => {
+                const qHasError = errors[`q-${qIdx}`];
 
-                  <input
-                    type="text"
-                    required
-                    value={q.text}
-                    onChange={(e) => updateQuestionText(qIdx, e.target.value)}
-                    placeholder="Savol matnini kiriting..."
-                    className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                  />
+                return (
+                  <div
+                    key={q.id}
+                    className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                        {t.questionNumber} #{qIdx + 1}
+                      </span>
+                      {questions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQuestion(qIdx)}
+                          className="text-rose-500 hover:text-rose-700 p-1 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
 
-                  {/* 4 Options with radio for correct answer */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {q.options.map((opt, oIdx) => (
-                      <div key={oIdx} className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name={`correct-${q.id}`}
-                          checked={q.correctOptionIndex === oIdx}
-                          onChange={() => updateCorrectOption(qIdx, oIdx)}
-                          className="accent-indigo-600"
-                        />
-                        <input
-                          type="text"
-                          required
-                          value={opt}
-                          onChange={(e) => updateOptionText(qIdx, oIdx, e.target.value)}
-                          placeholder={`Variant ${['A', 'B', 'C', 'D'][oIdx]}`}
-                          className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px]"
-                        />
+                    <div>
+                      <input
+                        type="text"
+                        value={q.text}
+                        onChange={(e) => updateQuestionText(qIdx, e.target.value)}
+                        placeholder="Savol matnini kiriting..."
+                        className={`w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:ring-2 ${
+                          qHasError
+                            ? 'border-rose-500 focus:ring-rose-500'
+                            : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                        }`}
+                      />
+                      {qHasError && (
+                        <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          <span>{t.fieldRequired}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Options with radio button for correct answer */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Variantlar (To'g'ri javobni tanlang):
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {q.options.map((opt, oIdx) => {
+                          const optHasError = errors[`q-${qIdx}-opt-${oIdx}`];
+                          const isCorrect = q.correctOptionIndex === oIdx;
+
+                          return (
+                            <div key={oIdx} className="space-y-0.5">
+                              <div
+                                className={`flex items-center gap-1.5 p-1 rounded-xl border transition-all ${
+                                  isCorrect
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`correct-${q.id}`}
+                                  checked={isCorrect}
+                                  onChange={() => updateCorrectOption(qIdx, oIdx)}
+                                  className="accent-emerald-600 ml-1.5 cursor-pointer"
+                                />
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => updateOptionText(qIdx, oIdx, e.target.value)}
+                                  placeholder={`Variant ${['A', 'B', 'C', 'D', 'E', 'F'][oIdx] || oIdx + 1}`}
+                                  className="w-full px-1.5 py-1 bg-transparent text-[11px] text-slate-900 dark:text-white focus:outline-none font-medium"
+                                />
+                                {q.options.length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveOption(qIdx, oIdx)}
+                                    className="p-1 text-slate-400 hover:text-rose-500"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                              {optHasError && (
+                                <p className="text-[9px] text-rose-500 font-semibold pl-1">
+                                  {t.fieldRequired}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
 
-                  <input
-                    type="text"
-                    value={q.explanation || ''}
-                    onChange={(e) => updateExplanation(qIdx, e.target.value)}
-                    placeholder="Izoh / Tushuntirish (ixtiyoriy)..."
-                    className="w-full px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500"
-                  />
-                </div>
-              ))}
+                      {q.options.length < 6 && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddOption(qIdx)}
+                          className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 pt-0.5 hover:underline"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Variant qo'shish</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={q.explanation || ''}
+                      onChange={(e) => updateExplanation(qIdx, e.target.value)}
+                      placeholder="Tushuntirish / Izoh (ixtiyoriy)..."
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400"
+                    />
+                  </div>
+                );
+              })}
 
               <button
                 type="button"
                 onClick={handleAddQuestion}
-                className="w-full py-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500 hover:text-indigo-500 transition-colors"
+                className="w-full py-2.5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500 hover:text-indigo-500 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Yana bitta savol qo'shish</span>
+                <Plus className="w-4 h-4" />
+                <span>{t.addQuestionBtn}</span>
               </button>
             </div>
           )}
@@ -588,10 +754,10 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
+              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Test to'plamini nashr qilish ({liveBlocks.length} ta blok)</span>
+              <span>{t.publishTestBtn} ({liveBlocks.length} ta blok)</span>
             </button>
           </div>
         </form>

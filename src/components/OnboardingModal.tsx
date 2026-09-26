@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
-import { UZBEKISTAN_REGIONS, Region, StudyType, AcademicYear, Gender } from '../types';
+import { useTranslation } from '../i18n/useTranslation';
+import { UZBEKISTAN_REGIONS, Region, StudyType, AcademicYear, Gender, getAvailableAcademicYears } from '../types';
 import { getTelegramWebApp, triggerHaptic } from '../utils/telegram';
-import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket } from 'lucide-react';
+import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle } from 'lucide-react';
 import { PublicOfferModal } from './PublicOfferModal';
 import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 
 export const OnboardingModal: React.FC = () => {
   const { profile, registerUser } = useQuizStore();
+  const { t, language } = useTranslation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -21,7 +23,27 @@ export const OnboardingModal: React.FC = () => {
   const [acceptedOferta, setAcceptedOferta] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
   const [step, setStep] = useState<'welcome' | 'form'>('welcome');
-  const [error, setError] = useState('');
+
+  // Field validation errors state (No browser popups)
+  const [fieldErrors, setFieldErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    birthDate?: string;
+    oferta?: string;
+  }>({});
+
+  // Localized required field message
+  const getRequiredMsg = () => {
+    switch (language) {
+      case 'ru':
+        return 'Пожалуйста, заполните это поле';
+      case 'en':
+        return 'Please fill out this field';
+      case 'uz':
+      default:
+        return "Iltimos, ushbu maydonni to'ldiring";
+    }
+  };
 
   // Prefill from Telegram WebApp if available
   useEffect(() => {
@@ -37,24 +59,42 @@ export const OnboardingModal: React.FC = () => {
     return null;
   }
 
+  const handleStudyTypeChange = (type: StudyType) => {
+    setStudyType(type);
+    const availableYears = getAvailableAcademicYears(type);
+    if (!availableYears.includes(academicYear)) {
+      setAcademicYear(availableYears[0]);
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: typeof fieldErrors = {};
+
     if (!firstName.trim()) {
-      setError('Iltimos, ismingizni kiriting');
-      triggerHaptic('error');
-      return;
+      errors.firstName = getRequiredMsg();
     }
     if (!lastName.trim()) {
-      setError('Iltimos, familiyangizni kiriting');
-      triggerHaptic('error');
-      return;
+      errors.lastName = getRequiredMsg();
+    }
+    if (!birthDate) {
+      errors.birthDate = getRequiredMsg();
     }
     if (!acceptedOferta) {
-      setError('Iltimos, Ommaviy oferta shartlariga rozilik bildiring');
+      errors.oferta = language === 'ru'
+        ? 'Необходимо принять условия Публичной оферты'
+        : language === 'en'
+        ? 'Please accept the Public Offer terms'
+        : 'Iltimos, Ommaviy oferta shartlariga rozilik bildiring';
+    }
+
+    if (Object.keys(errors).length > 0) {
       triggerHaptic('error');
+      setFieldErrors(errors);
       return;
     }
 
+    setFieldErrors({});
     registerUser({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -68,6 +108,8 @@ export const OnboardingModal: React.FC = () => {
     });
   };
 
+  const availableYears = getAvailableAcademicYears(studyType);
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
@@ -76,20 +118,20 @@ export const OnboardingModal: React.FC = () => {
             /* Welcome & Gratitude Screen */
             <div className="text-center py-4">
               <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-4xl shadow-xl shadow-indigo-500/30 mb-5 animate-soft-pulse">
-                🎓
+                <Sparkles className="w-10 h-10 text-white" />
               </div>
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-3">
                 <HeartHandshake className="w-3.5 h-3.5" />
-                <span>Minnatdorchilik bilan</span>
+                <span>YuksalQuiz Platformasi</span>
               </div>
 
               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
-                YuksalQuiz ga Xush Kelibsiz!
+                YuksalQuiz
               </h2>
 
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-                O'zbekiston oliy ta'lim talabalari va o'quvchilari uchun yaratilgan innovatsion va xavfsiz test platformasini tanlaganingiz uchun tashakkur!
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-6 px-1">
+                {t.onboardingDesc}
               </p>
 
               <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 rounded-2xl p-4 text-left mb-6 space-y-2.5">
@@ -98,36 +140,33 @@ export const OnboardingModal: React.FC = () => {
                   <span>35 000 so'mlik boshlang'ich obuna vaucheri taqdim etiladi!</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>+5 ta boshlang'ich Yuksal Tangasi sovg'a</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
                   <ShieldCheck className="w-4 h-4 text-indigo-500 shrink-0" />
                   <span>Rasmiy Ommaviy oferta va shifrlangan xotira</span>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   triggerHaptic('medium');
                   setStep('form');
                 }}
                 className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all transform active:scale-95"
               >
-                <span>Profilni to'ldirish</span>
+                <span>{t.onboardingTitle}</span>
                 <span>&rarr;</span>
               </button>
             </div>
           ) : (
-            /* Registration Form Screen */
+            /* Registration Form Screen with Custom Validation */
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                    Talaba Profilini Yarating
+                    {t.onboardingTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Reyting va natijalar uchun ma'lumotlaringizni kiriting
+                    {t.onboardingSubtitle}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900 overflow-hidden shadow-sm flex items-center justify-center p-0.5">
@@ -135,21 +174,15 @@ export const OnboardingModal: React.FC = () => {
                 </div>
               </div>
 
-              {error && (
-                <div className="p-3 mb-4 rounded-xl bg-rose-100 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSave} className="space-y-3.5 text-xs">
-                {/* Avatar Selector - Clean 5x2 Grid */}
+              <form noValidate onSubmit={handleSave} className="space-y-3.5 text-xs">
+                {/* Avatar Selector - Clean 5x2 Grid with Ring-4 Effect */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block font-semibold text-slate-700 dark:text-slate-300">
-                      Avatarni tanlang:
+                      {t.selectAvatar}:
                     </label>
                     <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
-                      10 ta maxsus avatar
+                      {t.customAvatarsCount}
                     </span>
                   </div>
                   <div className="grid grid-cols-5 gap-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -191,36 +224,60 @@ export const OnboardingModal: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Ismingiz:
+                      {t.firstName}:
                     </label>
                     <input
                       type="text"
-                      required
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="Masalan, Ali"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: undefined });
+                      }}
+                      placeholder={language === 'ru' ? 'Иван' : language === 'en' ? 'John' : 'Ali'}
+                      className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
+                        fieldErrors.firstName
+                          ? 'border-rose-500 focus:ring-rose-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                      }`}
                     />
+                    {fieldErrors.firstName && (
+                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{fieldErrors.firstName}</span>
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Familiyangiz:
+                      {t.lastName}:
                     </label>
                     <input
                       type="text"
-                      required
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Valiyev"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      onChange={(e) => {
+                        setLastName(e.target.value);
+                        if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: undefined });
+                      }}
+                      placeholder={language === 'ru' ? 'Иванов' : language === 'en' ? 'Doe' : 'Valiyev'}
+                      className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
+                        fieldErrors.lastName
+                          ? 'border-rose-500 focus:ring-rose-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                      }`}
                     />
+                    {fieldErrors.lastName && (
+                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{fieldErrors.lastName}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Region */}
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Viloyatingiz (Hudud):
+                    {t.region}:
                   </label>
                   <select
                     value={region}
@@ -239,91 +296,115 @@ export const OnboardingModal: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Tug'ilgan sana:
+                      {t.birthDate}:
                     </label>
                     <input
                       type="date"
-                      required
                       value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      onChange={(e) => {
+                        setBirthDate(e.target.value);
+                        if (fieldErrors.birthDate) setFieldErrors({ ...fieldErrors, birthDate: undefined });
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
+                        fieldErrors.birthDate
+                          ? 'border-rose-500 focus:ring-rose-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                      }`}
                     />
+                    {fieldErrors.birthDate && (
+                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{fieldErrors.birthDate}</span>
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Jinsi:
+                      {t.gender}:
                     </label>
                     <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                       <button
                         type="button"
-                        onClick={() => setGender('male')}
+                        onClick={() => {
+                          triggerHaptic('selection');
+                          setGender('male');
+                        }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
                           gender === 'male'
                             ? 'bg-indigo-600 text-white border-indigo-600'
                             : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                         }`}
                       >
-                        Erkak
+                        {t.genderMale}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setGender('female')}
+                        onClick={() => {
+                          triggerHaptic('selection');
+                          setGender('female');
+                        }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
                           gender === 'female'
                             ? 'bg-indigo-600 text-white border-indigo-600'
                             : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                         }`}
                       >
-                        Ayol
+                        {t.genderFemale}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Study Type & Academic Year */}
+                {/* Educational Mode & Dynamic Academic Years */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Ta'lim shakli:
+                      {t.studyType}:
                     </label>
                     <select
                       value={studyType}
-                      onChange={(e) => setStudyType(e.target.value as StudyType)}
+                      onChange={(e) => handleStudyTypeChange(e.target.value as StudyType)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     >
-                      <option value="Kunduzgi">Kunduzgi</option>
-                      <option value="Sirtqi">Sirtqi</option>
-                      <option value="Kechki">Kechki</option>
+                      <option value="Kunduzgi">{t.studyKunduzgi}</option>
+                      <option value="Sirtqi">{t.studySirtqi} (5 yil)</option>
+                      <option value="Kechki">{t.studyKechki}</option>
+                      <option value="Tibbiyot">{t.studyTibbiyot} (6 yil)</option>
                     </select>
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Akademik kurs:
+                      {t.academicYear}:
                     </label>
                     <select
                       value={academicYear}
                       onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     >
-                      <option value={1}>1-kurs</option>
-                      <option value={2}>2-kurs</option>
-                      <option value={3}>3-kurs</option>
-                      <option value={4}>4-kurs</option>
+                      {availableYears.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}{t.courseUnit}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 {/* Mandatory Public Offer (Oferta) Checkbox */}
                 <div className="pt-2 pb-1">
-                  <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/60 flex items-start gap-2.5">
+                  <div className={`p-3 rounded-2xl border transition-colors ${
+                    fieldErrors.oferta
+                      ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
+                      : 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200/70 dark:border-indigo-800/60'
+                  } flex items-start gap-2.5`}>
                     <input
                       type="checkbox"
                       id="ofertaCheckbox"
-                      required
                       checked={acceptedOferta}
                       onChange={(e) => {
                         triggerHaptic('selection');
                         setAcceptedOferta(e.target.checked);
+                        if (fieldErrors.oferta) setFieldErrors({ ...fieldErrors, oferta: undefined });
                       }}
                       className="mt-0.5 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                     />
@@ -331,7 +412,7 @@ export const OnboardingModal: React.FC = () => {
                       htmlFor="ofertaCheckbox"
                       className="text-[11px] text-slate-700 dark:text-slate-300 leading-snug cursor-pointer select-none"
                     >
-                      Men{' '}
+                      <span>Men </span>
                       <button
                         type="button"
                         onClick={() => {
@@ -342,18 +423,26 @@ export const OnboardingModal: React.FC = () => {
                       >
                         Ommaviy oferta
                       </button>{' '}
-                      shartlariga roziman.
+                      <span>shartlariga roziman (Virtual vaucher va bonuslar kartaga yechib olinmaydi).</span>
                     </label>
                   </div>
+                  {fieldErrors.oferta && (
+                    <p className="text-[10px] text-rose-500 font-semibold mt-1 px-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{fieldErrors.oferta}</span>
+                    </p>
+                  )}
                 </div>
 
+                {/* Submit button remains disabled until checked */}
                 <div className="pt-1">
                   <button
                     type="submit"
-                    className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!acceptedOferta}
+                    className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Ma'lumotlarni saqlash va boshlash</span>
+                    <span>{t.completeRegistration}</span>
                   </button>
                 </div>
               </form>

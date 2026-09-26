@@ -13,8 +13,11 @@ import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
 import { generateIntegritySignature, verifyIntegritySignature } from '../utils/security';
 import { soundFX, triggerHaptic } from '../utils/telegram';
 
+import { Language } from '../i18n/translations';
+
 interface QuizState {
   theme: 'dark' | 'light';
+  language: Language;
   profile: UserProfile;
   activeTab: TabType;
   testPackages: TestPackage[];
@@ -27,6 +30,7 @@ interface QuizState {
 
   // Actions
   setTheme: (theme: 'dark' | 'light') => void;
+  setLanguage: (language: Language) => void;
   setActiveTab: (tab: TabType) => void;
   registerUser: (
     data: Omit<
@@ -68,14 +72,14 @@ const DEFAULT_PROFILE: UserProfile = {
   studyType: 'Kunduzgi',
   academicYear: 1,
   avatar: '/avatars/avatar_1.png',
-  coins: 5, // 5 welcome bonus coins for new students!
+  coins: 0, // Unearned coins strictly zeroed out at start!
   streak: 1,
   lastLoginDate: new Date().toISOString().split('T')[0],
   completedTestsCount: 0,
   isRegistered: false,
   acceptedOferta: false,
   walletBalance: 0,
-  voucherBalance: 35000, // 35 000 UZS starting voucher for every student!
+  voucherBalance: 35000, // 35 000 UZS starting voucher only!
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
@@ -96,6 +100,7 @@ export const useQuizStore = create<QuizState>()(
   persist(
     (set, get) => ({
       theme: 'dark',
+      language: 'uz',
       profile: DEFAULT_PROFILE,
       activeTab: 'home',
       testPackages: INITIAL_TEST_PACKAGES,
@@ -117,6 +122,11 @@ export const useQuizStore = create<QuizState>()(
         }
       },
 
+      setLanguage: (language: Language) => {
+        triggerHaptic('light');
+        set({ language });
+      },
+
       setActiveTab: (activeTab) => {
         triggerHaptic('selection');
         set({ activeTab });
@@ -136,7 +146,7 @@ export const useQuizStore = create<QuizState>()(
           ...data,
           isRegistered: true,
           acceptedOferta: true,
-          coins: current.coins || 5,
+          coins: current.coins || 0,
           streak: current.streak || 1,
           lastLoginDate: today,
           voucherBalance: 35000, // 35 000 UZS starting voucher guaranteed
@@ -158,6 +168,47 @@ export const useQuizStore = create<QuizState>()(
         set({ profile: newProfile });
       },
 
+      checkDailyStreak: () => {
+        const { profile } = get();
+        const today = new Date().toISOString().split('T')[0];
+        const lastClaimed = profile.lastClaimedDailyDate;
+
+        if (lastClaimed === today) {
+          return { streakAwarded: false, streakCount: profile.streak || 1 };
+        }
+
+        let newStreak = 1;
+        if (lastClaimed) {
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          if (lastClaimed === yesterday) {
+            newStreak = (profile.streak || 0) + 1;
+          }
+        }
+
+        const updatedProfile: UserProfile = {
+          ...profile,
+          coins: (profile.coins || 0) + 1,
+          streak: newStreak,
+          lastLoginDate: today,
+          lastClaimedDailyDate: today,
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        triggerHaptic('success');
+        soundFX.playCoin();
+        set({ profile: updatedProfile });
+        return { streakAwarded: true, streakCount: newStreak };
+      },
+
       updateProfile: (data) => {
         const current = get().profile;
         const updated: UserProfile = {
@@ -176,55 +227,6 @@ export const useQuizStore = create<QuizState>()(
         });
 
         set({ profile: updated });
-      },
-
-      checkDailyStreak: () => {
-        const profile = get().profile;
-        if (!profile.isRegistered) return { streakAwarded: false, streakCount: profile.streak };
-
-        const today = new Date().toISOString().split('T')[0];
-        const lastLogin = profile.lastLoginDate;
-
-        if (today === lastLogin) {
-          return { streakAwarded: false, streakCount: profile.streak };
-        }
-
-        const lastDate = new Date(lastLogin);
-        const currentDate = new Date(today);
-        const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        let newStreak = profile.streak;
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else {
-          newStreak = 1;
-        }
-
-        // Daily login bonus: +1 coin!
-        const newCoins = profile.coins + 1;
-        const updatedProfile: UserProfile = {
-          ...profile,
-          streak: newStreak,
-          coins: newCoins,
-          lastLoginDate: today,
-        };
-
-        updatedProfile.checksum = generateIntegritySignature({
-          userId: updatedProfile.id,
-          coins: updatedProfile.coins,
-          completedTestsCount: updatedProfile.completedTestsCount,
-          streak: updatedProfile.streak,
-          lastLoginDate: updatedProfile.lastLoginDate,
-          walletBalance: updatedProfile.walletBalance,
-          voucherBalance: updatedProfile.voucherBalance,
-        });
-
-        soundFX.playCoin();
-        triggerHaptic('success');
-
-        set({ profile: updatedProfile });
-        return { streakAwarded: true, streakCount: newStreak };
       },
 
       addCustomUniversity: (name: string) => {
@@ -426,10 +428,10 @@ export const useQuizStore = create<QuizState>()(
         set({ mistakes: filtered });
       },
 
-      // Auto-apply 35 000 UZS voucher toward subscription
+      // Auto-apply 35 000 UZS voucher toward 6-month subscription; 1-year is 90 000 UZS without stacking
       applySubscription: (plan: '6_months' | '1_year') => {
         const { profile } = get();
-        const voucherUsed = Math.min(profile.voucherBalance, 35000);
+        const voucherUsed = plan === '6_months' ? Math.min(profile.voucherBalance, 35000) : 0;
         const originalPrice = plan === '6_months' ? 50000 : 90000;
         const remainingToPay = originalPrice - voucherUsed;
 
@@ -464,7 +466,9 @@ export const useQuizStore = create<QuizState>()(
         set({ profile: updatedProfile });
         return {
           success: true,
-          message: `35 000 so'm vaucher chegirmasi qo'llandi! ${plan === '6_months' ? '6 oylik' : '1 yillik'} obuna muvaffaqiyatli faollashtirildi (to'lov: ${remainingToPay.toLocaleString('uz-UZ')} so'm).`,
+          message: voucherUsed > 0
+            ? `35 000 so'm vaucher chegirmasi qo'llandi! 6 oylik obuna faollashtirildi (to'lov: ${remainingToPay.toLocaleString('uz-UZ')} so'm).`
+            : `1 yillik Premium obuna muvaffaqiyatli faollashtirildi (to'lov: ${remainingToPay.toLocaleString('uz-UZ')} so'm).`,
         };
       },
 

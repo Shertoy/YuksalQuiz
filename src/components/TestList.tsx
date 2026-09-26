@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   Search,
   Lock,
   Unlock,
   CheckCircle2,
   ChevronRight,
-  ShieldCheck,
   Plus,
   KeyRound,
   GraduationCap,
@@ -31,6 +31,7 @@ interface TestListProps {
 
 export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateModal }) => {
   const { testPackages } = useQuizStore();
+  const { t } = useTranslation();
 
   const [activeCategory, setActiveCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +70,23 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
         return <UserCheck className="w-4 h-4 shrink-0" />;
       case 'Maktab':
         return <BookOpen className="w-4 h-4 shrink-0" />;
+    }
+  };
+
+  const getCategoryTitle = (cat: MainCategory) => {
+    switch (cat) {
+      case 'Oliy Ta\'lim (HEMIS)':
+        return t.catHemis;
+      case 'O\'quv Markazi':
+        return t.catCenter;
+      case 'Xalqaro Sertifikatlar (IELTS, TOPIK, SAT, TOEFL)':
+        return t.catCert;
+      case 'Abituriyent':
+        return t.catApplicant;
+      case 'Maktab':
+        return t.catSchool;
+      default:
+        return cat;
     }
   };
 
@@ -113,6 +131,11 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
     e.preventDefault();
     if (!passwordModalPkg) return;
 
+    if (!passwordInput.trim()) {
+      setPasswordError(t.fieldRequired);
+      return;
+    }
+
     if (passwordInput.trim() === passwordModalPkg.password) {
       triggerHaptic('success');
       const pkg = passwordModalPkg;
@@ -121,7 +144,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
       onStartTest(pkg, bId);
     } else {
       triggerHaptic('error');
-      setPasswordError('Noto\'g\'ri parol kiritildi. Qaytadan urinib ko\'ring.');
+      setPasswordError(t.wrongPassword);
     }
   };
 
@@ -131,10 +154,10 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-black text-slate-900 dark:text-white">
-            Testlar Bo'limi
+            {t.navTests}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Yo'nalishingiz bo'yicha tayyorgarlik ko'ring
+            {getCategoryTitle(activeCategory)}
           </p>
         </div>
         <button
@@ -145,7 +168,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Test tuzish</span>
+          <span>{t.createTestBtn}</span>
         </button>
       </div>
 
@@ -167,7 +190,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               }`}
             >
               {getCategoryIcon(cat)}
-              <span>{cat}</span>
+              <span>{getCategoryTitle(cat)}</span>
             </button>
           );
         })}
@@ -180,7 +203,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={`${activeCategory} bo'yicha qidirish...`}
+          placeholder={t.searchPlaceholder}
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
         />
       </div>
@@ -188,14 +211,24 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
       {/* Tests Grid */}
       <div className="space-y-3">
         {filteredPackages.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
             <div className="text-3xl mb-2">🔍</div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-              Ushbu bo'limda test topilmadi
+            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              {t.emptyCategoryTitle}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Boshqa so'z bilan qidirib ko'ring yoki o'zingiz yangi test qo'shing
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
+              {t.emptyCategoryDesc}
             </p>
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenCreateModal();
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t.createTestBtn}</span>
+            </button>
           </div>
         ) : (
           filteredPackages.map((pkg) => (
@@ -214,12 +247,12 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                     {!pkg.isPublic ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
                         <Lock className="w-3 h-3" />
-                        <span>Parolli (Locked)</span>
+                        <span>{t.privateAccess}</span>
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                         <Unlock className="w-3 h-3" />
-                        <span>Ochiq</span>
+                        <span>{t.publicAccess}</span>
                       </span>
                     )}
 
@@ -342,16 +375,16 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               </div>
               <div>
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  Maxfiy Test Paroli
+                  {t.enterPasswordTitle}
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                   {passwordModalPkg.title}
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
-              Ushbu testga kirish uchun maxsus parolni kiriting (masalan: TGFU2026).
+              {t.enterPasswordPrompt}
             </p>
 
             {passwordError && (
@@ -360,15 +393,17 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               </div>
             )}
 
-            <form onSubmit={handlePasswordSubmit} className="space-y-3">
+            <form noValidate onSubmit={handlePasswordSubmit} className="space-y-3">
               <div>
                 <input
                   type="text"
-                  required
                   autoFocus
-                  placeholder="Parolni kiriting (masalan: TGFU2026)"
+                  placeholder={t.passwordPlaceholder}
                   value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError('');
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold"
                 />
               </div>
@@ -379,13 +414,13 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                   onClick={() => setPasswordModalPkg(null)}
                   className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
                 >
-                  Bekor qilish
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25"
                 >
-                  Testga kirish
+                  {t.unlockBtn}
                 </button>
               </div>
             </form>

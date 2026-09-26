@@ -43,12 +43,31 @@
   40%, 80% { transform: translateX(4px); }
 }
 
+@keyframes coinFly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-25px, -120px) scale(1.35);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50px, -230px) scale(0.5);
+    opacity: 0;
+  }
+}
+
 .animate-soft-pulse {
   animation: softPulse 2s ease-in-out infinite;
 }
 
 .animate-wrong-shake {
   animation: wrongShake 0.4s ease-in-out;
+}
+
+.animate-coin-fly {
+  animation: coinFly 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 /* Custom Scrollbar */

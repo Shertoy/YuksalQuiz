@@ -13,10 +13,10 @@ import { CreateTestModal } from './components/CreateTestModal';
 import { ProfileView } from './components/ProfileView';
 import { WalletView } from './components/WalletView';
 import { TestPackage, TestAttempt } from './types';
-import { initTelegramApp } from './utils/telegram';
+import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
 
 export const App: React.FC = () => {
-  const { theme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
+  const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
 
   // Active running test session state
   const [activeTestPkg, setActiveTestPkg] = useState<TestPackage | null>(null);
@@ -33,20 +33,38 @@ export const App: React.FC = () => {
   // Create test modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Initialize Telegram WebApp and Theme on mount
+  // Initialize Telegram WebApp and Theme Synchronization
   useEffect(() => {
     initTelegramApp();
 
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    const tg = getTelegramWebApp();
+    if (tg?.colorScheme) {
+      setTheme(tg.colorScheme);
+    }
+
+    // Listen for Telegram live theme switch (Light / Dark)
+    if (tg && typeof (tg as any).onEvent === 'function') {
+      const handleThemeChange = () => {
+        if (tg.colorScheme) {
+          setTheme(tg.colorScheme);
+        }
+      };
+      (tg as any).onEvent('themeChanged', handleThemeChange);
     }
 
     if (profile.isRegistered) {
       checkDailyStreak();
     }
   }, []);
+
+  // Update HTML root class whenever theme changes
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   // Handlers for test flow
   const handleStartTest = (pkg: TestPackage, blockId: string) => {
@@ -85,15 +103,15 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="h-screen max-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 select-none">
       {/* First-time onboarding modal */}
       <OnboardingModal />
 
       {/* Top Navbar */}
       <Navbar />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-md w-full mx-auto p-4">
+      {/* Main Scrollable Container with Safe pb-32 to prevent bottom navigation overlap */}
+      <main className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 pb-32 relative scroll-smooth">
         {/* Test Engine View */}
         {activeTestPkg ? (
           <TestRunner
@@ -140,7 +158,7 @@ export const App: React.FC = () => {
         <CreateTestModal onClose={() => setIsCreateModalOpen(false)} />
       )}
 
-      {/* Sticky Bottom Navigation (hidden while taking a test) */}
+      {/* Persistent Bottom Navigation Bar */}
       {!activeTestPkg && <BottomNav />}
     </div>
   );

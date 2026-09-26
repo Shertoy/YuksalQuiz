@@ -1,37 +1,40 @@
 import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import { Home, BookOpen, CheckSquare, Trophy, Wallet } from 'lucide-react';
 import { TabType } from '../types';
 
 interface NavItem {
   id: TabType;
-  label: string;
+  labelKey: 'navHome' | 'navTests' | 'navWallet' | 'myProgress' | 'navRating';
   icon: React.ComponentType<{ className?: string }>;
   badge?: number;
 }
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, mistakes } = useQuizStore();
+  const { t } = useTranslation();
 
   const navItems: NavItem[] = [
-    { id: 'home', label: 'Bosh sahifa', icon: Home },
-    { id: 'tests', label: 'Testlar', icon: BookOpen },
-    { id: 'wallet', label: 'Hamyon', icon: Wallet },
+    { id: 'home', labelKey: 'navHome', icon: Home },
+    { id: 'tests', labelKey: 'navTests', icon: BookOpen },
+    { id: 'wallet', labelKey: 'navWallet', icon: Wallet },
     {
       id: 'results',
-      label: 'Natijalarim',
+      labelKey: 'myProgress',
       icon: CheckSquare,
       badge: mistakes.length > 0 ? mistakes.length : undefined,
     },
-    { id: 'leaderboard', label: 'Reyting', icon: Trophy },
+    { id: 'leaderboard', labelKey: 'navRating', icon: Trophy },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 pb-safe transition-colors">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 pb-safe transition-colors">
       <div className="max-w-md mx-auto px-2 py-1.5 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
+          const label = t[item.labelKey];
 
           return (
             <button
@@ -58,7 +61,7 @@ export const BottomNav: React.FC = () => {
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight font-medium">
-                {item.label}
+                {label}
               </span>
             </button>
           );

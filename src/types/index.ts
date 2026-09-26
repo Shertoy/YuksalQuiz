@@ -31,9 +31,22 @@ export const UZBEKISTAN_REGIONS: Region[] = [
   'Qoraqalpog\'iston',
 ];
 
-export type StudyType = 'Kunduzgi' | 'Sirtqi' | 'Kechki';
-export type AcademicYear = 1 | 2 | 3 | 4;
+export type StudyType = 'Kunduzgi' | 'Sirtqi' | 'Kechki' | 'Tibbiyot';
+export type AcademicYear = 1 | 2 | 3 | 4 | 5 | 6;
 export type Gender = 'male' | 'female';
+
+export function getAvailableAcademicYears(studyType: StudyType): AcademicYear[] {
+  switch (studyType) {
+    case 'Sirtqi':
+      return [1, 2, 3, 4, 5];
+    case 'Tibbiyot':
+      return [1, 2, 3, 4, 5, 6];
+    case 'Kunduzgi':
+    case 'Kechki':
+    default:
+      return [1, 2, 3, 4];
+  }
+}
 
 export type MainCategory =
   | 'Oliy Ta\'lim (HEMIS)'
@@ -63,6 +76,7 @@ export interface UserProfile {
   coins: number;
   streak: number;
   lastLoginDate: string;
+  lastClaimedDailyDate?: string;
   completedTestsCount: number;
   isRegistered: boolean;
   acceptedOferta: boolean;
