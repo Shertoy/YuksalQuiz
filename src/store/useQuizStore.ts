@@ -24,6 +24,7 @@ interface QuizState {
   testAttempts: TestAttempt[];
   mistakes: MistakeItem[];
   leaderboard: LeaderboardUser[];
+  leaderboardScope: 'region' | 'uzbekistan';
   customUniversities: string[];
   soundEnabled: boolean;
   tamperDetected: boolean;
@@ -32,6 +33,7 @@ interface QuizState {
   setTheme: (theme: 'dark' | 'light') => void;
   setLanguage: (language: Language) => void;
   setActiveTab: (tab: TabType) => void;
+  setLeaderboardScope: (scope: 'region' | 'uzbekistan') => void;
   registerUser: (
     data: Omit<
       UserProfile,
@@ -107,6 +109,7 @@ export const useQuizStore = create<QuizState>()(
       testAttempts: [],
       mistakes: [],
       leaderboard: INITIAL_LEADERBOARD_USERS,
+      leaderboardScope: 'uzbekistan',
       customUniversities: [],
       soundEnabled: true,
       tamperDetected: false,
@@ -130,6 +133,10 @@ export const useQuizStore = create<QuizState>()(
       setActiveTab: (activeTab) => {
         triggerHaptic('selection');
         set({ activeTab });
+      },
+
+      setLeaderboardScope: (leaderboardScope) => {
+        set({ leaderboardScope });
       },
 
       toggleSound: () => {

@@ -10,6 +10,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 48,
     testsCompleted: 35,
+    correctAnswersCount: 840,
+    bestTime: '02:18',
     weeklyActiveHours: 19.5,
   },
   {
@@ -21,6 +23,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 42,
     testsCompleted: 31,
+    correctAnswersCount: 765,
+    bestTime: '02:35',
     weeklyActiveHours: 18.0,
   },
   {
@@ -32,6 +36,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 4,
     coins: 39,
     testsCompleted: 29,
+    correctAnswersCount: 710,
+    bestTime: '02:42',
     weeklyActiveHours: 16.2,
   },
   {
@@ -43,6 +49,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 35,
     testsCompleted: 26,
+    correctAnswersCount: 645,
+    bestTime: '02:50',
     weeklyActiveHours: 15.4,
   },
   {
@@ -54,6 +62,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 1,
     coins: 31,
     testsCompleted: 24,
+    correctAnswersCount: 590,
+    bestTime: '02:55',
     weeklyActiveHours: 14.8,
   },
   {
@@ -65,6 +75,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 29,
     testsCompleted: 22,
+    correctAnswersCount: 540,
+    bestTime: '03:02',
     weeklyActiveHours: 13.9,
   },
   {
@@ -76,6 +88,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 27,
     testsCompleted: 20,
+    correctAnswersCount: 495,
+    bestTime: '03:10',
     weeklyActiveHours: 12.5,
   },
   {
@@ -87,6 +101,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 4,
     coins: 26,
     testsCompleted: 19,
+    correctAnswersCount: 468,
+    bestTime: '03:15',
     weeklyActiveHours: 11.8,
   },
   {
@@ -98,6 +114,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 24,
     testsCompleted: 18,
+    correctAnswersCount: 440,
+    bestTime: '03:22',
     weeklyActiveHours: 11.0,
   },
   {
@@ -109,6 +127,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 23,
     testsCompleted: 17,
+    correctAnswersCount: 418,
+    bestTime: '03:28',
     weeklyActiveHours: 10.4,
   },
   {
@@ -120,6 +140,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 4,
     coins: 21,
     testsCompleted: 16,
+    correctAnswersCount: 390,
+    bestTime: '03:34',
     weeklyActiveHours: 9.8,
   },
   {
@@ -131,6 +153,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 1,
     coins: 19,
     testsCompleted: 15,
+    correctAnswersCount: 365,
+    bestTime: '03:40',
     weeklyActiveHours: 9.2,
   },
   {
@@ -142,6 +166,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 18,
     testsCompleted: 14,
+    correctAnswersCount: 342,
+    bestTime: '03:45',
     weeklyActiveHours: 8.7,
   },
   {
@@ -153,6 +179,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 16,
     testsCompleted: 13,
+    correctAnswersCount: 318,
+    bestTime: '03:52',
     weeklyActiveHours: 8.1,
   },
   {
@@ -164,6 +192,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 4,
     coins: 15,
     testsCompleted: 12,
+    correctAnswersCount: 295,
+    bestTime: '03:58',
     weeklyActiveHours: 7.5,
   },
   {
@@ -175,6 +205,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 14,
     testsCompleted: 11,
+    correctAnswersCount: 270,
+    bestTime: '04:05',
     weeklyActiveHours: 7.0,
   },
   {
@@ -186,6 +218,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 3,
     coins: 13,
     testsCompleted: 10,
+    correctAnswersCount: 245,
+    bestTime: '04:12',
     weeklyActiveHours: 6.4,
   },
   {
@@ -197,6 +231,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 4,
     coins: 12,
     testsCompleted: 9,
+    correctAnswersCount: 220,
+    bestTime: '04:20',
     weeklyActiveHours: 5.9,
   },
   {
@@ -208,6 +244,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 1,
     coins: 10,
     testsCompleted: 8,
+    correctAnswersCount: 195,
+    bestTime: '04:28',
     weeklyActiveHours: 5.2,
   },
   {
@@ -219,6 +257,8 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     academicYear: 2,
     coins: 9,
     testsCompleted: 7,
+    correctAnswersCount: 170,
+    bestTime: '04:35',
     weeklyActiveHours: 4.8,
   },
 ];

@@ -1,250 +1,343 @@
 import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   Trophy,
-  Medal,
-  Flame,
-  Coins,
-  MapPin,
-  Clock,
-  Filter,
-  CheckCircle2,
   Crown,
+  Clock,
+  CheckCircle2,
+  MapPin,
+  ChevronRight,
+  Sparkles,
+  Award,
 } from 'lucide-react';
-import { UZBEKISTAN_REGIONS, Region, LeaderboardUser } from '../types';
+import { LeaderboardUser } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
 
-type SortCriterion = 'tests' | 'weekly' | 'coins';
-
 export const Leaderboard: React.FC = () => {
-  const { leaderboard, profile } = useQuizStore();
+  const { leaderboard, profile, testAttempts, leaderboardScope, setLeaderboardScope } = useQuizStore();
+  const { t } = useTranslation();
 
-  const [selectedRegion, setSelectedRegion] = useState<string>('all');
-  const [sortCriterion, setSortCriterion] = useState<SortCriterion>('tests');
+  // Metric filter: 'correct' (To'g'ri testlar soni) | 'weekly' (Haftalik faollar)
+  const [metric, setMetric] = useState<'correct' | 'weekly'>('correct');
 
-  // Inject current user into leaderboard for ranking calculations
+  // Compute current user stats
+  const currentUserCorrectAnswers = testAttempts.reduce((acc, att) => acc + att.score, 0);
+  const currentUserBestTimeAttempt = testAttempts
+    .filter((a) => a.timeSpentSeconds > 0)
+    .sort((a, b) => a.timeSpentSeconds - b.timeSpentSeconds)[0];
+
+  const currentUserBestTime = currentUserBestTimeAttempt
+    ? `${Math.floor(currentUserBestTimeAttempt.timeSpentSeconds / 60)
+        .toString()
+        .padStart(2, '0')}:${(currentUserBestTimeAttempt.timeSpentSeconds % 60)
+        .toString()
+        .padStart(2, '0')}`
+    : '03:45';
+
+  const currentUserEntry: LeaderboardUser = {
+    id: profile.id,
+    name: `${profile.firstName || 'Siz'} ${profile.lastName || ''}`.trim() || 'Siz',
+    region: profile.region,
+    university: 'Mening OTMim',
+    avatar: profile.avatar || DEFAULT_AVATAR,
+    academicYear: profile.academicYear,
+    coins: profile.coins,
+    testsCompleted: Math.max(profile.completedTestsCount, testAttempts.length),
+    correctAnswersCount: currentUserCorrectAnswers,
+    bestTime: currentUserBestTime,
+    weeklyActiveHours: 12.0,
+    isCurrentUser: true,
+  };
+
+  // Merge users without duplicate IDs
   const allUsers: LeaderboardUser[] = [
-    ...leaderboard,
-    {
-      id: profile.id,
-      name: `${profile.firstName || 'Siz'} ${profile.lastName || ''}`.trim(),
-      region: profile.region,
-      university: 'Mening OTMim',
-      avatar: profile.avatar || DEFAULT_AVATAR,
-      academicYear: profile.academicYear,
-      coins: profile.coins,
-      testsCompleted: profile.completedTestsCount,
-      weeklyActiveHours: 12.0,
-      isCurrentUser: true,
-    },
+    ...leaderboard.filter((u) => u.id !== profile.id),
+    currentUserEntry,
   ];
 
-  // Filter by region if specified
-  const filteredUsers = allUsers.filter((u) => {
-    if (selectedRegion === 'all') return true;
-    return u.region === selectedRegion;
-  });
-
-  // Sort based on criterion
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (sortCriterion === 'tests') return b.testsCompleted - a.testsCompleted;
-    if (sortCriterion === 'weekly') return b.weeklyActiveHours - a.weeklyActiveHours;
-    return b.coins - a.coins;
-  });
-
-  // Top 20
-  const top20 = sortedUsers.slice(0, 20);
-
-  // Top 3 for Olympic Podium
-  const first = top20[0];
-  const second = top20[1];
-  const third = top20[2];
-
-  // Find user rank
-  const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);
-  const userRank = userRankIndex !== -1 ? userRankIndex + 1 : 999;
-
-  const getMetricDisplay = (u: LeaderboardUser) => {
-    if (sortCriterion === 'tests') {
-      return (
-        <div className="flex items-center gap-1 font-black text-xs text-indigo-600 dark:text-indigo-400">
-          <span>{u.testsCompleted}</span>
-          <span className="text-[10px] text-slate-400 font-normal">test</span>
-        </div>
-      );
+  // Level 1 Filter: Scope ([User's Region] vs O'zbekiston)
+  const filteredByScope = allUsers.filter((u) => {
+    if (leaderboardScope === 'region') {
+      return u.region === profile.region;
     }
-    if (sortCriterion === 'weekly') {
+    return true; // 'uzbekistan'
+  });
+
+  // Level 2 Sort: Metric ('correct' vs 'weekly')
+  const sortedUsers = [...filteredByScope].sort((a, b) => {
+    if (metric === 'correct') {
+      const aVal = a.correctAnswersCount ?? a.testsCompleted * 22;
+      const bVal = b.correctAnswersCount ?? b.testsCompleted * 22;
+      return bVal - aVal;
+    }
+    return b.weeklyActiveHours - a.weeklyActiveHours;
+  });
+
+  // Current user's rank
+  const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);
+  const userRank = userRankIndex !== -1 ? userRankIndex + 1 : sortedUsers.length;
+
+  // Next rank requirement calculation
+  let neededAnswers = 1;
+  let progressPercent = 75;
+  if (userRank > 1) {
+    const aheadUser = sortedUsers[userRank - 2];
+    const aheadVal = metric === 'correct'
+      ? (aheadUser.correctAnswersCount ?? aheadUser.testsCompleted * 22)
+      : aheadUser.weeklyActiveHours;
+    const userVal = metric === 'correct'
+      ? currentUserCorrectAnswers
+      : currentUserEntry.weeklyActiveHours;
+
+    neededAnswers = Math.max(1, Math.round(aheadVal - userVal + 1));
+    progressPercent = aheadVal > 0 ? Math.min(100, Math.round((userVal / aheadVal) * 100)) : 50;
+  }
+
+  // Top 3 Podium
+  const first = sortedUsers[0];
+  const second = sortedUsers[1];
+  const third = sortedUsers[2];
+
+  // List Ranks (4th - 20th)
+  const listUsers = sortedUsers.slice(3, 20);
+
+  const formatMetricValue = (u: LeaderboardUser) => {
+    if (metric === 'correct') {
+      const count = u.correctAnswersCount ?? u.testsCompleted * 22;
       return (
-        <div className="flex items-center gap-1 font-black text-xs text-orange-600 dark:text-orange-400">
-          <Clock className="w-3.5 h-3.5" />
-          <span>{u.weeklyActiveHours}s</span>
-        </div>
+        <span className="font-extrabold text-xs text-indigo-600 dark:text-indigo-400">
+          {count.toLocaleString('uz-UZ')} ta to'g'ri
+        </span>
       );
     }
     return (
-      <div className="flex items-center gap-1 font-black text-xs text-amber-600 dark:text-amber-400">
-        <Coins className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-        <span>{u.coins}</span>
-      </div>
+      <span className="font-extrabold text-xs text-orange-600 dark:text-orange-400">
+        {u.weeklyActiveHours}s faol
+      </span>
     );
   };
 
   return (
-    <div className="space-y-4 pb-24 animate-in fade-in">
+    <div className="space-y-4 pb-28 animate-in fade-in select-none">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
           <Trophy className="w-5 h-5 text-amber-500" />
-          <span>Talabalar Reytingi (Top 20)</span>
+          <span>{t.navRating}</span>
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          O'zbekiston bo'ylab eng bilimdon va faol talabalar
+          O'zbekiston bo'ylab eng faol va bilimdon talabalar
         </p>
       </div>
 
-      {/* Sorting Criteria Tabs */}
-      <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">
-        <button
-          onClick={() => {
-            triggerHaptic('selection');
-            setSortCriterion('tests');
-          }}
-          className={`py-2 rounded-xl transition-all ${
-            sortCriterion === 'tests'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-500'
-          }`}
-        >
-          Eng ko'p testlar
-        </button>
-        <button
-          onClick={() => {
-            triggerHaptic('selection');
-            setSortCriterion('weekly');
-          }}
-          className={`py-2 rounded-xl transition-all ${
-            sortCriterion === 'weekly'
-              ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
-              : 'text-slate-500'
-          }`}
-        >
-          Haftalik faol
-        </button>
-        <button
-          onClick={() => {
-            triggerHaptic('selection');
-            setSortCriterion('coins');
-          }}
-          className={`py-2 rounded-xl transition-all ${
-            sortCriterion === 'coins'
-              ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
-              : 'text-slate-500'
-          }`}
-        >
-          Tangalar bo'yicha
-        </button>
+      {/* User Position Header Card */}
+      <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-4 shadow-xl border border-indigo-800/40 relative overflow-hidden">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <UserAvatar
+                avatar={profile.avatar || DEFAULT_AVATAR}
+                alt={profile.firstName || 'Talaba'}
+                sizeClassName="w-11 h-11"
+                className="ring-2 ring-indigo-400"
+              />
+              <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-sm">
+                #{userRank}
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-black text-sm text-white line-clamp-1">
+                  {profile.firstName || 'Talaba'} {profile.lastName || ''}
+                </h3>
+              </div>
+              <p className="text-[11px] text-indigo-200/80 font-medium">
+                {profile.region} • {userRank}-o'rin
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <div className="text-base font-black text-amber-300">
+              {currentUserCorrectAnswers} ta
+            </div>
+            <div className="text-[10px] text-indigo-300/80 font-medium flex items-center justify-end gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{currentUserBestTime}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Bar & Next Position Prompt */}
+        <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-indigo-200 mb-1.5">
+            <span>
+              {userRank === 1
+                ? 'Siz peshqadamsiz! 🎉'
+                : `Keyingi o'ringa chiqish uchun ${neededAnswers} ta to'g'ri javob qoldi`}
+            </span>
+            <span className="font-bold text-amber-300">{progressPercent}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Region Filter Selector */}
-      <div className="flex items-center gap-2">
-        <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
-        <select
-          value={selectedRegion}
-          onChange={(e) => {
-            triggerHaptic('selection');
-            setSelectedRegion(e.target.value);
-          }}
-          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="all">Barcha viloyatlar (O'zbekiston bo'ylab)</option>
-          {UZBEKISTAN_REGIONS.map((reg) => (
-            <option key={reg} value={reg}>
-              {reg}
-            </option>
-          ))}
-        </select>
+      {/* Strictly Simplified Filter Tabs */}
+      <div className="space-y-2">
+        {/* Level 1: Scope ([User's Region] | O'zbekiston) */}
+        <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setLeaderboardScope('region');
+            }}
+            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              leaderboardScope === 'region'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            <span className="line-clamp-1">{profile.region}</span>
+          </button>
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setLeaderboardScope('uzbekistan');
+            }}
+            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              leaderboardScope === 'uzbekistan'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <span>O'zbekiston</span>
+          </button>
+        </div>
+
+        {/* Level 2: Metric (To'g'ri testlar soni | Haftalik faollar) */}
+        <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setMetric('correct');
+            }}
+            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              metric === 'correct'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span>To'g'ri testlar soni</span>
+          </button>
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setMetric('weekly');
+            }}
+            className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              metric === 'weekly'
+                ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+            <span>Haftalik faollar</span>
+          </button>
+        </div>
       </div>
 
-      {/* 3D-styled Olympic Podium for Top 3 */}
-      {top20.length >= 3 && (
-        <div className="pt-8 pb-3 px-2">
-          <div className="flex items-end justify-center gap-2">
+      {/* Top 3 Olympic Podium */}
+      {sortedUsers.length >= 3 && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-end justify-center gap-2 pt-6 pb-2">
             {/* 2nd Place (Silver) */}
             {second && (
-              <div className="flex-1 flex flex-col items-center">
+              <div className="flex-1 flex flex-col items-center text-center">
                 <div className="relative mb-2">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shadow-md p-1">
-                    <UserAvatar avatar={second.avatar} />
-                  </div>
-                  <div className="absolute -top-2.5 -right-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-[11px] flex items-center justify-center border border-white dark:border-slate-800 shadow">
+                  <UserAvatar
+                    avatar={second.avatar}
+                    alt={second.name}
+                    sizeClassName="w-12 h-12"
+                    className="ring-2 ring-slate-300 dark:ring-slate-600"
+                  />
+                  <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-black text-[10px] flex items-center justify-center shadow-md">
                     2
-                  </div>
+                  </span>
                 </div>
-
-                <p className="font-extrabold text-[11px] text-slate-900 dark:text-white text-center line-clamp-1 w-full">
+                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
                   {second.name}
+                </h4>
+                <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                  {second.region}
                 </p>
-                <div className="mt-0.5">{getMetricDisplay(second)}</div>
-
-                {/* Podium pillar */}
-                <div className="w-full h-20 mt-2 bg-gradient-to-t from-slate-300 via-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-t-2xl flex flex-col items-center justify-center shadow-inner">
-                  <span className="text-xl">🥈</span>
-                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">Kumush</span>
+                <div className="h-24 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                  <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
+                  {formatMetricValue(second)}
                 </div>
               </div>
             )}
 
-            {/* 1st Place (Gold) */}
+            {/* 1st Place (Gold, Tallest + Crown) */}
             {first && (
-              <div className="flex-1 flex flex-col items-center -mt-6">
+              <div className="flex-1 flex flex-col items-center text-center relative -mt-4">
                 <div className="relative mb-2">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-amber-400/20 animate-soft-pulse p-1">
-                    <UserAvatar avatar={first.avatar} />
-                  </div>
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-amber-500">
-                    <Crown className="w-5 h-5 fill-amber-400 stroke-amber-600" />
-                  </div>
-                  <div className="absolute -top-2 -right-1 w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-[11px] flex items-center justify-center border border-white shadow">
+                  <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
+                  <UserAvatar
+                    avatar={first.avatar}
+                    alt={first.name}
+                    sizeClassName="w-14 h-14"
+                    className="ring-4 ring-amber-400 shadow-lg shadow-amber-400/20"
+                  />
+                  <span className="absolute -bottom-2 -right-1 w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
                     1
-                  </div>
+                  </span>
                 </div>
-
-                <p className="font-black text-xs text-slate-900 dark:text-white text-center line-clamp-1 w-full">
+                <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
                   {first.name}
+                </h4>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold line-clamp-1 mb-1">
+                  {first.region}
                 </p>
-                <div className="mt-0.5">{getMetricDisplay(first)}</div>
-
-                {/* Podium pillar */}
-                <div className="w-full h-28 mt-2 bg-gradient-to-t from-amber-400 via-amber-300 to-yellow-200 dark:from-amber-600 dark:to-amber-500 rounded-t-2xl flex flex-col items-center justify-center shadow-lg text-slate-950">
-                  <span className="text-2xl">🥇</span>
-                  <span className="text-[10px] font-black">Oltin</span>
+                <div className="h-32 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
+                  <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1-o'rin</span>
+                  {formatMetricValue(first)}
                 </div>
               </div>
             )}
 
             {/* 3rd Place (Bronze) */}
             {third && (
-              <div className="flex-1 flex flex-col items-center">
+              <div className="flex-1 flex flex-col items-center text-center">
                 <div className="relative mb-2">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-950/60 border-2 border-amber-700/40 flex items-center justify-center overflow-hidden shadow-md p-1">
-                    <UserAvatar avatar={third.avatar} />
-                  </div>
-                  <div className="absolute -top-2.5 -right-1 w-6 h-6 rounded-full bg-amber-700 text-white font-black text-[11px] flex items-center justify-center border border-white dark:border-slate-800 shadow">
+                  <UserAvatar
+                    avatar={third.avatar}
+                    alt={third.name}
+                    sizeClassName="w-12 h-12"
+                    className="ring-2 ring-amber-700/50"
+                  />
+                  <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-amber-700 text-white font-black text-[10px] flex items-center justify-center shadow-md">
                     3
-                  </div>
+                  </span>
                 </div>
-
-                <p className="font-extrabold text-[11px] text-slate-900 dark:text-white text-center line-clamp-1 w-full">
+                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1 w-full px-1">
                   {third.name}
+                </h4>
+                <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">
+                  {third.region}
                 </p>
-                <div className="mt-0.5">{getMetricDisplay(third)}</div>
-
-                {/* Podium pillar */}
-                <div className="w-full h-16 mt-2 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500 rounded-t-2xl flex flex-col items-center justify-center shadow-inner text-white">
-                  <span className="text-lg">🥉</span>
-                  <span className="text-[10px] font-black">Bronza</span>
+                <div className="h-20 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                  <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
+                  {formatMetricValue(third)}
                 </div>
               </div>
             )}
@@ -252,74 +345,67 @@ export const Leaderboard: React.FC = () => {
         </div>
       )}
 
-      {/* Ranks 4 to 20 List */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 shadow-sm divide-y divide-slate-100 dark:divide-slate-800/80">
-        {top20.slice(3).map((user, idx) => {
-          const rankNum = idx + 4;
-          const isMe = user.isCurrentUser;
+      {/* List Ranks (4th - 20th) */}
+      <div className="space-y-2">
+        <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
+          Barcha ishtirokchilar (4–20 o'rinlar)
+        </h3>
 
-          return (
-            <div
-              key={user.id}
-              className={`py-2.5 px-2 flex items-center justify-between gap-3 rounded-xl transition-colors ${
-                isMe ? 'bg-indigo-50/80 dark:bg-indigo-950/50' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-5 text-center font-bold text-xs text-slate-400">
-                  {rankNum}
-                </span>
+        <div className="space-y-2">
+          {listUsers.map((user, idx) => {
+            const rank = idx + 4;
+            const isMe = user.isCurrentUser;
 
-                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center p-0.5 shrink-0">
-                  <UserAvatar avatar={user.avatar} />
+            return (
+              <div
+                key={user.id}
+                className={`p-3 rounded-2xl flex items-center justify-between transition-all ${
+                  isMe
+                    ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-2 border-indigo-500 shadow-md shadow-indigo-500/10'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                      isMe
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {rank}
+                  </div>
+
+                  <UserAvatar
+                    avatar={user.avatar}
+                    alt={user.name}
+                    sizeClassName="w-9 h-9"
+                    className={isMe ? 'ring-2 ring-indigo-400' : ''}
+                  />
+
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">
+                        {user.name}
+                      </h4>
+                      {isMe && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold">
+                          Siz
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {user.region} • {user.university}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                      {user.name}
-                    </h4>
-                    {isMe && (
-                      <span className="text-[10px] font-bold px-1.5 rounded-full bg-indigo-600 text-white">
-                        Siz
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    {user.region} • {user.university}
-                  </p>
+                <div className="text-right shrink-0">
+                  {formatMetricValue(user)}
                 </div>
               </div>
-
-              <div className="shrink-0">{getMetricDisplay(user)}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* User's Pinned Standing at Bottom */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white p-3.5 rounded-2xl shadow-xl border border-indigo-700/50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center overflow-hidden p-0.5 shrink-0">
-            <UserAvatar avatar={profile.avatar} />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black">Sizning o'rningiz: #{userRank}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/50 font-bold">
-                {profile.region}
-              </span>
-            </div>
-            <p className="text-[10px] text-indigo-200">
-              {profile.completedTestsCount} ta test yechilgan • {profile.coins} tanga
-            </p>
-          </div>
-        </div>
-
-        <div className="text-right">
-          <span className="text-xs font-extrabold text-amber-300">
-            {userRank <= 3 ? 'Top 3 🏆' : userRank <= 20 ? 'Top 20 🌟' : 'Faol talaba'}
-          </span>
+            );
+          })}
         </div>
       </div>
     </div>

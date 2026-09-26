@@ -223,6 +223,8 @@ export interface LeaderboardUser {
   coins: number;
   testsCompleted: number;
   weeklyActiveHours: number;
+  correctAnswersCount?: number;
+  bestTime?: string;
   isCurrentUser?: boolean;
 }
 
