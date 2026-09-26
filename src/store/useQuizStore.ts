@@ -67,7 +67,7 @@ const DEFAULT_PROFILE: UserProfile = {
   gender: 'male',
   studyType: 'Kunduzgi',
   academicYear: 1,
-  avatar: '👨‍🎓',
+  avatar: '/avatars/avatar_1.png',
   coins: 5, // 5 welcome bonus coins for new students!
   streak: 1,
   lastLoginDate: new Date().toISOString().split('T')[0],

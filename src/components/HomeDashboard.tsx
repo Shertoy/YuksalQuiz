@@ -17,6 +17,7 @@ import {
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
 import { TestPackage } from '../types';
+import { UserAvatar } from './UserAvatar';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -65,8 +66,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         <div className="relative z-10 flex items-start justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="text-4xl bg-white/15 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-inner">
-              {profile.avatar}
+            <div className="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner overflow-hidden flex items-center justify-center p-0.5 shrink-0">
+              <UserAvatar avatar={profile.avatar} />
             </div>
             <div>
               <p className="text-xs text-indigo-200 font-medium">Assalomu alaykum,</p>

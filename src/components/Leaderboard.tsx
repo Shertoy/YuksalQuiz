@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { UZBEKISTAN_REGIONS, Region, LeaderboardUser } from '../types';
 import { triggerHaptic } from '../utils/telegram';
+import { UserAvatar } from './UserAvatar';
+import { DEFAULT_AVATAR } from '../constants/avatars';
 
 type SortCriterion = 'tests' | 'weekly' | 'coins';
 
@@ -30,7 +32,7 @@ export const Leaderboard: React.FC = () => {
       name: `${profile.firstName || 'Siz'} ${profile.lastName || ''}`.trim(),
       region: profile.region,
       university: 'Mening OTMim',
-      avatar: profile.avatar || '👨‍🎓',
+      avatar: profile.avatar || DEFAULT_AVATAR,
       academicYear: profile.academicYear,
       coins: profile.coins,
       testsCompleted: profile.completedTestsCount,
@@ -173,8 +175,8 @@ export const Leaderboard: React.FC = () => {
             {second && (
               <div className="flex-1 flex flex-col items-center">
                 <div className="relative mb-2">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-2xl shadow-md">
-                    {second.avatar}
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shadow-md p-1">
+                    <UserAvatar avatar={second.avatar} />
                   </div>
                   <div className="absolute -top-2.5 -right-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-[11px] flex items-center justify-center border border-white dark:border-slate-800 shadow">
                     2
@@ -198,8 +200,8 @@ export const Leaderboard: React.FC = () => {
             {first && (
               <div className="flex-1 flex flex-col items-center -mt-6">
                 <div className="relative mb-2">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-lg ring-4 ring-amber-400/20 animate-soft-pulse">
-                    {first.avatar}
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-amber-400/20 animate-soft-pulse p-1">
+                    <UserAvatar avatar={first.avatar} />
                   </div>
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-amber-500">
                     <Crown className="w-5 h-5 fill-amber-400 stroke-amber-600" />
@@ -226,8 +228,8 @@ export const Leaderboard: React.FC = () => {
             {third && (
               <div className="flex-1 flex flex-col items-center">
                 <div className="relative mb-2">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-950/60 border-2 border-amber-700/40 flex items-center justify-center text-2xl shadow-md">
-                    {third.avatar}
+                  <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-950/60 border-2 border-amber-700/40 flex items-center justify-center overflow-hidden shadow-md p-1">
+                    <UserAvatar avatar={third.avatar} />
                   </div>
                   <div className="absolute -top-2.5 -right-1 w-6 h-6 rounded-full bg-amber-700 text-white font-black text-[11px] flex items-center justify-center border border-white dark:border-slate-800 shadow">
                     3
@@ -268,7 +270,9 @@ export const Leaderboard: React.FC = () => {
                   {rankNum}
                 </span>
 
-                <div className="text-xl">{user.avatar}</div>
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center p-0.5 shrink-0">
+                  <UserAvatar avatar={user.avatar} />
+                </div>
 
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -296,8 +300,8 @@ export const Leaderboard: React.FC = () => {
       {/* User's Pinned Standing at Bottom */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white p-3.5 rounded-2xl shadow-xl border border-indigo-700/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">
-            {profile.avatar}
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center overflow-hidden p-0.5 shrink-0">
+            <UserAvatar avatar={profile.avatar} />
           </div>
           <div>
             <div className="flex items-center gap-1.5">

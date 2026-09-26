@@ -4,11 +4,8 @@ import { UZBEKISTAN_REGIONS, Region, StudyType, AcademicYear, Gender } from '../
 import { getTelegramWebApp, triggerHaptic } from '../utils/telegram';
 import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket } from 'lucide-react';
 import { PublicOfferModal } from './PublicOfferModal';
-
-const AVATAR_OPTIONS = [
-  '👨‍🎓', '👩‍🎓', '🧑‍💻', '👩‍💻', '👨‍🏫', '👩‍🏫',
-  '👨‍🔬', '👩‍🔬', '👨‍💼', '👩‍💼', '👨‍⚕️', '👩‍⚕️',
-];
+import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
+import { UserAvatar } from './UserAvatar';
 
 export const OnboardingModal: React.FC = () => {
   const { profile, registerUser } = useQuizStore();
@@ -20,7 +17,7 @@ export const OnboardingModal: React.FC = () => {
   const [gender, setGender] = useState<Gender>('male');
   const [studyType, setStudyType] = useState<StudyType>('Kunduzgi');
   const [academicYear, setAcademicYear] = useState<AcademicYear>(1);
-  const [avatar, setAvatar] = useState('👨‍🎓');
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
   const [acceptedOferta, setAcceptedOferta] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
   const [step, setStep] = useState<'welcome' | 'form'>('welcome');
@@ -133,8 +130,8 @@ export const OnboardingModal: React.FC = () => {
                     Reyting va natijalar uchun ma'lumotlaringizni kiriting
                   </p>
                 </div>
-                <div className="text-2xl p-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900">
-                  {avatar}
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900 overflow-hidden shadow-sm flex items-center justify-center p-0.5">
+                  <UserAvatar avatar={avatar} />
                 </div>
               </div>
 
@@ -145,29 +142,48 @@ export const OnboardingModal: React.FC = () => {
               )}
 
               <form onSubmit={handleSave} className="space-y-3.5 text-xs">
-                {/* Avatar Selector */}
+                {/* Avatar Selector - Clean 5x2 Grid */}
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Avatarni tanlang:
-                  </label>
-                  <div className="grid grid-cols-6 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    {AVATAR_OPTIONS.map((av) => (
-                      <button
-                        key={av}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('selection');
-                          setAvatar(av);
-                        }}
-                        className={`h-10 text-xl rounded-xl flex items-center justify-center transition-all ${
-                          avatar === av
-                            ? 'bg-indigo-600 text-white shadow-md scale-110'
-                            : 'hover:bg-slate-200 dark:hover:bg-slate-700/60'
-                        }`}
-                      >
-                        {av}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                      Avatarni tanlang:
+                    </label>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                      10 ta maxsus avatar
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    {AVATAR_OPTIONS.map((av) => {
+                      const isSelected = avatar === av.src;
+                      return (
+                        <button
+                          key={av.id}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic('selection');
+                            setAvatar(av.src);
+                          }}
+                          className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
+                            isSelected
+                              ? 'ring-4 ring-blue-500 border-blue-500 scale-105 shadow-md shadow-blue-500/25 z-10'
+                              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
+                          }`}
+                          title={av.alt}
+                        >
+                          <img
+                            src={getAvatarUrl(av.src)}
+                            alt={av.alt}
+                            className="w-full h-full object-cover rounded-xl"
+                            loading="lazy"
+                          />
+                          {isSelected && (
+                            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black shadow">
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -24,11 +24,8 @@ import {
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
 import { ReferralShareCard } from './ReferralShareCard';
-
-const AVATAR_OPTIONS = [
-  '👨‍🎓', '👩‍🎓', '🧑‍💻', '👩‍💻', '👨‍🏫', '👩‍🏫',
-  '👨‍🔬', '👩‍🔬', '👨‍💼', '👩‍💼', '👨‍⚕️', '👩‍⚕️',
-];
+import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
+import { UserAvatar } from './UserAvatar';
 
 export const ProfileView: React.FC = () => {
   const { profile, updateProfile, setActiveTab } = useQuizStore();
@@ -89,8 +86,8 @@ export const ProfileView: React.FC = () => {
       {/* Main Profile Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
         <div className="relative inline-block mx-auto mb-3">
-          <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-500/30 flex items-center justify-center text-4xl shadow-md">
-            {avatar}
+          <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
+            <UserAvatar avatar={isEditing ? avatar : profile.avatar} />
           </div>
           <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow">
             ✓
@@ -202,29 +199,48 @@ export const ProfileView: React.FC = () => {
           </h4>
 
           <form onSubmit={handleSave} className="space-y-3.5 text-xs">
-            {/* Avatar Selector */}
+            {/* Avatar Selector - Clean 5x2 Grid */}
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Avatarni yangilash:
-              </label>
-              <div className="grid grid-cols-6 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                {AVATAR_OPTIONS.map((av) => (
-                  <button
-                    key={av}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic('selection');
-                      setAvatar(av);
-                    }}
-                    className={`h-10 text-xl rounded-xl flex items-center justify-center transition-all ${
-                      avatar === av
-                        ? 'bg-indigo-600 text-white shadow-md scale-110'
-                        : 'hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {av}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                  Avatarni yangilash:
+                </label>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                  10 ta maxsus avatar
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                {AVATAR_OPTIONS.map((av) => {
+                  const isSelected = avatar === av.src;
+                  return (
+                    <button
+                      key={av.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        setAvatar(av.src);
+                      }}
+                      className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
+                        isSelected
+                          ? 'ring-4 ring-blue-500 border-blue-500 scale-105 shadow-md shadow-blue-500/25 z-10'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
+                      }`}
+                      title={av.alt}
+                    >
+                      <img
+                        src={getAvatarUrl(av.src)}
+                        alt={av.alt}
+                        className="w-full h-full object-cover rounded-xl"
+                        loading="lazy"
+                      />
+                      {isSelected && (
+                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black shadow">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

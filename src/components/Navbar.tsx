@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { Moon, Sun, Volume2, VolumeX, Flame, Coins, ShieldAlert, Wallet, User } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
+import { UserAvatar } from './UserAvatar';
 
 export const Navbar: React.FC = () => {
   const { theme, setTheme, profile, soundEnabled, toggleSound, tamperDetected, resetTamperWarning, setActiveTab } = useQuizStore();
@@ -116,10 +117,10 @@ export const Navbar: React.FC = () => {
                 triggerHaptic('selection');
                 setActiveTab('profile');
               }}
-              className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-sm shadow-sm"
+              className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shadow-sm overflow-hidden p-0.5 active:scale-95 transition-all"
               title="Mening Profilim"
             >
-              {profile.avatar}
+              <UserAvatar avatar={profile.avatar} />
             </button>
           </div>
         </div>
