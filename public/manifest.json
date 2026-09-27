@@ -1,0 +1,18 @@
+{
+  "name": "YuksalQuiz - O'zbekiston Talabalari Test Platformasi",
+  "short_name": "YuksalQuiz",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#4f46e5",
+  "description": "YuksalQuiz - O'zbekiston talabalari uchun zamonaviy test platformasi",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

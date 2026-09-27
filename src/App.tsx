@@ -15,6 +15,7 @@ import { WalletView } from './components/WalletView';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
 
@@ -114,6 +115,9 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 select-none">
+      {/* Real-time Offline Connectivity Monitor & Banner */}
+      <OfflineStatusBanner />
+
       {/* First-time onboarding modal */}
       <OnboardingModal />
 
