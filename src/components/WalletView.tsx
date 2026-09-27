@@ -12,27 +12,91 @@ import {
   CreditCard,
   ShieldAlert,
   X,
+  PlusCircle,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
 import { TransactionType } from '../types';
 
 export const WalletView: React.FC = () => {
-  const { profile, applySubscription, transactions } = useQuizStore();
+  const { profile, applySubscription, topUpWallet, transactions } = useQuizStore();
   const { t } = useTranslation();
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | TransactionType>('all');
 
-  const handleSubscribe = (plan: '6_months' | '1_year') => {
-    triggerHaptic('success');
-    soundFX.playCoin();
-    const res = applySubscription(plan);
-    setFeedbackMessage(res.message);
-    setTimeout(() => setFeedbackMessage(null), 4000);
+  // Top Up Modal State
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [selectedTopUpAmount, setSelectedTopUpAmount] = useState<number>(15000);
+  const [customTopUpStr, setCustomTopUpStr] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<'Payme' | 'Click' | 'Uzum Bank'>('Payme');
+
+  const currentBalance = profile.walletBalance || 0;
+  const currentVoucher = profile.voucherBalance || 0;
+  const hasVoucher = currentVoucher >= 35000 && profile.subscriptionPlan === 'none';
+
+  // Plan pricing
+  const cost6Months = hasVoucher ? 15000 : 50000;
+  const cost1Year = 90000;
+
+  // Affordability
+  const canAfford6M = currentBalance >= cost6Months;
+  const deficit6M = Math.max(0, cost6Months - currentBalance);
+
+  const canAfford1Y = currentBalance >= cost1Year;
+  const deficit1Y = Math.max(0, cost1Year - currentBalance);
+
+  const handleOpenTopUp = (presetAmount?: number) => {
+    triggerHaptic('light');
+    if (presetAmount && presetAmount > 0) {
+      setSelectedTopUpAmount(presetAmount);
+      setCustomTopUpStr(presetAmount.toString());
+    } else {
+      setSelectedTopUpAmount(15000);
+      setCustomTopUpStr('');
+    }
+    setShowTopUpModal(true);
   };
 
-  const hasVoucher = profile.voucherBalance >= 35000 && profile.subscriptionPlan === 'none';
+  const handleConfirmTopUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalAmount = customTopUpStr ? parseInt(customTopUpStr, 10) || 0 : selectedTopUpAmount;
+
+    if (finalAmount <= 0) {
+      triggerHaptic('error');
+      return;
+    }
+
+    topUpWallet(finalAmount, paymentMethod);
+    setShowTopUpModal(false);
+
+    setFeedback({
+      type: 'success',
+      message: `Hisobingizga +${finalAmount.toLocaleString('uz-UZ')} so'm muvaffaqiyatli qo'shildi! (${paymentMethod})`,
+    });
+    setTimeout(() => setFeedback(null), 5000);
+  };
+
+  const handleSubscribe = (plan: '6_months' | '1_year') => {
+    const res = applySubscription(plan);
+    if (res.success) {
+      setFeedback({
+        type: 'success',
+        message: res.message,
+      });
+    } else {
+      setFeedback({
+        type: 'error',
+        message: res.message,
+      });
+    }
+    setTimeout(() => setFeedback(null), 5000);
+  };
 
   return (
     <div className="space-y-4 pb-4 animate-in fade-in">
@@ -70,14 +134,36 @@ export const WalletView: React.FC = () => {
         </p>
       </div>
 
-      {/* Feedback Alert */}
-      {feedbackMessage && (
-        <div className="p-3 rounded-2xl bg-emerald-500 text-white text-xs font-bold shadow-lg animate-in fade-in zoom-in-95 text-center">
-          {feedbackMessage}
+      {/* Dynamic Feedback Alert */}
+      {feedback && (
+        <div
+          className={`p-3.5 rounded-2xl text-xs font-bold shadow-lg animate-in fade-in zoom-in-95 flex items-start gap-2.5 ${
+            feedback.type === 'success'
+              ? 'bg-emerald-500 text-white'
+              : 'bg-rose-500 text-white'
+          }`}
+        >
+          {feedback.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 leading-relaxed">
+            {feedback.message}
+            {feedback.type === 'error' && (
+              <button
+                type="button"
+                onClick={() => handleOpenTopUp()}
+                className="mt-2 block px-3 py-1 bg-white text-rose-600 rounded-lg font-black text-[11px] shadow-sm hover:bg-rose-50 transition-colors"
+              >
+                + Balansni to'ldirish
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Unified Hamyon Balansi Card */}
+      {/* Unified Hamyon Balansi Card with Direct Top-Up Action */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 text-white rounded-3xl p-5 shadow-xl shadow-indigo-600/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
         <div className="relative z-10">
@@ -85,9 +171,23 @@ export const WalletView: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-wider">{t.internalBalance}</span>
             <Wallet className="w-5 h-5 text-indigo-300" />
           </div>
-          <div className="text-2xl font-black tracking-tight text-white">
-            {profile.walletBalance.toLocaleString('uz-UZ')} so'm
+
+          <div className="flex items-center justify-between gap-3 mt-1">
+            <div className="text-2xl font-black tracking-tight text-white">
+              {currentBalance.toLocaleString('uz-UZ')} so'm
+            </div>
+
+            {/* Quick Top-Up Button */}
+            <button
+              type="button"
+              onClick={() => handleOpenTopUp()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs backdrop-blur-md transition-all active:scale-95 shadow-sm border border-white/20"
+            >
+              <PlusCircle className="w-3.5 h-3.5 text-emerald-300" />
+              <span>{t.topUpBtn}</span>
+            </button>
           </div>
+
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/15 text-[11px] text-indigo-200">
             <span>Mualliflik daromadi: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm</span>
             <span>Referal: +{(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm</span>
@@ -156,9 +256,16 @@ export const WalletView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500/50 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-500 transition-all">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                Talabalar tanlovi
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                  Talabalar tanlovi
+                </span>
+                {profile.subscriptionPlan === '6_months' && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">
+                    Joriy rejangiz
+                  </span>
+                )}
+              </div>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
                 {t.sub6Months}
               </h4>
@@ -183,22 +290,53 @@ export const WalletView: React.FC = () => {
             <span className="text-emerald-600 dark:text-emerald-400 font-bold">
               {hasVoucher ? `✓ ${t.voucherApplied}` : "HEMIS & sertifikat testlari"}
             </span>
-            <button
-              onClick={() => handleSubscribe('6_months')}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
-            >
-              {profile.subscriptionPlan === '6_months' ? 'Muddati uzaytirish' : `${t.activateSub} (${hasVoucher ? '15 000' : '50 000'} so'm)`}
-            </button>
+
+            {canAfford6M ? (
+              <button
+                type="button"
+                onClick={() => handleSubscribe('6_months')}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <span>
+                  {profile.subscriptionPlan === '6_months'
+                    ? 'Muddati uzaytirish'
+                    : t.activateSub}
+                </span>
+                <span className="text-[10px] opacity-80">({cost6Months.toLocaleString('uz-UZ')} so'm)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenTopUp(deficit6M)}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>To'ldirish (+{deficit6M.toLocaleString('uz-UZ')} so'm)</span>
+              </button>
+            )}
           </div>
+
+          {!canAfford6M && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
+              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit6M.toLocaleString('uz-UZ')} so'm kerak.
+            </p>
+          )}
         </div>
 
         {/* 1-Year Plan */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-400 transition-all">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                To'liq 1 yil
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                  To'liq 1 yil
+                </span>
+                {profile.subscriptionPlan === '1_year' && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">
+                    Joriy rejangiz
+                  </span>
+                )}
+              </div>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
                 {t.sub1Year}
               </h4>
@@ -218,13 +356,37 @@ export const WalletView: React.FC = () => {
             <span className="text-slate-400 font-medium text-[10px]">
               Yillik cheksiz kirish kafolati
             </span>
-            <button
-              onClick={() => handleSubscribe('1_year')}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
-            >
-              {profile.subscriptionPlan === '1_year' ? 'Muddati uzaytirish' : `${t.activateSub} (90 000 so'm)`}
-            </button>
+
+            {canAfford1Y ? (
+              <button
+                type="button"
+                onClick={() => handleSubscribe('1_year')}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <span>
+                  {profile.subscriptionPlan === '1_year'
+                    ? 'Muddati uzaytirish'
+                    : t.activateSub}
+                </span>
+                <span className="text-[10px] opacity-80">(90 000 so'm)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenTopUp(deficit1Y)}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>To'ldirish (+{deficit1Y.toLocaleString('uz-UZ')} so'm)</span>
+              </button>
+            )}
           </div>
+
+          {!canAfford1Y && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
+              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit1Y.toLocaleString('uz-UZ')} so'm kerak.
+            </p>
+          )}
         </div>
       </div>
 
@@ -341,7 +503,7 @@ export const WalletView: React.FC = () => {
                         case 'deposit':
                         default:
                           return (
-                            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                               <CreditCard className="w-4 h-4" />
                             </div>
                           );
@@ -394,6 +556,142 @@ export const WalletView: React.FC = () => {
                 Yopish
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Top-Up Modal (Click / Payme / Uzum) */}
+      {showTopUpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    {t.topUpModalTitle}
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    {t.topUpModalDesc}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTopUpModal(false)}
+                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmTopUp} className="p-4 space-y-4">
+              {/* Current balance indicator */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  {t.internalBalance}:
+                </span>
+                <span className="text-xs font-black text-slate-900 dark:text-white">
+                  {currentBalance.toLocaleString('uz-UZ')} so'm
+                </span>
+              </div>
+
+              {/* Amount Presets */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                  {t.selectAmount}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "15 000 so'm", val: 15000, desc: 'Vaucherli 6 oy' },
+                    { label: "50 000 so'm", val: 50000, desc: '6 oylik to\'liq' },
+                    { label: "90 000 so'm", val: 90000, desc: '1 yillik reja' },
+                  ].map((preset) => {
+                    const isSelected = !customTopUpStr && selectedTopUpAmount === preset.val;
+                    return (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('selection');
+                          setSelectedTopUpAmount(preset.val);
+                          setCustomTopUpStr('');
+                        }}
+                        className={`p-2 rounded-2xl border text-center transition-all ${
+                          isSelected
+                            ? 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-500 text-indigo-600 dark:text-indigo-400 ring-2 ring-indigo-500/20'
+                            : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="text-xs font-black block">{preset.label}</span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5">{preset.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Amount Input */}
+                <div className="mt-2">
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={customTopUpStr}
+                    onChange={(e) => setCustomTopUpStr(e.target.value)}
+                    placeholder={t.customAmountPlaceholder}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                  {t.paymentMethod}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'Payme', badge: 'Payme' },
+                    { id: 'Click', badge: 'Click Up' },
+                    { id: 'Uzum Bank', badge: 'Uzum' },
+                  ].map((m) => {
+                    const isSelected = paymentMethod === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('selection');
+                          setPaymentMethod(m.id as any);
+                        }}
+                        className={`p-2.5 rounded-2xl border text-center transition-all ${
+                          isSelected
+                            ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/20 font-black'
+                            : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-bold'
+                        }`}
+                      >
+                        <span className="text-xs">{m.badge}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Submit Top-up */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>
+                    {t.payBtn} (+{((customTopUpStr ? parseInt(customTopUpStr, 10) || 0 : selectedTopUpAmount)).toLocaleString('uz-UZ')} so'm)
+                  </span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

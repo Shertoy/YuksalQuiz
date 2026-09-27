@@ -78,6 +78,7 @@ interface QuizState {
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
   applySubscription: (plan: '6_months' | '1_year') => { success: boolean; message: string };
+  topUpWallet: (amount: number, method?: string) => void;
   addReferralBonus: () => { bonusAdded: number; newTotal: number };
   resetTamperWarning: () => void;
   clearAllTests: () => void;
@@ -576,15 +577,33 @@ export const useQuizStore = create<QuizState>()(
         set({ mistakes: filtered });
       },
 
-      // Auto-apply 35 000 UZS voucher toward 6-month subscription; 1-year is 90 000 UZS without stacking
+      // Auto-apply 35 000 UZS voucher toward 6-month subscription; 1-year is 90 000 UZS without voucher
       applySubscription: (plan: '6_months' | '1_year') => {
         const { profile } = get();
-        const voucherUsed = plan === '6_months' ? Math.min(profile.voucherBalance, 35000) : 0;
+        const voucherUsed = plan === '6_months' ? Math.min(profile.voucherBalance || 0, 35000) : 0;
         const originalPrice = plan === '6_months' ? 50000 : 90000;
         const remainingToPay = originalPrice - voucherUsed;
+        const currentBalance = profile.walletBalance || 0;
 
-        // Calculate subscription expiry
-        const expiryDate = new Date();
+        // Strict Balance Verification: User CANNOT subscribe if wallet balance is insufficient!
+        if (currentBalance < remainingToPay) {
+          const missingAmount = remainingToPay - currentBalance;
+          triggerHaptic('error');
+          return {
+            success: false,
+            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Balansni to'ldiring yoki do'stlaringizni taklif qiling (+1 500 so'm).`,
+          };
+        }
+
+        // Deduct payment and voucher
+        const newWalletBalance = currentBalance - remainingToPay;
+        const newVoucherBalance = Math.max(0, (profile.voucherBalance || 0) - voucherUsed);
+
+        // Calculate subscription expiry (extend if already active)
+        let expiryDate = new Date();
+        if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
+          expiryDate = new Date(profile.subscriptionExpiry);
+        }
         if (plan === '6_months') {
           expiryDate.setMonth(expiryDate.getMonth() + 6);
         } else {
@@ -593,7 +612,8 @@ export const useQuizStore = create<QuizState>()(
 
         const updatedProfile: UserProfile = {
           ...profile,
-          voucherBalance: Math.max(0, profile.voucherBalance - voucherUsed),
+          walletBalance: newWalletBalance,
+          voucherBalance: newVoucherBalance,
           subscriptionPlan: plan,
           subscriptionExpiry: expiryDate.toISOString().split('T')[0],
         };
@@ -624,7 +644,7 @@ export const useQuizStore = create<QuizState>()(
         if (voucherUsed > 0) {
           get().addTransaction({
             type: 'voucher',
-            title: "Vaucher chegirmasi qo'llandi",
+            title: "35 000 so'm vaucher chegirmasi qo'llandi",
             amount: voucherUsed,
             unit: "so'm",
             isPositive: false,
@@ -634,9 +654,42 @@ export const useQuizStore = create<QuizState>()(
         return {
           success: true,
           message: voucherUsed > 0
-            ? `35 000 so'm vaucher chegirmasi qo'llandi! 6 oylik obuna faollashtirildi (to'lov: ${remainingToPay.toLocaleString('uz-UZ')} so'm).`
-            : `1 yillik Premium obuna muvaffaqiyatli faollashtirildi (to'lov: ${remainingToPay.toLocaleString('uz-UZ')} so'm).`,
+            ? `35 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. 6 oylik Premium obuna muvaffaqiyatli faollashtirildi!`
+            : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. 1 yillik Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
+      },
+
+      // Interactive top-up method (Payme, Click, Uzum, etc.)
+      topUpWallet: (amount: number, method: string = 'Payme') => {
+        const { profile } = get();
+        const newBalance = (profile.walletBalance || 0) + amount;
+        const updatedProfile: UserProfile = {
+          ...profile,
+          walletBalance: newBalance,
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        triggerHaptic('success');
+        soundFX.playCoin();
+
+        set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'deposit',
+          title: `Hisob to'ldirildi (${method})`,
+          amount,
+          unit: "so'm",
+          isPositive: true,
+        });
       },
 
       // Referral invitation bonus (+1 500 UZS)
@@ -776,7 +829,7 @@ export const useQuizStore = create<QuizState>()(
             state.tamperDetected = true;
             state.profile.coins = Math.min(Math.max(p.coins, 0), 10);
             state.profile.walletBalance = Math.min(Math.max(p.walletBalance || 0, 0), 50000);
-            state.profile.voucherBalance = 35000;
+            state.profile.voucherBalance = Math.min(Math.max(p.voucherBalance ?? 0, 0), 35000);
             state.profile.checksum = generateIntegritySignature({
               userId: p.id,
               coins: state.profile.coins,

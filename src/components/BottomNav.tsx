@@ -255,12 +255,7 @@ export const BottomNav: React.FC = () => {
             transform: `translateX(${activeIndex * 100}%)`,
           }}
         >
-          <div className="w-14 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-sky-500/20 to-teal-400/15 dark:from-indigo-500/30 dark:via-sky-400/25 dark:to-teal-300/20 border border-indigo-400/30 dark:border-indigo-400/40 shadow-lg shadow-indigo-500/10 backdrop-blur-sm relative overflow-hidden flex flex-col items-center justify-between py-0.5">
-            {/* Subtle gloss reflection line */}
-            <div className="w-8 h-[2px] rounded-full bg-white/40 dark:bg-white/30" />
-            {/* Glowing liquid drop bar */}
-            <div className="w-4 h-1 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-teal-400 shadow-sm" />
-          </div>
+          <div className="w-14 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-sky-500/15 to-teal-400/15 dark:from-indigo-500/25 dark:via-sky-400/20 dark:to-teal-300/15 border border-indigo-400/25 dark:border-indigo-400/30 shadow-md shadow-indigo-500/10 backdrop-blur-md" />
         </div>
 
         {/* Navigation Item Buttons */}

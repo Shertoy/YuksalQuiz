@@ -104,6 +104,15 @@ export interface Translations {
   linkCopied: string;
   invitedFriends: string;
   referralEarnings: string;
+  topUpBtn: string;
+  topUpModalTitle: string;
+  topUpModalDesc: string;
+  selectAmount: string;
+  customAmountPlaceholder: string;
+  paymentMethod: string;
+  payBtn: string;
+  insufficientBalanceShort: string;
+  neededAmount: string;
 
   // Bulk parser & Create Test
   bulkCreateTitle: string;
@@ -236,6 +245,15 @@ export const translations: Record<Language, Translations> = {
     linkCopied: 'Havola nusxalandi!',
     invitedFriends: 'Taklif qilingan do\'stlar soni',
     referralEarnings: 'Referaldan ishlangan mablag\'',
+    topUpBtn: "Balansni to'ldirish",
+    topUpModalTitle: "Hisobni to'ldirish",
+    topUpModalDesc: "Kerakli miqdorni tanlang va qulay to'lov tizimi orqali hisobingizni to'ldiring",
+    selectAmount: "To'lov miqdorini tanlang:",
+    customAmountPlaceholder: "Boshqa miqdor (so'm)...",
+    paymentMethod: "To'lov usulini tanlang:",
+    payBtn: "Hisobni to'ldirish",
+    insufficientBalanceShort: "Balans yetarli emas",
+    neededAmount: "Yana kerak:",
 
     bulkCreateTitle: 'Ommaviy Test Yaratish (Parser)',
     bulkCreateDesc: 'Savollar bankini maxsus formatda joylashtiring va tizim avtomatik 25 talik bloklarga ajratadi',
@@ -366,6 +384,15 @@ export const translations: Record<Language, Translations> = {
     linkCopied: 'Ссылка скопирована!',
     invitedFriends: 'Приглашено друзей',
     referralEarnings: 'Заработано на рефералах',
+    topUpBtn: "Пополнить баланс",
+    topUpModalTitle: "Пополнение счета",
+    topUpModalDesc: "Выберите нужную сумму и пополните счет через удобную платежную систему",
+    selectAmount: "Выберите сумму пополнения:",
+    customAmountPlaceholder: "Другая сумма (сум)...",
+    paymentMethod: "Выберите способ оплаты:",
+    payBtn: "Пополнить счет",
+    insufficientBalanceShort: "Недостаточно средств",
+    neededAmount: "Еще требуется:",
 
     bulkCreateTitle: 'Массовое создание тестов (Парсер)',
     bulkCreateDesc: 'Вставьте банк вопросов в специальном формате, система автоматически разделит их на блоки по 25',
@@ -496,6 +523,15 @@ export const translations: Record<Language, Translations> = {
     linkCopied: 'Link copied to clipboard!',
     invitedFriends: 'Invited friends count',
     referralEarnings: 'Earned from referrals',
+    topUpBtn: 'Top Up Balance',
+    topUpModalTitle: 'Top Up Account',
+    topUpModalDesc: 'Select an amount and top up your account via convenient payment methods',
+    selectAmount: 'Select top-up amount:',
+    customAmountPlaceholder: 'Custom amount (UZS)...',
+    paymentMethod: 'Select payment method:',
+    payBtn: 'Top Up Account',
+    insufficientBalanceShort: 'Insufficient funds',
+    neededAmount: 'Needed more:',
 
     bulkCreateTitle: 'Bulk Test Creator (Parser)',
     bulkCreateDesc: 'Paste questions with custom delimiters; the system automatically segments banks > 25 into blocks',
