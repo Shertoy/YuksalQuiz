@@ -245,54 +245,57 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 pb-safe transition-colors shadow-2xl">
-      <div className="max-w-md mx-auto px-2 py-1.5 flex items-center justify-around relative">
-        {/* Liquid Sliding Pill Indicator */}
-        <div
-          className="absolute top-1 bottom-1 transition-all duration-350 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none flex items-center justify-center z-0"
-          style={{
-            width: `${100 / navItems.length}%`,
-            left: 0,
-            transform: `translateX(${activeIndex * 100}%)`,
-          }}
-        >
-          <div className="w-14 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-sky-500/15 to-teal-400/15 dark:from-indigo-500/25 dark:via-sky-400/20 dark:to-teal-300/15 border border-indigo-400/25 dark:border-indigo-400/30 shadow-md shadow-indigo-500/10 backdrop-blur-md" />
-        </div>
+      <div className="max-w-md mx-auto px-2 py-1">
+        {/* Inner container with exact shared coordinate system */}
+        <div className="relative flex items-center justify-around">
+          {/* Liquid Sliding Pill Indicator - Mathematically identical alignment with buttons */}
+          <div
+            className="absolute inset-y-0 transition-all duration-350 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none flex items-center justify-center z-0"
+            style={{
+              width: `${100 / navItems.length}%`,
+              left: 0,
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          >
+            <div className="w-[58px] h-[46px] rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-sky-500/15 to-teal-400/15 dark:from-indigo-500/25 dark:via-sky-400/20 dark:to-teal-300/15 border border-indigo-400/25 dark:border-indigo-400/30 shadow-md shadow-indigo-500/10 backdrop-blur-md" />
+          </div>
 
-        {/* Navigation Item Buttons */}
-        {navItems.map((item) => {
-          const isActive = resolvedTab === item.id;
-          const Icon = item.icon;
-          const label = t[item.labelKey];
+          {/* Navigation Item Buttons */}
+          {navItems.map((item) => {
+            const isActive = resolvedTab === item.id;
+            const Icon = item.icon;
+            const label = t[item.labelKey];
 
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setActiveTab(item.id);
-              }}
-              className={`relative z-10 flex-1 flex flex-col items-center justify-center py-1 rounded-2xl transition-all duration-300 active:scale-95 ${
-                isActive
-                  ? 'text-indigo-600 dark:text-indigo-300 font-extrabold scale-105'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <div className="transition-transform duration-300">
-                <Icon isActive={isActive} />
-              </div>
-              <span
-                className={`text-[10px] mt-0.5 tracking-tight transition-colors ${
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setActiveTab(item.id);
+                }}
+                className={`relative z-10 flex-1 flex flex-col items-center justify-center h-[50px] rounded-2xl transition-colors duration-200 active:scale-95 ${
                   isActive
-                    ? 'font-black text-indigo-600 dark:text-indigo-400'
-                    : 'font-medium'
+                    ? 'text-indigo-600 dark:text-indigo-300 font-extrabold'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
-                {label}
-              </span>
-            </button>
-          );
-        })}
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                  <Icon isActive={isActive} />
+                </div>
+                <span
+                  className={`text-[10px] mt-0.5 tracking-tight transition-colors ${
+                    isActive
+                      ? 'font-black text-indigo-600 dark:text-indigo-400'
+                      : 'font-medium'
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
