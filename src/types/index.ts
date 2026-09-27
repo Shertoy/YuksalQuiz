@@ -68,6 +68,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   region: Region;
+  university?: string;
   birthDate: string;
   gender: Gender;
   studyType: StudyType;
@@ -246,12 +247,38 @@ export interface UniversityLeaderboardEntry {
   totalCorrectAnswers: number;
 }
 
+export type AnnouncementTargetType = 'all' | 'university' | 'region' | 'user';
+
+export interface AnnouncementReply {
+  id: string;
+  announcementId: string;
+  announcementTitle: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userUniversity?: string;
+  userRegion?: string;
+  message: string;
+  date: string;
+  time: string;
+  adminReply?: {
+    message: string;
+    date: string;
+    time: string;
+    adminName: string;
+  };
+}
+
 export interface Announcement {
   id: string;
   title: string;
   message: string;
   date: string;
+  time?: string;
   tag?: 'yangilik' | 'eslatma' | 'muhim';
+  targetType?: AnnouncementTargetType;
+  targetValue?: string; // university name, region name, or user id/name
+  targetLabel?: string; // e.g. "Barchaga", "TATU talabalari", "Farg'ona viloyati", etc.
   isRead?: boolean;
 }
 

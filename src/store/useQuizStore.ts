@@ -11,6 +11,7 @@ import {
   TOP_UNIVERSITIES,
   WalletTransaction,
   Announcement,
+  AnnouncementReply,
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
@@ -35,6 +36,7 @@ interface QuizState {
   transactions: WalletTransaction[];
   announcements: Announcement[];
   readAnnouncementIds: string[];
+  announcementReplies: AnnouncementReply[];
   soundEnabled: boolean;
   tamperDetected: boolean;
 
@@ -44,9 +46,12 @@ interface QuizState {
   setActiveTab: (tab: TabType) => void;
   setLeaderboardScope: (scope: LeaderboardScope) => void;
   addTransaction: (tx: Omit<WalletTransaction, 'id' | 'date'>) => void;
-  addAnnouncement: (item: Omit<Announcement, 'id' | 'date'>) => void;
+  addAnnouncement: (item: Omit<Announcement, 'id' | 'date' | 'time'>) => void;
   deleteAnnouncement: (id: string) => void;
   markAnnouncementsAsRead: () => void;
+  addAnnouncementReply: (announcementId: string, message: string) => void;
+  replyToUserMessage: (replyId: string, adminMessage: string) => void;
+  deleteAnnouncementReply: (replyId: string) => void;
   addUniversity: (name: string) => void;
   updateUniversity: (oldName: string, newName: string) => void;
   deleteUniversity: (name: string) => void;
@@ -90,6 +95,7 @@ const DEFAULT_PROFILE: UserProfile = {
   firstName: '',
   lastName: '',
   region: 'Toshkent shahri',
+  university: 'Toshkent Axborot Texnologiyalari Universiteti (TATU)',
   birthDate: '2004-01-01',
   gender: 'male',
   studyType: 'Kunduzgi',
@@ -138,14 +144,18 @@ export const useQuizStore = create<QuizState>()(
       announcements: [
         {
           id: 'ann-1',
-          title: 'YuksalQuiz v2.0 ga xush kelibsiz! 🚀',
+          title: 'YuksalQuiz v1.0 ga xush kelibsiz! 🚀',
           message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
           date: '2026-09-27',
+          time: '10:00',
           tag: 'yangilik',
+          targetType: 'all',
+          targetLabel: 'Barchaga',
           isRead: false,
         },
       ],
       readAnnouncementIds: [],
+      announcementReplies: [],
       soundEnabled: true,
       tamperDetected: false,
 
@@ -159,22 +169,89 @@ export const useQuizStore = create<QuizState>()(
       },
 
       addAnnouncement: (item) => {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
         const newAnn: Announcement = {
           ...item,
           id: 'ann-' + Date.now(),
-          date: new Date().toISOString().split('T')[0],
+          date: dateStr,
+          time: timeStr,
+          targetType: item.targetType || 'all',
+          targetValue: item.targetValue || '',
+          targetLabel: item.targetLabel || 'Barchaga',
           isRead: false,
         };
         set({ announcements: [newAnn, ...(get().announcements || [])] });
       },
 
       deleteAnnouncement: (id: string) => {
-        set({ announcements: get().announcements.filter((a) => a.id !== id) });
+        set({
+          announcements: get().announcements.filter((a) => a.id !== id),
+          announcementReplies: (get().announcementReplies || []).filter((r) => r.announcementId !== id),
+        });
       },
 
       markAnnouncementsAsRead: () => {
         const allIds = (get().announcements || []).map((a) => a.id);
         set({ readAnnouncementIds: allIds });
+      },
+
+      addAnnouncementReply: (announcementId: string, message: string) => {
+        const { profile, announcements } = get();
+        const ann = (announcements || []).find((a) => a.id === announcementId);
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+        const newReply: AnnouncementReply = {
+          id: 'reply-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          announcementId,
+          announcementTitle: ann?.title || 'Bildirishnoma',
+          userId: profile.id,
+          userName: `${profile.firstName} ${profile.lastName}`.trim() || 'Talaba',
+          userAvatar: profile.avatar,
+          userUniversity: profile.university || 'OTM belgilanmagan',
+          userRegion: profile.region,
+          message: message.trim(),
+          date: dateStr,
+          time: timeStr,
+        };
+
+        triggerHaptic('success');
+        set({
+          announcementReplies: [newReply, ...(get().announcementReplies || [])],
+        });
+      },
+
+      replyToUserMessage: (replyId: string, adminMessage: string) => {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+        const updatedReplies = (get().announcementReplies || []).map((r) => {
+          if (r.id === replyId) {
+            return {
+              ...r,
+              adminReply: {
+                message: adminMessage.trim(),
+                date: dateStr,
+                time: timeStr,
+                adminName: 'Admin',
+              },
+            };
+          }
+          return r;
+        });
+
+        triggerHaptic('success');
+        set({ announcementReplies: updatedReplies });
+      },
+
+      deleteAnnouncementReply: (replyId: string) => {
+        set({
+          announcementReplies: (get().announcementReplies || []).filter((r) => r.id !== replyId),
+        });
       },
 
       clearAllTests: () => {
@@ -190,6 +267,7 @@ export const useQuizStore = create<QuizState>()(
           testPackages: data.testPackages || [],
           transactions: data.transactions || get().transactions,
           announcements: data.announcements || get().announcements,
+          announcementReplies: data.announcementReplies || get().announcementReplies || [],
         });
       },
 
@@ -806,6 +884,9 @@ export const useQuizStore = create<QuizState>()(
           state.testPackages = [];
           if (!state.readAnnouncementIds) {
             state.readAnnouncementIds = [];
+          }
+          if (!state.announcementReplies) {
+            state.announcementReplies = [];
           }
         }
 

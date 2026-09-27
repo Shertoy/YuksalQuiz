@@ -34,13 +34,14 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) => {
-  const { profile, updateProfile, setActiveTab } = useQuizStore();
+  const { profile, updateProfile, setActiveTab, universities } = useQuizStore();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(profile.firstName);
   const [lastName, setLastName] = useState(profile.lastName);
   const [region, setRegion] = useState<Region>(profile.region);
+  const [university, setUniversity] = useState(profile.university || universities[0] || 'TATU');
   const [birthDate, setBirthDate] = useState(profile.birthDate);
   const [gender, setGender] = useState<Gender>(profile.gender);
   const [studyType, setStudyType] = useState<StudyType>(profile.studyType);
@@ -55,6 +56,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       region,
+      university,
       birthDate,
       gender,
       studyType,
@@ -104,7 +106,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           {profile.firstName || 'Talaba'} {profile.lastName || ''}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {profile.region} • {profile.academicYear}-kurs • {profile.studyType}
+          {profile.university ? `${profile.university} • ` : ''}{profile.region} • {profile.academicYear}-kurs • {profile.studyType}
         </p>
 
         {/* Security Signature Badge */}
@@ -328,22 +330,41 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               </div>
             </div>
 
-            {/* Region */}
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Viloyat:
-              </label>
-              <select
-                value={region}
-                onChange={(e) => setRegion(e.target.value as Region)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-              >
-                {UZBEKISTAN_REGIONS.map((reg) => (
-                  <option key={reg} value={reg}>
-                    {reg}
-                  </option>
-                ))}
-              </select>
+            {/* Region & University */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Viloyat:
+                </label>
+                <select
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value as Region)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                >
+                  {UZBEKISTAN_REGIONS.map((reg) => (
+                    <option key={reg} value={reg}>
+                      {reg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  OTM / Ta'lim muassasasi:
+                </label>
+                <select
+                  value={university}
+                  onChange={(e) => setUniversity(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-ellipsis overflow-hidden"
+                >
+                  {universities.map((uni) => (
+                    <option key={uni} value={uni}>
+                      {uni}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Study Type & Year */}
@@ -390,6 +411,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </form>
         </div>
       )}
+
+      {/* App Version Stamp */}
+      <div className="pt-2 text-center">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>YuksalQuiz v1.0 • Rasmiy versiya</span>
+        </div>
+      </div>
     </div>
   );
 };

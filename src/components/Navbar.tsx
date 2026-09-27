@@ -4,6 +4,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
 import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
+import { isAnnouncementForUser } from '../utils/announcements';
 
 interface NavbarProps {
   onOpenNotifications?: () => void;
@@ -17,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
     toggleSound,
     tamperDetected,
     resetTamperWarning,
+    profile,
     setActiveTab,
     announcements,
     readAnnouncementIds,
@@ -25,9 +27,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
   const { language, setLanguage } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  // Compute unread announcements count
+  // Compute unread announcements count for current user
   const unreadAnnouncements = (announcements || []).filter(
-    (a) => !(readAnnouncementIds || []).includes(a.id)
+    (a) => isAnnouncementForUser(a, profile) && !(readAnnouncementIds || []).includes(a.id)
   );
   const unreadCount = unreadAnnouncements.length;
 

@@ -175,6 +175,7 @@ export function createLocalBackup(state: any): void {
       testPackages: state.testPackages || [],
       transactions: state.transactions || [],
       announcements: state.announcements || [],
+      announcementReplies: state.announcementReplies || [],
       checksum: secureHash(JSON.stringify(state.profile) + SALT),
     };
     localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(backupSnapshot));
@@ -204,7 +205,7 @@ export function restoreLatestBackup(): any | null {
  */
 export function exportEncryptedBackup(state: any): string {
   const exportPayload = {
-    version: '2.0-SECURE',
+    version: '1.0-SECURE',
     exportedAt: new Date().toISOString(),
     profile: state.profile,
     universities: state.universities,
@@ -212,6 +213,7 @@ export function exportEncryptedBackup(state: any): string {
     testPackages: state.testPackages,
     transactions: state.transactions,
     announcements: state.announcements,
+    announcementReplies: state.announcementReplies || [],
     signature: secureHash(JSON.stringify(state.profile) + (state.universities?.length || 0) + SALT),
   };
   return JSON.stringify(exportPayload, null, 2);

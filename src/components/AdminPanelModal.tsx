@@ -18,10 +18,25 @@ import {
   Download,
   Upload,
   ShieldAlert,
+  MapPin,
+  User,
+  Users,
+  MessageSquare,
+  Calendar,
+  CornerDownRight,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
-import { TestPackage, MainCategory, DepartmentType, DEPARTMENTS } from '../types';
+import {
+  TestPackage,
+  MainCategory,
+  DepartmentType,
+  DEPARTMENTS,
+  UZBEKISTAN_REGIONS,
+  Region,
+  AnnouncementTargetType,
+} from '../types';
 import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
+import { formatDateTime } from '../utils/announcements';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -40,6 +55,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     announcements,
     addAnnouncement,
     deleteAnnouncement,
+    announcementReplies,
+    replyToUserMessage,
+    deleteAnnouncementReply,
     testPackages,
     createTestPackage,
     clearAllTests,
@@ -57,6 +75,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [newsTitle, setNewsTitle] = useState('');
   const [newsMessage, setNewsMessage] = useState('');
   const [newsTag, setNewsTag] = useState<'yangilik' | 'eslatma' | 'muhim'>('yangilik');
+  const [newsTargetType, setNewsTargetType] = useState<AnnouncementTargetType>('all');
+  const [newsTargetUni, setNewsTargetUni] = useState(universities[0] || 'TATU');
+  const [newsTargetRegion, setNewsTargetRegion] = useState<Region>('Toshkent shahri');
+  const [newsTargetUser, setNewsTargetUser] = useState('');
+  const [newsSubTab, setNewsSubTab] = useState<'send' | 'inquiries'>('send');
+  const [adminReplyTexts, setAdminReplyTexts] = useState<Record<string, string>>({});
 
   // Simple recommended test creator state
   const [testTitle, setTestTitle] = useState('');
@@ -156,16 +180,44 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     e.preventDefault();
     if (!newsTitle.trim() || !newsMessage.trim()) return;
 
+    let targetLabel = 'Barchaga';
+    let targetValue = '';
+
+    if (newsTargetType === 'university') {
+      targetValue = newsTargetUni;
+      targetLabel = `OTM: ${newsTargetUni}`;
+    } else if (newsTargetType === 'region') {
+      targetValue = newsTargetRegion;
+      targetLabel = `Viloyat: ${newsTargetRegion}`;
+    } else if (newsTargetType === 'user') {
+      targetValue = newsTargetUser.trim();
+      targetLabel = `Shaxsiy: ${newsTargetUser.trim()}`;
+    }
+
     addAnnouncement({
       title: newsTitle.trim(),
       message: newsMessage.trim(),
       tag: newsTag,
+      targetType: newsTargetType,
+      targetValue,
+      targetLabel,
     });
 
     setNewsTitle('');
     setNewsMessage('');
+    setNewsTargetUser('');
     triggerHaptic('success');
-    showNotification("Yangilik muvaffaqiyatli yuborildi va foydalanuvchilar bildirishnomasiga qo'shildi!");
+    showNotification("Xabar muvaffaqiyatli yuborildi va belgilangan auditoriya bildirishnomasiga qo'shildi!");
+  };
+
+  const handleSendAdminReply = (replyId: string) => {
+    const text = (adminReplyTexts[replyId] || '').trim();
+    if (!text) return;
+
+    replyToUserMessage(replyId, text);
+    setAdminReplyTexts((prev) => ({ ...prev, [replyId]: '' }));
+    triggerHaptic('success');
+    showNotification("Foydalanuvchiga javob muvaffaqiyatli yuborildi!");
   };
 
   const handleCreateRecommendedTest = (e: React.FormEvent) => {
@@ -230,6 +282,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>YuksalQuiz Admin Paneli</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                  v1.0
+                </span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                   Himoyalangan
                 </span>
@@ -295,14 +350,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('news');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all relative ${
               activeTab === 'news'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span className="truncate">Yangilik</span>
+            <span className="truncate">Xabarlar</span>
+            {(announcementReplies || []).some((r) => !r.adminReply) && (
+              <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            )}
           </button>
 
           <button
@@ -540,97 +598,362 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
           {activeTab === 'news' && (
             <div className="space-y-4">
-              {/* Form to send news */}
-              <form onSubmit={handleSendNews} className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Foydalanuvchilarga yangilik yuborish:</span>
-                </h4>
+              {/* Sub-tab Navigation */}
+              <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setNewsSubTab('send');
+                  }}
+                  className={`flex-1 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    newsSubTab === 'send'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Xabar Yuborish</span>
+                </button>
 
-                <div>
-                  <input
-                    type="text"
-                    required
-                    value={newsTitle}
-                    onChange={(e) => setNewsTitle(e.target.value)}
-                    placeholder="Sarlavha (masalan: Yangi fan testlari qo'shildi)..."
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setNewsSubTab('inquiries');
+                  }}
+                  className={`flex-1 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 relative ${
+                    newsSubTab === 'inquiries'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Foydalanuvchilar Javoblari</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                    {announcementReplies.length}
+                  </span>
+                  {(announcementReplies || []).some((r) => !r.adminReply) && (
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse ml-0.5" />
+                  )}
+                </button>
+              </div>
 
-                <div>
-                  <textarea
-                    required
-                    rows={3}
-                    value={newsMessage}
-                    onChange={(e) => setNewsMessage(e.target.value)}
-                    placeholder="Xabar matni... Foydalanuvchilar qo'ng'iroqcha tugmasi orqali ko'rishadi."
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 resize-none"
-                  />
-                </div>
+              {/* Sub-Tab 1: Send Announcement Form & Sent List */}
+              {newsSubTab === 'send' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <form onSubmit={handleSendNews} className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Foydalanuvchilarga yangilik yoki xabar yuborish:</span>
+                    </h4>
 
-                <div className="flex items-center justify-between">
-                  <select
-                    value={newsTag}
-                    onChange={(e) => setNewsTag(e.target.value as any)}
-                    className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold"
-                  >
-                    <option value="yangilik">Yangilik</option>
-                    <option value="eslatma">Eslatma</option>
-                    <option value="muhim">Muhim</option>
-                  </select>
-
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-1.5 active:scale-95"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Yuborish</span>
-                  </button>
-                </div>
-              </form>
-
-              {/* Existing Announcements List */}
-              <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-slate-500 uppercase px-1">
-                  Mavjud bildirishnomalar ({announcements.length} ta)
-                </h4>
-                {announcements.map((ann) => (
-                  <div
-                    key={ann.id}
-                    className="p-3 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-2"
-                  >
+                    {/* Title */}
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 uppercase">
-                          {ann.tag || 'yangilik'}
-                        </span>
-                        <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
-                          {ann.title}
-                        </h5>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        {ann.message}
-                      </p>
-                      <span className="text-[9px] text-slate-400 mt-1 block">
-                        {ann.date}
-                      </span>
+                      <input
+                        type="text"
+                        required
+                        value={newsTitle}
+                        onChange={(e) => setNewsTitle(e.target.value)}
+                        placeholder="Sarlavha (masalan: Yangi fan testlari qo'shildi)..."
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
+                      />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        deleteAnnouncement(ann.id);
-                        showNotification("Bildirishnoma o'chirildi");
-                      }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                      title="O'chirish"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Message Body */}
+                    <div>
+                      <textarea
+                        required
+                        rows={3}
+                        value={newsMessage}
+                        onChange={(e) => setNewsMessage(e.target.value)}
+                        placeholder="Xabar matni... Foydalanuvchilar bildirishnoma sifatida qabul qilishadi va javob qaytara olishadi."
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 resize-none"
+                      />
+                    </div>
+
+                    {/* Target Audience Selector */}
+                    <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                        Xabar kimlar uchun yuboriladi? (Auditoriya):
+                      </label>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                        {[
+                          { id: 'all', label: 'Barchaga', icon: Users },
+                          { id: 'university', label: 'OTM / Markaz', icon: Building2 },
+                          { id: 'region', label: 'Viloyat', icon: MapPin },
+                          { id: 'user', label: 'Shaxsiy', icon: User },
+                        ].map((target) => {
+                          const Icon = target.icon;
+                          const isSelected = newsTargetType === target.id;
+                          return (
+                            <button
+                              key={target.id}
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic('selection');
+                                setNewsTargetType(target.id as any);
+                              }}
+                              className={`p-2 rounded-xl border flex items-center justify-center gap-1 font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{target.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Dynamic Field Based on Target */}
+                      {newsTargetType === 'university' && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in">
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                            Qaysi OTM yoki o'quv markazi talabalariga:
+                          </label>
+                          <select
+                            value={newsTargetUni}
+                            onChange={(e) => setNewsTargetUni(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                          >
+                            {universities.map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {newsTargetType === 'region' && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in">
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                            Qaysi viloyat talabalariga:
+                          </label>
+                          <select
+                            value={newsTargetRegion}
+                            onChange={(e) => setNewsTargetRegion(e.target.value as any)}
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                          >
+                            {UZBEKISTAN_REGIONS.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {newsTargetType === 'user' && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in">
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                            Talaba ID'si yoki Ismi:
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={newsTargetUser}
+                            onChange={(e) => setNewsTargetUser(e.target.value)}
+                            placeholder="Masalan: user-abc123 yoki Sherzod..."
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tag & Submit Button */}
+                    <div className="flex items-center justify-between pt-1">
+                      <select
+                        value={newsTag}
+                        onChange={(e) => setNewsTag(e.target.value as any)}
+                        className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                      >
+                        <option value="yangilik">Yangilik</option>
+                        <option value="eslatma">Eslatma</option>
+                        <option value="muhim">Muhim</option>
+                      </select>
+
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Xabarni Yuborish</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Existing Announcements List */}
+                  <div className="space-y-2">
+                    <h4 className="text-[11px] font-bold text-slate-500 uppercase px-1">
+                      Yuborilgan bildirishnomalar ({announcements.length} ta)
+                    </h4>
+                    {announcements.map((ann) => (
+                      <div
+                        key={ann.id}
+                        className="p-3 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-2"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 uppercase">
+                              {ann.tag || 'yangilik'}
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              Auditoriya: {ann.targetLabel || 'Barchaga'}
+                            </span>
+                            <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                              {ann.title}
+                            </h5>
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                            {ann.message}
+                          </p>
+                          <span className="text-[9px] text-slate-400 font-semibold flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{formatDateTime(ann.date, ann.time)}</span>
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteAnnouncement(ann.id);
+                            showNotification("Bildirishnoma o'chirildi");
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors shrink-0"
+                          title="O'chirish"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 2: User Inquiries & Admin Replies */}
+              {newsSubTab === 'inquiries' && (
+                <div className="space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between px-1">
+                    <h4 className="text-[11px] font-bold text-slate-500 uppercase">
+                      Talabalar yozgan javoblar & murojaatlar ({announcementReplies.length} ta)
+                    </h4>
+                  </div>
+
+                  {(!announcementReplies || announcementReplies.length === 0) ? (
+                    <div className="text-center py-12 text-slate-400 text-xs">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                      <p className="font-bold">Hozircha foydalanuvchilardan xabar yoki savollar yo'q</p>
+                      <p className="text-[11px] mt-0.5 text-slate-400">
+                        Talabalar bildirishnomaga javob yozganda shu yerda paydo bo'ladi.
+                      </p>
+                    </div>
+                  ) : (
+                    announcementReplies.map((reply) => {
+                      const hasReplied = !!reply.adminReply;
+                      const replyText = adminReplyTexts[reply.id] || '';
+
+                      return (
+                        <div
+                          key={reply.id}
+                          className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2.5 shadow-xs"
+                        >
+                          {/* User Header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                                  {reply.userName}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  • {reply.userUniversity || reply.userRegion}
+                                </span>
+                                {!hasReplied && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                                    Javob berilmagan
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-indigo-500 font-bold mt-0.5">
+                                📌 {reply.announcementTitle}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{formatDateTime(reply.date, reply.time)}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  deleteAnnouncementReply(reply.id);
+                                  showNotification("Murojaat o'chirildi");
+                                }}
+                                className="p-1 text-slate-400 hover:text-rose-500 rounded-md transition-colors"
+                                title="O'chirish"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* User Message */}
+                          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 font-medium">
+                            "{reply.message}"
+                          </div>
+
+                          {/* Existing Admin Reply (if sent) */}
+                          {hasReplied && (
+                            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs">
+                              <div className="flex items-center justify-between text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mb-1">
+                                <span className="flex items-center gap-1">
+                                  <Check className="w-3 h-3" />
+                                  <span>Sizning javobingiz:</span>
+                                </span>
+                                <span>{formatDateTime(reply.adminReply!.date, reply.adminReply!.time)}</span>
+                              </div>
+                              <p className="text-emerald-950 dark:text-emerald-100 font-semibold">
+                                {reply.adminReply!.message}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Admin Reply Form */}
+                          <div className="pt-1">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={replyText}
+                                onChange={(e) =>
+                                  setAdminReplyTexts((prev) => ({
+                                    ...prev,
+                                    [reply.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={hasReplied ? "Javobni tahrirlash..." : "Foydalanuvchiga javob yozish..."}
+                                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSendAdminReply(reply.id)}
+                                disabled={!replyText.trim()}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1 shadow-sm shrink-0 active:scale-95 transition-all"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>{hasReplied ? "Yangilash" : "Javob qaytarish"}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           )}
 
