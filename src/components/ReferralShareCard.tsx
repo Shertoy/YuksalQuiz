@@ -164,7 +164,7 @@ export const ReferralShareCard: React.FC = () => {
       {/* Informative footer */}
       <div className="text-[10px] text-indigo-200 text-center flex items-center justify-center gap-1 opacity-90">
         <Sparkles className="w-3 h-3 text-amber-300" />
-        <span>Telegram orqali do'stingiz ilovaga kirganda 35 000 so'm vaucher oladi!</span>
+        <span>Telegram orqali do'stingiz ilovaga kirganda 20 000 so'm vaucher oladi!</span>
       </div>
     </div>
   );

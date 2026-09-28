@@ -235,14 +235,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-extrabold text-white">
-                      35 000 so'm vaucheringiz faol!
+                      20 000 so'm vaucheringiz faol!
                     </h3>
                     <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
                       Faol
                     </span>
                   </div>
                   <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
-                    6 oylik obunani ochish uchun yana 15 000 so'm to'lang yoki 10 ta do'stingizni taklif qiling.
+                    Istalgan obuna rejasini tanlang (3 oy, 6 oy yoki 1 yil) va 20 000 so'm vaucher chegirmasidan foydalaning.
                   </p>
                 </div>
               </div>

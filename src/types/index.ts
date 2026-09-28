@@ -82,7 +82,7 @@ export interface UserProfile {
   isRegistered: boolean;
   acceptedOferta: boolean;
   walletBalance: number; // Internal UZS balance (author credits, referral bonuses)
-  voucherBalance: number; // 35 000 UZS starting voucher
+  voucherBalance: number; // 20 000 UZS starting voucher for any subscription
   authorEarnings: number; // Total UZS earned from created tests (+100 UZS per completion)
   referralCount: number;
   subscriptionPlan?: 'none' | '3_months' | '6_months' | '1_year';
@@ -314,9 +314,11 @@ export interface PaymentMethod {
 
 export interface Promocode {
   code: string;
-  plan: SubscriptionPlanType;
+  amount: number; // Summa (so'm) - balansga qo'shiladigan mablag'
+  plan?: SubscriptionPlanType; // Ixtiyoriy tarif tavsiyasi
   isUsed: boolean;
   usedBy?: string;
   createdAt: string;
 }
+
 

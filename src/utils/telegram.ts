@@ -106,7 +106,7 @@ export function initTelegramApp(): void {
 export const BOT_USERNAME = 'YuksalQuizBot';
 
 export const REFERRAL_SHARE_TEXT =
-  "🎯 HEMIS va fan testlariga tayyorlanish uchun zo'r ilova topdim! Ro'yxatdan o't va 35 000 so'mlik vaucherga ega bo'l 👇";
+  "🎯 HEMIS va fan testlariga tayyorlanish uchun zo'r ilova topdim! Ro'yxatdan o't va 20 000 so'mlik vaucherga ega bo'l 👇";
 
 export function getTelegramUserId(): string {
   const tg = getTelegramWebApp();

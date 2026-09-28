@@ -69,9 +69,9 @@ interface QuizState {
   updatePaymentMethod: (id: string, updates: Partial<PaymentMethod>) => void;
   deletePaymentMethod: (id: string) => void;
   togglePaymentMethod: (id: string) => void;
-  createPromocode: (code: string, plan: SubscriptionPlanType) => void;
+  createPromocode: (code: string, amount: number, plan?: SubscriptionPlanType) => void;
   deletePromocode: (code: string) => void;
-  activatePromocode: (code: string) => { success: boolean; message: string; plan?: string };
+  activatePromocode: (code: string) => { success: boolean; message: string; amount?: number; plan?: string };
   registerUser: (
     data: Omit<
       UserProfile,
@@ -114,49 +114,52 @@ export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
 export const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: 'pm-1',
-    name: 'Payme',
-    details: '8600 5505 1234 5678 (Yuksal Quiz)',
-    instructions: "Payme ilovasi orqali to'lov qiling va to'lov kvitansiyasini Telegram botga yuboring",
+    name: 'Humo / Uzcard (Karta)',
+    details: '9860 0803 8232 0093 (Adminka Alijonova X...)',
+    instructions: "Ushbu kartaga hamyonni to'ldirish summasini o'tkazing va Telegram botga 'Men to'lov qildim' deb chek rasmini yuboring",
     isActive: true,
   },
   {
     id: 'pm-2',
-    name: 'Click Up',
-    details: '8600 5505 1234 5678 (Yuksal Quiz)',
-    instructions: "Click orqali to'lovni bajaring va chek rasmini botga jo'nating",
+    name: 'Payme',
+    details: '9860 0803 8232 0093 (Adminka Alijonova X...)',
+    instructions: "Payme ilovasi orqali to'lov qiling va to'lov kvitansiyasini Telegram botga yuboring",
     isActive: true,
   },
   {
     id: 'pm-3',
-    name: 'Uzum Bank',
-    details: '8600 5505 1234 5678 (Yuksal Quiz)',
-    instructions: "Uzum ilovasida 0% komissiya bilan to'lang",
+    name: 'Click Up',
+    details: '9860 0803 8232 0093 (Adminka Alijonova X...)',
+    instructions: "Click orqali to'lovni bajaring va chek rasmini botga jo'nating",
     isActive: true,
   },
   {
     id: 'pm-4',
-    name: 'Humo / Uzcard',
-    details: '9860 0301 8765 4321 (Alisher A.)',
-    instructions: "Bank mobil ilovasi orqali karta raqamiga o'tkazing",
+    name: 'Uzum Bank',
+    details: '9860 0803 8232 0093 (Adminka Alijonova X...)',
+    instructions: "Uzum ilovasida 0% komissiya bilan to'lang va chekni yuboring",
     isActive: true,
   },
 ];
 
 export const DEFAULT_PROMOCODES: Promocode[] = [
   {
-    code: 'YUK-START-3M',
+    code: 'YUK-15K-START',
+    amount: 15000,
     plan: '3_months',
     isUsed: false,
     createdAt: '2026-09-28',
   },
   {
-    code: 'YUK-PREMIUM-6M',
+    code: 'YUK-30K-PREMIUM',
+    amount: 30000,
     plan: '6_months',
     isUsed: false,
     createdAt: '2026-09-28',
   },
   {
-    code: 'YUK-ANNUAL-1Y',
+    code: 'YUK-70K-ANNUAL',
+    amount: 70000,
     plan: '1_year',
     isUsed: false,
     createdAt: '2026-09-28',
@@ -181,7 +184,7 @@ const DEFAULT_PROFILE: UserProfile = {
   isRegistered: false,
   acceptedOferta: false,
   walletBalance: 0,
-  voucherBalance: 35000, // 35 000 UZS starting voucher only!
+  voucherBalance: 20000, // 20 000 UZS starting voucher!
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
@@ -218,7 +221,7 @@ export const useQuizStore = create<QuizState>()(
         {
           id: 'ann-1',
           title: 'YuksalQuiz v1.0 ga xush kelibsiz! 🚀',
-          message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
+          message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 20 000 so\'mlik vaucherdan foydalaning!',
           date: '2026-09-27',
           time: '10:00',
           tag: 'yangilik',
@@ -417,13 +420,14 @@ export const useQuizStore = create<QuizState>()(
         triggerHaptic('selection');
       },
 
-      createPromocode: (code: string, plan: SubscriptionPlanType) => {
+      createPromocode: (code: string, amount: number, plan?: SubscriptionPlanType) => {
         const cleanCode = code.trim().toUpperCase();
         if (!cleanCode) return;
         const current = get().promocodes || [];
         if (current.some((p) => p.code.toUpperCase() === cleanCode)) return;
         const newPromo: Promocode = {
           code: cleanCode,
+          amount: Math.max(1000, Number(amount) || 15000),
           plan,
           isUsed: false,
           createdAt: new Date().toISOString().split('T')[0],
@@ -453,24 +457,13 @@ export const useQuizStore = create<QuizState>()(
           return { success: false, message: "Ushbu promokod allaqachon ishlatilgan!" };
         }
 
-        let expiryDate = new Date();
-        if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
-          expiryDate = new Date(profile.subscriptionExpiry);
-        }
-        if (promo.plan === '3_months') {
-          expiryDate.setMonth(expiryDate.getMonth() + 3);
-        } else if (promo.plan === '6_months') {
-          expiryDate.setMonth(expiryDate.getMonth() + 6);
-        } else {
-          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        }
-
-        const planLabel = promo.plan === '3_months' ? '3 oylik' : promo.plan === '6_months' ? '6 oylik' : '1 yillik';
+        // Promocode credits funds directly to the user's wallet
+        const amountToCredit = promo.amount || (promo.plan ? ((subscriptionPrices && subscriptionPrices[promo.plan]) || 30000) : 30000);
+        const newWalletBalance = (profile.walletBalance || 0) + amountToCredit;
 
         const updatedProfile: UserProfile = {
           ...profile,
-          subscriptionPlan: promo.plan,
-          subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+          walletBalance: newWalletBalance,
         };
 
         updatedProfile.checksum = generateIntegritySignature({
@@ -499,15 +492,16 @@ export const useQuizStore = create<QuizState>()(
 
         get().addTransaction({
           type: 'deposit',
-          title: `Promokod faollashtirildi (${code}) - ${planLabel} Premium`,
-          amount: (subscriptionPrices && subscriptionPrices[promo.plan]) || 50000,
+          title: `Promokod orqali hisob to'ldirildi (${code})`,
+          amount: amountToCredit,
           unit: "so'm",
           isPositive: true,
         });
 
         return {
           success: true,
-          message: `Tabriklaymiz! ${planLabel} Premium obunasi promokod orqali muvaffaqiyatli faollashtirildi!`,
+          message: `Promokod muvaffaqiyatli faollashtirildi! Balansingizga +${amountToCredit.toLocaleString('uz-UZ')} so'm qo'shildi. Endi o'zingiz istagan obuna tarifini faollashtirishingiz mumkin!`,
+          amount: amountToCredit,
           plan: promo.plan,
         };
       },
@@ -554,7 +548,7 @@ export const useQuizStore = create<QuizState>()(
           coins: current.coins || 0,
           streak: current.streak || 1,
           lastLoginDate: today,
-          voucherBalance: 35000, // 35 000 UZS starting voucher guaranteed
+          voucherBalance: 20000, // 20 000 UZS starting voucher guaranteed
         };
 
         newProfile.checksum = generateIntegritySignature({
@@ -575,7 +569,7 @@ export const useQuizStore = create<QuizState>()(
         get().addTransaction({
           type: 'voucher',
           title: "Boshlang'ich talaba vaucheri",
-          amount: 35000,
+          amount: 20000,
           unit: "so'm",
           isPositive: true,
         });
@@ -866,8 +860,8 @@ export const useQuizStore = create<QuizState>()(
         const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
         const originalPrice = prices[plan] || (plan === '3_months' ? 35000 : plan === '6_months' ? 50000 : 90000);
 
-        // 35 000 voucher discount applies to 6-month subscription
-        const voucherUsed = plan === '6_months' ? Math.min(profile.voucherBalance || 0, 35000) : 0;
+        // 20 000 voucher discount applies to ANY subscription plan (3_months, 6_months, or 1_year)
+        const voucherUsed = Math.min(profile.voucherBalance || 0, 20000, originalPrice);
         const remainingToPay = Math.max(0, originalPrice - voucherUsed);
         const currentBalance = profile.walletBalance || 0;
 
@@ -934,7 +928,7 @@ export const useQuizStore = create<QuizState>()(
         if (voucherUsed > 0) {
           get().addTransaction({
             type: 'voucher',
-            title: "35 000 so'm vaucher chegirmasi qo'llandi",
+            title: "20 000 so'm vaucher chegirmasi qo'llandi",
             amount: voucherUsed,
             unit: "so'm",
             isPositive: false,
@@ -944,7 +938,7 @@ export const useQuizStore = create<QuizState>()(
         return {
           success: true,
           message: voucherUsed > 0
-            ? `35 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
+            ? `20 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
             : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
       },
@@ -1046,7 +1040,7 @@ export const useQuizStore = create<QuizState>()(
             {
               id: 'ann-1',
               title: 'YuksalQuiz v1.0 ga xush kelibsiz! 🚀',
-              message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
+              message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 20 000 so\'mlik vaucherdan foydalaning!',
               date: '2026-09-27',
               tag: 'yangilik',
               isRead: false,
@@ -1057,6 +1051,7 @@ export const useQuizStore = create<QuizState>()(
           state.announcements = state.announcements.map((a: any) => ({
             ...a,
             title: a.title ? a.title.replace('v2.0', 'v1.0') : a.title,
+            message: a.message ? a.message.replace('35 000', '20 000') : a.message,
           }));
         }
 
@@ -1067,7 +1062,7 @@ export const useQuizStore = create<QuizState>()(
               id: 'tx-init-voucher',
               type: 'voucher',
               title: "Boshlang'ich talaba vaucheri",
-              amount: 35000,
+              amount: 20000,
               unit: "so'm",
               isPositive: true,
               date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
@@ -1116,6 +1111,13 @@ export const useQuizStore = create<QuizState>()(
             state.profile.subscriptionPlan = 'none';
             state.profile.subscriptionExpiry = undefined;
           }
+
+          // Migrate voucher balance to 20 000
+          if (state.profile.voucherBalance === 35000 || state.profile.voucherBalance === undefined) {
+            state.profile.voucherBalance = 20000;
+          } else {
+            state.profile.voucherBalance = Math.min(Math.max(state.profile.voucherBalance ?? 0, 0), 20000);
+          }
         }
 
         if (state) {
@@ -1131,7 +1133,9 @@ export const useQuizStore = create<QuizState>()(
           if (!state.subscriptionPrices) {
             state.subscriptionPrices = DEFAULT_SUBSCRIPTION_PRICES;
           }
-          if (!state.paymentMethods || state.paymentMethods.length === 0) {
+          // Ensure payment methods have the Adminka Alijonova X... card
+          const hasCurrentCard = (state.paymentMethods || []).some((pm: any) => pm.details?.includes('9860 0803 8232 0093'));
+          if (!state.paymentMethods || state.paymentMethods.length === 0 || !hasCurrentCard) {
             state.paymentMethods = DEFAULT_PAYMENT_METHODS;
           }
           if (!state.promocodes) {
@@ -1159,7 +1163,7 @@ export const useQuizStore = create<QuizState>()(
             state.tamperDetected = true;
             state.profile.coins = Math.min(Math.max(p.coins, 0), 10);
             state.profile.walletBalance = Math.min(Math.max(p.walletBalance || 0, 0), 50000);
-            state.profile.voucherBalance = Math.min(Math.max(p.voucherBalance ?? 0, 0), 35000);
+            state.profile.voucherBalance = Math.min(Math.max(p.voucherBalance ?? 0, 0), 20000);
             state.profile.checksum = generateIntegritySignature({
               userId: p.id,
               coins: state.profile.coins,

@@ -103,6 +103,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   // Promocode state
   const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoAmountInput, setPromoAmountInput] = useState<number>(30000);
   const [promoPlanSelect, setPromoPlanSelect] = useState<SubscriptionPlanType>('6_months');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -149,9 +150,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   };
 
   const handleGenerateRandomPromo = () => {
-    const planPrefix = promoPlanSelect === '3_months' ? '3M' : promoPlanSelect === '6_months' ? '6M' : '1Y';
+    const kAmount = Math.round((promoAmountInput || 30000) / 1000);
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const code = `YUK-${planPrefix}-${randomNum}`;
+    const code = `YUK-${kAmount}K-${randomNum}`;
     setPromoCodeInput(code);
     triggerHaptic('selection');
   };
@@ -160,10 +161,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     e.preventDefault();
     const code = promoCodeInput.trim().toUpperCase();
     if (!code) return;
-    createPromocode(code, promoPlanSelect);
+    const amount = Number(promoAmountInput) || 30000;
+    createPromocode(code, amount, promoPlanSelect);
     setPromoCodeInput('');
     triggerHaptic('success');
-    showNotification(`"${code}" promokodi muvaffaqiyatli yaratildi!`);
+    showNotification(`"${code}" (+${amount.toLocaleString('uz-UZ')} so'm) promokodi muvaffaqiyatli yaratildi!`);
   };
 
   const handleCopyPromo = (code: string) => {
@@ -1145,7 +1147,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                     />
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      35 000 vaucherli narxi: {Math.max(0, priceForm6M - 35000).toLocaleString('uz-UZ')} so'm
+                      20 000 vaucherli narxi: {Math.max(0, priceForm6M - 20000).toLocaleString('uz-UZ')} so'm
                     </p>
                   </div>
 
@@ -1348,32 +1350,63 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Obuna turi:</label>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                      Qo'shiladigan Summa (so'm):
+                    </label>
+                    <input
+                      type="number"
+                      step="1000"
+                      min="1000"
+                      value={promoAmountInput}
+                      onChange={(e) => setPromoAmountInput(Number(e.target.value))}
+                      placeholder="30000"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                    />
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {[15000, 30000, 50000, 70000, 90000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setPromoAmountInput(amt)}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border transition-all ${
+                            promoAmountInput === amt
+                              ? 'bg-purple-600 text-white border-purple-600'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          {amt / 1000}k
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Mo'ljallangan Tarif (Ixtiyoriy):</label>
                     <select
                       value={promoPlanSelect}
                       onChange={(e) => setPromoPlanSelect(e.target.value as SubscriptionPlanType)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="3_months">3 Oylik Premium</option>
-                      <option value="6_months">6 Oylik Premium</option>
-                      <option value="1_year">1 Yillik Premium</option>
+                      <option value="3_months">3 Oylik (15 000 so'm vaucher bilan)</option>
+                      <option value="6_months">6 Oylik (30 000 so'm vaucher bilan)</option>
+                      <option value="1_year">1 Yillik (70 000 so'm vaucher bilan)</option>
                     </select>
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Promokod kodi:</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={promoCodeInput}
                         onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                        placeholder="Masalan: YUK-6M-7193"
+                        placeholder="Masalan: YUK-30K-7193"
                         className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         type="button"
                         onClick={handleGenerateRandomPromo}
-                        className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold shrink-0 transition-colors"
+                        className="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold shrink-0 transition-colors"
                       >
                         Generatsiya
                       </button>
@@ -1388,7 +1421,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-purple-600/20 active:scale-95 transition-all flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Promokodni Saqlash</span>
+                    <span>Promokodni Saqlash (+{(promoAmountInput || 30000).toLocaleString('uz-UZ')} so'm)</span>
                   </button>
                 </div>
               </form>
@@ -1406,6 +1439,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {promocodes.map((promo) => {
+                      const promoAmount = promo.amount || (promo.plan === '3_months' ? 15000 : promo.plan === '1_year' ? 70000 : 30000);
                       const is3M = promo.plan === '3_months';
                       const is6M = promo.plan === '6_months';
                       const planBadge = is3M ? '3 oylik' : is6M ? '6 oylik' : '1 yillik';
@@ -1424,9 +1458,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               <span className="font-mono font-black text-sm text-slate-900 dark:text-white tracking-wider select-all">
                                 {promo.code}
                               </span>
-                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                                {planBadge}
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                +{promoAmount.toLocaleString('uz-UZ')} so'm
                               </span>
+                              {promo.plan && (
+                                <span className="text-[9px] font-bold px-1 py-0.2 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                                  {planBadge}
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">

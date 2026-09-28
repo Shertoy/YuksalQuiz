@@ -16,8 +16,8 @@ export const OFERTA_SECTIONS: OfertaSection[] = [
   {
     title: '2. ICHKI HAMYON, VAUCHER VA BONUSLAR QOIDASI',
     items: [
-      '2.1. Ro‘yxatdan o‘tish paytida taqdim etiladigan 35 000 so‘mlik boshlang‘ich vaucher, referal tizim orqali yig‘iladigan bonuslar (har bir taklif uchun 1 500 so‘m) hamda test tuzuvchilarga hisoblanadigan rag‘batlantirish mablag‘lari (har bir yechim uchun 100 so‘m) virtual hisob-kitob birligi hisoblanadi.',
-      '2.2. VIRTUAL BALANSNI YECHIB OLISH CHEKLOVI: Ilova ichidagi barcha bonuslar, vaucherlar va referal to‘lovlar faqat va faqat "YuksalQuiz" ilovasi ichidagi obunalar (6 oylik, 1 yillik) yoki qo‘shimcha imkoniyatlarni faollashtirish uchun mo‘ljallangan.',
+      '2.1. Ro‘yxatdan o‘tish paytida taqdim etiladigan 20 000 so‘mlik boshlang‘ich vaucher, referal tizim orqali yig‘iladigan bonuslar (har bir taklif uchun 1 500 so‘m) hamda test tuzuvchilarga hisoblanadigan rag‘batlantirish mablag‘lari (har bir yechim uchun 100 so‘m) virtual hisob-kitob birligi hisoblanadi.',
+      '2.2. VIRTUAL BALANSNI YECHIB OLISH CHEKLOVI: Ilova ichidagi barcha bonuslar, vaucherlar va referal to‘lovlar faqat va faqat "YuksalQuiz" ilovasi ichidagi obunalar (3 oylik, 6 oylik, 1 yillik) yoki qo‘shimcha imkoniyatlarni faollashtirish uchun mo‘ljallangan.',
       '2.3. Ichki hisobdagi mablag‘lar hech qanday holatda naqd pulga, bank kartalariga (Uzcard, Humo, Visa va b.) yoki elektron to‘lov tizimlariga yechib berilmaydi va qaytarib to‘lanmaydi.',
     ],
   },
