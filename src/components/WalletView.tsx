@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -12,7 +12,6 @@ import {
   CreditCard,
   ShieldAlert,
   X,
-  PlusCircle,
   CheckCircle2,
   AlertCircle,
   Sparkles,
@@ -20,6 +19,8 @@ import {
   KeyRound,
   Copy,
   Send,
+  HelpCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
@@ -29,10 +30,8 @@ export const WalletView: React.FC = () => {
   const {
     profile,
     applySubscription,
-    topUpWallet,
     transactions,
     subscriptionPrices,
-    paymentMethods,
     activatePromocode,
   } = useQuizStore();
   const { t } = useTranslation();
@@ -44,13 +43,16 @@ export const WalletView: React.FC = () => {
   // Promocode state
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
-  const [copiedMethodId, setCopiedMethodId] = useState<string | null>(null);
+  const [copiedCard, setCopiedCard] = useState(false);
+  const promoInputRef = useRef<HTMLInputElement>(null);
 
-  // Top Up Modal State
-  const [showTopUpModal, setShowTopUpModal] = useState(false);
-  const [selectedTopUpAmount, setSelectedTopUpAmount] = useState<number>(30000);
-  const [customTopUpStr, setCustomTopUpStr] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'Payme' | 'Click' | 'Uzum Bank'>('Payme');
+  // Instructional Modal State (NO fake payment buttons!)
+  const [instructionModal, setInstructionModal] = useState<{
+    isOpen: boolean;
+    plan: SubscriptionPlanType;
+    planTitle: string;
+    amount: number;
+  } | null>(null);
 
   const currentBalance = profile.walletBalance || 0;
   const currentVoucher = profile.voucherBalance || 0;
@@ -79,35 +81,29 @@ export const WalletView: React.FC = () => {
   const canAfford1Y = currentBalance >= cost1Year;
   const deficit1Y = Math.max(0, cost1Year - currentBalance);
 
-  const handleOpenTopUp = (presetAmount?: number) => {
+  const handleOpenInstruction = (plan: SubscriptionPlanType, deficit: number) => {
     triggerHaptic('light');
-    if (presetAmount && presetAmount > 0) {
-      setSelectedTopUpAmount(presetAmount);
-      setCustomTopUpStr(presetAmount.toString());
-    } else {
-      setSelectedTopUpAmount(30000);
-      setCustomTopUpStr('');
-    }
-    setShowTopUpModal(true);
+    const planTitle =
+      plan === '3_months' ? '3 Oylik Premium' : plan === '6_months' ? '6 Oylik Premium' : '1 Yillik Premium';
+    setInstructionModal({
+      isOpen: true,
+      plan,
+      planTitle,
+      amount: deficit,
+    });
   };
 
-  const handleConfirmTopUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalAmount = customTopUpStr ? parseInt(customTopUpStr, 10) || 0 : selectedTopUpAmount;
+  const handleCloseInstruction = () => {
+    triggerHaptic('light');
+    setInstructionModal(null);
+  };
 
-    if (finalAmount <= 0) {
-      triggerHaptic('error');
-      return;
-    }
-
-    topUpWallet(finalAmount, paymentMethod);
-    setShowTopUpModal(false);
-
-    setFeedback({
-      type: 'success',
-      message: `Hisobingizga +${finalAmount.toLocaleString('uz-UZ')} so'm muvaffaqiyatli qo'shildi! (${paymentMethod})`,
-    });
-    setTimeout(() => setFeedback(null), 5000);
+  const handleGoToPromocode = () => {
+    setInstructionModal(null);
+    setTimeout(() => {
+      promoInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      promoInputRef.current?.focus();
+    }, 150);
   };
 
   const handleSubscribe = (plan: SubscriptionPlanType) => {
@@ -150,46 +146,36 @@ export const WalletView: React.FC = () => {
     setTimeout(() => setFeedback(null), 6000);
   };
 
-  const handleCopyCard = (id: string, text: string) => {
+  const handleCopyCardNumber = () => {
     triggerHaptic('light');
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText('9860 0803 8232 0093');
     }
-    setCopiedMethodId(id);
-    setTimeout(() => setCopiedMethodId(null), 2500);
+    setCopiedCard(true);
+    setTimeout(() => setCopiedCard(false), 2500);
   };
-
-  // Find primary payment card
-  const primaryMethod = (paymentMethods || []).find((pm) => pm.isActive && pm.details.includes('9860 0803 8232 0093')) ||
-    (paymentMethods || [])[0] || {
-      id: 'pm-main',
-      name: 'Humo / Uzcard',
-      details: '9860 0803 8232 0093 (Adminka Alijonova X...)',
-      instructions: "Ushbu kartaga hamyonni to'ldirish summasini o'tkazing va Telegram botga 'Men to'lov qildim' deb chek rasmini yuboring",
-      isActive: true,
-    };
 
   return (
     <div className="space-y-4 pb-4 animate-in fade-in">
-      {/* Title */}
-      <div className="flex items-center justify-between">
+      {/* Mobile-Adapted Header */}
+      <div className="flex items-center justify-between px-1">
         <div>
           <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-indigo-500" />
+            <Wallet className="w-5 h-5 text-indigo-500 shrink-0" />
             <span>{t.walletTitle}</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t.walletSubtitle}
           </p>
         </div>
 
-        {/* History Trigger Button */}
+        {/* History Trigger Button with Mobile Min Height */}
         <button
           onClick={() => {
             triggerHaptic('light');
             setShowHistoryModal(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 active:scale-95 transition-all shrink-0"
         >
           <History className="w-3.5 h-3.5 text-indigo-500" />
           <span>Tarix</span>
@@ -212,15 +198,6 @@ export const WalletView: React.FC = () => {
           )}
           <div className="flex-1 leading-relaxed">
             {feedback.message}
-            {feedback.type === 'error' && (
-              <button
-                type="button"
-                onClick={() => handleOpenTopUp()}
-                className="mt-2 block px-3 py-1 bg-white text-rose-600 rounded-lg font-black text-[11px] shadow-sm hover:bg-rose-50 transition-colors"
-              >
-                + Balansni to'ldirish
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -228,69 +205,57 @@ export const WalletView: React.FC = () => {
       {/* Combined Balance & Voucher Card */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 text-white rounded-3xl p-5 shadow-xl shadow-indigo-600/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
-        <div className="relative z-10 space-y-4">
+        <div className="relative z-10 space-y-3.5">
           {/* Main Balance Row */}
           <div>
             <div className="flex items-center justify-between text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">
               <span>{t.internalBalance}</span>
               <Wallet className="w-4 h-4 text-indigo-300" />
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-2xl font-black tracking-tight text-white">
-                {currentBalance.toLocaleString('uz-UZ')} so'm
-              </div>
-
-              {/* Quick Top-Up Action */}
-              <button
-                type="button"
-                onClick={() => handleOpenTopUp()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs backdrop-blur-md transition-all active:scale-95 shadow-sm border border-white/20"
-              >
-                <PlusCircle className="w-3.5 h-3.5 text-emerald-300" />
-                <span>{t.topUpBtn}</span>
-              </button>
+            <div className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              {currentBalance.toLocaleString('uz-UZ')} so'm
             </div>
           </div>
 
           {/* Starting Voucher Badge */}
           {hasVoucher ? (
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Ticket className="w-5 h-5 text-amber-300 shrink-0" />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-extrabold text-white">
-                      {currentVoucher.toLocaleString('uz-UZ')} so'm Boshlang'ich Vaucher
-                    </span>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
-                      Faol
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-indigo-200 mt-0.5">
-                    Istalgan obuna tarifi (3 oy, 6 oy yoki 1 yil) uchun chegirma sifatida qo'llaniladi!
-                  </p>
+            <div className="p-3 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 flex items-start sm:items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 font-black shadow-sm">
+                <Ticket className="w-4 h-4 text-slate-950" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-white">
+                    {currentVoucher.toLocaleString('uz-UZ')} so'm Boshlang'ich Vaucher
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
+                    Faol
+                  </span>
                 </div>
+                <p className="text-[11px] text-indigo-100 mt-0.5 leading-snug">
+                  Istalgan obuna tarifi (3 oy, 6 oy yoki 1 yil) uchun chegirma sifatida qo'llanadi!
+                </p>
               </div>
             </div>
           ) : (
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-indigo-200">
-              Boshlang'ich vaucher ishlatilgan. Keyingi to'lovlar uchun balansingizni to'ldiring.
+              Boshlang'ich vaucher to'liq ishlatilgan.
             </div>
           )}
 
-          {/* Additional Info */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/15 text-[11px] text-indigo-200">
+          {/* Extra Info Divider */}
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/15 text-[11px] text-indigo-200">
             <span>Mualliflik daromadi: +{profile.authorEarnings.toLocaleString('uz-UZ')} so'm</span>
             <span>Referal: +{(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm</span>
           </div>
         </div>
       </div>
 
-      {/* Active Subscription Status Banner */}
+      {/* Active Subscription Status Banner (if active) */}
       {profile.subscriptionPlan && profile.subscriptionPlan !== 'none' && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2.5">
-            <Crown className="w-5 h-5 text-amber-500 fill-amber-400" />
+            <Crown className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0" />
             <div>
               <h4 className="font-extrabold text-xs text-emerald-900 dark:text-emerald-100">
                 Premium Obuna Faol ({profile.subscriptionPlan === '3_months' ? '3 oylik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '1 yillik'})
@@ -300,30 +265,34 @@ export const WalletView: React.FC = () => {
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500 text-white shrink-0">
             Faol
           </span>
         </div>
       )}
 
-      {/* Subscription Plans: 3 Months, 6 Months, 1 Year */}
+      {/* SECTION 1: Subscription Plans (Mobile Adapted) */}
       <div className="space-y-3">
+        {/* Section Header with Accent Bar */}
         <div className="flex items-center justify-between px-1">
-          <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-            Obuna Rejalari (3 xil muddat)
-          </h3>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-4 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0" />
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Obuna Rejalari (3 xil muddat)
+            </h3>
+          </div>
           {hasVoucher && (
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-              Har bir tarifga -20 000 so'm vaucher chegirmasi
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
+              -20 000 vaucher chegirmasi
             </span>
           )}
         </div>
 
         {/* 1. 3-Month Plan */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs relative overflow-hidden hover:border-sky-400 transition-all">
-          <div className="flex items-start justify-between mb-2">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800/80 rounded-3xl p-4 shadow-xs relative overflow-hidden transition-all">
+          <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400">
                   3 Oylik Reja
                 </span>
@@ -341,7 +310,7 @@ export const WalletView: React.FC = () => {
               </p>
             </div>
 
-            <div className="text-right">
+            <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
                   {price3M.toLocaleString('uz-UZ')} so'm
@@ -353,53 +322,60 @@ export const WalletView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-              {hasVoucher ? (
-                <>
-                  <Check className="w-3.5 h-3.5 inline text-emerald-500" />
-                  <span>20 000 vaucher chegirmasi bilan</span>
-                </>
-              ) : (
-                <span>To'liq 90 kunlik kirish</span>
-              )}
-            </span>
+          {/* Plan Divider */}
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 mt-2.5">
+            <div className="flex items-center justify-between text-[11px] mb-2.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                {hasVoucher ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 inline text-emerald-500" />
+                    <span>20 000 vaucher chegirmasi bilan</span>
+                  </>
+                ) : (
+                  <span>90 kunlik to'liq kirish</span>
+                )}
+              </span>
+              <span className="text-slate-400 font-medium text-[10px]">
+                Oraliq nazorat
+              </span>
+            </div>
 
+            {/* Mobile Full-Width Action Button */}
             {canAfford3M ? (
               <button
                 type="button"
                 onClick={() => handleSubscribe('3_months')}
-                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                className="w-full py-3.5 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-black text-xs sm:text-sm shadow-md shadow-sky-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>
                   {profile.subscriptionPlan === '3_months' ? 'Muddati uzaytirish' : 'Faollashtirish'}
                 </span>
-                <span className="text-[10px] opacity-90">({cost3Months.toLocaleString('uz-UZ')} so'm)</span>
+                <span className="text-[11px] opacity-80">({cost3Months.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => handleOpenTopUp(deficit3M)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+                onClick={() => handleOpenInstruction('3_months', deficit3M)}
+                className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>To'ldirish (+{deficit3M.toLocaleString('uz-UZ')} so'm)</span>
+                <CreditCard className="w-4 h-4 text-sky-400 dark:text-sky-600 shrink-0" />
+                <span>To'lov yo'riqnomasi ({deficit3M.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             )}
-          </div>
 
-          {!canAfford3M && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
-              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit3M.toLocaleString('uz-UZ')} so'm kerak.
-            </p>
-          )}
+            {!canAfford3M && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold text-center">
+                Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obunani ochish uchun {deficit3M.toLocaleString('uz-UZ')} so'm kerak.
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* 2. 6-Month Plan */}
-        <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500/60 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-500 transition-all">
-          <div className="flex items-start justify-between mb-2">
+        {/* 2. 6-Month Plan (Recommended) */}
+        <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500/70 rounded-3xl p-4 shadow-sm relative overflow-hidden transition-all">
+          <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
                   Tavsiya etiladi (6 oy)
                 </span>
@@ -417,7 +393,7 @@ export const WalletView: React.FC = () => {
               </p>
             </div>
 
-            <div className="text-right">
+            <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
                   {price6M.toLocaleString('uz-UZ')} so'm
@@ -429,53 +405,60 @@ export const WalletView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-              {hasVoucher ? (
-                <>
-                  <Check className="w-3.5 h-3.5 inline text-emerald-500" />
-                  <span>20 000 vaucher chegirmasi bilan</span>
-                </>
-              ) : (
-                <span>180 kunlik to'liq kirish</span>
-              )}
-            </span>
+          {/* Plan Divider */}
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 mt-2.5">
+            <div className="flex items-center justify-between text-[11px] mb-2.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                {hasVoucher ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 inline text-emerald-500" />
+                    <span>20 000 vaucher chegirmasi bilan</span>
+                  </>
+                ) : (
+                  <span>180 kunlik to'liq kirish</span>
+                )}
+              </span>
+              <span className="text-indigo-500 font-bold text-[10px]">
+                Eng ommabop
+              </span>
+            </div>
 
+            {/* Mobile Full-Width Action Button */}
             {canAfford6M ? (
               <button
                 type="button"
                 onClick={() => handleSubscribe('6_months')}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                className="w-full py-3.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>
                   {profile.subscriptionPlan === '6_months' ? 'Muddati uzaytirish' : 'Faollashtirish'}
                 </span>
-                <span className="text-[10px] opacity-90">({cost6Months.toLocaleString('uz-UZ')} so'm)</span>
+                <span className="text-[11px] opacity-80">({cost6Months.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => handleOpenTopUp(deficit6M)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+                onClick={() => handleOpenInstruction('6_months', deficit6M)}
+                className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>To'ldirish (+{deficit6M.toLocaleString('uz-UZ')} so'm)</span>
+                <CreditCard className="w-4 h-4 text-indigo-400 dark:text-indigo-600 shrink-0" />
+                <span>To'lov yo'riqnomasi ({deficit6M.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             )}
-          </div>
 
-          {!canAfford6M && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
-              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit6M.toLocaleString('uz-UZ')} so'm kerak.
-            </p>
-          )}
+            {!canAfford6M && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold text-center">
+                Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obunani ochish uchun {deficit6M.toLocaleString('uz-UZ')} so'm kerak.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* 3. 1-Year Plan */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs relative overflow-hidden hover:border-emerald-400 transition-all">
-          <div className="flex items-start justify-between mb-2">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800/80 rounded-3xl p-4 shadow-xs relative overflow-hidden transition-all">
+          <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                   To'liq 1 Yil (365 kun)
                 </span>
@@ -493,7 +476,7 @@ export const WalletView: React.FC = () => {
               </p>
             </div>
 
-            <div className="text-right">
+            <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
                   {price1Y.toLocaleString('uz-UZ')} so'm
@@ -505,86 +488,107 @@ export const WalletView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-              {hasVoucher ? (
-                <>
-                  <Check className="w-3.5 h-3.5 inline text-emerald-500" />
-                  <span>20 000 vaucher chegirmasi bilan</span>
-                </>
-              ) : (
-                <span>365 kunlik to'liq kirish</span>
-              )}
-            </span>
+          {/* Plan Divider */}
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 mt-2.5">
+            <div className="flex items-center justify-between text-[11px] mb-2.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                {hasVoucher ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 inline text-emerald-500" />
+                    <span>20 000 vaucher chegirmasi bilan</span>
+                  </>
+                ) : (
+                  <span>365 kunlik cheksiz kirish</span>
+                )}
+              </span>
+              <span className="text-emerald-500 font-bold text-[10px]">
+                To'liq yil
+              </span>
+            </div>
 
+            {/* Mobile Full-Width Action Button */}
             {canAfford1Y ? (
               <button
                 type="button"
                 onClick={() => handleSubscribe('1_year')}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>
                   {profile.subscriptionPlan === '1_year' ? 'Muddati uzaytirish' : 'Faollashtirish'}
                 </span>
-                <span className="text-[10px] opacity-90">({cost1Year.toLocaleString('uz-UZ')} so'm)</span>
+                <span className="text-[11px] opacity-80">({cost1Year.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => handleOpenTopUp(deficit1Y)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+                onClick={() => handleOpenInstruction('1_year', deficit1Y)}
+                className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>To'ldirish (+{deficit1Y.toLocaleString('uz-UZ')} so'm)</span>
+                <CreditCard className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+                <span>To'lov yo'riqnomasi ({deficit1Y.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             )}
-          </div>
 
-          {!canAfford1Y && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
-              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit1Y.toLocaleString('uz-UZ')} so'm kerak.
-            </p>
-          )}
+            {!canAfford1Y && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold text-center">
+                Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obunani ochish uchun {deficit1Y.toLocaleString('uz-UZ')} so'm kerak.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Promocode Activation Section (Adds Balance to Wallet) */}
-      <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-indigo-500/5 border border-indigo-500/30 rounded-3xl p-4 shadow-xs space-y-2.5">
-        <div className="flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+      {/* SECTION 2: Promocode Activation (Adds Balance Directly) */}
+      <div className="space-y-2 pt-1">
+        {/* Section Header with Accent Bar */}
+        <div className="flex items-center gap-2 px-1">
+          <span className="w-1.5 h-4 rounded-full bg-purple-600 dark:bg-purple-400 shrink-0" />
+          <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
             Promokod orqali balansni to'ldirish
           </h3>
         </div>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          Admindan olgan promokodingizni kiriting. Promokod summasi to'g'ridan-to'g'ri balansingizga qo'shiladi va o'zingiz istagan obuna tarifini faollashtirishingiz mumkin.
-        </p>
-        <form onSubmit={handleActivatePromo} className="flex gap-2 pt-1">
-          <input
-            type="text"
-            value={promoInput}
-            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-            placeholder="Masalan: YUK-30K-8291"
-            className="flex-1 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-          />
-          <button
-            type="submit"
-            disabled={!promoInput.trim() || promoLoading}
-            className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-purple-600/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Balansga qo'shish</span>
-          </button>
-        </form>
+
+        <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-indigo-500/5 border border-indigo-500/30 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="text-xs font-black text-slate-900 dark:text-white">
+              Admindan olingan promokod
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            To'lov chekingizni botga yuborganingizdan so'ng admindan olgan maxsus promokodingizni kiriting. Promokod summasi balansingizga qo'shiladi!
+          </p>
+
+          <form onSubmit={handleActivatePromo} className="space-y-2.5">
+            <input
+              ref={promoInputRef}
+              type="text"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              placeholder="Masalan: YUK-15K-8291"
+              className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all shadow-xs"
+            />
+            <button
+              type="submit"
+              disabled={!promoInput.trim() || promoLoading}
+              className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Balansga qo'shish</span>
+            </button>
+          </form>
+        </div>
       </div>
 
-      {/* Official Payment Requisites Card & Check Submission to Bot */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between">
+      {/* SECTION 3: Official Card Requisites & Check Submission */}
+      <div className="space-y-2 pt-1">
+        {/* Section Header with Accent Bar */}
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-emerald-500" />
-            <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-              Hamyonni to'ldirish (Karta orqali)
+            <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              To'lov Rekvizitlari
             </h3>
           </div>
           <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -592,78 +596,84 @@ export const WalletView: React.FC = () => {
           </span>
         </div>
 
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          Hamyoningizni to'ldirish uchun quyidagi rasmiy karta raqamiga pul o'tkazing va to'lov kvitansiyasini (chek) botimizga yuboring:
-        </p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+            Hamyoningizni to'ldirish uchun quyidagi rasmiy karta raqamiga pul o'tkazing va to'lov kvitansiyasini (chek) botimizga yuboring:
+          </p>
 
-        {/* Primary Official Card */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-              Qabul qiluvchi: <b className="text-slate-900 dark:text-white">Adminka Alijonova X...</b>
-            </span>
-            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-              Humo / Uzcard
-            </span>
+          {/* Primary Official Card Display */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                Qabul qiluvchi: <b className="text-slate-900 dark:text-white">Adminka Alijonova X...</b>
+              </span>
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                Humo / Uzcard
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
+              <span className="font-mono font-black text-sm sm:text-base tracking-wider text-slate-900 dark:text-white select-all">
+                9860 0803 8232 0093
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCardNumber}
+                className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+              >
+                {copiedCard ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
+                    <span className="text-[11px] text-emerald-600 font-bold">Nusxalandi</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="text-[11px]">Nusxa olish</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-            <span className="font-mono font-black text-sm tracking-wider text-slate-900 dark:text-white select-all">
-              9860 0803 8232 0093
-            </span>
-            <button
-              type="button"
-              onClick={() => handleCopyCard('primary-card', '9860 0803 8232 0093')}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shrink-0"
-            >
-              {copiedMethodId === 'primary-card' ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-[10px] text-emerald-600 font-bold">Nusxalandi</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">Nusxa olish</span>
-                </>
-              )}
-            </button>
+          {/* 4 Step Process Explanation */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-[11px] space-y-2 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <span>Kartaga kerakli summani (masalan: 15 000, 30 000 yoki 70 000 so'm) o'tkazing.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <span>To'lov chekini rasmga olib, Telegram botimizga yuboring: <b>@YuksalQuiz_bot</b> va <b>"Men to'lov qildim"</b> deb yozing.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <span>Admin to'lovni 24 soat ichida tekshirib, sizga maxsus <b>Promokod</b> yuboradi.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+              <span>Promokodni yuqoridagi maydonga kiritib, balansingizni to'ldirasiz va obunani faollashtirasiz!</span>
+            </div>
           </div>
+
+          {/* Telegram Bot Action Button */}
+          <a
+            href="https://t.me/YuksalQuiz_bot?text=Men%20to'lov%20qildim"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => triggerHaptic('medium')}
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md shadow-sky-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4 shrink-0" />
+            <span>Chekni botga yuborish: "Men to'lov qildim" (@YuksalQuiz_bot)</span>
+          </a>
         </div>
-
-        {/* 3 Steps Instructions */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-[11px] space-y-2 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-            <span>Ushbu kartaga hamyonni to'ldirmoqchi bo'lgan summani o'tkazing (masalan: 15 000, 30 000 yoki 70 000 so'm).</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
-            <span>To'lov chekini rasmga olib, Telegram botimizga yuboring: <b>@YuksalQuiz_bot</b> va <b>"Men to'lov qildim"</b> deb yozing.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
-            <span>Admin 24 soat ichida to'lovni tasdiqlab, sizga maxsus <b>Promokod</b> beradi. Promokodni yuqorida kiritib, balansingizni to'ldiring!</span>
-          </div>
-        </div>
-
-        {/* Telegram Direct Send Check Button */}
-        <a
-          href="https://t.me/YuksalQuiz_bot?text=Men%20to'lov%20qildim"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => triggerHaptic('medium')}
-          className="w-full py-3 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-sky-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
-        >
-          <Send className="w-4 h-4" />
-          <span>Chekni botga yuborish: "Men to'lov qildim" (@YuksalQuiz_bot)</span>
-        </a>
       </div>
 
-      {/* Referral Section with Direct Telegram Share */}
+      {/* SECTION 4: Referral Card */}
       <ReferralShareCard />
 
-      {/* Mandatory Guardrail Notice - Placed at the very bottom */}
+      {/* SECTION 5: Mandatory Guardrail Notice (At the very bottom) */}
       <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
         <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-xs font-semibold leading-relaxed">
@@ -672,7 +682,138 @@ export const WalletView: React.FC = () => {
         </p>
       </div>
 
-      {/* Dedicated Transaction History Modal */}
+      {/* INSTRUCTIONAL PAYMENT MODAL (Opens on "To'lov yo'riqnomasi") */}
+      {instructionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    To'lov Yo'riqnomasi
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    {instructionModal.planTitle}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseInstruction}
+                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 space-y-3.5 overflow-y-auto flex-1">
+              {/* Target Plan Summary */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                    Kerakli to'lov summasi:
+                  </span>
+                  <span className="text-lg font-black text-indigo-950 dark:text-indigo-100">
+                    {instructionModal.amount.toLocaleString('uz-UZ')} so'm
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                  20k vaucher qo'llandi
+                </span>
+              </div>
+
+              {/* Requisites Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">
+                    Karta egasi: <b className="text-slate-900 dark:text-white">Adminka Alijonova X...</b>
+                  </span>
+                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                    Humo / Uzcard
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <span className="font-mono font-black text-sm tracking-wider text-slate-900 dark:text-white select-all">
+                    9860 0803 8232 0093
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCardNumber}
+                    className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shrink-0"
+                  >
+                    {copiedCard ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
+                        <span className="text-[10px] text-emerald-600 font-bold">Nusxalandi</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span className="text-[10px]">Nusxa</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-[11px] space-y-2 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <span>Payme, Click, Uzum yoki bank ilovangiz orqali yuqoridagi kartaga <b>{instructionModal.amount.toLocaleString('uz-UZ')} so'm</b> o'tkazing.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <span>To'lov chekini rasmga oling yoki skrinshot qiling.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <span>Quyidagi tugma orqali Telegram botimizga chekni yuboring va <b>"Men to'lov qildim"</b> deb yozing.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+                  <span>Admin to'lovni 24 soat ichida tasdiqlab, sizga maxsus <b>Promokod</b> beradi.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">5</span>
+                  <span>Promokodni kiritib, balansingizni to'ldirasiz va obunani faollashtirasiz!</span>
+                </div>
+              </div>
+
+              {/* Action Buttons in Modal */}
+              <div className="space-y-2 pt-1">
+                <a
+                  href="https://t.me/YuksalQuiz_bot?text=Men%20to'lov%20qildim"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => triggerHaptic('medium')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md shadow-sky-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Chekni botga yuborish (@YuksalQuiz_bot)</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleGoToPromocode}
+                  className="w-full py-3 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <span>Menda promokod bor, kiritish</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSACTION HISTORY MODAL */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -718,7 +859,7 @@ export const WalletView: React.FC = () => {
                       triggerHaptic('selection');
                       setTxFilter(tab.id as any);
                     }}
-                    className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
+                    className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -792,7 +933,7 @@ export const WalletView: React.FC = () => {
                     return (
                       <div
                         key={tx.id}
-                        className="p-2.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
+                        className="p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getTxIcon()}
@@ -808,7 +949,7 @@ export const WalletView: React.FC = () => {
 
                         <div className="shrink-0 text-right">
                           <span
-                            className={`text-xs font-black px-2 py-0.5 rounded-lg inline-block ${
+                            className={`text-xs font-black px-2.5 py-1 rounded-lg inline-block ${
                               tx.isPositive
                                 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                                 : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -830,147 +971,11 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs"
+                className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs"
               >
                 Yopish
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Interactive Top-Up Modal (Click / Payme / Uzum) */}
-      {showTopUpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    {t.topUpModalTitle}
-                  </h3>
-                  <p className="text-[10px] text-slate-400">
-                    {t.topUpModalDesc}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTopUpModal(false)}
-                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmTopUp} className="p-4 space-y-4">
-              {/* Current balance indicator */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  {t.internalBalance}:
-                </span>
-                <span className="text-xs font-black text-slate-900 dark:text-white">
-                  {currentBalance.toLocaleString('uz-UZ')} so'm
-                </span>
-              </div>
-
-              {/* Amount Presets */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  {t.selectAmount}
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: "15 000 so'm", val: 15000, desc: '3 oy vaucher bilan' },
-                    { label: "30 000 so'm", val: 30000, desc: '6 oy vaucher bilan' },
-                    { label: "70 000 so'm", val: 70000, desc: '1 yil vaucher bilan' },
-                  ].map((preset) => {
-                    const isSelected = !customTopUpStr && selectedTopUpAmount === preset.val;
-                    return (
-                      <button
-                        key={preset.val}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('selection');
-                          setSelectedTopUpAmount(preset.val);
-                          setCustomTopUpStr('');
-                        }}
-                        className={`p-2 rounded-2xl border text-center transition-all ${
-                          isSelected
-                            ? 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-500 text-indigo-600 dark:text-indigo-400 ring-2 ring-indigo-500/20'
-                            : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                        }`}
-                      >
-                        <span className="text-xs font-black block">{preset.label}</span>
-                        <span className="text-[9px] text-slate-400 block mt-0.5">{preset.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom Amount Input */}
-                <div className="mt-2">
-                  <input
-                    type="number"
-                    min="1000"
-                    step="1000"
-                    value={customTopUpStr}
-                    onChange={(e) => setCustomTopUpStr(e.target.value)}
-                    placeholder={t.customAmountPlaceholder}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Method Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  {t.paymentMethod}
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'Payme', badge: 'Payme' },
-                    { id: 'Click', badge: 'Click Up' },
-                    { id: 'Uzum Bank', badge: 'Uzum' },
-                  ].map((m) => {
-                    const isSelected = paymentMethod === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('selection');
-                          setPaymentMethod(m.id as any);
-                        }}
-                        className={`p-2.5 rounded-2xl border text-center transition-all ${
-                          isSelected
-                            ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/20 font-black'
-                            : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 font-bold'
-                        }`}
-                      >
-                        <span className="text-xs">{m.badge}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Submit Top-up */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>
-                    {t.payBtn} (+{((customTopUpStr ? parseInt(customTopUpStr, 10) || 0 : selectedTopUpAmount)).toLocaleString('uz-UZ')} so'm)
-                  </span>
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

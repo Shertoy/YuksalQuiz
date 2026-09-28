@@ -98,7 +98,6 @@ interface QuizState {
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
   applySubscription: (plan: SubscriptionPlanType) => { success: boolean; message: string };
-  topUpWallet: (amount: number, method?: string) => void;
   addReferralBonus: () => { bonusAdded: number; newTotal: number };
   resetTamperWarning: () => void;
   clearAllTests: () => void;
@@ -943,38 +942,6 @@ export const useQuizStore = create<QuizState>()(
         };
       },
 
-      // Interactive top-up method (Payme, Click, Uzum, etc.)
-      topUpWallet: (amount: number, method: string = 'Payme') => {
-        const { profile } = get();
-        const newBalance = (profile.walletBalance || 0) + amount;
-        const updatedProfile: UserProfile = {
-          ...profile,
-          walletBalance: newBalance,
-        };
-
-        updatedProfile.checksum = generateIntegritySignature({
-          userId: updatedProfile.id,
-          coins: updatedProfile.coins,
-          completedTestsCount: updatedProfile.completedTestsCount,
-          streak: updatedProfile.streak,
-          lastLoginDate: updatedProfile.lastLoginDate,
-          walletBalance: updatedProfile.walletBalance,
-          voucherBalance: updatedProfile.voucherBalance,
-        });
-
-        triggerHaptic('success');
-        soundFX.playCoin();
-
-        set({ profile: updatedProfile });
-
-        get().addTransaction({
-          type: 'deposit',
-          title: `Hisob to'ldirildi (${method})`,
-          amount,
-          unit: "so'm",
-          isPositive: true,
-        });
-      },
 
       // Referral invitation bonus (+1 500 UZS)
       addReferralBonus: () => {
@@ -1092,20 +1059,19 @@ export const useQuizStore = create<QuizState>()(
           }
         }
 
-        // Clean unearned simulated referral bonuses for users without real actions
+        // Clean unearned simulated referral bonuses, fake deposit simulator entries, and unauthorized subscriptions
         if (state.profile) {
           if (state.transactions) {
             state.transactions = state.transactions.filter(
-              (tx: any) => !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1500))
+              (tx: any) =>
+                !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1500)) &&
+                !(tx.type === 'deposit' && tx.title?.includes("Hisob to'ldirildi"))
             );
           }
-          const hasRealPositiveDeposit = (state.transactions || []).some(
-            (tx: any) => tx.type === 'deposit' && tx.isPositive === true && !tx.title?.includes("Do'st")
-          );
           const hasActivePromocodeActivation = (state.transactions || []).some(
             (tx: any) => tx.type === 'deposit' && tx.title?.includes('Promokod')
           );
-          if (!hasRealPositiveDeposit && !hasActivePromocodeActivation && (state.profile.authorEarnings || 0) === 0) {
+          if (!hasActivePromocodeActivation && (state.profile.authorEarnings || 0) === 0) {
             state.profile.walletBalance = 0;
             state.profile.referralCount = 0;
             state.profile.subscriptionPlan = 'none';

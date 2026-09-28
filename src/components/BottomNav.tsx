@@ -257,7 +257,7 @@ export const BottomNav: React.FC = () => {
               transform: `translateX(${activeIndex * 100}%)`,
             }}
           >
-            <div className="w-[58px] h-[46px] rounded-2xl bg-indigo-500/12 dark:bg-indigo-500/20 border border-indigo-400/30 dark:border-indigo-400/35 shadow-sm shadow-indigo-500/10 backdrop-blur-md" />
+            <div className="w-[88%] max-w-[58px] h-[46px] rounded-2xl bg-indigo-500/12 dark:bg-indigo-500/20 border border-indigo-400/30 dark:border-indigo-400/35 shadow-sm shadow-indigo-500/10 backdrop-blur-md" />
           </div>
 
           {/* Navigation Item Buttons */}
