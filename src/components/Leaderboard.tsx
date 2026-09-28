@@ -428,18 +428,31 @@ export const Leaderboard: React.FC = () => {
       {/* Main Content: OTMs vs Students */}
       {leaderboardScope === 'otm' ? (
         /* OTM & Educational Center Leaderboard View */
-        <div className="space-y-4">
-          <div className="p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span className="font-bold text-slate-800 dark:text-slate-200">
-                Oliygohlar va o'quv markazlari reytingi
+        sortedUniversities.length === 0 ? (
+          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <School className="w-7 h-7" />
+            </div>
+            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              Hozircha OTMlar reytingi shakllanmagan
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Barcha soxta ma'lumotlar tozalandi. Talabalar testlarni yechishni boshlagach, ularning oliygohlari ushbu reyting jadvalidan munosib o'rin oladi.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  Oliygohlar va o'quv markazlari reytingi
+                </span>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500 text-white">
+                {sortedUniversities.length} ta muassasa
               </span>
             </div>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500 text-white">
-              {sortedUniversities.length} ta muassasa
-            </span>
-          </div>
 
           {/* Universities Olympic Podium (Top 3) */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -569,42 +582,57 @@ export const Leaderboard: React.FC = () => {
             </div>
           </div>
         </div>
+        )
       ) : (
         /* Students Leaderboard View (Region or Uzbekistan) */
-        <>
-          {/* Top 3 Olympic Podium for Students */}
-          {sortedUsers.length >= 3 && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div className="flex items-end justify-center gap-1.5 pt-6 pb-2">
-                {/* 2nd Place (Silver) */}
-                {second && (
-                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
-                    <div className="relative mb-2">
-                      <UserAvatar
-                        avatar={second.avatar}
-                        alt={second.name}
-                        sizeClassName="w-12 h-12"
-                        className="ring-2 ring-slate-300 dark:ring-slate-600"
-                      />
-                      <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-black text-[10px] flex items-center justify-center shadow-md">
-                        2
-                      </span>
+        sortedUsers.length === 0 || (currentUserCorrectAnswers === 0 && sortedUsers.length <= 1) ? (
+          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center">
+              <Trophy className="w-7 h-7" />
+            </div>
+            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              Reyting natijalari tozalangan!
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Barcha soxta akkauntlar tozalandi. Birinchi bo'lib test topshiring va 1-o'rin shohsupasini egallang! 🏆
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Top Olympic Podium for Students */}
+            {first && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-end justify-center gap-1.5 pt-6 pb-2">
+                  {/* 2nd Place (Silver) */}
+                  {second ? (
+                    <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
+                      <div className="relative mb-2">
+                        <UserAvatar
+                          avatar={second.avatar}
+                          alt={second.name}
+                          sizeClassName="w-12 h-12"
+                          className="ring-2 ring-slate-300 dark:ring-slate-600"
+                        />
+                        <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-black text-[10px] flex items-center justify-center shadow-md">
+                          2
+                        </span>
+                      </div>
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
+                        {second.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
+                        {second.region}
+                      </p>
+                      <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                        <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
+                        {formatMetricValue(second, true)}
+                      </div>
                     </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
-                      {second.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
-                      {second.region}
-                    </p>
-                    <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                      <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
-                      {formatMetricValue(second, true)}
-                    </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-1/3" />
+                  )}
 
-                {/* 1st Place (Gold, Tallest + Crown) */}
-                {first && (
+                  {/* 1st Place (Gold, Tallest + Crown) */}
                   <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                     <div className="relative mb-2">
                       <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
@@ -629,102 +657,106 @@ export const Leaderboard: React.FC = () => {
                       {formatMetricValue(first, true)}
                     </div>
                   </div>
-                )}
 
-                {/* 3rd Place (Bronze) */}
-                {third && (
-                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
-                    <div className="relative mb-2">
-                      <UserAvatar
-                        avatar={third.avatar}
-                        alt={third.name}
-                        sizeClassName="w-12 h-12"
-                        className="ring-2 ring-amber-700/50"
-                      />
-                      <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-amber-700 text-white font-black text-[10px] flex items-center justify-center shadow-md">
-                        3
-                      </span>
+                  {/* 3rd Place (Bronze) */}
+                  {third ? (
+                    <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
+                      <div className="relative mb-2">
+                        <UserAvatar
+                          avatar={third.avatar}
+                          alt={third.name}
+                          sizeClassName="w-12 h-12"
+                          className="ring-2 ring-amber-700/50"
+                        />
+                        <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-amber-700 text-white font-black text-[10px] flex items-center justify-center shadow-md">
+                          3
+                        </span>
+                      </div>
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
+                        {third.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
+                        {third.region}
+                      </p>
+                      <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
+                        <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
+                        {formatMetricValue(third, true)}
+                      </div>
                     </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
-                      {third.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
-                      {third.region}
-                    </p>
-                    <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                      <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
-                      {formatMetricValue(third, true)}
-                    </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-1/3" />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* List Ranks (4th - 20th) for Students */}
-          <div className="space-y-2">
-            <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
-              Barcha ishtirokchilar (4–20 o'rinlar)
-            </h3>
+            {/* List Ranks (4th - 20th) for Students */}
+            {listUsers.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
+                  Barcha ishtirokchilar (4–20 o'rinlar)
+                </h3>
 
-            <div className="space-y-2">
-              {listUsers.map((user, idx) => {
-                const rank = idx + 4;
-                const isMe = user.isCurrentUser;
+                <div className="space-y-2">
+                  {listUsers.map((user, idx) => {
+                    const rank = idx + 4;
+                    const isMe = user.isCurrentUser;
 
-                return (
-                  <div
-                    key={user.id}
-                    className={`p-3 rounded-2xl flex items-center justify-between transition-all ${
-                      isMe
-                        ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-2 border-indigo-500 shadow-md shadow-indigo-500/10'
-                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
+                    return (
                       <div
-                        className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                        key={user.id}
+                        className={`p-3 rounded-2xl flex items-center justify-between transition-all ${
                           isMe
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                            ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-2 border-indigo-500 shadow-md shadow-indigo-500/10'
+                            : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                         }`}
                       >
-                        {rank}
-                      </div>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                              isMe
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                            }`}
+                          >
+                            {rank}
+                          </div>
 
-                      <UserAvatar
-                        avatar={user.avatar}
-                        alt={user.name}
-                        sizeClassName="w-9 h-9"
-                        className={isMe ? 'ring-2 ring-indigo-400' : ''}
-                      />
+                          <UserAvatar
+                            avatar={user.avatar}
+                            alt={user.name}
+                            sizeClassName="w-9 h-9"
+                            className={isMe ? 'ring-2 ring-indigo-400' : ''}
+                          />
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                            {user.name}
-                          </h4>
-                          {isMe && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold shrink-0">
-                              Siz
-                            </span>
-                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                                {user.name}
+                              </h4>
+                              {isMe && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold shrink-0">
+                                  Siz
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                              {user.region} • {user.university}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                          {user.region} • {user.university}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="text-right shrink-0">
-                      {formatMetricValue(user)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </>
+                        <div className="text-right shrink-0">
+                          {formatMetricValue(user)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )
       )}
     </div>
   );

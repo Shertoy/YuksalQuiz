@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   Wallet,
@@ -18,18 +18,34 @@ import {
   ArrowRight,
   Sparkles,
   Check,
+  KeyRound,
+  Copy,
+  Send,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
-import { TransactionType } from '../types';
+import { TransactionType, SubscriptionPlanType } from '../types';
 
 export const WalletView: React.FC = () => {
-  const { profile, applySubscription, topUpWallet, transactions } = useQuizStore();
+  const {
+    profile,
+    applySubscription,
+    topUpWallet,
+    transactions,
+    subscriptionPrices,
+    paymentMethods,
+    activatePromocode,
+  } = useQuizStore();
   const { t } = useTranslation();
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | TransactionType>('all');
+
+  // Promocode and Payment Requisites State
+  const [promoInput, setPromoInput] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [copiedMethodId, setCopiedMethodId] = useState<string | null>(null);
 
   // Top Up Modal State
   const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -41,11 +57,21 @@ export const WalletView: React.FC = () => {
   const currentVoucher = profile.voucherBalance || 0;
   const hasVoucher = currentVoucher >= 35000 && profile.subscriptionPlan === 'none';
 
-  // Plan pricing
-  const cost6Months = hasVoucher ? 15000 : 50000;
-  const cost1Year = 90000;
+  // Dynamic Plan Pricing from store
+  const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
+  const price3M = prices['3_months'] || 35000;
+  const price6M = prices['6_months'] || 50000;
+  const price1Y = prices['1_year'] || 90000;
+
+  // Actual cost after applicable discounts
+  const cost3Months = price3M;
+  const cost6Months = hasVoucher ? Math.max(0, price6M - 35000) : price6M;
+  const cost1Year = price1Y;
 
   // Affordability
+  const canAfford3M = currentBalance >= cost3Months;
+  const deficit3M = Math.max(0, cost3Months - currentBalance);
+
   const canAfford6M = currentBalance >= cost6Months;
   const deficit6M = Math.max(0, cost6Months - currentBalance);
 
@@ -83,7 +109,7 @@ export const WalletView: React.FC = () => {
     setTimeout(() => setFeedback(null), 5000);
   };
 
-  const handleSubscribe = (plan: '6_months' | '1_year') => {
+  const handleSubscribe = (plan: SubscriptionPlanType) => {
     const res = applySubscription(plan);
     if (res.success) {
       setFeedback({
@@ -97,6 +123,39 @@ export const WalletView: React.FC = () => {
       });
     }
     setTimeout(() => setFeedback(null), 5000);
+  };
+
+  const handleActivatePromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = promoInput.trim().toUpperCase();
+    if (!clean) return;
+
+    setPromoLoading(true);
+    const res = activatePromocode(clean);
+    setPromoLoading(false);
+
+    if (res.success) {
+      setFeedback({
+        type: 'success',
+        message: res.message,
+      });
+      setPromoInput('');
+    } else {
+      setFeedback({
+        type: 'error',
+        message: res.message,
+      });
+    }
+    setTimeout(() => setFeedback(null), 6000);
+  };
+
+  const handleCopyCard = (id: string, text: string) => {
+    triggerHaptic('light');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    setCopiedMethodId(id);
+    setTimeout(() => setCopiedMethodId(null), 2500);
   };
 
   return (
@@ -124,15 +183,6 @@ export const WalletView: React.FC = () => {
           <History className="w-3.5 h-3.5 text-indigo-500" />
           <span>Tarix</span>
         </button>
-      </div>
-
-      {/* Mandatory Guardrail Notice */}
-      <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-        <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-xs font-semibold leading-relaxed">
-          <span className="font-extrabold block mb-0.5">{t.guardrailNoticeTitle}</span>
-          {t.guardrailNoticeText}
-        </p>
       </div>
 
       {/* Dynamic Feedback Alert */}
@@ -244,7 +294,7 @@ export const WalletView: React.FC = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-            Obuna Rejalari
+            Obuna Rejalari (3 xil muddat)
           </h3>
           {hasVoucher && (
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
@@ -253,7 +303,73 @@ export const WalletView: React.FC = () => {
           )}
         </div>
 
-        {/* 6-Month Plan */}
+        {/* 1. 3-Month Plan */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-400 transition-all">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400">
+                  3 Oylik Reja
+                </span>
+                {profile.subscriptionPlan === '3_months' && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">
+                    Joriy rejangiz
+                  </span>
+                )}
+              </div>
+              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
+                3 oylik Premium
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Oraliq va yakuniy nazoratlarga tezkor tayyorgarlik kursi
+              </p>
+            </div>
+
+            <div className="text-right">
+              <span className="text-base font-black text-sky-600 dark:text-sky-400">
+                {price3M.toLocaleString('uz-UZ')} so'm
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-slate-400 font-medium text-[10px]">
+              90 kunlik to'liq kirish
+            </span>
+
+            {canAfford3M ? (
+              <button
+                type="button"
+                onClick={() => handleSubscribe('3_months')}
+                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <span>
+                  {profile.subscriptionPlan === '3_months'
+                    ? 'Muddati uzaytirish'
+                    : t.activateSub}
+                </span>
+                <span className="text-[10px] opacity-80">({cost3Months.toLocaleString('uz-UZ')} so'm)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenTopUp(deficit3M)}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>To'ldirish (+{deficit3M.toLocaleString('uz-UZ')} so'm)</span>
+              </button>
+            )}
+          </div>
+
+          {!canAfford3M && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-semibold">
+              Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm mavjud. Obuna uchun yana {deficit3M.toLocaleString('uz-UZ')} so'm kerak.
+            </p>
+          )}
+        </div>
+
+        {/* 2. 6-Month Plan (Talabalar tanlovi) */}
         <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500/50 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-500 transition-all">
           <div className="flex items-start justify-between mb-3">
             <div>
@@ -278,11 +394,11 @@ export const WalletView: React.FC = () => {
             <div className="text-right">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
-                  50 000 so'm
+                  {price6M.toLocaleString('uz-UZ')} so'm
                 </span>
               )}
               <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
-                {hasVoucher ? '15 000 so\'m' : '50 000 so\'m'}
+                {cost6Months.toLocaleString('uz-UZ')} so'm
               </span>
             </div>
           </div>
@@ -331,7 +447,7 @@ export const WalletView: React.FC = () => {
           )}
         </div>
 
-        {/* 1-Year Plan */}
+        {/* 3. 1-Year Plan */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm relative overflow-hidden hover:border-indigo-400 transition-all">
           <div className="flex items-start justify-between mb-3">
             <div>
@@ -355,7 +471,7 @@ export const WalletView: React.FC = () => {
 
             <div className="text-right">
               <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                90 000 so'm
+                {price1Y.toLocaleString('uz-UZ')} so'm
               </span>
             </div>
           </div>
@@ -376,7 +492,7 @@ export const WalletView: React.FC = () => {
                     ? 'Muddati uzaytirish'
                     : t.activateSub}
                 </span>
-                <span className="text-[10px] opacity-80">(90 000 so'm)</span>
+                <span className="text-[10px] opacity-80">({cost1Year.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
               <button
@@ -398,8 +514,137 @@ export const WalletView: React.FC = () => {
         </div>
       </div>
 
+      {/* Promocode Activation Section */}
+      <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-indigo-500/5 border border-indigo-500/30 rounded-3xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-1.5">
+          <KeyRound className="w-4 h-4 text-indigo-500" />
+          <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+            Promokodni faollashtirish
+          </h3>
+        </div>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+          To'lov qilib admindan olgan maxsus promokodingizni kiriting va Premium obunangizni bir zumda faollashtiring.
+        </p>
+        <form onSubmit={handleActivatePromo} className="flex gap-2">
+          <input
+            type="text"
+            value={promoInput}
+            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+            placeholder="Masalan: YUK-6M-8291"
+            className="flex-1 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            disabled={!promoInput.trim() || promoLoading}
+            className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Faollashtirish</span>
+          </button>
+        </form>
+      </div>
+
+      {/* Payment Requisites & Telegram Check Submission */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-emerald-500" />
+            <h3 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+              To'lov chekini yuborish (Admin tasdiqi)
+            </h3>
+          </div>
+          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            24 soat ichida
+          </span>
+        </div>
+
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+          O'zingiz to'lov qilib obunani ochmoqchi bo'lsangiz, quyidagi rasmiy to'lov usullaridan biriga pul o'tkazing va to'lov varaqasini (chek) yuboring:
+        </p>
+
+        {/* Active Payment Accounts */}
+        <div className="space-y-2">
+          {(paymentMethods || []).filter((pm) => pm.isActive).map((pm) => (
+            <div
+              key={pm.id}
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">{pm.name}</span>
+                </div>
+                <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 truncate select-all">
+                  {pm.details}
+                </p>
+                {pm.instructions && (
+                  <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{pm.instructions}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyCard(pm.id, pm.details)}
+                className="shrink-0 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1 transition-all active:scale-95"
+              >
+                {copiedMethodId === pm.id ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-[10px] text-emerald-600 font-bold">Nusxalandi</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-[10px]">Nusxa</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* 4 Steps Guide */}
+        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-[11px] space-y-1.5 text-slate-600 dark:text-slate-300">
+          <div className="flex items-start gap-2">
+            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+            <span>Yuqoridagi to'lov usullaridan birini tanlab, to'lovni bajaring.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+            <span>To'lov kvitansiyasini (chek) rasmga oling yoki skrinshot qiling.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+            <span>Chekni Telegram botimizga yuboring: <b>@YuksalQuiz_bot</b></span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+            <span>Admin 24 soat ichida to'lovni tasdiqlab, sizga maxsus Promokod taqdim etadi.</span>
+          </div>
+        </div>
+
+        {/* Telegram Bot Button */}
+        <a
+          href="https://t.me/YuksalQuiz_bot"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => triggerHaptic('medium')}
+          className="w-full py-3 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-sky-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
+        >
+          <Send className="w-4 h-4" />
+          <span>To'lov chekini yuborish (@YuksalQuiz_bot)</span>
+        </a>
+      </div>
+
       {/* Referral Section with Direct Telegram Share */}
       <ReferralShareCard />
+
+      {/* Mandatory Guardrail Notice - Placed at the very bottom */}
+      <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+        <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <p className="text-xs font-semibold leading-relaxed">
+          <span className="font-extrabold block mb-0.5">{t.guardrailNoticeTitle}</span>
+          {t.guardrailNoticeText}
+        </p>
+      </div>
 
       {/* Dedicated Transaction History Modal */}
       {showHistoryModal && (

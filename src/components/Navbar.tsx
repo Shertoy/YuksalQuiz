@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell, Check } from 'lucide-react';
+import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell, Check, Lock } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
 interface NavbarProps {
   onOpenNotifications?: () => void;
+  onOpenAdminLogin?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdminLogin }) => {
   const {
     theme,
     setTheme,
@@ -186,6 +187,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
                     {unreadCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {/* Desktop Web Admin Access Button */}
+            {onOpenAdminLogin && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenAdminLogin();
+                }}
+                className="hidden sm:flex p-2 rounded-xl text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors"
+                title="Admin Paneli (Veb orqali)"
+                aria-label="Admin Login"
+              >
+                <Lock className="w-4 h-4 text-slate-500 hover:text-indigo-500" />
               </button>
             )}
           </div>

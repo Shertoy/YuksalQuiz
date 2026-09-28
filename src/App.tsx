@@ -66,6 +66,17 @@ export const App: React.FC = () => {
     if (profile.isRegistered) {
       checkDailyStreak();
     }
+
+    // Direct browser admin access check: ?admin=true or #admin or /admin
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isAdminQuery = urlParams.get('admin') === 'true' || urlParams.has('admin');
+      const isAdminHash = window.location.hash.toLowerCase() === '#admin';
+      const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
+      if (isAdminQuery || isAdminHash || isAdminPath) {
+        setIsAdminLoginOpen(true);
+      }
+    }
   }, []);
 
   // Update HTML root class whenever theme changes
@@ -121,8 +132,11 @@ export const App: React.FC = () => {
       {/* First-time onboarding modal */}
       <OnboardingModal />
 
-      {/* Top Navbar */}
-      <Navbar onOpenNotifications={() => setIsNotificationsOpen(true)} />
+      {/* Top Navbar with Direct Admin Access */}
+      <Navbar
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+      />
 
       {/* Main Scrollable Container with Safe pb-32 to prevent bottom navigation overlap */}
       <main className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 pb-32 relative scroll-smooth">

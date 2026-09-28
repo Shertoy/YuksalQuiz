@@ -85,7 +85,7 @@ export interface UserProfile {
   voucherBalance: number; // 35 000 UZS starting voucher
   authorEarnings: number; // Total UZS earned from created tests (+100 UZS per completion)
   referralCount: number;
-  subscriptionPlan?: 'none' | '6_months' | '1_year';
+  subscriptionPlan?: 'none' | '3_months' | '6_months' | '1_year';
   subscriptionExpiry?: string;
   checksum?: string;
 }
@@ -295,3 +295,28 @@ export interface WalletTransaction {
   isPositive: boolean;
   date: string;
 }
+
+export type SubscriptionPlanType = '3_months' | '6_months' | '1_year';
+
+export interface SubscriptionPrices {
+  '3_months': number;
+  '6_months': number;
+  '1_year': number;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  details: string;
+  instructions?: string;
+  isActive: boolean;
+}
+
+export interface Promocode {
+  code: string;
+  plan: SubscriptionPlanType;
+  isUsed: boolean;
+  usedBy?: string;
+  createdAt: string;
+}
+

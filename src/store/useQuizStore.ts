@@ -12,6 +12,10 @@ import {
   WalletTransaction,
   Announcement,
   AnnouncementReply,
+  SubscriptionPlanType,
+  SubscriptionPrices,
+  PaymentMethod,
+  Promocode,
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
@@ -37,6 +41,9 @@ interface QuizState {
   announcements: Announcement[];
   readAnnouncementIds: string[];
   announcementReplies: AnnouncementReply[];
+  subscriptionPrices: SubscriptionPrices;
+  paymentMethods: PaymentMethod[];
+  promocodes: Promocode[];
   soundEnabled: boolean;
   tamperDetected: boolean;
 
@@ -57,6 +64,14 @@ interface QuizState {
   deleteUniversity: (name: string) => void;
   approvePendingUniversity: (name: string) => void;
   rejectPendingUniversity: (name: string) => void;
+  updateSubscriptionPrices: (prices: SubscriptionPrices) => void;
+  addPaymentMethod: (method: Omit<PaymentMethod, 'id'>) => void;
+  updatePaymentMethod: (id: string, updates: Partial<PaymentMethod>) => void;
+  deletePaymentMethod: (id: string) => void;
+  togglePaymentMethod: (id: string) => void;
+  createPromocode: (code: string, plan: SubscriptionPlanType) => void;
+  deletePromocode: (code: string) => void;
+  activatePromocode: (code: string) => { success: boolean; message: string; plan?: string };
   registerUser: (
     data: Omit<
       UserProfile,
@@ -82,13 +97,71 @@ interface QuizState {
   recordTestAttempt: (attempt: TestAttempt) => { coinsEarned: number; bonusCoins: number; unlockedNext: boolean };
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
-  applySubscription: (plan: '6_months' | '1_year') => { success: boolean; message: string };
+  applySubscription: (plan: SubscriptionPlanType) => { success: boolean; message: string };
   topUpWallet: (amount: number, method?: string) => void;
   addReferralBonus: () => { bonusAdded: number; newTotal: number };
   resetTamperWarning: () => void;
   clearAllTests: () => void;
   restoreBackupData: (data: any) => void;
 }
+
+export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
+  '3_months': 35000,
+  '6_months': 50000,
+  '1_year': 90000,
+};
+
+export const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
+  {
+    id: 'pm-1',
+    name: 'Payme',
+    details: '8600 5505 1234 5678 (Yuksal Quiz)',
+    instructions: "Payme ilovasi orqali to'lov qiling va to'lov kvitansiyasini Telegram botga yuboring",
+    isActive: true,
+  },
+  {
+    id: 'pm-2',
+    name: 'Click Up',
+    details: '8600 5505 1234 5678 (Yuksal Quiz)',
+    instructions: "Click orqali to'lovni bajaring va chek rasmini botga jo'nating",
+    isActive: true,
+  },
+  {
+    id: 'pm-3',
+    name: 'Uzum Bank',
+    details: '8600 5505 1234 5678 (Yuksal Quiz)',
+    instructions: "Uzum ilovasida 0% komissiya bilan to'lang",
+    isActive: true,
+  },
+  {
+    id: 'pm-4',
+    name: 'Humo / Uzcard',
+    details: '9860 0301 8765 4321 (Alisher A.)',
+    instructions: "Bank mobil ilovasi orqali karta raqamiga o'tkazing",
+    isActive: true,
+  },
+];
+
+export const DEFAULT_PROMOCODES: Promocode[] = [
+  {
+    code: 'YUK-START-3M',
+    plan: '3_months',
+    isUsed: false,
+    createdAt: '2026-09-28',
+  },
+  {
+    code: 'YUK-PREMIUM-6M',
+    plan: '6_months',
+    isUsed: false,
+    createdAt: '2026-09-28',
+  },
+  {
+    code: 'YUK-ANNUAL-1Y',
+    plan: '1_year',
+    isUsed: false,
+    createdAt: '2026-09-28',
+  },
+];
 
 const DEFAULT_PROFILE: UserProfile = {
   id: 'user-' + Math.random().toString(36).substring(2, 9),
@@ -156,6 +229,9 @@ export const useQuizStore = create<QuizState>()(
       ],
       readAnnouncementIds: [],
       announcementReplies: [],
+      subscriptionPrices: DEFAULT_SUBSCRIPTION_PRICES,
+      paymentMethods: DEFAULT_PAYMENT_METHODS,
+      promocodes: DEFAULT_PROMOCODES,
       soundEnabled: true,
       tamperDetected: false,
 
@@ -305,6 +381,135 @@ export const useQuizStore = create<QuizState>()(
         set({
           pendingUniversities: get().pendingUniversities.filter((p) => p !== name),
         });
+      },
+
+      updateSubscriptionPrices: (prices: SubscriptionPrices) => {
+        set({ subscriptionPrices: prices });
+        triggerHaptic('success');
+      },
+
+      addPaymentMethod: (method: Omit<PaymentMethod, 'id'>) => {
+        const id = 'pm-' + Date.now();
+        const current = get().paymentMethods || [];
+        set({ paymentMethods: [...current, { ...method, id }] });
+        triggerHaptic('success');
+      },
+
+      updatePaymentMethod: (id: string, updates: Partial<PaymentMethod>) => {
+        const current = get().paymentMethods || [];
+        set({
+          paymentMethods: current.map((pm) => (pm.id === id ? { ...pm, ...updates } : pm)),
+        });
+        triggerHaptic('success');
+      },
+
+      deletePaymentMethod: (id: string) => {
+        const current = get().paymentMethods || [];
+        set({ paymentMethods: current.filter((pm) => pm.id !== id) });
+        triggerHaptic('light');
+      },
+
+      togglePaymentMethod: (id: string) => {
+        const current = get().paymentMethods || [];
+        set({
+          paymentMethods: current.map((pm) => (pm.id === id ? { ...pm, isActive: !pm.isActive } : pm)),
+        });
+        triggerHaptic('selection');
+      },
+
+      createPromocode: (code: string, plan: SubscriptionPlanType) => {
+        const cleanCode = code.trim().toUpperCase();
+        if (!cleanCode) return;
+        const current = get().promocodes || [];
+        if (current.some((p) => p.code.toUpperCase() === cleanCode)) return;
+        const newPromo: Promocode = {
+          code: cleanCode,
+          plan,
+          isUsed: false,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        set({ promocodes: [newPromo, ...current] });
+        triggerHaptic('success');
+      },
+
+      deletePromocode: (code: string) => {
+        const current = get().promocodes || [];
+        set({ promocodes: current.filter((p) => p.code.toUpperCase() !== code.toUpperCase()) });
+        triggerHaptic('light');
+      },
+
+      activatePromocode: (rawCode: string) => {
+        const code = rawCode.trim().toUpperCase();
+        const { promocodes, profile, subscriptionPrices } = get();
+        const promo = (promocodes || []).find((p) => p.code.toUpperCase() === code);
+
+        if (!promo) {
+          triggerHaptic('error');
+          return { success: false, message: "Bunday promokod mavjud emas yoki xato kiritildi!" };
+        }
+
+        if (promo.isUsed) {
+          triggerHaptic('error');
+          return { success: false, message: "Ushbu promokod allaqachon ishlatilgan!" };
+        }
+
+        let expiryDate = new Date();
+        if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
+          expiryDate = new Date(profile.subscriptionExpiry);
+        }
+        if (promo.plan === '3_months') {
+          expiryDate.setMonth(expiryDate.getMonth() + 3);
+        } else if (promo.plan === '6_months') {
+          expiryDate.setMonth(expiryDate.getMonth() + 6);
+        } else {
+          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        }
+
+        const planLabel = promo.plan === '3_months' ? '3 oylik' : promo.plan === '6_months' ? '6 oylik' : '1 yillik';
+
+        const updatedProfile: UserProfile = {
+          ...profile,
+          subscriptionPlan: promo.plan,
+          subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        const updatedPromos = (promocodes || []).map((p) =>
+          p.code.toUpperCase() === code
+            ? { ...p, isUsed: true, usedBy: `${profile.firstName} ${profile.lastName}`.trim() || profile.id }
+            : p
+        );
+
+        triggerHaptic('success');
+        soundFX.playCoin();
+
+        set({
+          profile: updatedProfile,
+          promocodes: updatedPromos,
+        });
+
+        get().addTransaction({
+          type: 'deposit',
+          title: `Promokod faollashtirildi (${code}) - ${planLabel} Premium`,
+          amount: (subscriptionPrices && subscriptionPrices[promo.plan]) || 50000,
+          unit: "so'm",
+          isPositive: true,
+        });
+
+        return {
+          success: true,
+          message: `Tabriklaymiz! ${planLabel} Premium obunasi promokod orqali muvaffaqiyatli faollashtirildi!`,
+          plan: promo.plan,
+        };
       },
 
       setTheme: (theme) => {
@@ -655,12 +860,15 @@ export const useQuizStore = create<QuizState>()(
         set({ mistakes: filtered });
       },
 
-      // Auto-apply 35 000 UZS voucher toward 6-month subscription; 1-year is 90 000 UZS without voucher
-      applySubscription: (plan: '6_months' | '1_year') => {
-        const { profile } = get();
+      // Apply subscription for 3_months, 6_months, or 1_year
+      applySubscription: (plan: SubscriptionPlanType) => {
+        const { profile, subscriptionPrices } = get();
+        const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
+        const originalPrice = prices[plan] || (plan === '3_months' ? 35000 : plan === '6_months' ? 50000 : 90000);
+
+        // 35 000 voucher discount applies to 6-month subscription
         const voucherUsed = plan === '6_months' ? Math.min(profile.voucherBalance || 0, 35000) : 0;
-        const originalPrice = plan === '6_months' ? 50000 : 90000;
-        const remainingToPay = originalPrice - voucherUsed;
+        const remainingToPay = Math.max(0, originalPrice - voucherUsed);
         const currentBalance = profile.walletBalance || 0;
 
         // Strict Balance Verification: User CANNOT subscribe if wallet balance is insufficient!
@@ -669,7 +877,7 @@ export const useQuizStore = create<QuizState>()(
           triggerHaptic('error');
           return {
             success: false,
-            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Balansni to'ldiring yoki do'stlaringizni taklif qiling (+1 500 so'm).`,
+            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Balansni to'ldiring yoki to'lov chekini Telegram botga yuboring.`,
           };
         }
 
@@ -682,11 +890,15 @@ export const useQuizStore = create<QuizState>()(
         if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
           expiryDate = new Date(profile.subscriptionExpiry);
         }
-        if (plan === '6_months') {
+        if (plan === '3_months') {
+          expiryDate.setMonth(expiryDate.getMonth() + 3);
+        } else if (plan === '6_months') {
           expiryDate.setMonth(expiryDate.getMonth() + 6);
         } else {
           expiryDate.setFullYear(expiryDate.getFullYear() + 1);
         }
+
+        const planLabel = plan === '3_months' ? '3 oylik' : plan === '6_months' ? '6 oylik' : '1 yillik';
 
         const updatedProfile: UserProfile = {
           ...profile,
@@ -713,7 +925,7 @@ export const useQuizStore = create<QuizState>()(
 
         get().addTransaction({
           type: 'deposit',
-          title: `${plan === '6_months' ? '6 oylik' : '1 yillik'} Premium obuna to'lovi`,
+          title: `${planLabel} Premium obuna to'lovi`,
           amount: remainingToPay,
           unit: "so'm",
           isPositive: false,
@@ -732,8 +944,8 @@ export const useQuizStore = create<QuizState>()(
         return {
           success: true,
           message: voucherUsed > 0
-            ? `35 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. 6 oylik Premium obuna muvaffaqiyatli faollashtirildi!`
-            : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. 1 yillik Premium obuna muvaffaqiyatli faollashtirildi!`,
+            ? `35 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
+            : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
       },
 
@@ -892,21 +1104,38 @@ export const useQuizStore = create<QuizState>()(
               (tx: any) => !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1500))
             );
           }
-          const hasRealDeposits = (state.transactions || []).some((tx: any) => tx.type === 'deposit');
-          if (!hasRealDeposits && (state.profile.authorEarnings || 0) === 0) {
+          const hasRealPositiveDeposit = (state.transactions || []).some(
+            (tx: any) => tx.type === 'deposit' && tx.isPositive === true && !tx.title?.includes("Do'st")
+          );
+          const hasActivePromocodeActivation = (state.transactions || []).some(
+            (tx: any) => tx.type === 'deposit' && tx.title?.includes('Promokod')
+          );
+          if (!hasRealPositiveDeposit && !hasActivePromocodeActivation && (state.profile.authorEarnings || 0) === 0) {
             state.profile.walletBalance = 0;
             state.profile.referralCount = 0;
+            state.profile.subscriptionPlan = 'none';
+            state.profile.subscriptionExpiry = undefined;
           }
         }
 
         if (state) {
-          // Ensure no preloaded mock tests exist in user storage
+          // Strictly clear any preloaded mock leaderboard and mock tests
+          state.leaderboard = [];
           state.testPackages = [];
           if (!state.readAnnouncementIds) {
             state.readAnnouncementIds = [];
           }
           if (!state.announcementReplies) {
             state.announcementReplies = [];
+          }
+          if (!state.subscriptionPrices) {
+            state.subscriptionPrices = DEFAULT_SUBSCRIPTION_PRICES;
+          }
+          if (!state.paymentMethods || state.paymentMethods.length === 0) {
+            state.paymentMethods = DEFAULT_PAYMENT_METHODS;
+          }
+          if (!state.promocodes) {
+            state.promocodes = DEFAULT_PROMOCODES;
           }
         }
 

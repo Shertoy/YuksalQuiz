@@ -25,6 +25,12 @@ import {
   Calendar,
   CornerDownRight,
   Pin,
+  Tag,
+  CreditCard,
+  KeyRound,
+  Copy,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -35,6 +41,7 @@ import {
   UZBEKISTAN_REGIONS,
   Region,
   AnnouncementTargetType,
+  SubscriptionPlanType,
 } from '../types';
 import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
@@ -63,14 +70,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     createTestPackage,
     clearAllTests,
     restoreBackupData,
+    subscriptionPrices,
+    updateSubscriptionPrices,
+    paymentMethods,
+    addPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
+    togglePaymentMethod,
+    promocodes,
+    createPromocode,
+    deletePromocode,
   } = useQuizStore();
 
-  const [activeTab, setActiveTab] = useState<'universities' | 'pending' | 'news' | 'tests' | 'security'>('universities');
+  const [activeTab, setActiveTab] = useState<
+    'universities' | 'pending' | 'news' | 'pricing' | 'payments' | 'promocodes' | 'tests' | 'security'
+  >('universities');
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
   const [deletingUni, setDeletingUni] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Subscription Pricing state
+  const [priceForm3M, setPriceForm3M] = useState<number>(subscriptionPrices?.['3_months'] || 35000);
+  const [priceForm6M, setPriceForm6M] = useState<number>(subscriptionPrices?.['6_months'] || 50000);
+  const [priceForm1Y, setPriceForm1Y] = useState<number>(subscriptionPrices?.['1_year'] || 90000);
+
+  // Payment Methods state
+  const [newPayName, setNewPayName] = useState('Payme');
+  const [newPayDetails, setNewPayDetails] = useState('');
+  const [newPayInstructions, setNewPayInstructions] = useState('');
+
+  // Promocode state
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoPlanSelect, setPromoPlanSelect] = useState<SubscriptionPlanType>('6_months');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // New announcement form state
   const [newsTitle, setNewsTitle] = useState('');
@@ -87,6 +121,59 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [testTitle, setTestTitle] = useState('');
   const [testUni, setTestUni] = useState(universities[0] || 'TATU');
   const [testDept, setTestDept] = useState<DepartmentType>('Axborot Texnologiyalari');
+
+  const handleSavePrices = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSubscriptionPrices({
+      '3_months': Number(priceForm3M) || 35000,
+      '6_months': Number(priceForm6M) || 50000,
+      '1_year': Number(priceForm1Y) || 90000,
+    });
+    triggerHaptic('success');
+    showNotification("Obuna narxlari muvaffaqiyatli saqlandi!");
+  };
+
+  const handleAddPaymentMethod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPayDetails.trim()) return;
+    addPaymentMethod({
+      name: newPayName.trim(),
+      details: newPayDetails.trim(),
+      instructions: newPayInstructions.trim() || undefined,
+      isActive: true,
+    });
+    setNewPayDetails('');
+    setNewPayInstructions('');
+    triggerHaptic('success');
+    showNotification("Yangi to'lov usuli muvaffaqiyatli qo'shildi!");
+  };
+
+  const handleGenerateRandomPromo = () => {
+    const planPrefix = promoPlanSelect === '3_months' ? '3M' : promoPlanSelect === '6_months' ? '6M' : '1Y';
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const code = `YUK-${planPrefix}-${randomNum}`;
+    setPromoCodeInput(code);
+    triggerHaptic('selection');
+  };
+
+  const handleCreatePromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = promoCodeInput.trim().toUpperCase();
+    if (!code) return;
+    createPromocode(code, promoPlanSelect);
+    setPromoCodeInput('');
+    triggerHaptic('success');
+    showNotification(`"${code}" promokodi muvaffaqiyatli yaratildi!`);
+  };
+
+  const handleCopyPromo = (code: string) => {
+    triggerHaptic('light');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(code);
+    }
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2500);
+  };
 
   const handleExportBackup = () => {
     triggerHaptic('medium');
@@ -273,7 +360,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl lg:max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -291,7 +378,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                OTMlar, bildirishnomalar va tavsiya etilgan testlar
+                OTMlar, to'lovlar, promokodlar va tizim boshqaruvi
               </p>
             </div>
           </div>
@@ -311,21 +398,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="grid grid-cols-5 gap-1 p-2 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-[10px]">
+        {/* Navigation Tabs - Responsive Scrollable Bar */}
+        <div className="flex items-center gap-1.5 p-2 bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-100 dark:border-slate-800 text-[11px] overflow-x-auto scrollbar-none">
           <button
             onClick={() => {
               triggerHaptic('selection');
               setActiveTab('universities');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'universities'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Building2 className="w-3.5 h-3.5" />
-            <span className="truncate">OTMlar</span>
+            <span>OTMlar</span>
           </button>
 
           <button
@@ -333,16 +420,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('pending');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all relative ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
               activeTab === 'pending'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span className="truncate">Takliflar</span>
+            <span>Takliflar</span>
             {pendingUniversities.length > 0 && (
-              <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             )}
           </button>
 
@@ -351,17 +438,62 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('news');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all relative ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
               activeTab === 'news'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span className="truncate">Xabarlar</span>
+            <span>Xabarlar</span>
             {(announcementReplies || []).some((r) => !r.adminReply) && (
-              <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
             )}
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('pricing');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'pricing'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Obuna Narxlari</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('payments');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'payments'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>To'lov Usullari</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('promocodes');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'promocodes'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Promokodlar</span>
           </button>
 
           <button
@@ -369,14 +501,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('tests');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'tests'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span className="truncate">Testlar</span>
+            <span>Testlar</span>
           </button>
 
           <button
@@ -384,14 +516,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               triggerHaptic('selection');
               setActiveTab('security');
             }}
-            className={`py-2 px-0.5 rounded-xl font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'security'
                 ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
-            <span className="truncate">Xavfsizlik</span>
+            <span>Xavfsizlik</span>
           </button>
         </div>
 
@@ -956,6 +1088,396 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tab 4: Subscription Pricing Management */}
+          {activeTab === 'pricing' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-xs text-indigo-950 dark:text-indigo-100 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Obuna Narxlari Boshqaruvi</span>
+                  </h4>
+                  <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300 mt-0.5">
+                    Talabalar uchun 3 xil muddatdagi Premium obuna tariflarini belgilang va yangilang
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                  3 xil tarif
+                </span>
+              </div>
+
+              <form onSubmit={handleSavePrices} className="p-4 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-4 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* 3 Months */}
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-900 dark:text-white">3 Oylik Obuna</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400">90 kun</span>
+                    </div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block">Narxi (so'mda):</label>
+                    <input
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={priceForm3M}
+                      onChange={(e) => setPriceForm3M(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <p className="text-[10px] text-slate-400">Oraliq nazoratlar uchun tezkor reja</p>
+                  </div>
+
+                  {/* 6 Months */}
+                  <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-indigo-950 dark:text-indigo-200">6 Oylik Obuna</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">Talabalar tanlovi</span>
+                    </div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block">Asl narxi (so'mda):</label>
+                    <input
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={priceForm6M}
+                      onChange={(e) => setPriceForm6M(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      35 000 vaucherli narxi: {Math.max(0, priceForm6M - 35000).toLocaleString('uz-UZ')} so'm
+                    </p>
+                  </div>
+
+                  {/* 1 Year */}
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-900 dark:text-white">1 Yillik Obuna</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">365 kun</span>
+                    </div>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block">Narxi (so'mda):</label>
+                    <input
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={priceForm1Y}
+                      onChange={(e) => setPriceForm1Y(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <p className="text-[10px] text-slate-400">Cheksiz yillik to'liq kafolat</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Narxlarni saqlash va yangilash</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Tab 5: Payment Methods Management */}
+          {activeTab === 'payments' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-4 rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-xs text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>To'lov Usullari va Rekvizitlar</span>
+                  </h4>
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300 mt-0.5">
+                    Talabalar to'lov qilishi uchun karta va hisob raqamlarini boshqaring (qo'shish, o'chirish, yoqish/o'chirish)
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                  {(paymentMethods || []).length} ta usul
+                </span>
+              </div>
+
+              {/* Add Payment Method Form */}
+              <form onSubmit={handleAddPaymentMethod} className="p-4 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Yangi to'lov usulini qo'shish:</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">To'lov tizimi nomi:</label>
+                    <input
+                      type="text"
+                      value={newPayName}
+                      onChange={(e) => setNewPayName(e.target.value)}
+                      placeholder="Masalan: Payme, Click Up, Uzum..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Karta raqami / Rekvizitlar:</label>
+                    <input
+                      type="text"
+                      value={newPayDetails}
+                      onChange={(e) => setNewPayDetails(e.target.value)}
+                      placeholder="8600 5505 1234 5678 (Yuksal Quiz)"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Ko'rsatma (Ixtiyoriy):</label>
+                    <input
+                      type="text"
+                      value={newPayInstructions}
+                      onChange={(e) => setNewPayInstructions(e.target.value)}
+                      placeholder="Chekni @YuksalQuiz_bot ga yuboring"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={!newPayDetails.trim()}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>To'lov usulini qo'shish</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Payment Methods List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase px-1">
+                  Mavjud To'lov Usullari ({paymentMethods?.length || 0})
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {(paymentMethods || []).map((pm) => (
+                    <div
+                      key={pm.id}
+                      className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                        pm.isActive
+                          ? 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 shadow-xs'
+                          : 'bg-slate-50/60 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800/60 opacity-60'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-xs text-slate-900 dark:text-white">{pm.name}</span>
+                          <span
+                            className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                              pm.isActive
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {pm.isActive ? 'Faol' : 'Nofaol'}
+                          </span>
+                        </div>
+                        <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 truncate select-all">
+                          {pm.details}
+                        </p>
+                        {pm.instructions && (
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">{pm.instructions}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => togglePaymentMethod(pm.id)}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                            pm.isActive
+                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {pm.isActive ? 'Yoqilgan' : "O'chirilgan"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deletePaymentMethod(pm.id);
+                            showNotification("To'lov usuli o'chirildi");
+                          }}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 transition-colors"
+                          title="O'chirish"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 6: Promocodes Management */}
+          {activeTab === 'promocodes' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-4 rounded-3xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-xs text-purple-950 dark:text-purple-100 flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span>Promokodlar Boshqaruvi</span>
+                  </h4>
+                  <p className="text-[11px] text-purple-700/80 dark:text-purple-300 mt-0.5">
+                    To'lov chekini botga yuborgan talabalar uchun maxsus faollashtirish promokodlarini yarating va taqdim eting
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white">
+                  {(promocodes || []).length} ta promokod
+                </span>
+              </div>
+
+              {/* Generate Promocode Form */}
+              <form onSubmit={handleCreatePromo} className="p-4 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Yangi Promokod Yaratish:</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Obuna turi:</label>
+                    <select
+                      value={promoPlanSelect}
+                      onChange={(e) => setPromoPlanSelect(e.target.value as SubscriptionPlanType)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="3_months">3 Oylik Premium</option>
+                      <option value="6_months">6 Oylik Premium</option>
+                      <option value="1_year">1 Yillik Premium</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Promokod kodi:</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                        placeholder="Masalan: YUK-6M-7193"
+                        className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGenerateRandomPromo}
+                        className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold shrink-0 transition-colors"
+                      >
+                        Generatsiya
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={!promoCodeInput.trim()}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-purple-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Promokodni Saqlash</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Promocodes List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase px-1">
+                  Barcha Promokodlar Ro'yxati ({promocodes?.length || 0})
+                </h4>
+
+                {(!promocodes || promocodes.length === 0) ? (
+                  <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                    Hozircha promokodlar yaratilmagan
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {promocodes.map((promo) => {
+                      const is3M = promo.plan === '3_months';
+                      const is6M = promo.plan === '6_months';
+                      const planBadge = is3M ? '3 oylik' : is6M ? '6 oylik' : '1 yillik';
+
+                      return (
+                        <div
+                          key={promo.code}
+                          className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                            promo.isUsed
+                              ? 'bg-slate-50/60 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800/60 opacity-60'
+                              : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 shadow-xs'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-sm text-slate-900 dark:text-white tracking-wider select-all">
+                                {promo.code}
+                              </span>
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                                {planBadge}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
+                              <span>Yaratildi: {promo.createdAt}</span>
+                              {promo.isUsed ? (
+                                <span className="text-rose-500 font-bold">
+                                  Ishlatilgan {promo.usedBy ? `(${promo.usedBy})` : ''}
+                                </span>
+                              ) : (
+                                <span className="text-emerald-500 font-bold">Faol (Kutilmoqda)</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPromo(promo.code)}
+                              className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 hover:bg-purple-100 text-xs font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1 transition-all active:scale-95"
+                            >
+                              {copiedCode === promo.code ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span className="text-[10px] text-emerald-600">Nusxalandi</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span className="text-[10px]">Nusxa</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                deletePromocode(promo.code);
+                                showNotification(`"${promo.code}" promokodi o'chirildi`);
+                              }}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 transition-colors"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
