@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell } from 'lucide-react';
+import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell, Check } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
@@ -87,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
                   YuksalQuiz
                 </h1>
                 <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50">
-                  v2.0
+                  v1.0
                 </span>
               </div>
             </div>
@@ -130,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
                         }`}
                       >
                         <span>{lang === 'uz' ? "O'zbek" : lang === 'ru' ? 'Русский' : 'English'}</span>
-                        {language === lang && <span className="text-[10px]">✓</span>}
+                        {language === lang && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
                       </button>
                     ))}
                   </div>

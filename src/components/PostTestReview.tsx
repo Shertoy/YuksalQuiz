@@ -14,6 +14,8 @@ import {
   Lock,
   Unlock,
   AlertTriangle,
+  Award,
+  BookOpen,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
@@ -64,8 +66,10 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         }`}
       >
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{isPassed ? '🎉' : '📚'}</span>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30'}`}>
+              {isPassed ? <Award className="w-5 h-5 text-emerald-300" /> : <BookOpen className="w-5 h-5 text-indigo-300" />}
+            </div>
             <div>
               <span className="text-xs uppercase tracking-wider font-semibold opacity-80">
                 Natija xulosasi

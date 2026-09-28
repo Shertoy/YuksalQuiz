@@ -212,7 +212,9 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
       <div className="space-y-3">
         {filteredPackages.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
-            <div className="text-3xl mb-2">🔍</div>
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+              <Search className="w-7 h-7" />
+            </div>
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
               {t.emptyCategoryTitle}
             </h3>

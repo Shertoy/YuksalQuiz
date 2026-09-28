@@ -833,13 +833,19 @@ export const useQuizStore = create<QuizState>()(
           state.announcements = [
             {
               id: 'ann-1',
-              title: 'YuksalQuiz v2.0 ga xush kelibsiz! 🚀',
+              title: 'YuksalQuiz v1.0 ga xush kelibsiz! 🚀',
               message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 35 000 so\'mlik vaucherdan foydalaning!',
               date: '2026-09-27',
               tag: 'yangilik',
               isRead: false,
             },
           ];
+        } else {
+          // Sanitize any stale announcement title containing v2.0
+          state.announcements = state.announcements.map((a: any) => ({
+            ...a,
+            title: a.title ? a.title.replace('v2.0', 'v1.0') : a.title,
+          }));
         }
 
         // Initialize transaction history if empty for registered users
@@ -876,6 +882,20 @@ export const useQuizStore = create<QuizState>()(
               isPositive: true,
               date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
             });
+          }
+        }
+
+        // Clean unearned simulated referral bonuses for users without real actions
+        if (state.profile) {
+          if (state.transactions) {
+            state.transactions = state.transactions.filter(
+              (tx: any) => !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1500))
+            );
+          }
+          const hasRealDeposits = (state.transactions || []).some((tx: any) => tx.type === 'deposit');
+          if (!hasRealDeposits && (state.profile.authorEarnings || 0) === 0) {
+            state.profile.walletBalance = 0;
+            state.profile.referralCount = 0;
           }
         }
 

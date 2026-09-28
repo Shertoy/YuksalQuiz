@@ -205,7 +205,7 @@ export const translations: Record<Language, Translations> = {
     searchPlaceholder: 'Test yoki fan nomini izlang...',
     emptyCategoryTitle: 'Hozircha ushbu bo\'limda testlar mavjud emas',
     emptyCategoryDesc: 'Birinchi bo\'lib test yuklang va har bir yechim uchun +100 so\'m oling!',
-    createTestBtn: '+ Test yaratish',
+    createTestBtn: 'Test yaratish',
 
     questionCounter: 'Savol:',
     timeRemaining: 'Vaqt:',
@@ -344,7 +344,7 @@ export const translations: Record<Language, Translations> = {
     searchPlaceholder: 'Поиск по названию теста или предмета...',
     emptyCategoryTitle: 'В этом разделе пока нет тестов',
     emptyCategoryDesc: 'Создайте тест первым и получайте +100 сум за каждое прохождение!',
-    createTestBtn: '+ Создать тест',
+    createTestBtn: 'Создать тест',
 
     questionCounter: 'Вопрос:',
     timeRemaining: 'Время:',
@@ -483,7 +483,7 @@ export const translations: Record<Language, Translations> = {
     searchPlaceholder: 'Search tests or subjects...',
     emptyCategoryTitle: 'No tests available in this category yet',
     emptyCategoryDesc: 'Be the first to publish a test and earn +100 UZS per completion!',
-    createTestBtn: '+ Create Test',
+    createTestBtn: 'Create Test',
 
     questionCounter: 'Question:',
     timeRemaining: 'Time:',

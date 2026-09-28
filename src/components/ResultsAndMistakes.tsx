@@ -8,6 +8,7 @@ import {
   Clock,
   Calendar,
   Sparkles,
+  Check,
   CheckCircle2,
   XCircle,
   HelpCircle,
@@ -19,6 +20,7 @@ import {
   Zap,
   MapPin,
   TrendingUp,
+  BarChart2,
 } from 'lucide-react';
 import { MistakeItem } from '../types';
 import confetti from 'canvas-confetti';
@@ -366,7 +368,7 @@ export const ResultsAndMistakes: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <span className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-xs">
-                      ⚡
+                      <Zap className="w-4 h-4 fill-rose-500" />
                     </span>
                     <div>
                       <h3 className="font-extrabold text-xs text-slate-900 dark:text-white">
@@ -463,7 +465,9 @@ export const ResultsAndMistakes: React.FC = () => {
             ) : (
               /* Completed Session */
               <div className="text-center py-4">
-                <div className="text-4xl mb-2">🎉</div>
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                  <Sparkles className="w-7 h-7" />
+                </div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-1">
                   Mashq yakunlandi!
                 </h3>
@@ -549,7 +553,9 @@ export const ResultsAndMistakes: React.FC = () => {
         <div className="space-y-2.5">
           {testAttempts.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
-              <div className="text-3xl mb-2">📊</div>
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                <BarChart2 className="w-7 h-7" />
+              </div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 Hali testlar topshirilmadi
               </h3>
@@ -593,7 +599,7 @@ export const ResultsAndMistakes: React.FC = () => {
                         : 'bg-amber-100 dark:bg-amber-950 text-amber-600'
                     }`}
                   >
-                    {att.isPassed ? '✓' : '!'}
+                    {att.isPassed ? <Check className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
                   </span>
                 </div>
               </div>

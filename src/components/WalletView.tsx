@@ -17,6 +17,7 @@ import {
   AlertCircle,
   ArrowRight,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
@@ -287,8 +288,15 @@ export const WalletView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-              {hasVoucher ? `✓ ${t.voucherApplied}` : "HEMIS & sertifikat testlari"}
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+              {hasVoucher ? (
+                <>
+                  <Check className="w-3.5 h-3.5 inline text-emerald-500" />
+                  <span>{t.voucherApplied}</span>
+                </>
+              ) : (
+                <span>HEMIS & sertifikat testlari</span>
+              )}
             </span>
 
             {canAfford6M ? (

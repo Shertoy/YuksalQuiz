@@ -203,7 +203,10 @@ export const Leaderboard: React.FC = () => {
           <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
             {uni.averageAccuracy}% aniqlik
           </span>
-          <span className="text-[10px] text-slate-400">⏱️ {uni.averageTime}</span>
+          <span className="text-[10px] text-slate-400 flex items-center justify-end gap-1">
+            <Clock className="w-3 h-3 text-slate-400 inline" />
+            <span>{uni.averageTime}</span>
+          </span>
         </div>
       );
     }
@@ -296,15 +299,17 @@ export const Leaderboard: React.FC = () => {
 
           {/* Progress Bar & Next Position Prompt */}
           <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-indigo-200 mb-1.5">
-              <span>
+            <div className="flex items-center justify-between gap-2.5 text-[11px] font-semibold text-indigo-200 mb-1.5">
+              <span className="truncate pr-1">
                 {userRank === 1
-                  ? 'Siz peshqadamsiz! 🎉'
+                  ? 'Siz peshqadamsiz!'
                   : metric === 'percentage'
                   ? `Keyingi o'ringa chiqish uchun +${neededAnswers}% aniqlik yoki tezroq vaqt kerak`
                   : `Keyingi o'ringa chiqish uchun ${neededAnswers} ta to'g'ri javob qoldi`}
               </span>
-              <span className="font-bold text-amber-300">{progressPercent}%</span>
+              <span className="font-extrabold text-amber-300 shrink-0 ml-auto bg-amber-400/10 px-1.5 py-0.5 rounded-md border border-amber-400/20 text-[10px]">
+                {progressPercent}%
+              </span>
             </div>
             <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
               <div

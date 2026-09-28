@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Calendar,
   CornerDownRight,
+  Pin,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -877,8 +878,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-indigo-500 font-bold mt-0.5">
-                                📌 {reply.announcementTitle}
+                              <div className="text-[10px] text-indigo-500 font-bold mt-0.5 flex items-center gap-1">
+                                <Pin className="w-3 h-3 text-indigo-500 shrink-0" />
+                                <span>{reply.announcementTitle}</span>
                               </div>
                             </div>
 

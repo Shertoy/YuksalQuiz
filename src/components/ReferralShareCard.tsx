@@ -20,7 +20,7 @@ import {
 } from '../utils/telegram';
 
 export const ReferralShareCard: React.FC = () => {
-  const { profile, addReferralBonus } = useQuizStore();
+  const { profile } = useQuizStore();
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -36,9 +36,7 @@ export const ReferralShareCard: React.FC = () => {
     // Trigger Telegram deep-link via openTelegramLink
     triggerTelegramNativeShare(inviteLink, REFERRAL_SHARE_TEXT);
 
-    // Simulate referral reward during demo/testing
-    const { bonusAdded, newTotal } = addReferralBonus();
-    setToastMessage(`Do'stingizga yuborildi! +${bonusAdded.toLocaleString('uz-UZ')} so'm hamyoningizga qo'shildi.`);
+    setToastMessage("Taklif havolasi yuborildi! Do'stingiz ro'yxatdan o'tgach, hisobingizga +1 500 so'm qo'shiladi.");
     setTimeout(() => setToastMessage(null), 3500);
   };
 

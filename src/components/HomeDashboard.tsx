@@ -15,6 +15,8 @@ import {
   School,
   Share2,
   X,
+  Crown,
+  Medal,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
@@ -45,10 +47,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Compute Rank title
   const getRankInfo = (completed: number) => {
-    if (completed >= 30) return { title: 'Yuksalish Masteri', icon: '👑', color: 'from-amber-500 to-yellow-400' };
-    if (completed >= 15) return { title: 'Bilimdon Talaba', icon: '🥇', color: 'from-indigo-500 to-purple-500' };
-    if (completed >= 5) return { title: 'Faol Izlanuvchi', icon: '🥈', color: 'from-sky-500 to-cyan-400' };
-    return { title: 'Boshlang\'ich Talaba', icon: '🥉', color: 'from-emerald-500 to-teal-400' };
+    if (completed >= 30) return { title: 'Yuksalish Masteri', Icon: Crown, color: 'text-amber-300' };
+    if (completed >= 15) return { title: 'Bilimdon Talaba', Icon: Award, color: 'text-indigo-300' };
+    if (completed >= 5) return { title: 'Faol Izlanuvchi', Icon: Medal, color: 'text-sky-300' };
+    return { title: 'Boshlang\'ich Talaba', Icon: Award, color: 'text-emerald-300' };
   };
 
   const rank = getRankInfo(profile.completedTestsCount);
@@ -157,8 +159,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 text-emerald-300 font-black text-lg">
-              <span>{rank.icon}</span>
+            <div className="flex items-center justify-center gap-1 font-black text-lg py-0.5">
+              <rank.Icon className={`w-5 h-5 ${rank.color}`} />
             </div>
             <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold truncate">
               {rank.title}

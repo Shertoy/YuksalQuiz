@@ -210,8 +210,8 @@ export const OnboardingModal: React.FC = () => {
                             loading="lazy"
                           />
                           {isSelected && (
-                            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black shadow">
-                              ✓
+                            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow">
+                              <Check className="w-2.5 h-2.5" />
                             </span>
                           )}
                         </button>

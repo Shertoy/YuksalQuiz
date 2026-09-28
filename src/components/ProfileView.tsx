@@ -97,8 +97,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
             <UserAvatar avatar={isEditing ? avatar : profile.avatar} />
           </div>
-          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow">
-            ✓
+          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">
+            <Check className="w-3.5 h-3.5" />
           </span>
         </div>
 
@@ -292,8 +292,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
                         loading="lazy"
                       />
                       {isSelected && (
-                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black shadow">
-                          ✓
+                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow">
+                          <Check className="w-2.5 h-2.5" />
                         </span>
                       )}
                     </button>
