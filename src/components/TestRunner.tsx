@@ -309,11 +309,11 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             </div>
 
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-1">
-              Testni tark etasizmi?
+              {t.confirmExitTitle}
             </h3>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-              Joriy natijalar saqlanmaydi va test bekor qilinadi.
+              {t.confirmExitDesc}
             </p>
 
             <div className="flex items-center gap-2">
@@ -321,13 +321,13 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                 onClick={() => setShowConfirmCancel(false)}
                 className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
               >
-                Davom etish
+                {t.continueBtn}
               </button>
               <button
                 onClick={onCancel}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20"
               >
-                Chiqish
+                {t.exitBtn}
               </button>
             </div>
           </div>

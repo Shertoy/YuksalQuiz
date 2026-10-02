@@ -283,7 +283,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-          Barcha testlar ({testPackages.length})
+          {t.allTestsTab} ({testPackages.length})
         </button>
         <button
           type="button"
@@ -298,7 +298,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
           }`}
         >
           <User className="w-3.5 h-3.5" />
-          <span>Mening testlarim ({myTestsCount})</span>
+          <span>{t.myTestsTab} ({myTestsCount})</span>
         </button>
       </div>
 
@@ -352,7 +352,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            Barcha OTMlar
+            {t.allUnis}
           </button>
           {profile.university && (
             <button
@@ -367,7 +367,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               }`}
             >
               <School className="w-3 h-3" />
-              <span>Mening OTMim</span>
+              <span>{t.myUni}</span>
             </button>
           )}
           {[...universities]
@@ -400,11 +400,11 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               <Search className="w-7 h-7" />
             </div>
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              {onlyMyTests ? 'Siz hali test yaratmagansiz' : t.emptyCategoryTitle}
+              {onlyMyTests ? t.myTestsEmptyTitle : t.emptyCategoryTitle}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
               {onlyMyTests
-                ? "O'zingiz yoki guruhingiz uchun yangi test yaratib, barcha talabalar bilan ulashing."
+                ? t.myTestsEmptyDesc
                 : t.emptyCategoryDesc}
             </p>
             <button
@@ -446,13 +446,13 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
                     {pkg.isCommunityCreated && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300">
-                        Hamjamiyat testi
+                        {t.communityTestBadge}
                       </span>
                     )}
 
                     {pkg.authorId === profile.id && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
-                        Sizning testingiz
+                        {t.myTestBadge}
                       </span>
                     )}
                   </div>
@@ -461,13 +461,13 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                     {decodeHtmlEntities(pkg.title)}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {decodeHtmlEntities(pkg.university || '')} • Muallif: {decodeHtmlEntities(pkg.authorName || '')}
+                    {decodeHtmlEntities(pkg.university || '')} • {t.authorLabel}: {decodeHtmlEntities(pkg.authorName || '')}
                   </p>
                 </div>
 
                 <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                   <span className="text-[11px] font-bold text-slate-400">
-                    {pkg.totalQuestions} savol
+                    {pkg.totalQuestions} {t.questionsCount}
                   </span>
 
                   {pkg.authorId === profile.id && (
@@ -480,10 +480,10 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                           onEditTest?.(pkg);
                         }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] transition-all active:scale-95 border border-emerald-200/50 dark:border-emerald-800/50"
-                        title="Testni tahrirlash"
+                        title={t.editBtn}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span>Tahrirlash</span>
+                        <span>{t.editBtn}</span>
                       </button>
 
                       <button
@@ -493,7 +493,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                           handleDeleteTest(pkg);
                         }}
                         className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50"
-                        title="Testni o'chirish"
+                        title={t.deleteBtn}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -505,7 +505,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               {/* Sequential Test Blocks Selection */}
               <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
                 <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                  Test bloklari:
+                  {t.testBlocksLabel}:
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -559,17 +559,17 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
                         <div className="flex items-center justify-between text-[10px]">
                           <span className="opacity-80">
-                            {block.questions.length} savol
+                            {block.questions.length} {t.questionsCount}
                           </span>
                           <span>
                             {isLocked ? (
-                              'Qulflangan'
+                              t.lockedStatus
                             ) : maxScore > 0 ? (
                               <span className="font-bold">
-                                Eng yaxshi: {maxScore}/{block.questions.length} ({maxScore * 4} ball)
+                                {t.bestScoreLabel}: {maxScore}/{block.questions.length} ({maxScore * 4} {t.pointsLabel})
                               </span>
                             ) : (
-                              'Boshlash'
+                              t.start
                             )}
                           </span>
                         </div>
@@ -592,7 +592,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
             </div>
 
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
-              {lockExplanation.blockTitle} Qulflangan!
+              {lockExplanation.blockTitle} ({t.lockedStatus})
             </h3>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-amber-50 dark:bg-amber-950/40 p-3 rounded-2xl border border-amber-200 dark:border-amber-900/50 mb-5">
@@ -603,7 +603,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               onClick={() => setLockExplanation(null)}
               className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs transition-all active:scale-95"
             >
-              Tushundim
+              {t.understandBtn}
             </button>
           </div>
         </div>
@@ -681,11 +681,11 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
             </div>
 
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
-              Testni o'chirish
+              {t.deleteTestModalTitle}
             </h3>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
-              Haqiqatan ham <strong className="text-slate-900 dark:text-white">"{deletingPkg.title}"</strong> testini butunlay o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi.
+              {t.deleteTestModalPrompt} <strong className="text-slate-900 dark:text-white">"{deletingPkg.title}"</strong>?
             </p>
 
             <div className="flex items-center gap-3">
@@ -695,7 +695,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 onClick={() => setDeletingPkg(null)}
                 className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
               >
-                Bekor qilish
+                {t.cancel}
               </button>
               <button
                 type="button"
@@ -704,11 +704,11 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 {isDeleting ? (
-                  <span>O'chirilmoqda...</span>
+                  <span>{t.deletingStatus}</span>
                 ) : (
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Ha, o'chirish</span>
+                    <span>{t.deleteConfirmBtn}</span>
                   </>
                 )}
               </button>

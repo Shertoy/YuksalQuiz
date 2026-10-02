@@ -48,10 +48,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Compute Rank title
   const getRankInfo = (completed: number) => {
-    if (completed >= 30) return { title: 'Yuksalish Masteri', Icon: Crown, color: 'text-amber-300' };
-    if (completed >= 15) return { title: 'Bilimdon Talaba', Icon: Award, color: 'text-indigo-300' };
-    if (completed >= 5) return { title: 'Faol Izlanuvchi', Icon: Medal, color: 'text-sky-300' };
-    return { title: 'Boshlang\'ich Talaba', Icon: Award, color: 'text-emerald-300' };
+    if (completed >= 30) return { title: t.rankMaster, Icon: Crown, color: 'text-amber-300' };
+    if (completed >= 15) return { title: t.rankScholar, Icon: Award, color: 'text-indigo-300' };
+    if (completed >= 5) return { title: t.rankActive, Icon: Medal, color: 'text-sky-300' };
+    return { title: t.rankBeginner, Icon: Award, color: 'text-emerald-300' };
   };
 
   const rank = getRankInfo(profile.completedTestsCount);
@@ -59,7 +59,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   // Handle daily streak claim with flying coin visual animation and smooth exit
   const handleClaimDailyStreak = () => {
     if (isClaimedToday) {
-      setDailyClaimedMessage('Bugungi bonus allaqachon olingan. Ertaga yana tashrif buyuring!');
+      setDailyClaimedMessage(t.dailyBonusAlreadyClaimed);
       setTimeout(() => setDailyClaimedMessage(null), 3000);
       return;
     }
@@ -79,7 +79,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         origin: { y: 0.6 },
       });
 
-      setDailyClaimedMessage(`Tabriklaymiz! +1 tanga hisobingizga qo'shildi (${result.streakCount}-kunlik seriya)`);
+      setDailyClaimedMessage(`${t.dailyBonusClaimedSuccess} (${result.streakCount})`);
 
       // Trigger disappearing animation after celebration
       setTimeout(() => {
@@ -230,14 +230,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-black text-slate-900 dark:text-white">
-                Barcha testlar 100% bepul!
+                {t.allTestsFreeTitle}
               </h3>
               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                Cheklovlarsiz
+                {t.unlimitedBadge}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-              Fanlar va imtihon bloklari bo'yicha mashqlarni erkin bajaring
+              {t.allTestsFreeDesc}
             </p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           }}
           className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1 shrink-0 transition-transform active:scale-95"
         >
-          <span>Mashq qilish</span>
+          <span>{t.practiceBtn}</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -270,7 +270,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div>
             <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.navTests}</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-              5 ta kategoriya bo'yicha mashq
+              {t.testCategoriesPractice}
             </p>
           </div>
         </button>
@@ -288,7 +288,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div>
             <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.createTestBtn}</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-              Bulk parser (==== va ++++)
+              {t.bulkParserDesc}
             </p>
           </div>
         </button>
@@ -306,10 +306,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
             <div>
               <h4 className="font-bold text-xs text-rose-900 dark:text-rose-200">
-                Xatolar ustida ishlash ({mistakes.length} ta)
+                {t.mistakesTitle} ({mistakes.length})
               </h4>
               <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                Noto'g'ri yechilgan savollarni qayta ishlab chiqing
+                {t.mistakesDesc}
               </p>
             </div>
           </div>
@@ -322,13 +322,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="font-black text-sm text-slate-900 dark:text-white">
-              Tavsiya etilgan testlar
+              {t.recommendedTests}
             </h3>
             <button
               onClick={() => setActiveTab('tests')}
               className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline"
             >
-              Barchasi &rarr;
+              {t.all} &rarr;
             </button>
           </div>
 
@@ -350,13 +350,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
                       <span>{decodeHtmlEntities(pkg.university || '')}</span>
                       <span>•</span>
-                      <span>{pkg.blocks.length} blok ({pkg.totalQuestions} savol)</span>
+                      <span>{pkg.blocks.length} {t.blocksCount} ({pkg.totalQuestions} {t.questionsCount})</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                  <span>Boshlash</span>
+                  <span>{t.start}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>

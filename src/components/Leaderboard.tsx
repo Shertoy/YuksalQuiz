@@ -266,10 +266,10 @@ export const Leaderboard: React.FC = () => {
       return (
         <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400">
-            {points.toLocaleString('uz-UZ')} ball
+            {points.toLocaleString('uz-UZ')} {t.pointsLabel}
           </span>
           <span className="text-[10px] text-slate-400 font-medium">
-            {count.toLocaleString('uz-UZ')} ta to'g'ri
+            {count.toLocaleString('uz-UZ')} {t.correctAnswersShort}
           </span>
         </div>
       );
@@ -277,7 +277,7 @@ export const Leaderboard: React.FC = () => {
 
     return (
       <span className="font-extrabold text-xs text-orange-600 dark:text-orange-400">
-        {u.weeklyActiveHours}s faol
+        {u.weeklyActiveHours}{t.hoursShort} {t.metricWeekly}
       </span>
     );
   };
@@ -288,7 +288,7 @@ export const Leaderboard: React.FC = () => {
       return (
         <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-            {uni.averageAccuracy}% aniqlik
+            {uni.averageAccuracy}% {t.accuracyLabel}
           </span>
           <span className="text-[10px] text-slate-400 flex items-center justify-end gap-1">
             <Clock className="w-3 h-3 text-slate-400 inline" />
@@ -301,18 +301,18 @@ export const Leaderboard: React.FC = () => {
       return (
         <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-black text-xs text-orange-600 dark:text-orange-400">
-            {uni.activeStudentsCount.toLocaleString('uz-UZ')} talaba
+            {uni.activeStudentsCount.toLocaleString('uz-UZ')} {t.activeParticipants}
           </span>
-          <span className="text-[10px] text-slate-400">faol ishtirokchi</span>
+          <span className="text-[10px] text-slate-400">{t.activeParticipants}</span>
         </div>
       );
     }
     return (
       <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
         <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-          {(uni.totalScorePoints ?? uni.totalCorrectAnswers * 4).toLocaleString('uz-UZ')} ball
+          {(uni.totalScorePoints ?? uni.totalCorrectAnswers * 4).toLocaleString('uz-UZ')} {t.pointsLabel}
         </span>
-        <span className="text-[10px] text-slate-400">{uni.activeStudentsCount} talabadan</span>
+        <span className="text-[10px] text-slate-400">{uni.activeStudentsCount} {t.fromStudentsCount}</span>
       </div>
     );
   };
@@ -326,7 +326,7 @@ export const Leaderboard: React.FC = () => {
           <span>{t.navRating}</span>
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          OTMlar, viloyatlar va O'zbekiston bo'ylab eng faol bilimdonlar
+          {t.leaderboardSubtitle}
         </p>
       </div>
 
@@ -353,7 +353,7 @@ export const Leaderboard: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-[11px] text-emerald-200/80 font-medium">
-                  {profile.region} • {userRank}-o'rin
+                  {profile.region} • {userRank} {t.rankPlace}
                 </p>
               </div>
             </div>
@@ -373,10 +373,10 @@ export const Leaderboard: React.FC = () => {
               ) : (
                 <div>
                   <div className="text-base font-black text-orange-300">
-                    {stats.scorePoints.toLocaleString('uz-UZ')} ball
+                    {stats.scorePoints.toLocaleString('uz-UZ')} {t.pointsLabel}
                   </div>
                   <div className="text-[10px] text-emerald-200/90 font-medium flex items-center justify-end gap-1">
-                    <span>{stats.totalCorrectAnswers} ta to'g'ri</span>
+                    <span>{stats.totalCorrectAnswers} {t.correctAnswersShort}</span>
                     <span>•</span>
                     <Clock className="w-2.5 h-2.5 text-emerald-400 inline" />
                     <span>{stats.bestTimeFormatted}</span>
@@ -391,10 +391,10 @@ export const Leaderboard: React.FC = () => {
             <div className="flex items-center justify-between gap-2.5 text-[11px] font-semibold text-emerald-100 mb-1.5">
               <span className="truncate pr-1">
                 {userRank === 1
-                  ? 'Siz peshqadamsiz!'
+                  ? t.youAreLeading
                   : metric === 'percentage'
-                  ? `Keyingi o'ringa chiqish uchun +${neededAnswers}% aniqlik yoki tezroq vaqt kerak`
-                  : `Keyingi o'ringa chiqish uchun yana ${neededAnswers} ball kerak`}
+                  ? t.nextRankAccReq.replace('{count}', String(neededAnswers))
+                  : t.nextRankPointsReq.replace('{count}', String(neededAnswers))}
               </span>
               <span className="font-extrabold text-orange-300 shrink-0 ml-auto bg-orange-400/10 px-1.5 py-0.5 rounded-md border border-orange-400/20 text-[10px]">
                 {progressPercent}%
@@ -427,7 +427,7 @@ export const Leaderboard: React.FC = () => {
             }`}
           >
             <School className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">OTMlar</span>
+            <span className="truncate">{t.scopeUnis}</span>
           </button>
 
           {/* 2. Region Scope */}
@@ -458,7 +458,7 @@ export const Leaderboard: React.FC = () => {
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <span>O'zbekiston</span>
+            <span>{t.scopeUzbekistan}</span>
           </button>
         </div>
 
@@ -477,7 +477,7 @@ export const Leaderboard: React.FC = () => {
             }`}
           >
             <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-            <span className="truncate">Reyting ballari</span>
+            <span className="truncate">{t.metricPoints}</span>
           </button>
 
           {/* 2. Percentage & Speed (In the MIDDLE) */}
@@ -493,7 +493,7 @@ export const Leaderboard: React.FC = () => {
             }`}
           >
             <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
-            <span className="truncate">Foiz & Tezlik</span>
+            <span className="truncate">{t.metricAccuracySpeed}</span>
           </button>
 
           {/* 3. Weekly active */}
@@ -509,7 +509,7 @@ export const Leaderboard: React.FC = () => {
             }`}
           >
             <Clock className="w-3 h-3 text-orange-500 shrink-0" />
-            <span className="truncate">Haftalik faol</span>
+            <span className="truncate">{t.metricWeekly}</span>
           </button>
         </div>
       </div>
@@ -523,10 +523,10 @@ export const Leaderboard: React.FC = () => {
               <School className="w-7 h-7" />
             </div>
             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              Hozircha OTMlar reytingi shakllanmagan
+              {t.emptyUnisTitle}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Barcha soxta ma'lumotlar tozalandi. Talabalar testlarni yechishni boshlagach, ularning oliygohlari ushbu reyting jadvalidan munosib o'rin oladi.
+              {t.emptyUnisDesc}
             </p>
           </div>
         ) : (
@@ -535,11 +535,11 @@ export const Leaderboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <School className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  Oliygohlar va o'quv markazlari reytingi
+                  {t.unisRankingTitle}
                 </span>
               </div>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                {sortedUniversities.length} ta muassasa
+                {sortedUniversities.length} {t.unisCountLabel}
               </span>
             </div>
 
@@ -562,7 +562,7 @@ export const Leaderboard: React.FC = () => {
                     {uniSecond.region}
                   </p>
                   <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                    <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
+                    <span className="text-[10px] font-bold text-slate-500">2{t.rankPlace}</span>
                     {formatUniMetricValue(uniSecond, true)}
                   </div>
                 </div>
@@ -587,7 +587,7 @@ export const Leaderboard: React.FC = () => {
                     {uniFirst.region}
                   </p>
                   <div className="h-20 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
-                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1-o'rin</span>
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1{t.rankPlace}</span>
                     {formatUniMetricValue(uniFirst, true)}
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export const Leaderboard: React.FC = () => {
                     {uniThird.region}
                   </p>
                   <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                    <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
+                    <span className="text-[10px] font-bold text-slate-500">3{t.rankPlace}</span>
                     {formatUniMetricValue(uniThird, true)}
                   </div>
                 </div>
@@ -620,7 +620,7 @@ export const Leaderboard: React.FC = () => {
           {/* Universities List (4th - End) */}
           <div className="space-y-2">
             <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
-              Barcha OTM va Markazlar (4–{sortedUniversities.length} o'rinlar)
+              {t.allUnisListTitle.replace('{count}', String(sortedUniversities.length))}
             </h3>
 
             <div className="space-y-2">
@@ -648,7 +648,7 @@ export const Leaderboard: React.FC = () => {
                                 : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
                             }`}
                           >
-                            {uni.type === 'center' ? "O'quv Markazi" : 'OTM'}
+                            {uni.type === 'center' ? t.catCenter : 'OTM'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
@@ -656,7 +656,7 @@ export const Leaderboard: React.FC = () => {
                           <span>•</span>
                           <span className="flex items-center gap-0.5">
                             <Users className="w-3 h-3" />
-                            {uni.activeStudentsCount} faol talaba
+                            {uni.activeStudentsCount} {t.activeStudentsLabel}
                           </span>
                         </div>
                       </div>
@@ -680,10 +680,10 @@ export const Leaderboard: React.FC = () => {
               <Trophy className="w-7 h-7" />
             </div>
             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              Reyting natijalari tozalangan!
+              {t.emptyStudentsTitle}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Barcha soxta akkauntlar tozalandi. Birinchi bo'lib test topshiring va 1-o'rin shohsupasini egallang! 🏆
+              {t.emptyStudentsDesc}
             </p>
           </div>
         ) : (
@@ -713,7 +713,7 @@ export const Leaderboard: React.FC = () => {
                         {second.region}
                       </p>
                       <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                        <span className="text-[10px] font-bold text-slate-500">2-o'rin</span>
+                        <span className="text-[10px] font-bold text-slate-500">2{t.rankPlace}</span>
                         {formatMetricValue(second, true)}
                       </div>
                     </div>
@@ -742,7 +742,7 @@ export const Leaderboard: React.FC = () => {
                       {first.region}
                     </p>
                     <div className="h-20 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
-                      <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1-o'rin</span>
+                      <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1{t.rankPlace}</span>
                       {formatMetricValue(first, true)}
                     </div>
                   </div>
@@ -768,7 +768,7 @@ export const Leaderboard: React.FC = () => {
                         {third.region}
                       </p>
                       <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                        <span className="text-[10px] font-bold text-slate-500">3-o'rin</span>
+                        <span className="text-[10px] font-bold text-slate-500">3{t.rankPlace}</span>
                         {formatMetricValue(third, true)}
                       </div>
                     </div>
@@ -783,7 +783,7 @@ export const Leaderboard: React.FC = () => {
             {listUsers.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
-                  Barcha ishtirokchilar (4–20 o'rinlar)
+                  {t.allStudentsListTitle}
                 </h3>
 
                 <div className="space-y-2">
@@ -825,7 +825,7 @@ export const Leaderboard: React.FC = () => {
                               </h4>
                               {isMe && (
                                 <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold shrink-0">
-                                  Siz
+                                  {t.youBadge}
                                 </span>
                               )}
                             </div>

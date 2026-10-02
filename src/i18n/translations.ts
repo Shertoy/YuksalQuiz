@@ -144,6 +144,129 @@ export interface Translations {
   previousBtn: string;
   nextBtn: string;
   totalTime: string;
+
+  // Rank Titles
+  rankMaster: string;
+  rankScholar: string;
+  rankActive: string;
+  rankBeginner: string;
+
+  // HomeDashboard
+  allTestsFreeTitle: string;
+  allTestsFreeDesc: string;
+  practiceBtn: string;
+  unlimitedBadge: string;
+  recommendedTests: string;
+  all: string;
+  start: string;
+  questionsCount: string;
+  blocksCount: string;
+  mistakesTitle: string;
+  mistakesDesc: string;
+  testCategoriesPractice: string;
+  bulkParserDesc: string;
+  dailyBonusAlreadyClaimed: string;
+  dailyBonusClaimedSuccess: string;
+
+  // TestList & Sequential Blocks
+  refreshTestsFromCloud: string;
+  allTestsTab: string;
+  myTestsTab: string;
+  allUnis: string;
+  myUni: string;
+  communityTestBadge: string;
+  myTestBadge: string;
+  authorLabel: string;
+  editBtn: string;
+  deleteBtn: string;
+  testBlocksLabel: string;
+  lockedStatus: string;
+  bestScoreLabel: string;
+  pointsLabel: string;
+  deleteTestModalTitle: string;
+  deleteTestModalPrompt: string;
+  deleteConfirmBtn: string;
+  deletingStatus: string;
+  understandBtn: string;
+  myTestsEmptyTitle: string;
+  myTestsEmptyDesc: string;
+
+  // Leaderboard
+  leaderboardSubtitle: string;
+  rankPlace: string;
+  correctAnswersShort: string;
+  youAreLeading: string;
+  nextRankAccReq: string;
+  nextRankPointsReq: string;
+  scopeUnis: string;
+  scopeRegion: string;
+  scopeUzbekistan: string;
+  metricPoints: string;
+  metricAccuracySpeed: string;
+  metricWeekly: string;
+  accuracyLabel: string;
+  studentsUnit: string;
+  activeParticipants: string;
+  fromStudents: string;
+  fromStudentsCount: string;
+  noUniRankingYet: string;
+  noUniRankingDesc: string;
+  unisAndCentersRanking: string;
+  institutionsCount: string;
+  hoursShort: string;
+  emptyUnisTitle: string;
+  emptyUnisDesc: string;
+  unisRankingTitle: string;
+  unisCountLabel: string;
+  allUnisListTitle: string;
+  activeStudentsLabel: string;
+  emptyStudentsTitle: string;
+  emptyStudentsDesc: string;
+  allStudentsListTitle: string;
+  youBadge: string;
+  daysUnit: string;
+
+  // Profile
+  profileTitle: string;
+  profileSubtitle: string;
+  securityVerified: string;
+  freeModeTitle: string;
+  freeModeDesc: string;
+  activeStatus: string;
+  myResultsCardTitle: string;
+  myResultsCardDesc: string;
+  viewBtn: string;
+  offerCardTitle: string;
+  offerCardDesc: string;
+  readBtn: string;
+  adminLoginBtn: string;
+  adminControlPanel: string;
+  editDataTitle: string;
+  updateAvatarLabel: string;
+  nameLabel: string;
+  surnameLabel: string;
+  regionLabel: string;
+  uniLabel: string;
+  studyTypeLabel: string;
+  courseLabel: string;
+  saveChangesBtn: string;
+  officialVersion: string;
+
+  // TestRunner
+  confirmExitTitle: string;
+  confirmExitDesc: string;
+  continueBtn: string;
+  exitBtn: string;
+
+  // SearchableUniversitySelect
+  selectUniPlaceholder: string;
+  selectUniModalTitle: string;
+  alphabeticalOrderDesc: string;
+  searchUniInputPlaceholder: string;
+  addCustomUniPrompt: string;
+  uniNotFound: string;
+  uniNotFoundTip: string;
+  addAsCustomBtn: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -284,6 +407,129 @@ export const translations: Record<Language, Translations> = {
     previousBtn: "Oldingisi",
     nextBtn: "Keyingisi",
     totalTime: "Umumiy vaqt",
+
+    // Rank Titles
+    rankMaster: 'Yuksalish Masteri',
+    rankScholar: 'Bilimdon Talaba',
+    rankActive: 'Faol Izlanuvchi',
+    rankBeginner: "Boshlang'ich Talaba",
+
+    // HomeDashboard
+    allTestsFreeTitle: 'Barcha testlar 100% bepul!',
+    allTestsFreeDesc: "Fanlar va imtihon bloklari bo'yicha mashqlarni erkin bajaring",
+    practiceBtn: 'Mashq qilish',
+    unlimitedBadge: 'Cheklovlarsiz',
+    recommendedTests: 'Tavsiya etilgan testlar',
+    all: 'Barchasi',
+    start: 'Boshlash',
+    questionsCount: 'savol',
+    blocksCount: 'blok',
+    mistakesTitle: 'Xatolar ustida ishlash',
+    mistakesDesc: "Noto'g'ri yechilgan savollarni qayta ishlab chiqing",
+    testCategoriesPractice: "5 ta kategoriya bo'yicha mashq",
+    bulkParserDesc: 'Bulk parser (==== va ++++)',
+    dailyBonusAlreadyClaimed: 'Bugungi bonus allaqachon olingan. Ertaga yana tashrif buyuring!',
+    dailyBonusClaimedSuccess: "Tabriklaymiz! +1 tanga hisobingizga qo'shildi",
+
+    // TestList & Sequential Blocks
+    refreshTestsFromCloud: 'Bulutdan testlarni yangilash',
+    allTestsTab: 'Barcha testlar',
+    myTestsTab: 'Mening testlarim',
+    allUnis: 'Barcha OTMlar',
+    myUni: 'Mening OTMim',
+    communityTestBadge: 'Hamjamiyat testi',
+    myTestBadge: 'Sizning testingiz',
+    authorLabel: 'Muallif',
+    editBtn: 'Tahrirlash',
+    deleteBtn: "O'chirish",
+    testBlocksLabel: 'Test bloklari:',
+    lockedStatus: 'Qulflangan',
+    bestScoreLabel: 'Eng yaxshi:',
+    pointsLabel: 'ball',
+    deleteTestModalTitle: "Testni o'chirish",
+    deleteTestModalPrompt: "Haqiqatan ham ushbu testni butunlay o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi.",
+    deleteConfirmBtn: "Ha, o'chirish",
+    deletingStatus: "O'chirilmoqda...",
+    understandBtn: 'Tushundim',
+    myTestsEmptyTitle: 'Siz hali test yaratmagansiz',
+    myTestsEmptyDesc: "O'zingiz yoki guruhingiz uchun yangi test yaratib, barcha talabalar bilan ulashing.",
+
+    // Leaderboard
+    leaderboardSubtitle: "OTMlar, viloyatlar va O'zbekiston bo'ylab eng faol bilimdonlar",
+    rankPlace: "-o'rin",
+    correctAnswersShort: "ta to'g'ri",
+    youAreLeading: 'Siz peshqadamsiz!',
+    nextRankAccReq: "Keyingi o'ringa chiqish uchun +{count}% aniqlik yoki tezroq vaqt kerak",
+    nextRankPointsReq: "Keyingi o'ringa chiqish uchun yana {count} ball kerak",
+    scopeUnis: 'OTMlar',
+    scopeRegion: 'Viloyat',
+    scopeUzbekistan: "O'zbekiston",
+    metricPoints: 'Reyting ballari',
+    metricAccuracySpeed: 'Foiz & Tezlik',
+    metricWeekly: 'Haftalik faol',
+    accuracyLabel: 'aniqlik',
+    studentsUnit: 'talaba',
+    activeParticipants: 'faol ishtirokchi',
+    fromStudents: 'talabadan',
+    noUniRankingYet: 'Hozircha OTMlar reytingi shakllanmagan',
+    noUniRankingDesc: "Barcha soxta ma'lumotlar tozalandi. Talabalar testlarni yechishni boshlagach, ularning oliygohlari ushbu reyting jadvalidan munosib o'rin oladi.",
+    unisAndCentersRanking: "Oliygohlar va o'quv markazlari reytingi",
+    institutionsCount: 'ta muassasa',
+    fromStudentsCount: 'talabadan',
+    hoursShort: 's',
+    emptyUnisTitle: 'Hozircha OTMlar reytingi shakllanmagan',
+    emptyUnisDesc: "Barcha soxta ma'lumotlar tozalandi. Talabalar testlarni yechishni boshlagach, ularning oliygohlari ushbu reyting jadvalidan munosib o'rin oladi.",
+    unisRankingTitle: "Oliygohlar va o'quv markazlari reytingi",
+    unisCountLabel: 'ta muassasa',
+    allUnisListTitle: "Barcha OTM va Markazlar (4–{count} o'rinlar)",
+    activeStudentsLabel: 'faol talaba',
+    emptyStudentsTitle: 'Reyting natijalari tozalangan!',
+    emptyStudentsDesc: "Barcha soxta akkauntlar tozalandi. Birinchi bo'lib test topshiring va 1-o'rin shohsupasini egallang! 🏆",
+    allStudentsListTitle: "Barcha ishtirokchilar (4–20 o'rinlar)",
+    youBadge: 'Siz',
+    daysUnit: 'kun',
+
+    // Profile
+    profileTitle: 'Talaba Profili',
+    profileSubtitle: "Shaxsiy ma'lumotlar va xavfsizlik sozlamalari",
+    securityVerified: 'Profil xavfsizligi tasdiqlangan (Anti-Tamper SHA-256)',
+    freeModeTitle: "100% Bepul Ta'lim Rejimi",
+    freeModeDesc: 'Barcha imtihonlar va testlar cheklovlarsiz ochiq',
+    activeStatus: 'Faol',
+    myResultsCardTitle: 'Mening natijalarim va tahlillar',
+    myResultsCardDesc: 'Yechilgan testlar, xatolar ustida ishlash va statistika',
+    viewBtn: "Ko'rish",
+    offerCardTitle: 'Ommaviy Oferta Shartnomasi',
+    offerCardDesc: 'Foydalanuvchi qoidalari va vaucher talablari',
+    readBtn: "O'qish",
+    adminLoginBtn: 'Admin tizimiga kirish',
+    adminControlPanel: 'Boshqaruv paneli →',
+    editDataTitle: "Ma'lumotlarni o'zgartirish",
+    updateAvatarLabel: 'Avatarni yangilash:',
+    nameLabel: 'Ism:',
+    surnameLabel: 'Familiya:',
+    regionLabel: 'Viloyat:',
+    uniLabel: "OTM / Ta'lim muassasasi:",
+    studyTypeLabel: "Ta'lim shakli:",
+    courseLabel: 'Kurs:',
+    saveChangesBtn: "O'zgarishlarni saqlash",
+    officialVersion: 'YuksalQuiz v1.0 • Rasmiy versiya',
+
+    // TestRunner
+    confirmExitTitle: 'Testni tark etasizmi?',
+    confirmExitDesc: 'Joriy natijalar saqlanmaydi va test bekor qilinadi.',
+    continueBtn: 'Davom etish',
+    exitBtn: 'Chiqish',
+
+    // SearchableUniversitySelect
+    selectUniPlaceholder: 'OTMni tanlang...',
+    selectUniModalTitle: 'OTMni tanlang',
+    alphabeticalOrderDesc: 'Alifbo tartibida saralangan',
+    searchUniInputPlaceholder: 'OTM nomi yoki qisqartmasi (masalan: TATU, SamDU, TDIU)...',
+    addCustomUniPrompt: "+ Yangi OTM (Ro'yxatda yo'q bo'lsa kiriting)",
+    uniNotFound: "bo'yicha OTM topilmadi",
+    uniNotFoundTip: "Qidiruv so'zini qisqartirib ko'ring yoki yangi OTM sifatida qo'shing.",
+    addAsCustomBtn: "Yangi OTM sifatida qo'shish",
   },
 
   ru: {
@@ -423,6 +669,129 @@ export const translations: Record<Language, Translations> = {
     previousBtn: "Предыдущий",
     nextBtn: "Следующий",
     totalTime: "Общее время",
+
+    // Rank Titles
+    rankMaster: 'Мастер Юксалиш',
+    rankScholar: 'Эрудированный студент',
+    rankActive: 'Активный исследователь',
+    rankBeginner: 'Начинающий студент',
+
+    // HomeDashboard
+    allTestsFreeTitle: 'Все тесты на 100% бесплатны!',
+    allTestsFreeDesc: 'Тренируйтесь по предметам и экзаменационным блокам свободно',
+    practiceBtn: 'Тренироваться',
+    unlimitedBadge: 'Без ограничений',
+    recommendedTests: 'Рекомендуемые тесты',
+    all: 'Все',
+    start: 'Начать',
+    questionsCount: 'вопр.',
+    blocksCount: 'бл.',
+    mistakesTitle: 'Работа над ошибками',
+    mistakesDesc: 'Повторите вопросы, в которых были допущены ошибки',
+    testCategoriesPractice: 'Практика по 5 категориям',
+    bulkParserDesc: 'Массовый парсер (==== и ++++)',
+    dailyBonusAlreadyClaimed: 'Сегодняшний бонус уже получен. Заходите завтра!',
+    dailyBonusClaimedSuccess: 'Поздравляем! +1 монета добавлена на ваш счет',
+
+    // TestList & Sequential Blocks
+    refreshTestsFromCloud: 'Обновить тесты из облака',
+    allTestsTab: 'Все тесты',
+    myTestsTab: 'Мои тесты',
+    allUnis: 'Все ВУЗы',
+    myUni: 'Мой ВУЗ',
+    communityTestBadge: 'Тест сообщества',
+    myTestBadge: 'Ваш тест',
+    authorLabel: 'Автор',
+    editBtn: 'Редактировать',
+    deleteBtn: 'Удалить',
+    testBlocksLabel: 'Блоки тестов:',
+    lockedStatus: 'Заблокировано',
+    bestScoreLabel: 'Лучший:',
+    pointsLabel: 'баллов',
+    deleteTestModalTitle: 'Удалить тест',
+    deleteTestModalPrompt: 'Вы действительно хотите удалить этот тест? Это действие нельзя отменить.',
+    deleteConfirmBtn: 'Да, удалить',
+    deletingStatus: 'Удаление...',
+    understandBtn: 'Понятно',
+    myTestsEmptyTitle: 'Вы еще не создали ни одного теста',
+    myTestsEmptyDesc: 'Создайте новый тест для себя или группы и делитесь со студентами.',
+
+    // Leaderboard
+    leaderboardSubtitle: 'Самые активные знатоки по ВУЗам, регионам и Узбекистану',
+    rankPlace: '-е место',
+    correctAnswersShort: 'правильных',
+    youAreLeading: 'Вы на 1-м месте!',
+    nextRankAccReq: 'Для следующего места нужно +{count}% точности или лучшее время',
+    nextRankPointsReq: 'Для следующего места нужно еще {count} баллов',
+    scopeUnis: 'ВУЗы',
+    scopeRegion: 'Регион',
+    scopeUzbekistan: 'Узбекистан',
+    metricPoints: 'Рейтинговые баллы',
+    metricAccuracySpeed: '% и Скорость',
+    metricWeekly: 'Активность',
+    accuracyLabel: 'точность',
+    studentsUnit: 'студентов',
+    activeParticipants: 'активных участников',
+    fromStudents: 'от студентов',
+    noUniRankingYet: 'Рейтинг ВУЗов пока не сформирован',
+    noUniRankingDesc: 'Рейтинг очищен от фиктивных данных. Как только студенты начнут проходить тесты, их вузы займут достойные места.',
+    unisAndCentersRanking: 'Рейтинг вузов и учебных центров',
+    institutionsCount: 'учреждений',
+    fromStudentsCount: 'от студентов',
+    hoursShort: 'ч',
+    emptyUnisTitle: 'Рейтинг ВУЗов пока не сформирован',
+    emptyUnisDesc: 'Рейтинг очищен от фиктивных данных. Как только студенты начнут проходить тесты, их вузы займут достойные места.',
+    unisRankingTitle: 'Рейтинг вузов и учебных центров',
+    unisCountLabel: 'учреждений',
+    allUnisListTitle: 'Все ВУЗы и Центры (4–{count} места)',
+    activeStudentsLabel: 'активных студентов',
+    emptyStudentsTitle: 'Результаты рейтинга обновлены!',
+    emptyStudentsDesc: 'Все тестовые аккаунты очищены. Пройдите тест первым и займите пьедестал 1-го места! 🏆',
+    allStudentsListTitle: 'Все участники (4–20 места)',
+    youBadge: 'Вы',
+    daysUnit: 'дн',
+
+    // Profile
+    profileTitle: 'Профиль студента',
+    profileSubtitle: 'Личные данные и настройки безопасности',
+    securityVerified: 'Безопасность профиля подтверждена (Anti-Tamper SHA-256)',
+    freeModeTitle: '100% Бесплатный режим обучения',
+    freeModeDesc: 'Все экзамены и тесты открыты без ограничений',
+    activeStatus: 'Активен',
+    myResultsCardTitle: 'Мои результаты и аналитика',
+    myResultsCardDesc: 'Решенные тесты, работа над ошибками и статистика',
+    viewBtn: 'Смотреть',
+    offerCardTitle: 'Договор Публичной оферты',
+    offerCardDesc: 'Правила пользователя и условия ваучера',
+    readBtn: 'Читать',
+    adminLoginBtn: 'Вход в панель администратора',
+    adminControlPanel: 'Панель управления →',
+    editDataTitle: 'Изменение данных',
+    updateAvatarLabel: 'Обновить аватар:',
+    nameLabel: 'Имя:',
+    surnameLabel: 'Фамилия:',
+    regionLabel: 'Регион:',
+    uniLabel: 'ВУЗ / Учебное заведение:',
+    studyTypeLabel: 'Форма обучения:',
+    courseLabel: 'Курс:',
+    saveChangesBtn: 'Сохранить изменения',
+    officialVersion: 'YuksalQuiz v1.0 • Официальная версия',
+
+    // TestRunner
+    confirmExitTitle: 'Выйти из теста?',
+    confirmExitDesc: 'Текущие результаты не сохранятся, и тест будет отменен.',
+    continueBtn: 'Продолжить',
+    exitBtn: 'Выйти',
+
+    // SearchableUniversitySelect
+    selectUniPlaceholder: 'Выберите ВУЗ...',
+    selectUniModalTitle: 'Выберите ВУЗ',
+    alphabeticalOrderDesc: 'Сортировка по алфавиту',
+    searchUniInputPlaceholder: 'Название ВУЗа или аббревиатура (напр: TATU, SamDU, TDIU)...',
+    addCustomUniPrompt: '+ Новый ВУЗ (если нет в списке)',
+    uniNotFound: 'ВУЗ не найден',
+    uniNotFoundTip: 'Попробуйте изменить запрос или добавьте как новый ВУЗ.',
+    addAsCustomBtn: 'Добавить как новый ВУЗ',
   },
 
   en: {
@@ -562,5 +931,128 @@ export const translations: Record<Language, Translations> = {
     previousBtn: "Previous",
     nextBtn: "Next",
     totalTime: "Total Time",
+
+    // Rank Titles
+    rankMaster: 'Yuksalish Master',
+    rankScholar: 'Proficient Scholar',
+    rankActive: 'Active Explorer',
+    rankBeginner: 'Novice Student',
+
+    // HomeDashboard
+    allTestsFreeTitle: 'All tests are 100% free!',
+    allTestsFreeDesc: 'Practice subject and exam modules without limits',
+    practiceBtn: 'Practice Now',
+    unlimitedBadge: 'Unlimited',
+    recommendedTests: 'Recommended Tests',
+    all: 'All',
+    start: 'Start',
+    questionsCount: 'q.',
+    blocksCount: 'blocks',
+    mistakesTitle: 'Work on Mistakes',
+    mistakesDesc: 'Review and retake questions with incorrect answers',
+    testCategoriesPractice: 'Practice across 5 tracks',
+    bulkParserDesc: 'Bulk parser (==== and ++++)',
+    dailyBonusAlreadyClaimed: 'Today\'s bonus is already claimed. Check back tomorrow!',
+    dailyBonusClaimedSuccess: 'Congratulations! +1 coin added to your account',
+
+    // TestList & Sequential Blocks
+    refreshTestsFromCloud: 'Refresh tests from cloud',
+    allTestsTab: 'All Tests',
+    myTestsTab: 'My Tests',
+    allUnis: 'All Universities',
+    myUni: 'My University',
+    communityTestBadge: 'Community Test',
+    myTestBadge: 'Your Test',
+    authorLabel: 'Author',
+    editBtn: 'Edit',
+    deleteBtn: 'Delete',
+    testBlocksLabel: 'Test Blocks:',
+    lockedStatus: 'Locked',
+    bestScoreLabel: 'Best:',
+    pointsLabel: 'pts',
+    deleteTestModalTitle: 'Delete Test',
+    deleteTestModalPrompt: 'Are you sure you want to permanently delete this test? This action cannot be undone.',
+    deleteConfirmBtn: 'Yes, Delete',
+    deletingStatus: 'Deleting...',
+    understandBtn: 'Understood',
+    myTestsEmptyTitle: 'You have not created any tests yet',
+    myTestsEmptyDesc: 'Create a test for yourself or study group and share it with peers.',
+
+    // Leaderboard
+    leaderboardSubtitle: 'Top academic achievers across Universities, Regions, and Uzbekistan',
+    rankPlace: 'th Place',
+    correctAnswersShort: 'correct',
+    youAreLeading: 'You are in 1st place!',
+    nextRankAccReq: 'Need +{count}% accuracy or faster time to reach next rank',
+    nextRankPointsReq: 'Need {count} more points to reach next rank',
+    scopeUnis: 'Universities',
+    scopeRegion: 'Region',
+    scopeUzbekistan: 'Uzbekistan',
+    metricPoints: 'Rating Points',
+    metricAccuracySpeed: 'Accuracy & Speed',
+    metricWeekly: 'Weekly Active',
+    accuracyLabel: 'accuracy',
+    studentsUnit: 'students',
+    activeParticipants: 'active participants',
+    fromStudents: 'from students',
+    noUniRankingYet: 'University ranking is not yet established',
+    noUniRankingDesc: 'All test data has been verified. As students complete tests, their universities will appear here.',
+    unisAndCentersRanking: 'Universities and Learning Centers Ranking',
+    institutionsCount: 'institutions',
+    fromStudentsCount: 'from students',
+    hoursShort: 'h',
+    emptyUnisTitle: 'University ranking is not yet established',
+    emptyUnisDesc: 'All test data has been verified. As students complete tests, their universities will appear here.',
+    unisRankingTitle: 'Universities and Learning Centers Ranking',
+    unisCountLabel: 'institutions',
+    allUnisListTitle: 'All Universities & Centers (4–{count} Place)',
+    activeStudentsLabel: 'active students',
+    emptyStudentsTitle: 'Leaderboard results refreshed!',
+    emptyStudentsDesc: 'All mock accounts cleared. Complete tests first to claim the #1 spot on the podium! 🏆',
+    allStudentsListTitle: 'All Participants (4–20 Place)',
+    youBadge: 'You',
+    daysUnit: 'd',
+
+    // Profile
+    profileTitle: 'Student Profile',
+    profileSubtitle: 'Personal details and security settings',
+    securityVerified: 'Profile verified (Anti-Tamper SHA-256)',
+    freeModeTitle: '100% Free Learning Mode',
+    freeModeDesc: 'All tests and exam modules are unrestricted',
+    activeStatus: 'Active',
+    myResultsCardTitle: 'My Results & Analytics',
+    myResultsCardDesc: 'Completed tests, mistake practice, and statistics',
+    viewBtn: 'View',
+    offerCardTitle: 'Public Offer Agreement',
+    offerCardDesc: 'User guidelines and voucher policy',
+    readBtn: 'Read',
+    adminLoginBtn: 'Admin Login',
+    adminControlPanel: 'Control Panel →',
+    editDataTitle: 'Edit Information',
+    updateAvatarLabel: 'Update Avatar:',
+    nameLabel: 'First Name:',
+    surnameLabel: 'Last Name:',
+    regionLabel: 'Region:',
+    uniLabel: 'University / Institution:',
+    studyTypeLabel: 'Study Mode:',
+    courseLabel: 'Course Year:',
+    saveChangesBtn: 'Save Changes',
+    officialVersion: 'YuksalQuiz v1.0 • Official Release',
+
+    // TestRunner
+    confirmExitTitle: 'Leave Test?',
+    confirmExitDesc: 'Current test progress will be discarded.',
+    continueBtn: 'Continue',
+    exitBtn: 'Exit',
+
+    // SearchableUniversitySelect
+    selectUniPlaceholder: 'Select University...',
+    selectUniModalTitle: 'Select University',
+    alphabeticalOrderDesc: 'Sorted alphabetically',
+    searchUniInputPlaceholder: 'University name or acronym (e.g., TATU, SamDU, TDIU)...',
+    addCustomUniPrompt: '+ New University (if not in list)',
+    uniNotFound: 'No university found',
+    uniNotFoundTip: 'Try shortening your query or add it as a new university.',
+    addAsCustomBtn: 'Add as New University',
   },
 };

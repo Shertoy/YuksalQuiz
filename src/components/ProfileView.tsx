@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   UZBEKISTAN_REGIONS,
   Region,
@@ -35,6 +36,7 @@ interface ProfileViewProps {
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) => {
   const { profile, updateProfile, setActiveTab, universities } = useQuizStore();
+  const { t } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -72,10 +74,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-black text-slate-900 dark:text-white">
-            Talaba Profili
+            {t.profileTitle}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Shaxsiy ma'lumotlar va xavfsizlik sozlamalari
+            {t.profileSubtitle}
           </p>
         </div>
 
@@ -87,7 +89,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
         >
           {isEditing ? <X className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
-          <span>{isEditing ? 'Bekor qilish' : 'Tahrirlash'}</span>
+          <span>{isEditing ? t.cancel : t.editBtn}</span>
         </button>
       </div>
 
@@ -106,13 +108,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           {profile.firstName || 'Talaba'} {profile.lastName || ''}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {profile.university ? `${profile.university} • ` : ''}{profile.region} • {profile.academicYear}-kurs • {profile.studyType}
+          {profile.university ? `${profile.university} • ` : ''}{profile.region} • {profile.academicYear}{t.courseUnit} • {profile.studyType}
         </p>
 
         {/* Security Signature Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-[10px] font-bold mt-3">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Profil xavfsizligi tasdiqlangan (Anti-Tamper SHA-256)</span>
+          <span>{t.securityVerified}</span>
         </div>
 
         {/* Quick Stats Grid */}
@@ -122,15 +124,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               <Coins className="w-4 h-4 fill-amber-500" />
               <span>{profile.coins}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Tangalar</p>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.coins}</p>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
             <div className="flex items-center gap-1.5 text-orange-500 font-black text-sm">
               <Flame className="w-4 h-4 fill-orange-500" />
-              <span>{profile.streak} kun</span>
+              <span>{profile.streak} {t.daysUnit || 'kun'}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Seriya (Streak)</p>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.streak}</p>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
@@ -138,7 +140,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               <BookOpen className="w-4 h-4" />
               <span>{profile.completedTestsCount}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Yechilgan test</p>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.testsCompleted}</p>
           </div>
         </div>
 
@@ -150,15 +152,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             </div>
             <div>
               <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                100% Bepul Ta'lim Rejimi
+                {t.freeModeTitle}
               </div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Barcha imtihonlar va testlar cheklovlarsiz ochiq
+                {t.freeModeDesc}
               </div>
             </div>
           </div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            Faol
+            {t.activeStatus}
           </span>
         </div>
       </div>
@@ -177,16 +179,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </div>
           <div>
             <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
-              Mening natijalarim va tahlillar
+              {t.myResultsCardTitle}
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Yechilgan testlar, xatolar ustida ishlash va statistika
+              {t.myResultsCardDesc}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-          <span>Ko'rish</span>
+          <span>{t.viewBtn}</span>
           <ChevronRight className="w-4 h-4" />
         </div>
       </div>
@@ -199,10 +201,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </div>
           <div>
             <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-              Ommaviy Oferta Shartnomasi
+              {t.offerCardTitle}
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Foydalanuvchi qoidalari va vaucher talablari
+              {t.offerCardDesc}
             </p>
           </div>
         </div>
@@ -211,7 +213,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           onClick={() => setShowOfertaModal(true)}
           className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs"
         >
-          O'qish
+          {t.readBtn}
         </button>
       </div>
 
@@ -232,9 +234,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
         >
           <div className="flex items-center gap-2">
             <Lock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Admin tizimiga kirish</span>
+            <span>{t.adminLoginBtn}</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">Boshqaruv paneli &rarr;</span>
+          <span className="text-[10px] text-slate-400 font-medium">{t.adminControlPanel}</span>
         </button>
       </div>
 
@@ -242,7 +244,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       {isEditing && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
           <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-3">
-            Ma'lumotlarni o'zgartirish
+            {t.editDataTitle}
           </h4>
 
           <form onSubmit={handleSave} className="space-y-3.5 text-xs">
@@ -250,10 +252,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block font-semibold text-slate-700 dark:text-slate-300">
-                  Avatarni yangilash:
+                  {t.updateAvatarLabel}
                 </label>
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                  10 ta maxsus avatar
+                  {t.customAvatarsCount}
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -295,7 +297,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Ism:
+                  {t.nameLabel}
                 </label>
                 <input
                   type="text"
@@ -307,7 +309,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Familiya:
+                  {t.surnameLabel}
                 </label>
                 <input
                   type="text"
@@ -323,7 +325,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Viloyat:
+                  {t.regionLabel}
                 </label>
                 <select
                   value={region}
@@ -340,7 +342,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
 
               <div>
                 <SearchableUniversitySelect
-                  label="OTM / Ta'lim muassasasi:"
+                  label={t.uniLabel}
                   value={university}
                   onChange={(val) => setUniversity(val)}
                   universities={universities}
@@ -353,32 +355,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Ta'lim shakli:
+                  {t.studyTypeLabel}
                 </label>
                 <select
                   value={studyType}
                   onChange={(e) => setStudyType(e.target.value as StudyType)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
                 >
-                  <option value="Kunduzgi">Kunduzgi</option>
-                  <option value="Sirtqi">Sirtqi</option>
-                  <option value="Kechki">Kechki</option>
+                  <option value="Kunduzgi">{t.studyKunduzgi}</option>
+                  <option value="Sirtqi">{t.studySirtqi}</option>
+                  <option value="Kechki">{t.studyKechki}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Kurs:
+                  {t.courseLabel}
                 </label>
                 <select
                   value={academicYear}
                   onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
                 >
-                  <option value={1}>1-kurs</option>
-                  <option value={2}>2-kurs</option>
-                  <option value={3}>3-kurs</option>
-                  <option value={4}>4-kurs</option>
+                  <option value={1}>1{t.courseUnit}</option>
+                  <option value={2}>2{t.courseUnit}</option>
+                  <option value={3}>3{t.courseUnit}</option>
+                  <option value={4}>4{t.courseUnit}</option>
                 </select>
               </div>
             </div>
@@ -388,7 +390,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
             >
               <Check className="w-4 h-4" />
-              <span>O'zgarishlarni saqlash</span>
+              <span>{t.saveChangesBtn}</span>
             </button>
           </form>
         </div>
@@ -398,7 +400,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       <div className="pt-2 text-center">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold shadow-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>YuksalQuiz v1.0 • Rasmiy versiya</span>
+          <span>{t.officialVersion}</span>
         </div>
       </div>
     </div>

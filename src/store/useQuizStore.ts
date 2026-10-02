@@ -204,11 +204,26 @@ DEFAULT_PROFILE.checksum = generateIntegritySignature({
   voucherBalance: DEFAULT_PROFILE.voucherBalance,
 });
 
+const getInitialLanguage = (): Language => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tgLang = (window as any).Telegram.WebApp.initDataUnsafe?.user?.language_code;
+      if (tgLang && typeof tgLang === 'string') {
+        const lower = tgLang.toLowerCase();
+        if (lower.startsWith('ru')) return 'ru';
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return 'uz';
+};
+
 export const useQuizStore = create<QuizState>()(
   persist(
     (set, get) => ({
       theme: 'dark',
-      language: 'uz',
+      language: getInitialLanguage(),
       profile: DEFAULT_PROFILE,
       activeTab: 'home',
       testPackages: INITIAL_TEST_PACKAGES,
