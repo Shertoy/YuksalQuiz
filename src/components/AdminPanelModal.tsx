@@ -59,6 +59,7 @@ import {
   syncAllTestsWithCloud,
   fetchCloudTests,
   publishTestToCloud,
+  deleteTestFromCloud,
   publishUniversityToCloud,
   deleteUniversityFromCloud,
 } from '../services/testSyncService';
@@ -85,6 +86,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     deleteAnnouncementReply,
     testPackages,
     createTestPackage,
+    deleteTestPackage,
     clearAllTests,
     restoreBackupData,
     subscriptionPrices,
@@ -148,6 +150,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [testTitle, setTestTitle] = useState('');
   const [testUni, setTestUni] = useState(universities[0] || 'TATU');
   const [testDept, setTestDept] = useState<DepartmentType>('Axborot Texnologiyalari');
+
+  // Admin test management state
+  const [adminTestSearch, setAdminTestSearch] = useState('');
+  const [adminTestCategoryFilter, setAdminTestCategoryFilter] = useState<string>('all');
+  const [deletingTestPkg, setDeletingTestPkg] = useState<TestPackage | null>(null);
+  const [isDeletingTest, setIsDeletingTest] = useState(false);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
 
   const handleSavePrices = (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,6 +397,44 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     showNotification(`"${newPkg.title}" tavsiya etilgan test sifatida yaratildi va bulutga yuklandi!`);
   };
 
+  const handleDeleteTestByAdmin = (pkg: TestPackage) => {
+    triggerHaptic('warning');
+    setDeletingTestPkg(pkg);
+  };
+
+  const handleConfirmDeleteTestByAdmin = async () => {
+    if (!deletingTestPkg || isDeletingTest) return;
+    setIsDeletingTest(true);
+    triggerHaptic('medium');
+    const targetId = deletingTestPkg.id;
+    const targetTitle = deletingTestPkg.title;
+
+    deleteTestPackage(targetId);
+    try {
+      await deleteTestFromCloud(targetId);
+    } catch (err) {
+      console.warn('Admin cloud delete error:', err);
+    }
+
+    setIsDeletingTest(false);
+    setDeletingTestPkg(null);
+    triggerHaptic('success');
+    showNotification(`"${targetTitle}" testi muvaffaqiyatli o'chirildi!`);
+  };
+
+  const filteredAdminTests = testPackages.filter((pkg) => {
+    const matchesCat =
+      adminTestCategoryFilter === 'all' || (pkg.category || "Oliy Ta'lim (HEMIS)") === adminTestCategoryFilter;
+    const query = adminTestSearch.toLowerCase().trim();
+    const matchesSearch =
+      !query ||
+      pkg.title.toLowerCase().includes(query) ||
+      pkg.university.toLowerCase().includes(query) ||
+      pkg.department.toLowerCase().includes(query) ||
+      pkg.authorName.toLowerCase().includes(query);
+    return matchesCat && matchesSearch;
+  });
+
   const filteredUniversities = universities.filter((u) =>
     u.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -542,7 +589,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Testlar</span>
+            <span>Testlar ({testPackages.length})</span>
           </button>
 
           <button
@@ -1639,12 +1686,116 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 </button>
               </form>
 
-              {/* Current test packages count */}
-              <div className="p-3 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                <span>Hozirda tizimda mavjud testlar soni:</span>
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                  {testPackages.length} ta
-                </span>
+              {/* Test Management Section (Admin Delete Any Test) */}
+              <div className="space-y-3 pt-3 border-t border-slate-200/80 dark:border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Tizimdagi barcha testlar ({testPackages.length} ta)</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Istalgan testni o'chirish
+                  </span>
+                </div>
+
+                {/* Search & Category Filter */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={adminTestSearch}
+                      onChange={(e) => setAdminTestSearch(e.target.value)}
+                      placeholder="Nomi, OTM yoki muallif bo'yicha qidirish..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <select
+                    value={adminTestCategoryFilter}
+                    onChange={(e) => setAdminTestCategoryFilter(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                  >
+                    <option value="all">Barcha kategoriyalar</option>
+                    <option value="Oliy Ta'lim (HEMIS)">Oliy Ta'lim (HEMIS)</option>
+                    <option value="O'quv Markazi">O'quv Markazi</option>
+                    <option value="Xalqaro Sertifikatlar (IELTS, TOPIK, SAT, TOEFL)">Xalqaro Sertifikatlar</option>
+                    <option value="Abituriyent">Abituriyent</option>
+                    <option value="Maktab">Maktab</option>
+                  </select>
+                </div>
+
+                {/* Test Cards List */}
+                {filteredAdminTests.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <p className="font-bold text-slate-600 dark:text-slate-300">Testlar topilmadi</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {testPackages.length === 0
+                        ? "Hozirda tizimda hech qanday test mavjud emas."
+                        : "Qidiruv so'zini yoki filtrni o'zgartirib ko'ring."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {filteredAdminTests.map((pkg) => (
+                      <div
+                        key={pkg.id}
+                        className="p-3 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs flex items-center justify-between gap-3 transition-all hover:border-slate-300 dark:hover:border-slate-600"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                              {pkg.category || "Oliy Ta'lim (HEMIS)"}
+                            </span>
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              {pkg.department}
+                            </span>
+                            {!pkg.isPublic ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                Parolli
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                                Ochiq
+                              </span>
+                            )}
+                            {pkg.isCommunityCreated && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                                Foydalanuvchi testi
+                              </span>
+                            )}
+                          </div>
+
+                          <h5 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                            {pkg.title}
+                          </h5>
+
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              {pkg.university}
+                            </span>
+                            <span>•</span>
+                            <span>Muallif: <strong className="text-slate-800 dark:text-slate-200">{pkg.authorName}</strong></span>
+                            <span>•</span>
+                            <span>{pkg.totalQuestions} ta savol ({pkg.blocks.length} blok)</span>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTestByAdmin(pkg)}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs transition-colors flex items-center gap-1 active:scale-95 border border-rose-200 dark:border-rose-800/60"
+                            title="Admin sifatida testni o'chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">O'chirish</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2029,19 +2180,45 @@ END $$;`}</pre>
                 <p className="text-[10px] text-rose-600/80 dark:text-rose-400">
                   Foydalanuvchilar o'zlari test tuzishlari uchun tizimdagi barcha testlarni bitta bosishda tozalash.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm("Barcha mavjud testlarni tozalashni tasdiqlaysizmi?")) {
-                      clearAllTests();
+                {!showClearAllConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
                       triggerHaptic('warning');
-                      showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
-                    }
-                  }}
-                  className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
-                >
-                  Barcha testlarni tozalash
-                </button>
+                      setShowClearAllConfirm(true);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                  >
+                    Barcha testlarni tozalash
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 space-y-2 animate-in fade-in">
+                    <p className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                      Rostdan ham tizimdagi BARCHA testlarni tozalashni tasdiqlaysizmi?
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowClearAllConfirm(false)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearAllTests();
+                          setShowClearAllConfirm(false);
+                          triggerHaptic('warning');
+                          showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm"
+                      >
+                        Ha, barchasini tozalash
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2057,6 +2234,64 @@ END $$;`}</pre>
             Yopish
           </button>
         </div>
+
+        {/* Admin Test Delete Confirmation Modal */}
+        {deletingTestPkg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
+                Admin: Testni o'chirish
+              </h3>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                Ushbu testni tizimdan va bulutli bazadan butunlay o'chirishni tasdiqlaysizmi?
+              </p>
+
+              <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 mb-5 text-left text-xs space-y-1">
+                <p className="font-black text-slate-900 dark:text-white truncate">{deletingTestPkg.title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  OTM: <span className="text-slate-700 dark:text-slate-300 font-medium">{deletingTestPkg.university}</span>
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Muallif: <span className="text-slate-700 dark:text-slate-300 font-medium">{deletingTestPkg.authorName}</span> ({deletingTestPkg.authorId})
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Savollar: <span className="text-slate-700 dark:text-slate-300 font-medium">{deletingTestPkg.totalQuestions} ta</span>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isDeletingTest}
+                  onClick={() => setDeletingTestPkg(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingTest}
+                  onClick={handleConfirmDeleteTestByAdmin}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {isDeletingTest ? (
+                    <span>O'chirilmoqda...</span>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Ha, o'chirish</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
