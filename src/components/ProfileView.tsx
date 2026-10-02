@@ -27,6 +27,7 @@ import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
 import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
+import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 
 interface ProfileViewProps {
   onOpenAdminLogin?: () => void;
@@ -338,23 +339,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  OTM / Ta'lim muassasasi:
-                </label>
-                <select
+                <SearchableUniversitySelect
+                  label="OTM / Ta'lim muassasasi:"
                   value={university}
-                  onChange={(e) => setUniversity(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-ellipsis overflow-hidden"
-                >
-                  {profile.university && !universities.includes(profile.university) && (
-                    <option value={profile.university}>{profile.university}</option>
-                  )}
-                  {universities.map((uni) => (
-                    <option key={uni} value={uni}>
-                      {uni}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setUniversity(val)}
+                  universities={universities}
+                  allowCustom={false}
+                />
               </div>
             </div>
 

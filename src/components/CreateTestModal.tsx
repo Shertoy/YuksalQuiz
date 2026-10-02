@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { publishTestToCloud, deleteTestFromCloud } from '../services/testSyncService';
+import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 
 interface CreateTestModalProps {
   onClose: () => void;
@@ -405,7 +406,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center p-3 pb-32 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-40 flex items-start justify-center p-3 pb-44 sm:pb-32 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 my-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
@@ -485,35 +486,23 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
 
           {/* University Selection with Custom OTM */}
           <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              {t.universityLabel}
-            </label>
-            <select
-              value={isCustomUni ? 'custom' : selectedUniversity}
-              onChange={(e) => {
-                if (e.target.value === 'custom') {
+            <SearchableUniversitySelect
+              label={t.universityLabel}
+              value={selectedUniversity}
+              isCustomSelected={isCustomUni}
+              onChange={(uni) => {
+                if (uni === 'custom') {
                   setIsCustomUni(true);
                 } else {
                   setIsCustomUni(false);
-                  setSelectedUniversity(e.target.value);
+                  setSelectedUniversity(uni);
                 }
               }}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
-            >
-              {universities.map((uni) => (
-                <option key={uni} value={uni}>
-                  {uni}
-                </option>
-              ))}
-              {customUniversities
-                .filter((cu) => !universities.includes(cu))
-                .map((uni) => (
-                  <option key={uni} value={uni}>
-                    {uni} (Foydalanuvchi taklifi)
-                  </option>
-                ))}
-              <option value="custom">+ Yangi OTM (Ro'yxatda yo'q)</option>
-            </select>
+              onCustomSelect={() => setIsCustomUni(true)}
+              allowCustom={true}
+              universities={universities}
+              customUniversities={customUniversities}
+            />
 
             {/* Custom University input */}
             {isCustomUni && (

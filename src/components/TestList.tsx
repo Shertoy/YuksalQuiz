@@ -353,8 +353,9 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               <span>Mening OTMim</span>
             </button>
           )}
-          {universities
+          {[...universities]
             .filter((u) => u !== profile.university)
+            .sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }))
             .map((u) => (
               <button
                 key={u}

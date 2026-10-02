@@ -64,6 +64,7 @@ import {
   publishUniversityToCloud,
   deleteUniversityFromCloud,
 } from '../services/testSyncService';
+import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -453,9 +454,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     return matchesCat && matchesSearch;
   });
 
-  const filteredUniversities = universities.filter((u) =>
-    u.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUniversities = [...universities]
+    .sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }))
+    .filter((u) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      const terms = q.split(/\s+/).filter(Boolean);
+      const uniNorm = u.toLowerCase();
+      return terms.every((t) => uniNorm.includes(t));
+    });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
@@ -647,7 +654,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 pb-20 sm:pb-8 space-y-4">
           {activeTab === 'universities' && (
             <>
               {/* Add New University Form */}
@@ -963,20 +970,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       {/* Dynamic Field Based on Target */}
                       {newsTargetType === 'university' && (
                         <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in">
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                            Qaysi OTM yoki o'quv markazi talabalariga:
-                          </label>
-                          <select
+                          <SearchableUniversitySelect
+                            label="Qaysi OTM yoki o'quv markazi talabalariga:"
                             value={newsTargetUni}
-                            onChange={(e) => setNewsTargetUni(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
-                          >
-                            {universities.map((u) => (
-                              <option key={u} value={u}>
-                                {u}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => setNewsTargetUni(val)}
+                            universities={universities}
+                            allowCustom={false}
+                          />
                         </div>
                       )}
 
@@ -1659,22 +1659,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      OTM:
-                    </label>
-                    <select
+                    <SearchableUniversitySelect
+                      label="OTM:"
                       value={testUni}
-                      onChange={(e) => setTestUni(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-medium"
-                    >
-                      {universities.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setTestUni(val)}
+                      universities={universities}
+                      allowCustom={false}
+                    />
                   </div>
 
                   <div>

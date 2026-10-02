@@ -369,7 +369,8 @@ export const useQuizStore = create<QuizState>()(
         if (!trimmed) return;
         const list = get().universities;
         if (!list.includes(trimmed)) {
-          set({ universities: [trimmed, ...list] });
+          const nextList = [...list, trimmed].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
+          set({ universities: nextList });
         }
       },
 
@@ -1038,13 +1039,12 @@ export const useQuizStore = create<QuizState>()(
         );
 
         if (!state.universities || state.universities.length === 0) {
-          state.universities = TOP_UNIVERSITIES;
+          state.universities = [...TOP_UNIVERSITIES].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
         } else {
           const existing = new Set(state.universities);
           const missing = TOP_UNIVERSITIES.filter((u) => !existing.has(u));
-          if (missing.length > 0) {
-            state.universities = [...state.universities, ...missing];
-          }
+          const all = missing.length > 0 ? [...state.universities, ...missing] : state.universities;
+          state.universities = [...all].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
         }
         if (!state.pendingUniversities) {
           state.pendingUniversities = [];
