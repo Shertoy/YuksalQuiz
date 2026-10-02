@@ -17,12 +17,19 @@ import {
   X,
   Crown,
   Medal,
+  Edit3,
+  MapPin,
+  Trophy,
+  CheckCircle2,
+  Zap,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
 import { TestPackage } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
+import { EditProfileModal } from './EditProfileModal';
+import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -33,7 +40,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onStartTest,
   onOpenCreateModal,
 }) => {
-  const { profile, testPackages, mistakes, setActiveTab, checkDailyStreak } = useQuizStore();
+  const {
+    profile,
+    testPackages,
+    mistakes,
+    setActiveTab,
+    checkDailyStreak,
+    testAttempts,
+    leaderboard,
+  } = useQuizStore();
   const { t } = useTranslation();
 
   const [dailyClaimedMessage, setDailyClaimedMessage] = useState<string | null>(null);
@@ -41,6 +56,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [coinGlow, setCoinGlow] = useState(false);
   const [isDailyDisappearing, setIsDailyDisappearing] = useState(false);
   const [isVoucherDismissed, setIsVoucherDismissed] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  // Compute rating stats and ranking
+  const stats = calculateUserRatingStats(testAttempts);
+
+  const currentUserEntry = {
+    id: profile.id,
+    scorePoints: stats.scorePoints,
+    bestTimeSeconds: stats.bestTimeSeconds,
+  };
+
+  const allUsers = [
+    ...leaderboard.filter((u) => u.id !== profile.id),
+    currentUserEntry,
+  ].sort((a, b) => {
+    const aPts = a.scorePoints ?? 0;
+    const bPts = b.scorePoints ?? 0;
+    if (bPts !== aPts) return bPts - aPts;
+    return (a.bestTimeSeconds || 180) - (b.bestTimeSeconds || 180);
+  });
+
+  const userRank = Math.max(1, allUsers.findIndex((u) => u.id === profile.id) + 1);
+
+  const bestAttemptScore = (testAttempts || []).length > 0
+    ? Math.max(...(testAttempts || []).map((a) => a.score))
+    : 0;
 
   // Check if claimed today (24h lockout)
   const today = new Date().toISOString().split('T')[0];
@@ -108,63 +149,97 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 rounded-full bg-orange-400/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex items-start justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner overflow-hidden flex items-center justify-center p-0.5 shrink-0">
-              <UserAvatar avatar={profile.avatar} />
+        {/* User Info Header with Avatar, Name, and prominent "Tahrirlash" button */}
+        <div className="relative z-10 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl border-2 border-white/30 shadow-inner overflow-hidden flex items-center justify-center p-0.5 ring-2 ring-emerald-400/50">
+                <UserAvatar avatar={profile.avatar} />
+              </div>
+              <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-md border border-white/50">
+                #{userRank}
+              </span>
             </div>
-            <div>
-              <p className="text-xs text-emerald-100 font-medium">{t.greeting}</p>
-              <h2 className="text-lg font-black tracking-tight leading-tight">
+
+            <div className="min-w-0">
+              <p className="text-[11px] text-emerald-100/80 font-medium">{t.greeting}</p>
+              <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate">
                 {profile.firstName || 'Talaba'} {profile.lastName || ''}
               </h2>
-              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-emerald-100/90 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
-                <span>{profile.university || profile.region}</span>
-                <span>•</span>
-                <span>{profile.academicYear}{t.courseUnit}</span>
-                <span>•</span>
-                <span>{profile.studyType}</span>
-              </div>
+              <p className="text-[11px] text-emerald-100/90 font-medium truncate mt-0.5">
+                {profile.academicYear}{t.courseUnit} • {profile.studyType}
+              </p>
             </div>
           </div>
 
+          {/* Prominent "Tahrirlash" Button directly next to user info */}
           <button
-            onClick={() => setActiveTab('profile')}
-            className="text-[11px] font-semibold bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2.5 py-1 rounded-xl transition-all"
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              setIsEditProfileOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-md text-white font-bold text-xs shadow-sm transition-all border border-white/25 shrink-0"
+            title="Profilni tahrirlash"
           >
-            {t.navProfile}
+            <Edit3 className="w-3.5 h-3.5 text-orange-300" />
+            <span>{t.editBtn || 'Tahrirlash'}</span>
           </button>
         </div>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-3 gap-2.5 mt-5 pt-4 border-t border-white/15 text-center">
+        {/* Context Badges: Tanlagan OTM, Viloyat, O'zbekiston bo'yicha egallagan o'rni */}
+        <div className="relative z-10 flex flex-wrap items-center gap-1.5 mt-3.5 pt-3 border-t border-white/15 text-[11px]">
+          {/* Tanlangan OTM */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 text-emerald-100 font-semibold max-w-[200px]">
+            <School className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <span className="truncate">{profile.university || 'TATU'}</span>
+          </div>
+
+          {/* Viloyati */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 text-emerald-100 font-semibold">
+            <MapPin className="w-3.5 h-3.5 text-orange-300 shrink-0" />
+            <span className="truncate">{profile.region}</span>
+          </div>
+
+          {/* O'zbekiston bo'yicha o'rni */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-400/20 backdrop-blur-sm border border-amber-300/40 text-amber-200 font-bold ml-auto sm:ml-0">
+            <Trophy className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span>O'zbekistonda: #{userRank}-o'rin</span>
+          </div>
+        </div>
+
+        {/* 3 Statistika Kartochkalari: Coinlar, To'g'ri yechilgan testlar, Eng yaxshi natija */}
+        <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15 text-center">
+          {/* 1. Coinlar balansi */}
           <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 transition-all ${coinGlow ? 'ring-2 ring-orange-400 scale-105 shadow-lg' : ''}`}>
-            <div className="flex items-center justify-center gap-1 text-orange-300 font-black text-lg">
+            <div className="flex items-center justify-center gap-1 text-orange-300 font-black text-base sm:text-lg">
               <Coins className={`w-4 h-4 fill-orange-300 ${coinGlow ? 'animate-bounce' : ''}`} />
               <span>{profile.coins}</span>
             </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold">
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5">
               {t.coins}
             </p>
           </div>
 
+          {/* 2. To'g'ri yechilgan testlar / savollar soni */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 text-emerald-200 font-black text-lg">
-              <BookOpen className="w-4 h-4" />
-              <span>{profile.completedTestsCount}</span>
+            <div className="flex items-center justify-center gap-1 text-emerald-200 font-black text-base sm:text-lg">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <span>{stats.totalCorrectAnswers > 0 ? stats.totalCorrectAnswers : profile.completedTestsCount}</span>
             </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold">
-              {t.testsCompleted}
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
+              {stats.totalCorrectAnswers > 0 ? "To'g'ri javoblar" : "Yechilgan test"}
             </p>
           </div>
 
+          {/* 3. Eng yaxshi natija */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 font-black text-lg py-0.5">
-              <rank.Icon className={`w-5 h-5 ${rank.color}`} />
+            <div className="flex items-center justify-center gap-1 text-amber-300 font-black text-base sm:text-lg">
+              <Zap className="w-4 h-4 text-amber-300 fill-amber-300/30" />
+              <span>{bestAttemptScore > 0 ? `${bestAttemptScore}/25` : `${stats.scorePoints} ball`}</span>
             </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold truncate">
-              {rank.title}
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
+              Eng yaxshi natija
             </p>
           </div>
         </div>
@@ -364,6 +439,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Interactive Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
     </div>
   );
 };

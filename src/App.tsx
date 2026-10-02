@@ -24,9 +24,14 @@ import {
   setupRealtimeTestSubscription,
 } from './services/testSyncService';
 import { ParticleBackground } from './components/ParticleBackground';
+import { AppLoader } from './components/AppLoader';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
+
+  // App loading state with smooth quote-rotation loader
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isLoaderFading, setIsLoaderFading] = useState(false);
 
   // Active running test session state
   const [activeTestPkg, setActiveTestPkg] = useState<TestPackage | null>(null);
@@ -90,7 +95,16 @@ export const App: React.FC = () => {
     fetchCloudUniversities();
     const unsubRealtime = setupRealtimeTestSubscription();
 
+    // Smooth quote-loader transition: display quotes then fade out into dashboard
+    const loaderTimer = setTimeout(() => {
+      setIsLoaderFading(true);
+      setTimeout(() => {
+        setIsAppLoading(false);
+      }, 500);
+    }, 2200);
+
     return () => {
+      clearTimeout(loaderTimer);
       unsubRealtime?.();
     };
   }, []);
@@ -255,6 +269,9 @@ export const App: React.FC = () => {
 
       {/* Persistent Bottom Navigation Bar */}
       {!activeTestPkg && <BottomNav />}
+
+      {/* Smooth Motivational Quotes & Minimalist Spinner App Loader */}
+      {isAppLoading && <AppLoader isFadingOut={isLoaderFading} />}
     </div>
   );
 };

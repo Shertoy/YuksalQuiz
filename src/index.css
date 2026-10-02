@@ -149,6 +149,15 @@
   animation: coinFly 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+@keyframes loaderBar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+.animate-loader-bar {
+  animation: loaderBar 3s linear forwards;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

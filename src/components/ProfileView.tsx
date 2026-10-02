@@ -2,23 +2,12 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
-  UZBEKISTAN_REGIONS,
-  Region,
-  StudyType,
-  AcademicYear,
-  Gender,
-} from '../types';
-import {
-  User,
   ShieldCheck,
   Coins,
   Flame,
-  Award,
   Edit3,
   Check,
-  X,
   BookOpen,
-  Calendar,
   Lock,
   ScrollText,
   CheckSquare,
@@ -26,47 +15,18 @@ import {
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
-import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
-import { SearchableUniversitySelect } from './SearchableUniversitySelect';
+import { EditProfileModal } from './EditProfileModal';
 
 interface ProfileViewProps {
   onOpenAdminLogin?: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) => {
-  const { profile, updateProfile, setActiveTab, universities } = useQuizStore();
+  const { profile, setActiveTab } = useQuizStore();
   const { t } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [firstName, setFirstName] = useState(profile.firstName);
-  const [lastName, setLastName] = useState(profile.lastName);
-  const [region, setRegion] = useState<Region>(profile.region);
-  const [university, setUniversity] = useState(profile.university || universities[0] || 'TATU');
-  const [birthDate, setBirthDate] = useState(profile.birthDate);
-  const [gender, setGender] = useState<Gender>(profile.gender);
-  const [studyType, setStudyType] = useState<StudyType>(profile.studyType);
-  const [academicYear, setAcademicYear] = useState<AcademicYear>(profile.academicYear);
-  const [avatar, setAvatar] = useState(profile.avatar);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    triggerHaptic('success');
-
-    updateProfile({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      region,
-      university,
-      birthDate,
-      gender,
-      studyType,
-      academicYear,
-      avatar,
-    });
-    setIsEditing(false);
-  };
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   return (
     <div className="space-y-4 pb-20">
@@ -82,14 +42,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
         </div>
 
         <button
+          type="button"
           onClick={() => {
             triggerHaptic('light');
-            setIsEditing(!isEditing);
+            setIsEditModalOpen(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all active:scale-95 border border-emerald-500/30"
         >
-          {isEditing ? <X className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
-          <span>{isEditing ? t.cancel : t.editBtn}</span>
+          <Edit3 className="w-3.5 h-3.5 text-emerald-500" />
+          <span>{t.editBtn || 'Tahrirlash'}</span>
         </button>
       </div>
 
@@ -97,7 +58,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
         <div className="relative inline-block mx-auto mb-3">
           <div className="w-20 h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
-            <UserAvatar avatar={isEditing ? avatar : profile.avatar} />
+            <UserAvatar avatar={profile.avatar} />
           </div>
           <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">
             <Check className="w-3.5 h-3.5" />
@@ -240,161 +201,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
         </button>
       </div>
 
-      {/* Edit Form */}
-      {isEditing && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
-          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-3">
-            {t.editDataTitle}
-          </h4>
-
-          <form onSubmit={handleSave} className="space-y-3.5 text-xs">
-            {/* Avatar Selector - Clean 5x2 Grid */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block font-semibold text-slate-700 dark:text-slate-300">
-                  {t.updateAvatarLabel}
-                </label>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                  {t.customAvatarsCount}
-                </span>
-              </div>
-              <div className="grid grid-cols-5 gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                {AVATAR_OPTIONS.map((av) => {
-                  const isSelected = avatar === av.src;
-                  return (
-                    <button
-                      key={av.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('selection');
-                        setAvatar(av.src);
-                      }}
-                      className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
-                        isSelected
-                          ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md shadow-emerald-500/25 z-10'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
-                      }`}
-                      title={av.alt}
-                    >
-                      <img
-                        src={getAvatarUrl(av.src)}
-                        alt={av.alt}
-                        className="w-full h-full object-cover rounded-xl"
-                        loading="lazy"
-                      />
-                      {isSelected && (
-                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow">
-                          <Check className="w-2.5 h-2.5" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Names */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.nameLabel}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.surnameLabel}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                />
-              </div>
-            </div>
-
-            {/* Region & University */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.regionLabel}
-                </label>
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value as Region)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                >
-                  {UZBEKISTAN_REGIONS.map((reg) => (
-                    <option key={reg} value={reg}>
-                      {reg}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <SearchableUniversitySelect
-                  label={t.uniLabel}
-                  value={university}
-                  onChange={(val) => setUniversity(val)}
-                  universities={universities}
-                  allowCustom={false}
-                />
-              </div>
-            </div>
-
-            {/* Study Type & Year */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.studyTypeLabel}
-                </label>
-                <select
-                  value={studyType}
-                  onChange={(e) => setStudyType(e.target.value as StudyType)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                >
-                  <option value="Kunduzgi">{t.studyKunduzgi}</option>
-                  <option value="Sirtqi">{t.studySirtqi}</option>
-                  <option value="Kechki">{t.studyKechki}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t.courseLabel}
-                </label>
-                <select
-                  value={academicYear}
-                  onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
-                >
-                  <option value={1}>1{t.courseUnit}</option>
-                  <option value={2}>2{t.courseUnit}</option>
-                  <option value={3}>3{t.courseUnit}</option>
-                  <option value={4}>4{t.courseUnit}</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
-            >
-              <Check className="w-4 h-4" />
-              <span>{t.saveChangesBtn}</span>
-            </button>
-          </form>
-        </div>
-      )}
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
 
       {/* App Version Stamp */}
       <div className="pt-2 text-center">
