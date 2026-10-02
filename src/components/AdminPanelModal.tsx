@@ -49,8 +49,19 @@ import {
 } from '../types';
 import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
-import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection, normalizeSupabaseUrl } from '../services/supabase';
-import { syncAllTestsWithCloud, fetchCloudTests } from '../services/testSyncService';
+import {
+  getSupabaseConfig,
+  saveSupabaseConfig,
+  testSupabaseConnection,
+  normalizeSupabaseUrl,
+} from '../services/supabase';
+import {
+  syncAllTestsWithCloud,
+  fetchCloudTests,
+  publishTestToCloud,
+  publishUniversityToCloud,
+  deleteUniversityFromCloud,
+} from '../services/testSyncService';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -246,6 +257,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     }
 
     addUniversity(trimmed);
+    publishUniversityToCloud(trimmed).catch(() => {});
     setNewUniName('');
     triggerHaptic('success');
     showNotification(`"${trimmed}" muvaffaqiyatli qo'shildi!`);
@@ -257,6 +269,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     if (!trimmed) return;
 
     updateUniversity(originalName, trimmed);
+    publishUniversityToCloud(trimmed).catch(() => {});
+    deleteUniversityFromCloud(originalName).catch(() => {});
     setEditingUni(null);
     triggerHaptic('success');
     showNotification(`OTM nomi yangilandi: "${trimmed}"`);
@@ -264,6 +278,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   const handleDeleteUni = (name: string) => {
     deleteUniversity(name);
+    deleteUniversityFromCloud(name).catch(() => {});
     setDeletingUni(null);
     triggerHaptic('warning');
     showNotification(`"${name}" o'chirildi`);
@@ -271,6 +286,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   const handleApprove = (name: string) => {
     approvePendingUniversity(name);
+    publishUniversityToCloud(name).catch(() => {});
     triggerHaptic('success');
     showNotification(`"${name}" tasdiqlandi va ro'yxatga qo'shildi!`);
   };
@@ -366,9 +382,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     };
 
     createTestPackage(newPkg);
+    publishTestToCloud(newPkg).catch(() => {});
     setTestTitle('');
     triggerHaptic('success');
-    showNotification(`"${newPkg.title}" tavsiya etilgan test sifatida yaratildi!`);
+    showNotification(`"${newPkg.title}" tavsiya etilgan test sifatida yaratildi va bulutga yuklandi!`);
   };
 
   const filteredUniversities = universities.filter((u) =>
@@ -1817,7 +1834,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <button
                     type="button"
                     onClick={() => {
-                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\\n  id TEXT PRIMARY KEY,\\n  title TEXT NOT NULL,\\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\\n  university TEXT NOT NULL,\\n  is_custom_university BOOLEAN DEFAULT false,\\n  is_pending_review BOOLEAN DEFAULT false,\\n  department TEXT NOT NULL,\\n  is_public BOOLEAN DEFAULT true,\\n  password TEXT,\\n  total_questions INTEGER DEFAULT 0,\\n  blocks JSONB NOT NULL,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\\n  author_id TEXT,\\n  author_name TEXT,\\n  is_community_created BOOLEAN DEFAULT true,\\n  author_wallet_balance NUMERIC DEFAULT 0\\n);\\n\\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\\n\\nCREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\\nCREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\\nCREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\\nCREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\\n\\nALTER PUBLICATION supabase_realtime ADD TABLE public.test_packages;`;
+                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\\n  id TEXT PRIMARY KEY,\\n  title TEXT NOT NULL,\\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\\n  university TEXT NOT NULL,\\n  is_custom_university BOOLEAN DEFAULT false,\\n  is_pending_review BOOLEAN DEFAULT false,\\n  department TEXT NOT NULL,\\n  is_public BOOLEAN DEFAULT true,\\n  password TEXT,\\n  total_questions INTEGER DEFAULT 0,\\n  blocks JSONB NOT NULL,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\\n  author_id TEXT,\\n  author_name TEXT,\\n  is_community_created BOOLEAN DEFAULT true,\\n  author_wallet_balance NUMERIC DEFAULT 0\\n);\\n\\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\\nDO $$ BEGIN\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN\\n    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN\\n    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public update access') THEN\\n    CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public delete access') THEN\\n    CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\\n  END IF;\\nEND $$;\\n\\n-- OTMlar umumiy sinxronizatsiya jadvali\\nCREATE TABLE IF NOT EXISTS public.universities (\\n  name TEXT PRIMARY KEY,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\\n);\\n\\nALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;\\nDO $$ BEGIN\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN\\n    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN\\n    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public update universities') THEN\\n    CREATE POLICY "Allow public update universities" ON public.universities FOR UPDATE TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public delete universities') THEN\\n    CREATE POLICY "Allow public delete universities" ON public.universities FOR DELETE TO anon, authenticated USING (true);\\n  END IF;\\nEND $$;`;
                       navigator.clipboard.writeText(sqlContent);
                       triggerHaptic('success');
                       setCopiedSql(true);
@@ -1861,11 +1878,30 @@ CREATE TABLE IF NOT EXISTS public.test_packages (
 );
 
 ALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);
-CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);
-CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);
-ALTER PUBLICATION supabase_realtime ADD TABLE public.test_packages;`}</pre>
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN
+    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN
+    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+END $$;
+
+-- OTMlar (Universitetlar) sinxronizatsiya jadvali
+CREATE TABLE IF NOT EXISTS public.universities (
+  name TEXT PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN
+    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN
+    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+END $$;`}</pre>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 space-y-1">

@@ -346,6 +346,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
                   onChange={(e) => setUniversity(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-ellipsis overflow-hidden"
                 >
+                  {profile.university && !universities.includes(profile.university) && (
+                    <option value={profile.university}>{profile.university}</option>
+                  )}
                   {universities.map((uni) => (
                     <option key={uni} value={uni}>
                       {uni}

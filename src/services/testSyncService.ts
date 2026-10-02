@@ -86,8 +86,7 @@ export async function fetchCloudTests(): Promise<{
     const cloudPackages: TestPackage[] = data.map(mapRowToTestPackage);
 
     // Merge with current store test packages
-    const { testPackages } = useQuizStore.getState();
-    const existingIds = new Set(testPackages.map((p) => p.id));
+    const { testPackages, universities } = useQuizStore.getState();
 
     // Combine: cloud packages take priority, preserve any local unpushed packages
     const mergedPackages: TestPackage[] = [...cloudPackages];
@@ -98,7 +97,26 @@ export async function fetchCloudTests(): Promise<{
       }
     }
 
-    useQuizStore.setState({ testPackages: mergedPackages });
+    // Also extract all universities from cloud test packages and merge into store
+    const cloudPackageUnis = cloudPackages.map((p) => p.university?.trim()).filter(Boolean);
+    const existingUnisSet = new Set(universities || []);
+    let updatedUnis = [...(universities || [])];
+    let unisChanged = false;
+    for (const u of cloudPackageUnis) {
+      if (u && !existingUnisSet.has(u)) {
+        existingUnisSet.add(u);
+        updatedUnis.unshift(u);
+        unisChanged = true;
+      }
+    }
+
+    useQuizStore.setState({
+      testPackages: mergedPackages,
+      ...(unisChanged ? { universities: updatedUnis } : {}),
+    });
+
+    // Also attempt to fetch universities directly from cloud table if available
+    fetchCloudUniversities().catch(() => {});
 
     return {
       success: true,
@@ -231,7 +249,21 @@ export async function syncAllTestsWithCloud(): Promise<{
       }
     }
 
-    // 3. Merge all remote tests into store
+    // 3. Extract and merge universities from all remote tests
+    const allPackageUnis = remoteTests.map((t) => t.university?.trim()).filter(Boolean);
+    const { universities } = useQuizStore.getState();
+    const existingUniSet = new Set(universities || []);
+    let updatedUnis = [...(universities || [])];
+    let unisChanged = false;
+    for (const u of allPackageUnis) {
+      if (u && !existingUniSet.has(u)) {
+        existingUniSet.add(u);
+        updatedUnis.unshift(u);
+        unisChanged = true;
+      }
+    }
+
+    // 4. Merge all remote tests into store
     const allMerged = [...remoteTests];
     for (const localT of testPackages) {
       if (!allMerged.some((m) => m.id === localT.id)) {
@@ -239,13 +271,19 @@ export async function syncAllTestsWithCloud(): Promise<{
       }
     }
 
-    useQuizStore.setState({ testPackages: allMerged });
+    useQuizStore.setState({
+      testPackages: allMerged,
+      ...(unisChanged ? { universities: updatedUnis } : {}),
+    });
+
+    // Also sync universities table
+    await syncAllUniversitiesWithCloud().catch(() => {});
 
     return {
       success: true,
       uploadedCount,
       downloadedCount: remoteTests.length,
-      message: `Sinxronizatsiya muvaffaqiyatli! Yuklab olindi: ${remoteTests.length} ta, Yuklandi: ${uploadedCount} ta.`,
+      message: `Sinxronizatsiya muvaffaqiyatli! Yuklab olindi: ${remoteTests.length} ta test, Yuklandi: ${uploadedCount} ta.`,
     };
   } catch (err: any) {
     return {
@@ -258,7 +296,137 @@ export async function syncAllTestsWithCloud(): Promise<{
 }
 
 /**
- * Setup Realtime Subscription so newly created tests appear instantly.
+ * Fetches all universities from Supabase cloud database if 'universities' table exists.
+ */
+export async function fetchCloudUniversities(): Promise<{
+  success: boolean;
+  count: number;
+  message: string;
+}> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { success: false, count: 0, message: 'Supabase ulanmagan' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('universities')
+      .select('name')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      // Table may not exist yet, that's completely normal
+      return { success: false, count: 0, message: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { success: true, count: 0, message: "Universitetlar bazasi bo'sh." };
+    }
+
+    const cloudUniNames: string[] = data.map((row: any) => String(row.name).trim()).filter(Boolean);
+    const { universities } = useQuizStore.getState();
+    const existingSet = new Set(universities || []);
+    const mergedUnis = [...(universities || [])];
+    let addedCount = 0;
+
+    for (const name of cloudUniNames) {
+      if (!existingSet.has(name)) {
+        existingSet.add(name);
+        mergedUnis.unshift(name);
+        addedCount++;
+      }
+    }
+
+    if (addedCount > 0) {
+      useQuizStore.setState({ universities: mergedUnis });
+    }
+
+    return {
+      success: true,
+      count: cloudUniNames.length,
+      message: `${cloudUniNames.length} ta OTM bulutdan yuklandi!`,
+    };
+  } catch (err: any) {
+    return { success: false, count: 0, message: err?.message || 'Tarmoq xatosi' };
+  }
+}
+
+/**
+ * Uploads a newly added university to Supabase cloud.
+ */
+export async function publishUniversityToCloud(name: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const trimmed = name.trim();
+  if (!trimmed) return { success: false, message: 'OTM nomi bo\'sh' };
+
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, message: 'Supabase sozlanmagan' };
+
+  try {
+    const { error } = await supabase
+      .from('universities')
+      .upsert({ name: trimmed, created_at: new Date().toISOString() }, { onConflict: 'name' });
+
+    if (error) {
+      console.warn('Could not push university to cloud table:', error.message);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true, message: `"${trimmed}" bulutli bazaga saqlandi!` };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Xatolik' };
+  }
+}
+
+/**
+ * Deletes a university from Supabase cloud.
+ */
+export async function deleteUniversityFromCloud(name: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, message: 'Supabase ulanmagan' };
+
+  try {
+    const { error } = await supabase.from('universities').delete().eq('name', name.trim());
+    if (error) return { success: false, message: error.message };
+    return { success: true, message: `"${name}" bulutdan o'chirildi.` };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Xatolik' };
+  }
+}
+
+/**
+ * Two-way sync for universities.
+ */
+export async function syncAllUniversitiesWithCloud(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  try {
+    const { universities } = useQuizStore.getState();
+    if (!universities || universities.length === 0) return;
+
+    // Push local universities to cloud
+    const rows = universities.map((name) => ({
+      name: name.trim(),
+      created_at: new Date().toISOString(),
+    }));
+
+    await supabase.from('universities').upsert(rows, { onConflict: 'name' });
+
+    // Pull any cloud universities
+    await fetchCloudUniversities();
+  } catch (err) {
+    // Non-critical if table not yet created
+  }
+}
+
+/**
+ * Setup Realtime Subscription so newly created tests & universities appear instantly.
  */
 export function setupRealtimeTestSubscription(
   onUpdate?: () => void
@@ -268,13 +436,22 @@ export function setupRealtimeTestSubscription(
 
   try {
     const channel = supabase
-      .channel('realtime:test_packages')
+      .channel('realtime:yuksal_quiz')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'test_packages' },
-        async (payload) => {
-          // Refresh list from cloud
+        async () => {
+          // Refresh tests list from cloud
           await fetchCloudTests();
+          onUpdate?.();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'universities' },
+        async () => {
+          // Refresh universities list from cloud
+          await fetchCloudUniversities();
           onUpdate?.();
         }
       )

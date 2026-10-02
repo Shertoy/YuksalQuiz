@@ -995,6 +995,12 @@ export const useQuizStore = create<QuizState>()(
 
         if (!state.universities || state.universities.length === 0) {
           state.universities = TOP_UNIVERSITIES;
+        } else {
+          const existing = new Set(state.universities);
+          const missing = TOP_UNIVERSITIES.filter((u) => !existing.has(u));
+          if (missing.length > 0) {
+            state.universities = [...state.universities, ...missing];
+          }
         }
         if (!state.pendingUniversities) {
           state.pendingUniversities = [];

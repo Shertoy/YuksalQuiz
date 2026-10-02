@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -21,7 +21,7 @@ import { DEFAULT_AVATAR } from '../constants/avatars';
 import { INITIAL_UNIVERSITY_LEADERBOARD } from '../data/mockLeaderboard';
 
 export const Leaderboard: React.FC = () => {
-  const { leaderboard, profile, testAttempts, leaderboardScope, setLeaderboardScope } = useQuizStore();
+  const { leaderboard, profile, testAttempts, leaderboardScope, setLeaderboardScope, universities } = useQuizStore();
   const { t } = useTranslation();
 
   // Metric filter: 'correct' (To'g'ri testlar) | 'percentage' (Aniqlik foizi & Tezlik) | 'weekly' (Haftalik faollar)
@@ -48,7 +48,7 @@ export const Leaderboard: React.FC = () => {
     id: profile.id,
     name: `${profile.firstName || 'Siz'} ${profile.lastName || ''}`.trim() || 'Siz',
     region: profile.region,
-    university: 'Mening OTMim',
+    university: profile.university || 'TATU',
     avatar: profile.avatar || DEFAULT_AVATAR,
     academicYear: profile.academicYear,
     coins: profile.coins,
@@ -108,19 +108,77 @@ export const Leaderboard: React.FC = () => {
     return b.weeklyActiveHours - a.weeklyActiveHours;
   });
 
-  // University Leaderboard Sorting
-  const sortedUniversities: UniversityLeaderboardEntry[] = [...INITIAL_UNIVERSITY_LEADERBOARD].sort((a, b) => {
-    if (metric === 'percentage') {
-      if (b.averageAccuracy !== a.averageAccuracy) {
-        return b.averageAccuracy - a.averageAccuracy;
-      }
-      return a.averageTimeSeconds - b.averageTimeSeconds;
-    }
-    if (metric === 'weekly') {
-      return b.activeStudentsCount - a.activeStudentsCount;
-    }
-    return b.totalCorrectAnswers - a.totalCorrectAnswers;
-  });
+  // University Leaderboard dynamically computed from registered universities and active students
+  const sortedUniversities: UniversityLeaderboardEntry[] = useMemo(() => {
+    const list = universities && universities.length > 0 ? universities : [];
+
+    return list
+      .map((uni, idx) => {
+        const uniUsers = allUsers.filter(
+          (u) => u.university && u.university.trim().toLowerCase() === uni.trim().toLowerCase()
+        );
+        const activeStudentsCount = uniUsers.length;
+        const totalCorrectAnswers = uniUsers.reduce(
+          (sum, u) => sum + (u.correctAnswersCount ?? u.testsCompleted * 22),
+          0
+        );
+        const averageAccuracy =
+          uniUsers.length > 0
+            ? Math.round(
+                uniUsers.reduce((sum, u) => sum + (u.accuracyPercentage || 80), 0) /
+                  uniUsers.length
+              )
+            : 0;
+        const averageTimeSeconds =
+          uniUsers.length > 0
+            ? Math.round(
+                uniUsers.reduce((sum, u) => sum + (u.bestTimeSeconds || 180), 0) /
+                  uniUsers.length
+              )
+            : 180;
+        const testsCompletedCount = uniUsers.reduce(
+          (sum, u) => sum + (u.testsCompleted || 0),
+          0
+        );
+        const coinsEarned = uniUsers.reduce((sum, u) => sum + (u.coins || 0), 0);
+        const shortName = uni.length > 30 ? uni.substring(0, 27) + '...' : uni;
+        const mins = Math.floor(averageTimeSeconds / 60);
+        const secs = averageTimeSeconds % 60;
+        const averageTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        return {
+          id: `uni-${idx}-${uni}`,
+          name: uni,
+          shortName,
+          type: 'otm' as const,
+          region: uniUsers[0]?.region || "O'zbekiston",
+          activeStudentsCount,
+          totalCorrectAnswers,
+          averageAccuracy,
+          averageTime,
+          averageTimeSeconds,
+        };
+      })
+      .sort((a, b) => {
+        // Prioritize universities that have active students
+        if (b.activeStudentsCount > 0 && a.activeStudentsCount === 0) return 1;
+        if (a.activeStudentsCount > 0 && b.activeStudentsCount === 0) return -1;
+
+        if (metric === 'percentage') {
+          if (b.averageAccuracy !== a.averageAccuracy) {
+            return b.averageAccuracy - a.averageAccuracy;
+          }
+          return a.averageTimeSeconds - b.averageTimeSeconds;
+        }
+        if (metric === 'weekly') {
+          return b.activeStudentsCount - a.activeStudentsCount;
+        }
+        if (b.totalCorrectAnswers !== a.totalCorrectAnswers) {
+          return b.totalCorrectAnswers - a.totalCorrectAnswers;
+        }
+        return b.activeStudentsCount - a.activeStudentsCount;
+      });
+  }, [universities, allUsers, metric]);
 
   // Current user's rank
   const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);

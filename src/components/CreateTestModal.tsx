@@ -38,7 +38,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
-  const [selectedUniversity, setSelectedUniversity] = useState(universities?.[0] || TOP_UNIVERSITIES[0]);
+  const [selectedUniversity, setSelectedUniversity] = useState(
+    profile.university || universities?.[0] || TOP_UNIVERSITIES[0]
+  );
   const [isCustomUni, setIsCustomUni] = useState(false);
   const [customUniName, setCustomUniName] = useState('');
   const [department, setDepartment] = useState<DepartmentType>('Axborot Texnologiyalari');
@@ -421,16 +423,18 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
               }}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
             >
-              {TOP_UNIVERSITIES.map((uni) => (
+              {universities.map((uni) => (
                 <option key={uni} value={uni}>
                   {uni}
                 </option>
               ))}
-              {customUniversities.map((uni) => (
-                <option key={uni} value={uni}>
-                  {uni} (Foydalanuvchi qo'shgan)
-                </option>
-              ))}
+              {customUniversities
+                .filter((cu) => !universities.includes(cu))
+                .map((uni) => (
+                  <option key={uni} value={uni}>
+                    {uni} (Foydalanuvchi taklifi)
+                  </option>
+                ))}
               <option value="custom">+ Yangi OTM (Ro'yxatda yo'q)</option>
             </select>
 

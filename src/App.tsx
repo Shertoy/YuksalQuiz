@@ -18,7 +18,11 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
-import { fetchCloudTests, setupRealtimeTestSubscription } from './services/testSyncService';
+import {
+  fetchCloudTests,
+  fetchCloudUniversities,
+  setupRealtimeTestSubscription,
+} from './services/testSyncService';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -79,8 +83,9 @@ export const App: React.FC = () => {
       }
     }
 
-    // Automatically sync public tests from Supabase cloud
+    // Automatically sync public tests and universities from Supabase cloud
     fetchCloudTests();
+    fetchCloudUniversities();
     const unsubRealtime = setupRealtimeTestSubscription();
 
     return () => {

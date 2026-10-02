@@ -117,9 +117,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <h2 className="text-lg font-black tracking-tight leading-tight">
                 {profile.firstName || 'Talaba'} {profile.lastName || ''}
               </h2>
-              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-indigo-100 font-medium">
+              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-indigo-100 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                <span>{profile.region}</span>
+                <span>{profile.university || profile.region}</span>
                 <span>•</span>
                 <span>{profile.academicYear}{t.courseUnit}</span>
                 <span>•</span>
