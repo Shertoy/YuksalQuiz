@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, X, Check, Building2, ChevronDown, Plus, School, Sparkles } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
-import { TOP_UNIVERSITIES } from '../types';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, normalizeUniversityKey } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 
 interface SearchableUniversitySelectProps {
@@ -47,6 +46,7 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
 }) => {
   const storeUniversities = useQuizStore((state) => state.universities);
   const storeCustomUnis = useQuizStore((state) => state.customUniversities);
+  const storeDeletedUniversities = useQuizStore((state) => state.deletedUniversities);
   const { t } = useTranslation();
 
   const effectivePlaceholder = placeholder || t.selectUniPlaceholder;
@@ -55,28 +55,42 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Gather all universities, deduplicate, and strictly SORT ALPHABETICALLY (A-Z)
+  // 1. Gather all universities, case-insensitively deduplicate, respect deletions, and SORT ALPHABETICALLY (A-Z)
   // RULE: Universities always remain in Uzbek to maintain official brand names and abbreviations
   const sortedUniversities = useMemo(() => {
     const rawList = [
       ...(propUniversities || storeUniversities || []),
-      ...TOP_UNIVERSITIES,
       ...(propCustomUnis || storeCustomUnis || []),
     ];
 
-    const uniqueSet = new Set<string>();
+    const deletedSet = new Set(
+      (storeDeletedUniversities || []).map((u) => normalizeUniversityKey(u))
+    );
+
+    const uniMap = new Map<string, string>();
     for (const u of rawList) {
       const trimmed = (u || '').trim();
-      if (trimmed) {
-        uniqueSet.add(trimmed);
+      if (!trimmed) continue;
+      const key = normalizeUniversityKey(trimmed);
+      if (deletedSet.has(key)) continue;
+
+      if (!uniMap.has(key)) {
+        uniMap.set(key, trimmed);
+      } else {
+        const existing = uniMap.get(key)!;
+        const existingUpper = (existing.match(/[A-Z]/g) || []).length;
+        const newUpper = (trimmed.match(/[A-Z]/g) || []).length;
+        if (newUpper > existingUpper) {
+          uniMap.set(key, trimmed);
+        }
       }
     }
 
     // Sort alphabetically using Uzbek locale collation (A-Z)
-    return Array.from(uniqueSet).sort((a, b) =>
+    return Array.from(uniMap.values()).sort((a, b) =>
       a.localeCompare(b, 'uz', { sensitivity: 'base' })
     );
-  }, [propUniversities, storeUniversities, propCustomUnis, storeCustomUnis]);
+  }, [propUniversities, storeUniversities, propCustomUnis, storeCustomUnis, storeDeletedUniversities]);
 
   // 2. Filter universities based on flexible search (matches anywhere, start, middle, or abbreviation)
   const filteredUniversities = useMemo(() => {

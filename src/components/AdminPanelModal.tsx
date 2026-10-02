@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import {
   ShieldCheck,
   X,
@@ -290,6 +290,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const handleDeleteUni = (name: string) => {
     deleteUniversity(name);
     deleteUniversityFromCloud(name).catch(() => {});
+    deleteUniversityFromCloud(name.trim()).catch(() => {});
+    deleteUniversityFromCloud(name.toLowerCase().trim()).catch(() => {});
     setDeletingUni(null);
     triggerHaptic('warning');
     showNotification(`"${name}" o'chirildi`);
@@ -454,8 +456,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     return matchesCat && matchesSearch;
   });
 
-  const filteredUniversities = [...universities]
-    .sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }))
+  const filteredUniversities = deduplicateUniversities(universities || [])
     .filter((u) => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;

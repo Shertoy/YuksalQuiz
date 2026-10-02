@@ -25,6 +25,35 @@ import { reconcilePackageWithProgress } from '../utils/progressUtils';
 
 import { Language } from '../i18n/translations';
 
+export function normalizeUniversityKey(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export function deduplicateUniversities(list: string[]): string[] {
+  const map = new Map<string, string>();
+  for (const item of list || []) {
+    const trimmed = (item || '').trim();
+    if (!trimmed) continue;
+    const lower = normalizeUniversityKey(trimmed);
+    if (!map.has(lower)) {
+      map.set(lower, trimmed);
+    } else {
+      const existing = map.get(lower)!;
+      const existingUpper = (existing.match(/[A-Z]/g) || []).length;
+      const newUpper = (trimmed.match(/[A-Z]/g) || []).length;
+      if (newUpper > existingUpper) {
+        map.set(lower, trimmed);
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    a.localeCompare(b, 'uz', { sensitivity: 'base' })
+  );
+}
+
 interface QuizState {
   theme: 'dark' | 'light';
   language: Language;
@@ -38,6 +67,7 @@ interface QuizState {
   customUniversities: string[];
   universities: string[];
   pendingUniversities: string[];
+  deletedUniversities: string[];
   transactions: WalletTransaction[];
   announcements: Announcement[];
   readAnnouncementIds: string[];
@@ -232,8 +262,9 @@ export const useQuizStore = create<QuizState>()(
       leaderboard: INITIAL_LEADERBOARD_USERS,
       leaderboardScope: 'uzbekistan',
       customUniversities: [],
-      universities: TOP_UNIVERSITIES,
+      universities: deduplicateUniversities(TOP_UNIVERSITIES),
       pendingUniversities: [],
+      deletedUniversities: [],
       transactions: [],
       announcements: [
         {
@@ -383,24 +414,59 @@ export const useQuizStore = create<QuizState>()(
       addUniversity: (name: string) => {
         const trimmed = name.trim();
         if (!trimmed) return;
+        const normKey = normalizeUniversityKey(trimmed);
         const list = get().universities;
-        if (!list.includes(trimmed)) {
-          const nextList = [...list, trimmed].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
-          set({ universities: nextList });
+        const deleted = (get().deletedUniversities || []).filter(
+          (d) => normalizeUniversityKey(d) !== normKey
+        );
+        if (!list.some((u) => normalizeUniversityKey(u) === normKey)) {
+          const nextList = deduplicateUniversities([...list, trimmed]);
+          set({ universities: nextList, deletedUniversities: deleted });
+        } else {
+          set({ deletedUniversities: deleted });
         }
       },
 
       updateUniversity: (oldName: string, newName: string) => {
         const trimmed = newName.trim();
         if (!trimmed) return;
+        const oldKey = normalizeUniversityKey(oldName);
+        const newKey = normalizeUniversityKey(trimmed);
+        const updated = get().universities.map((u) =>
+          normalizeUniversityKey(u) === oldKey ? trimmed : u
+        );
         set({
-          universities: get().universities.map((u) => (u === oldName ? trimmed : u)),
+          universities: deduplicateUniversities(updated),
+          customUniversities: (get().customUniversities || []).map((u) =>
+            normalizeUniversityKey(u) === oldKey ? trimmed : u
+          ),
+          deletedUniversities: (get().deletedUniversities || []).filter(
+            (d) => normalizeUniversityKey(d) !== newKey
+          ),
         });
       },
 
       deleteUniversity: (name: string) => {
+        const trimmed = name.trim();
+        const normKey = normalizeUniversityKey(trimmed);
+        const currentDeleted = get().deletedUniversities || [];
+        const updatedDeleted = currentDeleted.some((d) => normalizeUniversityKey(d) === normKey)
+          ? currentDeleted
+          : [...currentDeleted, trimmed];
+
+        const remainingUnis = get().universities.filter(
+          (u) => normalizeUniversityKey(u) !== normKey
+        );
+
         set({
-          universities: get().universities.filter((u) => u !== name),
+          universities: deduplicateUniversities(remainingUnis),
+          customUniversities: (get().customUniversities || []).filter(
+            (u) => normalizeUniversityKey(u) !== normKey
+          ),
+          pendingUniversities: (get().pendingUniversities || []).filter(
+            (u) => normalizeUniversityKey(u) !== normKey
+          ),
+          deletedUniversities: updatedDeleted,
         });
       },
 
@@ -1060,17 +1126,47 @@ export const useQuizStore = create<QuizState>()(
           (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && !deletedSet.has(pkg.id)
         );
 
-        if (!state.universities || state.universities.length === 0) {
-          state.universities = [...TOP_UNIVERSITIES].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
-        } else {
-          const existing = new Set(state.universities);
-          const missing = TOP_UNIVERSITIES.filter((u) => !existing.has(u));
-          const all = missing.length > 0 ? [...state.universities, ...missing] : state.universities;
-          state.universities = [...all].sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }));
+        if (!state.deletedUniversities) {
+          state.deletedUniversities = [];
         }
-        if (!state.pendingUniversities) {
-          state.pendingUniversities = [];
+        const deletedUnisSet = new Set(
+          (state.deletedUniversities || []).map((u) => normalizeUniversityKey(u))
+        );
+
+        // Deduplicate universities case-insensitively and filter out deleted ones
+        const uniMap = new Map<string, string>();
+        for (const u of state.universities || []) {
+          const key = normalizeUniversityKey(u);
+          if (!key || deletedUnisSet.has(key)) continue;
+          if (!uniMap.has(key)) {
+            uniMap.set(key, u.trim());
+          } else {
+            const existing = uniMap.get(key)!;
+            const existingUpper = (existing.match(/[A-Z]/g) || []).length;
+            const newUpper = (u.match(/[A-Z]/g) || []).length;
+            if (newUpper > existingUpper) {
+              uniMap.set(key, u.trim());
+            }
+          }
         }
+
+        // Add TOP_UNIVERSITIES if not deleted and not already present case-insensitively
+        for (const topU of TOP_UNIVERSITIES) {
+          const key = normalizeUniversityKey(topU);
+          if (!deletedUnisSet.has(key) && !uniMap.has(key)) {
+            uniMap.set(key, topU.trim());
+          }
+        }
+
+        state.universities = Array.from(uniMap.values()).sort((a, b) =>
+          a.localeCompare(b, 'uz', { sensitivity: 'base' })
+        );
+        state.customUniversities = (state.customUniversities || []).filter(
+          (u) => !deletedUnisSet.has(normalizeUniversityKey(u))
+        );
+        state.pendingUniversities = (state.pendingUniversities || []).filter(
+          (u) => !deletedUnisSet.has(normalizeUniversityKey(u))
+        );
         if (!state.transactions) {
           state.transactions = [];
         }

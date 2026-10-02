@@ -1,6 +1,6 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
 import { TestPackage } from '../types';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 
@@ -100,8 +100,10 @@ export async function fetchCloudTests(): Promise<{
       return { success: false, count: 0, message: error.message };
     }
 
-    const { testPackages, universities, deletedPackageIds, profile, testAttempts } = useQuizStore.getState();
+    const { testPackages, universities, deletedPackageIds, deletedUniversities, profile, testAttempts } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
+    const deletedUniSet = new Set((deletedUniversities || []).map((u) => normalizeUniversityKey(u)));
+    const existingUnisSet = new Set((universities || []).map((u) => normalizeUniversityKey(u)));
 
     if (!data || data.length === 0) {
       // Cloud has 0 tests. The database is empty or all tests have been cleared.
@@ -138,12 +140,12 @@ export async function fetchCloudTests(): Promise<{
 
     // Also extract all universities from cloud test packages and merge into store
     const cloudPackageUnis = validCloudPackages.map((p) => p.university?.trim()).filter(Boolean);
-    const existingUnisSet = new Set(universities || []);
     let updatedUnis = [...(universities || [])];
     let unisChanged = false;
     for (const u of cloudPackageUnis) {
-      if (u && !existingUnisSet.has(u)) {
-        existingUnisSet.add(u);
+      const key = normalizeUniversityKey(u);
+      if (key && !existingUnisSet.has(key) && !deletedUniSet.has(key)) {
+        existingUnisSet.add(key);
         updatedUnis.unshift(u);
         unisChanged = true;
       }
@@ -151,7 +153,7 @@ export async function fetchCloudTests(): Promise<{
 
     useQuizStore.setState({
       testPackages: mergedPackages,
-      ...(unisChanged ? { universities: updatedUnis } : {}),
+      ...(unisChanged ? { universities: deduplicateUniversities(updatedUnis) } : {}),
     });
 
     // Also attempt to fetch universities directly from cloud table if available
@@ -297,8 +299,10 @@ export async function syncAllTestsWithCloud(): Promise<{
     const remoteIdSet = new Set(remoteTests.map((t) => t.id));
 
     // 2. Identify local tests authored by this user that are pending upload
-    const { testPackages, universities, deletedPackageIds, profile, testAttempts } = useQuizStore.getState();
+    const { testPackages, universities, deletedPackageIds, deletedUniversities, profile, testAttempts } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
+    const deletedUniSet = new Set((deletedUniversities || []).map((u) => normalizeUniversityKey(u)));
+    const existingUniKeySet = new Set((universities || []).map((u) => normalizeUniversityKey(u)));
 
     // Only upload tests created by THIS user that are pending sync (never upload another user's deleted tests!)
     const testsToUpload = (testPackages || []).filter(
@@ -333,12 +337,12 @@ export async function syncAllTestsWithCloud(): Promise<{
 
     // 3. Extract and merge universities from all remote tests
     const allPackageUnis = remoteTests.map((t) => t.university?.trim()).filter(Boolean);
-    const existingUniSet = new Set(universities || []);
     let updatedUnis = [...(universities || [])];
     let unisChanged = false;
     for (const u of allPackageUnis) {
-      if (u && !existingUniSet.has(u)) {
-        existingUniSet.add(u);
+      const key = normalizeUniversityKey(u);
+      if (key && !existingUniKeySet.has(key) && !deletedUniSet.has(key)) {
+        existingUniKeySet.add(key);
         updatedUnis.unshift(u);
         unisChanged = true;
       }
@@ -363,7 +367,7 @@ export async function syncAllTestsWithCloud(): Promise<{
 
     useQuizStore.setState({
       testPackages: allMerged,
-      ...(unisChanged ? { universities: updatedUnis } : {}),
+      ...(unisChanged ? { universities: deduplicateUniversities(updatedUnis) } : {}),
     });
 
     // Also sync universities table
@@ -414,21 +418,23 @@ export async function fetchCloudUniversities(): Promise<{
     }
 
     const cloudUniNames: string[] = data.map((row: any) => String(row.name).trim()).filter(Boolean);
-    const { universities } = useQuizStore.getState();
-    const existingSet = new Set(universities || []);
+    const { universities, deletedUniversities } = useQuizStore.getState();
+    const deletedUniSet = new Set((deletedUniversities || []).map((u) => normalizeUniversityKey(u)));
+    const existingSet = new Set((universities || []).map((u) => normalizeUniversityKey(u)));
     const mergedUnis = [...(universities || [])];
     let addedCount = 0;
 
     for (const name of cloudUniNames) {
-      if (!existingSet.has(name)) {
-        existingSet.add(name);
+      const key = normalizeUniversityKey(name);
+      if (key && !existingSet.has(key) && !deletedUniSet.has(key)) {
+        existingSet.add(key);
         mergedUnis.unshift(name);
         addedCount++;
       }
     }
 
     if (addedCount > 0) {
-      useQuizStore.setState({ universities: mergedUnis });
+      useQuizStore.setState({ universities: deduplicateUniversities(mergedUnis) });
     }
 
     return {
@@ -497,11 +503,15 @@ export async function syncAllUniversitiesWithCloud(): Promise<void> {
   if (!supabase) return;
 
   try {
-    const { universities } = useQuizStore.getState();
-    if (!universities || universities.length === 0) return;
+    const { universities, deletedUniversities } = useQuizStore.getState();
+    const deletedUniSet = new Set((deletedUniversities || []).map((u) => normalizeUniversityKey(u)));
+    const validUnis = deduplicateUniversities(
+      (universities || []).filter((u) => !deletedUniSet.has(normalizeUniversityKey(u)))
+    );
+    if (!validUnis || validUnis.length === 0) return;
 
     // Push local universities to cloud
-    const rows = universities.map((name) => ({
+    const rows = validUnis.map((name) => ({
       name: name.trim(),
       created_at: new Date().toISOString(),
     }));
