@@ -1087,9 +1087,11 @@ export const useQuizStore = create<QuizState>()(
         }
 
         if (state) {
-          // Strictly clear any preloaded mock leaderboard and mock tests
+          // Strictly clear any preloaded mock leaderboard
           state.leaderboard = [];
-          state.testPackages = [];
+          if (!state.testPackages) {
+            state.testPackages = [];
+          }
           if (!state.readAnnouncementIds) {
             state.readAnnouncementIds = [];
           }
