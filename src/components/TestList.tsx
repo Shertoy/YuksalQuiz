@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -51,6 +51,20 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Automatically sync with cloud on mount and when window regains focus
+  useEffect(() => {
+    fetchCloudTests().catch((err) => console.debug('TestList sync notice:', err));
+
+    const handleFocus = () => {
+      fetchCloudTests().catch(() => {});
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Lock explanation modal state (sequential block lock)
   const [lockExplanation, setLockExplanation] = useState<{

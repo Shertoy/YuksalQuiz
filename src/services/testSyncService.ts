@@ -91,15 +91,16 @@ export async function fetchCloudTests(): Promise<{
       return { success: false, count: 0, message: error.message };
     }
 
-    const { testPackages, universities, deletedPackageIds } = useQuizStore.getState();
+    const { testPackages, universities, deletedPackageIds, profile } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
 
     if (!data || data.length === 0) {
-      // Cloud has 0 tests. Keep only non-deleted local packages
-      const cleanLocalPackages = (testPackages || []).filter(
-        (p) => !deletedSet.has(p.id)
+      // Cloud has 0 tests. The database is empty or all tests have been cleared.
+      // Retain only un-synced offline drafts created by this user
+      const localDrafts = (testPackages || []).filter(
+        (p: any) => p.authorId === profile?.id && p._isPendingSync === true && !deletedSet.has(p.id)
       );
-      useQuizStore.setState({ testPackages: cleanLocalPackages });
+      useQuizStore.setState({ testPackages: localDrafts });
       return { success: true, count: 0, message: "Bulutli bazada hozircha testlar yo'q." };
     }
 
@@ -108,14 +109,17 @@ export async function fetchCloudTests(): Promise<{
     // Filter out any packages that have been deleted locally
     const validCloudPackages = cloudPackages.filter((cp) => !deletedSet.has(cp.id));
 
-    // Combine: valid cloud packages take priority.
-    const mergedPackages: TestPackage[] = [...validCloudPackages];
+    // Cloud packages are the single authoritative source of truth.
+    // Retain only local packages that were created by THIS user while offline and pending sync.
+    const localDrafts = (testPackages || []).filter(
+      (localPkg: any) =>
+        localPkg.authorId === profile?.id &&
+        localPkg._isPendingSync === true &&
+        !deletedSet.has(localPkg.id) &&
+        !validCloudPackages.some((cp) => cp.id === localPkg.id)
+    );
 
-    for (const localPkg of testPackages || []) {
-      if (deletedSet.has(localPkg.id)) continue;
-      if (mergedPackages.some((cp) => cp.id === localPkg.id)) continue;
-      mergedPackages.push(localPkg);
-    }
+    const mergedPackages: TestPackage[] = [...validCloudPackages, ...localDrafts];
 
     // Also extract all universities from cloud test packages and merge into store
     const cloudPackageUnis = validCloudPackages.map((p) => p.university?.trim()).filter(Boolean);
@@ -277,10 +281,18 @@ export async function syncAllTestsWithCloud(): Promise<{
     const remoteTests = (remoteData || []).map(mapRowToTestPackage);
     const remoteIdSet = new Set(remoteTests.map((t) => t.id));
 
-    // 2. Identify local tests not yet in remote
-    const { testPackages, universities, deletedPackageIds } = useQuizStore.getState();
+    // 2. Identify local tests authored by this user that are pending upload
+    const { testPackages, universities, deletedPackageIds, profile } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
-    const testsToUpload = (testPackages || []).filter((t) => !remoteIdSet.has(t.id) && !deletedSet.has(t.id));
+
+    // Only upload tests created by THIS user that are pending sync (never upload another user's deleted tests!)
+    const testsToUpload = (testPackages || []).filter(
+      (t: any) =>
+        t.authorId === profile?.id &&
+        t._isPendingSync === true &&
+        !remoteIdSet.has(t.id) &&
+        !deletedSet.has(t.id)
+    );
 
     let uploadedCount = 0;
     if (testsToUpload.length > 0) {
@@ -291,6 +303,16 @@ export async function syncAllTestsWithCloud(): Promise<{
 
       if (!insertError) {
         uploadedCount = testsToUpload.length;
+        // Clear pending flag on uploaded tests
+        const updatedPackages = (testPackages || []).map((t: any) => {
+          if (testsToUpload.some((u) => u.id === t.id)) {
+            const copy = { ...t };
+            delete copy._isPendingSync;
+            return copy;
+          }
+          return t;
+        });
+        useQuizStore.setState({ testPackages: updatedPackages });
       }
     }
 
@@ -307,15 +329,17 @@ export async function syncAllTestsWithCloud(): Promise<{
       }
     }
 
-    // 4. Merge all remote tests into store
+    // 4. Remote tests are the authoritative source of truth.
+    // Prune all deleted tests from local store!
     const validRemoteTests = remoteTests.filter((t) => !deletedSet.has(t.id));
-    const allMerged = [...validRemoteTests];
-    for (const localT of testPackages || []) {
-      if (deletedSet.has(localT.id)) continue;
-      if (!allMerged.some((m) => m.id === localT.id)) {
-        allMerged.push(localT);
-      }
-    }
+    const localDrafts = (testPackages || []).filter(
+      (localT: any) =>
+        localT.authorId === profile?.id &&
+        localT._isPendingSync === true &&
+        !deletedSet.has(localT.id) &&
+        !validRemoteTests.some((m) => m.id === localT.id)
+    );
+    const allMerged = [...validRemoteTests, ...localDrafts];
 
     useQuizStore.setState({
       testPackages: allMerged,

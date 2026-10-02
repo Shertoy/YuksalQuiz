@@ -106,6 +106,13 @@ export const App: React.FC = () => {
     syncTelegramTheme(theme);
   }, [theme]);
 
+  // Sync cloud tests whenever user navigates to tests or home tab
+  useEffect(() => {
+    if (activeTab === 'tests' || activeTab === 'home') {
+      fetchCloudTests().catch(() => {});
+    }
+  }, [activeTab]);
+
   // Handlers for test flow
   const handleStartTest = (pkg: TestPackage, blockId: string) => {
     setReviewState(null);
