@@ -49,7 +49,7 @@ import {
 } from '../types';
 import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
-import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection } from '../services/supabase';
+import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection, normalizeSupabaseUrl } from '../services/supabase';
 import { syncAllTestsWithCloud, fetchCloudTests } from '../services/testSyncService';
 
 interface AdminPanelModalProps {
@@ -1703,29 +1703,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Project URL:
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Project URL:
+                      </label>
+                      <span className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold">
+                        https:// bilan boshlanishi kerak
+                      </span>
+                    </div>
                     <input
-                      type="url"
+                      type="text"
                       placeholder="https://your-project-id.supabase.co"
                       value={supabaseUrlInput}
-                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const normalized = normalizeSupabaseUrl(raw);
+                        setSupabaseUrlInput(normalized);
+                        // If user accidentally pasted the anon key into URL and anon key was empty
+                        if (raw.trim().startsWith('eyJ') && !supabaseKeyInput.trim()) {
+                          setSupabaseKeyInput(raw.trim());
+                        }
+                      }}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Supabase boshqaruv panelida: <b>Project Settings &gt; API &gt; Project URL</b> (masalan: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://xyz.supabase.co</code>)
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Anon (Public) API Key:
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Anon (Public) API Key:
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        eyJ... deb boshlanadi
+                      </span>
+                    </div>
                     <input
                       type="text"
                       placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                       value={supabaseKeyInput}
-                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                      onChange={(e) => setSupabaseKeyInput(e.target.value.trim())}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none font-mono"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Supabase boshqaruv panelida: <b>Project Settings &gt; API &gt; Project API Keys &gt; anon public</b>
+                    </p>
                   </div>
                 </div>
 
