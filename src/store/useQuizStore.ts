@@ -94,6 +94,8 @@ interface QuizState {
   checkDailyStreak: () => { streakAwarded: boolean; streakCount: number };
   addCustomUniversity: (name: string) => void;
   createTestPackage: (pkg: TestPackage) => void;
+  updateTestPackage: (pkg: TestPackage) => void;
+  deleteTestPackage: (id: string) => void;
   recordTestAttempt: (attempt: TestAttempt) => { coinsEarned: number; bonusCoins: number; unlockedNext: boolean };
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
@@ -659,6 +661,22 @@ export const useQuizStore = create<QuizState>()(
         const current = get().testPackages;
         triggerHaptic('success');
         set({ testPackages: [pkg, ...current] });
+      },
+
+      updateTestPackage: (pkg: TestPackage) => {
+        const current = get().testPackages;
+        triggerHaptic('success');
+        set({
+          testPackages: current.map((p) => (p.id === pkg.id ? pkg : p)),
+        });
+      },
+
+      deleteTestPackage: (id: string) => {
+        const current = get().testPackages;
+        triggerHaptic('warning');
+        set({
+          testPackages: current.filter((p) => p.id !== id),
+        });
       },
 
       // Credit Author background state update (+100 UZS)

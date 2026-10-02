@@ -30,39 +30,73 @@ import { publishTestToCloud } from '../services/testSyncService';
 
 interface CreateTestModalProps {
   onClose: () => void;
+  editPackage?: TestPackage | null;
 }
 
-export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => {
-  const { profile, createTestPackage, addCustomUniversity, customUniversities, universities } = useQuizStore();
+export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editPackage }) => {
+  const { profile, createTestPackage, updateTestPackage, addCustomUniversity, customUniversities, universities } = useQuizStore();
   const { t } = useTranslation();
 
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
-  const [selectedUniversity, setSelectedUniversity] = useState(
-    profile.university || universities?.[0] || TOP_UNIVERSITIES[0]
+  const isEditMode = Boolean(editPackage);
+
+  const initialQuestions = React.useMemo(() => {
+    if (editPackage?.blocks && editPackage.blocks.length > 0) {
+      const flattened = editPackage.blocks.flatMap((b) => b.questions);
+      if (flattened.length > 0) return flattened;
+    }
+    return [
+      {
+        id: 'q-1',
+        text: '',
+        options: ['', '', '', ''],
+        correctOptionIndex: 0,
+        explanation: '',
+      },
+    ];
+  }, [editPackage]);
+
+  const [title, setTitle] = useState(editPackage?.title || '');
+  const [category, setCategory] = useState<MainCategory>(editPackage?.category || 'Oliy Ta\'lim (HEMIS)');
+
+  const allKnownUnis = [...(universities || []), ...TOP_UNIVERSITIES, ...(customUniversities || [])];
+  const initialIsCustom = Boolean(
+    editPackage && (editPackage.isCustomUniversity || (editPackage.university && !allKnownUnis.includes(editPackage.university)))
   );
-  const [isCustomUni, setIsCustomUni] = useState(false);
-  const [customUniName, setCustomUniName] = useState('');
-  const [department, setDepartment] = useState<DepartmentType>('Axborot Texnologiyalari');
-  const [isPublic, setIsPublic] = useState(true);
-  const [password, setPassword] = useState('');
+
+  const [selectedUniversity, setSelectedUniversity] = useState(
+    editPackage && !initialIsCustom
+      ? editPackage.university
+      : profile.university || universities?.[0] || TOP_UNIVERSITIES[0]
+  );
+  const [isCustomUni, setIsCustomUni] = useState(initialIsCustom);
+  const [customUniName, setCustomUniName] = useState(initialIsCustom && editPackage ? editPackage.university : '');
+  const [department, setDepartment] = useState<DepartmentType>(editPackage?.department || 'Axborot Texnologiyalari');
+  const [isPublic, setIsPublic] = useState(editPackage ? editPackage.isPublic : true);
+  const [password, setPassword] = useState(editPackage?.password || '');
 
   // Mode: manual builder or bulk parser
   const [inputMode, setInputMode] = useState<'manual' | 'bulk'>('manual');
 
   // Manual questions
-  const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: 'q-1',
-      text: '',
-      options: ['', '', '', ''],
-      correctOptionIndex: 0,
-      explanation: '',
-    },
-  ]);
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
 
   // Bulk import text
-  const [bulkText, setBulkText] = useState('');
+  const [bulkText, setBulkText] = useState(() => {
+    if (editPackage?.blocks && editPackage.blocks.length > 0) {
+      const flattened = editPackage.blocks.flatMap((b) => b.questions);
+      if (flattened.length > 0) {
+        return flattened
+          .map((q) => {
+            const opts = q.options
+              .map((opt, i) => (i === q.correctOptionIndex ? `+${opt}` : `=${opt}`))
+              .join('\n');
+            return `${q.text}\n${opts}${q.explanation ? `\n#Izoh: ${q.explanation}` : ''}`;
+          })
+          .join('\n\n');
+      }
+    }
+    return '';
+  });
   const [bulkError, setBulkError] = useState('');
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
 
@@ -297,6 +331,34 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
 
     const testBlocks = splitQuestionsIntoBlocks(validQuestions);
 
+    if (editPackage) {
+      const updatedPackage: TestPackage = {
+        ...editPackage,
+        title: sanitizeText(title.trim()),
+        category,
+        university: finalUniversity,
+        isCustomUniversity: isCustomUni,
+        isPendingReview: isCustomUni,
+        department,
+        isPublic,
+        password: isPublic ? undefined : sanitizeText(password.trim()),
+        totalQuestions: validQuestions.length,
+        blocks: testBlocks,
+      };
+
+      updateTestPackage(updatedPackage);
+      triggerHaptic('success');
+
+      publishTestToCloud(updatedPackage).then((res) => {
+        if (res.success) {
+          console.log('Test updated in Supabase:', updatedPackage.title);
+        }
+      });
+
+      onClose();
+      return;
+    }
+
     const newPackage: TestPackage = {
       id: 'pkg-' + Math.random().toString(36).substring(2, 9),
       title: sanitizeText(title.trim()),
@@ -340,10 +402,12 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                {t.createTestModalTitle}
+                {isEditMode ? 'Testni tahrirlash' : t.createTestModalTitle}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {t.createTestModalDesc}
+                {isEditMode
+                  ? "Test savollari, javoblari va ma'lumotlarini yangilang"
+                  : t.createTestModalDesc}
               </p>
             </div>
           </div>
@@ -779,7 +843,11 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
               className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{t.publishTestBtn} ({liveBlocks.length} ta blok)</span>
+              <span>
+                {isEditMode
+                  ? `O'zgarishlarni saqlash (${liveBlocks.length} ta blok)`
+                  : `${t.publishTestBtn} (${liveBlocks.length} ta blok)`}
+              </span>
             </button>
           </div>
         </form>

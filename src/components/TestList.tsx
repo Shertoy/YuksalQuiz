@@ -17,6 +17,9 @@ import {
   RefreshCw,
   Cloud,
   School,
+  Edit3,
+  Trash2,
+  User,
 } from 'lucide-react';
 import {
   MAIN_CATEGORIES,
@@ -26,20 +29,22 @@ import {
 } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
-import { fetchCloudTests } from '../services/testSyncService';
+import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
   onOpenCreateModal: () => void;
+  onEditTest?: (pkg: TestPackage) => void;
 }
 
-export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateModal }) => {
-  const { testPackages, universities, profile } = useQuizStore();
+export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateModal, onEditTest }) => {
+  const { testPackages, universities, profile, deleteTestPackage } = useQuizStore();
   const { t } = useTranslation();
 
   const [activeCategory, setActiveCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
   const [selectedUniFilter, setSelectedUniFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [onlyMyTests, setOnlyMyTests] = useState(false);
   const [passwordModalPkg, setPasswordModalPkg] = useState<TestPackage | null>(null);
   const [targetBlockId, setTargetBlockId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -53,10 +58,24 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
     message: string;
   } | null>(null);
 
-  // Filter test packages by active category and search query
+  const myTestsCount = testPackages.filter((p) => p.authorId === profile.id).length;
+
+  const handleDeleteTest = async (pkg: TestPackage) => {
+    triggerHaptic('warning');
+    if (window.confirm(`"${pkg.title}" testini o'chirishni tasdiqlaysizmi?`)) {
+      deleteTestPackage(pkg.id);
+      await deleteTestFromCloud(pkg.id);
+      triggerHaptic('success');
+    }
+  };
+
+  // Filter test packages by active category, author scope, and search query
   const filteredPackages = testPackages.filter((pkg) => {
+    if (onlyMyTests && pkg.authorId !== profile.id) {
+      return false;
+    }
     const pkgCategory = pkg.category || 'Oliy Ta\'lim (HEMIS)';
-    const matchesCategory = pkgCategory === activeCategory;
+    const matchesCategory = onlyMyTests ? true : pkgCategory === activeCategory;
     const matchesUni =
       selectedUniFilter === 'all' ||
       (pkg.university && pkg.university.toLowerCase() === selectedUniFilter.toLowerCase());
@@ -200,6 +219,39 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
         </div>
       </div>
 
+      {/* Scope Selector: All Tests vs My Created Tests */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('selection');
+            setOnlyMyTests(false);
+          }}
+          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            !onlyMyTests
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          Barcha testlar ({testPackages.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('selection');
+            setOnlyMyTests(true);
+          }}
+          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            onlyMyTests
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <User className="w-3.5 h-3.5" />
+          <span>Mening testlarim ({myTestsCount})</span>
+        </button>
+      </div>
+
       {/* Multi-Track Category Tab Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {MAIN_CATEGORIES.map((cat) => {
@@ -297,10 +349,12 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               <Search className="w-7 h-7" />
             </div>
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              {t.emptyCategoryTitle}
+              {onlyMyTests ? 'Siz hali test yaratmagansiz' : t.emptyCategoryTitle}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
-              {t.emptyCategoryDesc}
+              {onlyMyTests
+                ? "O'zingiz yoki guruhingiz uchun yangi test yaratib, barcha talabalar bilan ulashing."
+                : t.emptyCategoryDesc}
             </p>
             <button
               onClick={() => {
@@ -344,6 +398,12 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                         Hamjamiyat testi
                       </span>
                     )}
+
+                    {pkg.authorId === profile.id && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80">
+                        Sizning testingiz
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
@@ -354,10 +414,40 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                   </p>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                   <span className="text-[11px] font-bold text-slate-400">
                     {pkg.totalQuestions} savol
                   </span>
+
+                  {pkg.authorId === profile.id && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic('light');
+                          onEditTest?.(pkg);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] transition-all active:scale-95 border border-indigo-200/50 dark:border-indigo-800/50"
+                        title="Testni tahrirlash"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Tahrirlash</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTest(pkg);
+                        }}
+                        className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50"
+                        title="Testni o'chirish"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

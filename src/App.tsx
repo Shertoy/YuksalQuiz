@@ -39,8 +39,9 @@ export const App: React.FC = () => {
     nextBlockTitle?: string;
   } | null>(null);
 
-  // Create test modal
+  // Create / Edit test modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTestPkg, setEditingTestPkg] = useState<TestPackage | null>(null);
 
   // Notifications modal
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -185,6 +186,7 @@ export const App: React.FC = () => {
               <TestList
                 onStartTest={handleStartTest}
                 onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                onEditTest={(pkg) => setEditingTestPkg(pkg)}
               />
             )}
             {activeTab === 'results' && <ResultsAndMistakes />}
@@ -202,9 +204,15 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Create Test Modal */}
-      {isCreateModalOpen && (
-        <CreateTestModal onClose={() => setIsCreateModalOpen(false)} />
+      {/* Create / Edit Test Modal */}
+      {(isCreateModalOpen || Boolean(editingTestPkg)) && (
+        <CreateTestModal
+          editPackage={editingTestPkg}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setEditingTestPkg(null);
+          }}
+        />
       )}
 
       {/* Notifications Modal */}
