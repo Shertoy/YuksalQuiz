@@ -16,17 +16,16 @@ import {
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
 import { UserAvatar } from './UserAvatar';
-import { EditProfileModal } from './EditProfileModal';
 
 interface ProfileViewProps {
   onOpenAdminLogin?: () => void;
+  onOpenEditProfile?: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOpenEditProfile }) => {
   const { profile, setActiveTab } = useQuizStore();
   const { t } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   return (
     <div className="space-y-4 pb-20">
@@ -45,7 +44,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           type="button"
           onClick={() => {
             triggerHaptic('light');
-            setIsEditModalOpen(true);
+            onOpenEditProfile?.();
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all active:scale-95 border border-emerald-500/30"
         >
@@ -200,12 +199,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           <span className="text-[10px] text-slate-400 font-medium">{t.adminControlPanel}</span>
         </button>
       </div>
-
-      {/* Edit Profile Modal */}
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-      />
 
       {/* App Version Stamp */}
       <div className="pt-2 text-center">

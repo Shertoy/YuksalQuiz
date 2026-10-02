@@ -80,25 +80,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/15 max-w-md w-full overflow-hidden max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 max-w-md w-full overflow-hidden max-h-[88vh] flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header with Visual Editing Mode Status */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
               <Edit3 className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
+                <h3 className="font-black text-sm text-slate-900 dark:text-white truncate">
                   {t.editDataTitle || 'Profilni tahrirlash'}
                 </h3>
-                <span className="flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs">
+                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
                   <span>Faol rejim</span>
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                 Ma'lumotlar va avatarni yangilang
               </p>
             </div>
@@ -110,7 +110,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               triggerHaptic('light');
               onClose();
             }}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors active:scale-95"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors active:scale-95 shrink-0 ml-2"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />

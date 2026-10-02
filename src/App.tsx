@@ -25,6 +25,7 @@ import {
 } from './services/testSyncService';
 import { ParticleBackground } from './components/ParticleBackground';
 import { AppLoader } from './components/AppLoader';
+import { EditProfileModal } from './components/EditProfileModal';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -48,6 +49,9 @@ export const App: React.FC = () => {
   // Create / Edit test modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTestPkg, setEditingTestPkg] = useState<TestPackage | null>(null);
+
+  // Edit Profile modal (rendered at root level)
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   // Notifications modal
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -215,6 +219,7 @@ export const App: React.FC = () => {
               <HomeDashboard
                 onStartTest={handleStartTest}
                 onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                onOpenEditProfile={() => setIsEditProfileOpen(true)}
               />
             )}
             {activeTab === 'tests' && (
@@ -228,11 +233,20 @@ export const App: React.FC = () => {
             {activeTab === 'wallet' && <WalletView />}
             {activeTab === 'leaderboard' && <Leaderboard />}
             {activeTab === 'profile' && (
-              <ProfileView onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />
+              <ProfileView
+                onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+                onOpenEditProfile={() => setIsEditProfileOpen(true)}
+              />
             )}
           </>
         )}
       </main>
+
+      {/* Edit Profile Modal (Rendered at root level over all navigation) */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
 
       {/* Create / Edit Test Modal */}
       {(isCreateModalOpen || Boolean(editingTestPkg)) && (

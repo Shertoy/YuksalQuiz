@@ -28,17 +28,18 @@ import { triggerHaptic } from '../utils/telegram';
 import { TestPackage } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
-import { EditProfileModal } from './EditProfileModal';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
   onOpenCreateModal: () => void;
+  onOpenEditProfile: () => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onStartTest,
   onOpenCreateModal,
+  onOpenEditProfile,
 }) => {
   const {
     profile,
@@ -56,7 +57,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [coinGlow, setCoinGlow] = useState(false);
   const [isDailyDisappearing, setIsDailyDisappearing] = useState(false);
   const [isVoucherDismissed, setIsVoucherDismissed] = useState(false);
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   // Compute rating stats and ranking
   const stats = calculateUserRatingStats(testAttempts);
@@ -177,7 +177,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             type="button"
             onClick={() => {
               triggerHaptic('light');
-              setIsEditProfileOpen(true);
+              onOpenEditProfile();
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-md text-white font-bold text-xs shadow-sm transition-all border border-white/25 shrink-0"
             title="Profilni tahrirlash"
@@ -439,12 +439,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
       )}
-
-      {/* Interactive Edit Profile Modal */}
-      <EditProfileModal
-        isOpen={isEditProfileOpen}
-        onClose={() => setIsEditProfileOpen(false)}
-      />
     </div>
   );
 };
