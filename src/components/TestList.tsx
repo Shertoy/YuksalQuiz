@@ -58,15 +58,35 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
     message: string;
   } | null>(null);
 
+  const [deletingPkg, setDeletingPkg] = useState<TestPackage | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const myTestsCount = testPackages.filter((p) => p.authorId === profile.id).length;
 
-  const handleDeleteTest = async (pkg: TestPackage) => {
+  const handleDeleteTest = (pkg: TestPackage) => {
     triggerHaptic('warning');
-    if (window.confirm(`"${pkg.title}" testini o'chirishni tasdiqlaysizmi?`)) {
-      deleteTestPackage(pkg.id);
-      await deleteTestFromCloud(pkg.id);
-      triggerHaptic('success');
+    setDeletingPkg(pkg);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingPkg || isDeleting) return;
+    setIsDeleting(true);
+    triggerHaptic('medium');
+    const targetId = deletingPkg.id;
+
+    // 1. Immediately delete from local store (instant UI update)
+    deleteTestPackage(targetId);
+
+    // 2. Delete from Supabase cloud
+    try {
+      await deleteTestFromCloud(targetId);
+    } catch (err) {
+      console.warn('Cloud delete error:', err);
     }
+
+    setIsDeleting(false);
+    setDeletingPkg(null);
+    triggerHaptic('success');
   };
 
   // Filter test packages by active category, author scope, and search query
@@ -597,6 +617,51 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom In-App Delete Confirmation Modal - 100% reliable across Telegram & Web */}
+      {deletingPkg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
+              Testni o'chirish
+            </h3>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
+              Haqiqatan ham <strong className="text-slate-900 dark:text-white">"{deletingPkg.title}"</strong> testini butunlay o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingPkg(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <span>O'chirilmoqda...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ha, o'chirish</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

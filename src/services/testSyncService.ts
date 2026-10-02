@@ -79,26 +79,36 @@ export async function fetchCloudTests(): Promise<{
       return { success: false, count: 0, message: error.message };
     }
 
+    const { testPackages, universities, deletedPackageIds } = useQuizStore.getState();
+    const deletedSet = new Set(deletedPackageIds || []);
+
     if (!data || data.length === 0) {
+      // Cloud has 0 tests. Keep only non-deleted local packages (not cloud packages)
+      const cleanLocalPackages = (testPackages || []).filter(
+        (p) => !deletedSet.has(p.id) && !p.id.startsWith('pkg-')
+      );
+      useQuizStore.setState({ testPackages: cleanLocalPackages });
       return { success: true, count: 0, message: "Bulutli bazada hozircha testlar yo'q." };
     }
 
     const cloudPackages: TestPackage[] = data.map(mapRowToTestPackage);
 
-    // Merge with current store test packages
-    const { testPackages, universities } = useQuizStore.getState();
+    // Filter out any packages that have been deleted locally
+    const validCloudPackages = cloudPackages.filter((cp) => !deletedSet.has(cp.id));
 
-    // Combine: cloud packages take priority, preserve any local unpushed packages
-    const mergedPackages: TestPackage[] = [...cloudPackages];
+    // Combine: valid cloud packages take priority.
+    const mergedPackages: TestPackage[] = [...validCloudPackages];
 
-    for (const localPkg of testPackages) {
-      if (!mergedPackages.some((cp) => cp.id === localPkg.id)) {
-        mergedPackages.push(localPkg);
-      }
+    for (const localPkg of testPackages || []) {
+      if (deletedSet.has(localPkg.id)) continue;
+      if (mergedPackages.some((cp) => cp.id === localPkg.id)) continue;
+      // If a package was a cloud package (starts with pkg-) but is missing from cloud, it was deleted!
+      if (localPkg.id.startsWith('pkg-')) continue;
+      mergedPackages.push(localPkg);
     }
 
     // Also extract all universities from cloud test packages and merge into store
-    const cloudPackageUnis = cloudPackages.map((p) => p.university?.trim()).filter(Boolean);
+    const cloudPackageUnis = validCloudPackages.map((p) => p.university?.trim()).filter(Boolean);
     const existingUnisSet = new Set(universities || []);
     let updatedUnis = [...(universities || [])];
     let unisChanged = false;
@@ -234,8 +244,9 @@ export async function syncAllTestsWithCloud(): Promise<{
     const remoteIdSet = new Set(remoteTests.map((t) => t.id));
 
     // 2. Identify local tests not yet in remote
-    const { testPackages } = useQuizStore.getState();
-    const testsToUpload = testPackages.filter((t) => !remoteIdSet.has(t.id));
+    const { testPackages, universities, deletedPackageIds } = useQuizStore.getState();
+    const deletedSet = new Set(deletedPackageIds || []);
+    const testsToUpload = (testPackages || []).filter((t) => !remoteIdSet.has(t.id) && !deletedSet.has(t.id));
 
     let uploadedCount = 0;
     if (testsToUpload.length > 0) {
@@ -251,7 +262,6 @@ export async function syncAllTestsWithCloud(): Promise<{
 
     // 3. Extract and merge universities from all remote tests
     const allPackageUnis = remoteTests.map((t) => t.university?.trim()).filter(Boolean);
-    const { universities } = useQuizStore.getState();
     const existingUniSet = new Set(universities || []);
     let updatedUnis = [...(universities || [])];
     let unisChanged = false;
@@ -264,9 +274,12 @@ export async function syncAllTestsWithCloud(): Promise<{
     }
 
     // 4. Merge all remote tests into store
-    const allMerged = [...remoteTests];
-    for (const localT of testPackages) {
+    const validRemoteTests = remoteTests.filter((t) => !deletedSet.has(t.id));
+    const allMerged = [...validRemoteTests];
+    for (const localT of testPackages || []) {
+      if (deletedSet.has(localT.id)) continue;
       if (!allMerged.some((m) => m.id === localT.id)) {
+        if (localT.id.startsWith('pkg-')) continue;
         allMerged.push(localT);
       }
     }
@@ -440,8 +453,10 @@ export function setupRealtimeTestSubscription(
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'test_packages' },
-        async () => {
-          // Refresh tests list from cloud
+        async (payload: any) => {
+          if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+            useQuizStore.getState().deleteTestPackage(payload.old.id);
+          }
           await fetchCloudTests();
           onUpdate?.();
         }

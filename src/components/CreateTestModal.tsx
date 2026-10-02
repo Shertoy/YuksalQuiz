@@ -26,7 +26,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
-import { publishTestToCloud } from '../services/testSyncService';
+import { publishTestToCloud, deleteTestFromCloud } from '../services/testSyncService';
 
 interface CreateTestModalProps {
   onClose: () => void;
@@ -34,10 +34,12 @@ interface CreateTestModalProps {
 }
 
 export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editPackage }) => {
-  const { profile, createTestPackage, updateTestPackage, addCustomUniversity, customUniversities, universities } = useQuizStore();
+  const { profile, createTestPackage, updateTestPackage, deleteTestPackage, addCustomUniversity, customUniversities, universities } = useQuizStore();
   const { t } = useTranslation();
 
   const isEditMode = Boolean(editPackage);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const initialQuestions = React.useMemo(() => {
     if (editPackage?.blocks && editPackage.blocks.length > 0) {
@@ -88,9 +90,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
         return flattened
           .map((q) => {
             const opts = q.options
-              .map((opt, i) => (i === q.correctOptionIndex ? `+${opt}` : `=${opt}`))
-              .join('\n');
-            return `${q.text}\n${opts}${q.explanation ? `\n#Izoh: ${q.explanation}` : ''}`;
+              .map((opt, i) => (i === q.correctOptionIndex ? `#${opt}` : opt))
+              .join('\n====\n');
+            return `${q.text}\n====\n${opts}\n++++`;
           })
           .join('\n\n');
       }
@@ -206,12 +208,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
             const options: string[] = [];
 
             rawOptions.forEach((opt, oIdx) => {
-              if (opt.startsWith('#')) {
+              let optText = opt;
+              if (optText.startsWith('#') || optText.startsWith('+')) {
                 correctIndex = oIdx;
-                options.push(opt.substring(1).trim());
-              } else {
-                options.push(opt);
+                optText = optText.substring(1).trim();
+              } else if (optText.startsWith('=')) {
+                optText = optText.substring(1).trim();
               }
+              options.push(optText);
             });
 
             while (options.length < 4) {
@@ -240,8 +244,10 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
 
             rawOptions.forEach((opt, oIdx) => {
               let optText = opt;
-              if (optText.startsWith('#')) {
+              if (optText.startsWith('#') || optText.startsWith('+')) {
                 correctIndex = oIdx;
+                optText = optText.substring(1).trim();
+              } else if (optText.startsWith('=')) {
                 optText = optText.substring(1).trim();
               } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
                 optText = optText.replace(/^[A-D][\.\)]\s*/i, '');
@@ -836,8 +842,8 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
             </div>
           )}
 
-          {/* Submit */}
-          <div className="pt-2">
+          {/* Submit & Delete actions */}
+          <div className="pt-2 space-y-2.5">
             <button
               type="submit"
               className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -849,6 +855,67 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                   : `${t.publishTestBtn} (${liveBlocks.length} ta blok)`}
               </span>
             </button>
+
+            {isEditMode && editPackage && (
+              <div className="pt-1">
+                {!showDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('warning');
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-200 dark:border-rose-800/60 flex items-center justify-center gap-1.5 transition-colors active:scale-98"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Testni butunlay o'chirish</span>
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 space-y-2 animate-in fade-in">
+                    <p className="text-[11px] font-bold text-rose-700 dark:text-rose-300 text-center">
+                      Ushbu testni butunlay o'chirishni tasdiqlaysizmi?
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="flex-1 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={async () => {
+                          setIsDeleting(true);
+                          triggerHaptic('medium');
+                          deleteTestPackage(editPackage.id);
+                          try {
+                            await deleteTestFromCloud(editPackage.id);
+                          } catch (err) {
+                            console.warn('Cloud delete error:', err);
+                          }
+                          setIsDeleting(false);
+                          triggerHaptic('success');
+                          onClose();
+                        }}
+                        className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1"
+                      >
+                        {isDeleting ? (
+                          <span>O'chirilmoqda...</span>
+                        ) : (
+                          <>
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Ha, o'chirish</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </form>
       </div>

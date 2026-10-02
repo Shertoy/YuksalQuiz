@@ -46,6 +46,7 @@ interface QuizState {
   promocodes: Promocode[];
   soundEnabled: boolean;
   tamperDetected: boolean;
+  deletedPackageIds: string[];
 
   // Actions
   setTheme: (theme: 'dark' | 'light') => void;
@@ -238,6 +239,7 @@ export const useQuizStore = create<QuizState>()(
       promocodes: DEFAULT_PROMOCODES,
       soundEnabled: true,
       tamperDetected: false,
+      deletedPackageIds: [],
 
       addTransaction: (tx) => {
         const newTx: WalletTransaction = {
@@ -659,8 +661,12 @@ export const useQuizStore = create<QuizState>()(
 
       createTestPackage: (pkg: TestPackage) => {
         const current = get().testPackages;
+        const currentDeleted = get().deletedPackageIds || [];
         triggerHaptic('success');
-        set({ testPackages: [pkg, ...current] });
+        set({
+          testPackages: [pkg, ...current.filter((p) => p.id !== pkg.id)],
+          deletedPackageIds: currentDeleted.filter((id) => id !== pkg.id),
+        });
       },
 
       updateTestPackage: (pkg: TestPackage) => {
@@ -673,9 +679,11 @@ export const useQuizStore = create<QuizState>()(
 
       deleteTestPackage: (id: string) => {
         const current = get().testPackages;
+        const currentDeleted = get().deletedPackageIds || [];
         triggerHaptic('warning');
         set({
           testPackages: current.filter((p) => p.id !== id),
+          deletedPackageIds: currentDeleted.includes(id) ? currentDeleted : [...currentDeleted, id],
         });
       },
 
@@ -1006,9 +1014,14 @@ export const useQuizStore = create<QuizState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
 
-        // Clear out any old pre-seeded mock tests so tests are strictly created by users
+        if (!state.deletedPackageIds) {
+          state.deletedPackageIds = [];
+        }
+
+        // Clear out any old pre-seeded mock tests and locally deleted tests
+        const deletedSet = new Set(state.deletedPackageIds);
         state.testPackages = (state.testPackages || []).filter(
-          (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && pkg.isCommunityCreated
+          (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && pkg.isCommunityCreated && !deletedSet.has(pkg.id)
         );
 
         if (!state.universities || state.universities.length === 0) {
