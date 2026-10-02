@@ -11,16 +11,16 @@ const ModernHomeIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
       <>
         <path
           d="M3 10.5L12 3l9 7.5v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9z"
-          className="fill-indigo-600/20 dark:fill-indigo-400/30 stroke-indigo-600 dark:stroke-indigo-400"
+          className="fill-emerald-500/20 dark:fill-emerald-400/30 stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
           d="M9 21V11.5a1.5 1.5 0 011.5-1.5h3a1.5 1.5 0 011.5 1.5V21"
-          className="fill-indigo-600 dark:fill-indigo-400"
+          className="fill-emerald-600 dark:fill-emerald-400"
         />
-        <circle cx="12" cy="7.5" r="1.25" className="fill-sky-400" />
+        <circle cx="12" cy="7.5" r="1.3" className="fill-orange-500 dark:fill-orange-400" />
       </>
     ) : (
       <>
@@ -54,18 +54,18 @@ const ModernTestsIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
           width="17"
           height="17"
           rx="3.5"
-          className="fill-indigo-600/20 dark:fill-indigo-400/30 stroke-indigo-600 dark:stroke-indigo-400"
+          className="fill-emerald-500/20 dark:fill-emerald-400/30 stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
         />
         <path
           d="M7 8h10M7 12h5"
-          className="stroke-indigo-600 dark:stroke-indigo-400"
+          className="stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
           strokeLinecap="round"
         />
         <path
           d="M14 13.5l2 2 4-4"
-          className="stroke-emerald-500"
+          className="stroke-orange-500 dark:stroke-orange-400"
           strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -100,7 +100,7 @@ const ModernWalletIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
       <>
         <path
           d="M2.5 7.5A2.5 2.5 0 015 5h14a2.5 2.5 0 012.5 2.5v1H4.5a2 2 0 00-2 2v7.5a2 2 0 002 2H19a2.5 2.5 0 002.5-2.5V9"
-          className="fill-indigo-600/20 dark:fill-indigo-400/30 stroke-indigo-600 dark:stroke-indigo-400"
+          className="fill-emerald-500/20 dark:fill-emerald-400/30 stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
           strokeLinecap="round"
         />
@@ -110,7 +110,7 @@ const ModernWalletIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
           width="8"
           height="6"
           rx="2"
-          className="fill-amber-400 stroke-amber-500"
+          className="fill-orange-400 stroke-orange-500"
           strokeWidth="1.5"
         />
         <circle cx="17.5" cy="13.5" r="1" className="fill-slate-950" />
@@ -145,22 +145,22 @@ const ModernRatingIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
       <>
         <path
           d="M6 9V4h12v5a6 6 0 01-12 0z"
-          className="fill-amber-400/25 stroke-amber-500"
+          className="fill-orange-400/25 stroke-orange-500"
           strokeWidth="2"
         />
         <path
           d="M6 5H3a2 2 0 00-2 2v1a4 4 0 004 4h1M18 5h3a2 2 0 012 2v1a4 4 0 01-4 4h-1"
-          className="stroke-amber-500"
+          className="stroke-orange-500"
           strokeWidth="2"
           strokeLinecap="round"
         />
         <path
           d="M12 15v4M8 21h8"
-          className="stroke-amber-500"
+          className="stroke-orange-500"
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <polygon points="12,6.5 13,8.5 15,8.8 13.5,10.2 14,12.2 12,11.2 10,12.2 10.5,10.2 9,8.8 11,8.5" className="fill-amber-400" />
+        <polygon points="12,6.5 13,8.5 15,8.8 13.5,10.2 14,12.2 12,11.2 10,12.2 10.5,10.2 9,8.8 11,8.5" className="fill-orange-400" />
       </>
     ) : (
       <>
@@ -195,16 +195,16 @@ const ModernProfileIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => (
           cx="12"
           cy="7"
           r="4"
-          className="fill-indigo-600/30 dark:fill-indigo-400/40 stroke-indigo-600 dark:stroke-indigo-400"
+          className="fill-emerald-500/30 dark:fill-emerald-400/40 stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
         />
         <path
           d="M4 21v-2a6 6 0 0112-2.5"
-          className="stroke-indigo-600 dark:stroke-indigo-400"
+          className="stroke-emerald-600 dark:stroke-emerald-400"
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <circle cx="18" cy="18" r="3" className="fill-emerald-500" />
+        <circle cx="18" cy="18" r="3" className="fill-orange-500" />
         <path d="M17 18l.8.8 1.4-1.6" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
       </>
     ) : (
@@ -256,7 +256,7 @@ export const BottomNav: React.FC = () => {
               transform: `translateX(${activeIndex * 100}%)`,
             }}
           >
-            <div className="w-[88%] max-w-[58px] h-[46px] rounded-2xl bg-indigo-500/12 dark:bg-indigo-500/20 border border-indigo-400/30 dark:border-indigo-400/35 shadow-sm shadow-indigo-500/10 backdrop-blur-md" />
+            <div className="w-[88%] max-w-[58px] h-[46px] rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-400/40 dark:border-emerald-400/45 shadow-sm shadow-emerald-500/15 backdrop-blur-md" />
           </div>
 
           {/* Navigation Item Buttons */}
@@ -275,7 +275,7 @@ export const BottomNav: React.FC = () => {
                 }}
                 className={`relative z-10 flex-1 flex flex-col items-center justify-center h-[50px] rounded-2xl transition-colors duration-200 active:scale-95 ${
                   isActive
-                    ? 'text-indigo-600 dark:text-indigo-300 font-extrabold'
+                    ? 'text-emerald-600 dark:text-emerald-400 font-extrabold'
                     : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
@@ -285,7 +285,7 @@ export const BottomNav: React.FC = () => {
                 <span
                   className={`text-[10px] mt-0.5 tracking-tight transition-colors ${
                     isActive
-                      ? 'font-black text-indigo-600 dark:text-indigo-400'
+                      ? 'font-black text-emerald-600 dark:text-emerald-400'
                       : 'font-medium'
                   }`}
                 >

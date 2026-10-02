@@ -23,6 +23,7 @@ import {
   fetchCloudUniversities,
   setupRealtimeTestSubscription,
 } from './services/testSyncService';
+import { ParticleBackground } from './components/ParticleBackground';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -150,21 +151,28 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none">
+    <div className="h-full w-full overflow-hidden bg-slate-50/80 dark:bg-[#030712]/90 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative">
+      {/* Floating Interactive Star-like Particle Background */}
+      <ParticleBackground />
+
       {/* Real-time Offline Connectivity Monitor & Banner */}
-      <OfflineStatusBanner />
+      <div className="relative z-20">
+        <OfflineStatusBanner />
+      </div>
 
       {/* First-time onboarding modal */}
       <OnboardingModal />
 
       {/* Top Navbar with Direct Admin Access */}
-      <Navbar
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-      />
+      <div className="relative z-20">
+        <Navbar
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        />
+      </div>
 
       {/* Main Scrollable Container with Dynamic Safe Padding */}
-      <main className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative ${
+      <main className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative z-10 ${
         activeTestPkg ? 'pb-4' : 'pb-32 scroll-smooth'
       }`}>
         {/* Test Engine View */}

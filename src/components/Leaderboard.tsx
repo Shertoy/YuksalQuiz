@@ -265,7 +265,7 @@ export const Leaderboard: React.FC = () => {
       const count = u.correctAnswersCount ?? u.testsCompleted * 22;
       return (
         <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
-          <span className="font-extrabold text-xs text-indigo-600 dark:text-indigo-400">
+          <span className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400">
             {points.toLocaleString('uz-UZ')} ball
           </span>
           <span className="text-[10px] text-slate-400 font-medium">
@@ -309,7 +309,7 @@ export const Leaderboard: React.FC = () => {
     }
     return (
       <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
-        <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">
+        <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
           {(uni.totalScorePoints ?? uni.totalCorrectAnswers * 4).toLocaleString('uz-UZ')} ball
         </span>
         <span className="text-[10px] text-slate-400">{uni.activeStudentsCount} talabadan</span>
@@ -332,7 +332,7 @@ export const Leaderboard: React.FC = () => {
 
       {/* User Position Header Card (Only on Student view) */}
       {leaderboardScope !== 'otm' && (
-        <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-4 shadow-xl border border-indigo-800/40 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 text-white rounded-3xl p-4 shadow-xl border border-emerald-800/40 relative overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -340,9 +340,9 @@ export const Leaderboard: React.FC = () => {
                   avatar={profile.avatar || DEFAULT_AVATAR}
                   alt={profile.firstName || 'Talaba'}
                   sizeClassName="w-11 h-11"
-                  className="ring-2 ring-indigo-400"
+                  className="ring-2 ring-emerald-400"
                 />
-                <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-sm">
+                <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-orange-400 text-slate-950 font-black text-[9px] shadow-sm">
                   #{userRank}
                 </span>
               </div>
@@ -352,7 +352,7 @@ export const Leaderboard: React.FC = () => {
                     {profile.firstName || 'Talaba'} {profile.lastName || ''}
                   </h3>
                 </div>
-                <p className="text-[11px] text-indigo-200/80 font-medium">
+                <p className="text-[11px] text-emerald-200/80 font-medium">
                   {profile.region} • {userRank}-o'rin
                 </p>
               </div>
@@ -365,20 +365,20 @@ export const Leaderboard: React.FC = () => {
                     <Percent className="w-3.5 h-3.5" />
                     <span>{stats.accuracyPercentage}%</span>
                   </div>
-                  <div className="text-[10px] text-indigo-300/80 font-medium flex items-center justify-end gap-1">
+                  <div className="text-[10px] text-emerald-300/80 font-medium flex items-center justify-end gap-1">
                     <Clock className="w-3 h-3" />
                     <span>{stats.bestTimeFormatted}</span>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="text-base font-black text-amber-300">
+                  <div className="text-base font-black text-orange-300">
                     {stats.scorePoints.toLocaleString('uz-UZ')} ball
                   </div>
-                  <div className="text-[10px] text-indigo-200/90 font-medium flex items-center justify-end gap-1">
+                  <div className="text-[10px] text-emerald-200/90 font-medium flex items-center justify-end gap-1">
                     <span>{stats.totalCorrectAnswers} ta to'g'ri</span>
                     <span>•</span>
-                    <Clock className="w-2.5 h-2.5 text-indigo-400 inline" />
+                    <Clock className="w-2.5 h-2.5 text-emerald-400 inline" />
                     <span>{stats.bestTimeFormatted}</span>
                   </div>
                 </div>
@@ -388,7 +388,7 @@ export const Leaderboard: React.FC = () => {
 
           {/* Progress Bar & Next Position Prompt */}
           <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
-            <div className="flex items-center justify-between gap-2.5 text-[11px] font-semibold text-indigo-200 mb-1.5">
+            <div className="flex items-center justify-between gap-2.5 text-[11px] font-semibold text-emerald-100 mb-1.5">
               <span className="truncate pr-1">
                 {userRank === 1
                   ? 'Siz peshqadamsiz!'
@@ -396,13 +396,13 @@ export const Leaderboard: React.FC = () => {
                   ? `Keyingi o'ringa chiqish uchun +${neededAnswers}% aniqlik yoki tezroq vaqt kerak`
                   : `Keyingi o'ringa chiqish uchun yana ${neededAnswers} ball kerak`}
               </span>
-              <span className="font-extrabold text-amber-300 shrink-0 ml-auto bg-amber-400/10 px-1.5 py-0.5 rounded-md border border-amber-400/20 text-[10px]">
+              <span className="font-extrabold text-orange-300 shrink-0 ml-auto bg-orange-400/10 px-1.5 py-0.5 rounded-md border border-orange-400/20 text-[10px]">
                 {progressPercent}%
               </span>
             </div>
             <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-orange-400 to-emerald-400 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -422,7 +422,7 @@ export const Leaderboard: React.FC = () => {
             }}
             className={`py-2 px-1 rounded-xl transition-all flex items-center justify-center gap-1 ${
               leaderboardScope === 'otm'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
@@ -438,7 +438,7 @@ export const Leaderboard: React.FC = () => {
             }}
             className={`py-2 px-1 rounded-xl transition-all flex items-center justify-center gap-1 ${
               leaderboardScope === 'region'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
@@ -454,7 +454,7 @@ export const Leaderboard: React.FC = () => {
             }}
             className={`py-2 px-1 rounded-xl transition-all flex items-center justify-center gap-1 ${
               leaderboardScope === 'uzbekistan'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
@@ -472,7 +472,7 @@ export const Leaderboard: React.FC = () => {
             }}
             className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1 ${
               metric === 'correct'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
@@ -519,7 +519,7 @@ export const Leaderboard: React.FC = () => {
         /* OTM & Educational Center Leaderboard View */
         sortedUniversities.length === 0 ? (
           <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <School className="w-7 h-7" />
             </div>
             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
@@ -531,14 +531,14 @@ export const Leaderboard: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <School className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   Oliygohlar va o'quv markazlari reytingi
                 </span>
               </div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500 text-white">
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
                 {sortedUniversities.length} ta muassasa
               </span>
             </div>

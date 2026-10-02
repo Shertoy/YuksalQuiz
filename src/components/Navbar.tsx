@@ -68,7 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
         </div>
       )}
 
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800/80 px-4 py-3 transition-colors">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/85 dark:bg-[#030712]/85 border-b border-slate-200/80 dark:border-slate-800/80 px-4 py-3 transition-colors">
         <div className="max-w-md mx-auto flex items-center justify-between">
           {/* Clean Modern Logo & Brand */}
           <button
@@ -79,15 +79,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
             }}
             className="flex items-center gap-2.5 text-left focus:outline-none group active:scale-95 transition-transform"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
+              <Sparkles className="w-4 h-4 text-orange-200" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-black text-base tracking-tight bg-gradient-to-r from-indigo-600 via-sky-600 to-teal-500 bg-clip-text text-transparent dark:from-indigo-400 dark:via-sky-400 dark:to-teal-300">
+                <h1 className="font-black text-base tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-orange-500 bg-clip-text text-transparent dark:from-emerald-400 dark:via-teal-300 dark:to-orange-400">
                   YuksalQuiz
                 </h1>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50">
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
                   v1.0
                 </span>
               </div>
@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
                 title="Tilni o'zgartirish"
               >
-                <Globe className="w-3.5 h-3.5 text-indigo-500" />
+                <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="uppercase text-[11px] font-black">{language}</span>
               </button>
 
@@ -126,12 +126,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                         onClick={() => handleLanguageChange(lang)}
                         className={`w-full px-3 py-1.5 text-left text-xs font-bold flex items-center justify-between transition-colors ${
                           language === lang
-                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <span>{lang === 'uz' ? "O'zbek" : lang === 'ru' ? 'Русский' : 'English'}</span>
-                        {language === lang && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+                        {language === lang && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                       </button>
                     ))}
                   </div>
@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
               aria-label="Sound Toggle"
             >
               {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-indigo-500" />
+                <Volume2 className="w-4 h-4 text-emerald-500" />
               ) : (
                 <VolumeX className="w-4 h-4 text-slate-400" />
               )}
@@ -166,9 +166,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
               aria-label="Theme Toggle"
             >
               {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-4 h-4 text-orange-400" />
               ) : (
-                <Moon className="w-4 h-4 text-indigo-600" />
+                <Moon className="w-4 h-4 text-emerald-600" />
               )}
             </button>
 
@@ -177,13 +177,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
               <button
                 type="button"
                 onClick={handleOpenNotifications}
-                className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors relative"
+                className="p-2 rounded-xl text-slate-600 hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400 bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-slate-700/80 transition-colors relative"
                 title="Bildirishnomalar va Yangiliklar"
                 aria-label="Notifications"
               >
-                <Bell className="w-4 h-4 text-indigo-500" />
+                <Bell className="w-4 h-4 text-orange-500" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-3.5 px-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-in zoom-in-75">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-3.5 px-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-in zoom-in-75">
                     {unreadCount}
                   </span>
                 )}

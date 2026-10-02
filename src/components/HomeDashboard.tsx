@@ -104,9 +104,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       )}
 
       {/* User Greeting & University Profile Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 text-white p-5 shadow-xl shadow-indigo-600/20">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white p-5 shadow-xl shadow-emerald-600/20">
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 rounded-full bg-sky-400/20 blur-xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 rounded-full bg-orange-400/20 blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex items-start justify-between">
           <div className="flex items-center gap-3.5">
@@ -114,12 +114,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <UserAvatar avatar={profile.avatar} />
             </div>
             <div>
-              <p className="text-xs text-indigo-200 font-medium">{t.greeting}</p>
+              <p className="text-xs text-emerald-100 font-medium">{t.greeting}</p>
               <h2 className="text-lg font-black tracking-tight leading-tight">
                 {profile.firstName || 'Talaba'} {profile.lastName || ''}
               </h2>
-              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-indigo-100 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-emerald-100/90 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
                 <span>{profile.university || profile.region}</span>
                 <span>•</span>
                 <span>{profile.academicYear}{t.courseUnit}</span>
@@ -139,22 +139,22 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-3 gap-2.5 mt-5 pt-4 border-t border-white/15 text-center">
-          <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 transition-all ${coinGlow ? 'ring-2 ring-amber-400 scale-105 shadow-lg' : ''}`}>
-            <div className="flex items-center justify-center gap-1 text-amber-300 font-black text-lg">
-              <Coins className={`w-4 h-4 fill-amber-300 ${coinGlow ? 'animate-bounce' : ''}`} />
+          <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 transition-all ${coinGlow ? 'ring-2 ring-orange-400 scale-105 shadow-lg' : ''}`}>
+            <div className="flex items-center justify-center gap-1 text-orange-300 font-black text-lg">
+              <Coins className={`w-4 h-4 fill-orange-300 ${coinGlow ? 'animate-bounce' : ''}`} />
               <span>{profile.coins}</span>
             </div>
-            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold">
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold">
               {t.coins}
             </p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 text-sky-300 font-black text-lg">
+            <div className="flex items-center justify-center gap-1 text-emerald-200 font-black text-lg">
               <BookOpen className="w-4 h-4" />
               <span>{profile.completedTestsCount}</span>
             </div>
-            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold">
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold">
               {t.testsCompleted}
             </p>
           </div>
@@ -163,7 +163,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="flex items-center justify-center gap-1 font-black text-lg py-0.5">
               <rank.Icon className={`w-5 h-5 ${rank.color}`} />
             </div>
-            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold truncate">
+            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-semibold truncate">
               {rank.title}
             </p>
           </div>
@@ -262,9 +262,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             triggerHaptic('light');
             setActiveTab('tests');
           }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-indigo-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
+          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-emerald-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
         >
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
@@ -280,9 +280,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             triggerHaptic('light');
             onOpenCreateModal();
           }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-indigo-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
+          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-orange-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <PlusCircle className="w-5 h-5" />
           </div>
           <div>
@@ -326,7 +326,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </h3>
             <button
               onClick={() => setActiveTab('tests')}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline"
             >
               Barchasi &rarr;
             </button>
@@ -337,11 +337,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <div
                 key={pkg.id}
                 onClick={() => onStartTest(pkg, pkg.blocks[0]?.id || '')}
-                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all active:scale-[0.99]"
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-900/70 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/70 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
                     <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
@@ -355,7 +355,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
                   <span>Boshlash</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>

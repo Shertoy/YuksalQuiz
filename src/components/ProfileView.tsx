@@ -94,7 +94,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       {/* Main Profile Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
         <div className="relative inline-block mx-auto mb-3">
-          <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
+          <div className="w-20 h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
             <UserAvatar avatar={isEditing ? avatar : profile.avatar} />
           </div>
           <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">
@@ -134,7 +134,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-1.5 text-indigo-500 font-black text-sm">
+            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-sm">
               <BookOpen className="w-4 h-4" />
               <span>{profile.completedTestsCount}</span>
             </div>
@@ -169,10 +169,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           triggerHaptic('light');
           setActiveTab('results');
         }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all active:scale-[0.99]"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <CheckSquare className="w-4 h-4" />
           </div>
           <div>
@@ -185,7 +185,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
           <span>Ko'rish</span>
           <ChevronRight className="w-4 h-4" />
         </div>
@@ -194,7 +194,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
       {/* Public Offer Link Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-2xl bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 flex items-center justify-center">
             <ScrollText className="w-4 h-4" />
           </div>
           <div>
@@ -252,7 +252,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300">
                   Avatarni yangilash:
                 </label>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                   10 ta maxsus avatar
                 </span>
               </div>
@@ -269,7 +269,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
                       }}
                       className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
                         isSelected
-                          ? 'ring-4 ring-blue-500 border-blue-500 scale-105 shadow-md shadow-blue-500/25 z-10'
+                          ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md shadow-emerald-500/25 z-10'
                           : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
                       }`}
                       title={av.alt}
@@ -281,7 +281,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
                         loading="lazy"
                       />
                       {isSelected && (
-                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow">
+                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow">
                           <Check className="w-2.5 h-2.5" />
                         </span>
                       )}

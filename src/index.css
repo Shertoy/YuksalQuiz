@@ -2,6 +2,72 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-mint-50: #f0fdf4;
+  --color-mint-100: #dcfce7;
+  --color-mint-200: #bbf7d0;
+  --color-mint-300: #86efac;
+  --color-mint-400: #4ade80;
+  --color-mint-500: #22c55e;
+  --color-mint-600: #16a34a;
+  --color-mint-700: #15803d;
+
+  --color-brand-emerald-light: #34d399;
+  --color-brand-emerald: #10b981;
+  --color-brand-emerald-dark: #059669;
+
+  --color-brand-orange-light: #fb923c;
+  --color-brand-orange: #f97316;
+  --color-brand-orange-dark: #ea580c;
+  --color-brand-orange-deep: #c2410c;
+
+  --color-bg-clean-light: #fcfdfd;
+  --color-bg-clean-dark: #020617;
+}
+
+:root {
+  /* Emerald / Mint Design System */
+  --primary-color: #10b981;
+  --primary-hover: #059669;
+  --primary-soft: #ecfdf5;
+  --primary-border: #a7f3d0;
+
+  /* Clean Orange Accent */
+  --accent-color: #f97316;
+  --accent-hover: #ea580c;
+  --accent-soft: #fff7ed;
+  --accent-border: #fed7aa;
+
+  /* Clean Background */
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-soft: #e2e8f0;
+
+  /* Telegram Mini App Safe Areas */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.dark {
+  --primary-color: #34d399;
+  --primary-hover: #10b981;
+  --primary-soft: rgba(16, 185, 129, 0.12);
+  --primary-border: rgba(16, 185, 129, 0.3);
+
+  --accent-color: #fb923c;
+  --accent-hover: #f97316;
+  --accent-soft: rgba(249, 115, 22, 0.12);
+  --accent-border: rgba(249, 115, 22, 0.3);
+
+  --bg-app: #030712;
+  --bg-card: #0b1322;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-soft: #1e293b;
+}
+
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -14,14 +80,14 @@
     overflow: hidden;
   }
   html, body {
-    background-color: #020617;
+    background-color: #030712;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     user-select: none;
     -webkit-user-select: none;
     overscroll-behavior: none;
   }
   html.dark, html.dark body, html.dark #root {
-    background-color: #020617;
+    background-color: #030712;
     color: #f8fafc;
   }
   html:not(.dark), html:not(.dark) body, html:not(.dark) #root {
@@ -32,12 +98,6 @@
     user-select: text;
     -webkit-user-select: text;
   }
-}
-
-/* Telegram Mini App Safe Areas */
-:root {
-  --safe-area-inset-top: env(safe-area-inset-top, 0px);
-  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .pb-safe {
