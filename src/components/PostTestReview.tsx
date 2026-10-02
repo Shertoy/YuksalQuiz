@@ -28,6 +28,7 @@ interface PostTestReviewProps {
   nextBlockTitle?: string;
   onRetake: () => void;
   onDone: () => void;
+  onStartNextBlock?: (nextBlockId: string) => void;
 }
 
 export const PostTestReview: React.FC<PostTestReviewProps> = ({
@@ -37,12 +38,23 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   nextBlockTitle,
   onRetake,
   onDone,
+  onStartNextBlock,
 }) => {
   const [reviewIndex, setReviewIndex] = useState(0);
 
-  const currentBlock = testPackage.blocks.find((b) => b.id === attempt.blockId);
-  const passingScore = currentBlock?.passingScore || Math.ceil(attempt.totalQuestions * 0.7);
-  const isPassed = attempt.score >= passingScore;
+  const currentBlockIndex = testPackage.blocks.findIndex(
+    (b) => b.id === attempt.blockId || b.title === attempt.blockTitle
+  );
+  const currentBlock =
+    currentBlockIndex !== -1 ? testPackage.blocks[currentBlockIndex] : testPackage.blocks[0];
+  const nextBlock =
+    currentBlockIndex !== -1 && currentBlockIndex + 1 < testPackage.blocks.length
+      ? testPackage.blocks[currentBlockIndex + 1]
+      : undefined;
+
+  const passingScore =
+    currentBlock?.passingScore || Math.max(1, Math.ceil(attempt.totalQuestions * 0.7));
+  const isPassed = attempt.score >= passingScore || attempt.isPassed;
 
   const currentAnswer = attempt.userAnswers[reviewIndex];
 
@@ -90,13 +102,19 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
           </div>
         </div>
 
-        {/* Big Score Stats */}
-        <div className="grid grid-cols-3 gap-2 bg-black/20 backdrop-blur-sm rounded-2xl p-3 text-center mb-3">
+        {/* Big Score Stats with 4-Point Rating */}
+        <div className="grid grid-cols-4 gap-2 bg-black/20 backdrop-blur-sm rounded-2xl p-3 text-center mb-3">
           <div>
-            <div className="text-2xl font-black text-white">
-              {attempt.score} / {attempt.totalQuestions}
+            <div className="text-2xl font-black text-amber-300">
+              +{attempt.score * 4}
             </div>
             <p className="text-[10px] text-white/70 font-semibold uppercase">Ball</p>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-white">
+              {attempt.score}/{attempt.totalQuestions}
+            </div>
+            <p className="text-[10px] text-white/70 font-semibold uppercase">To'g'ri</p>
           </div>
           <div>
             <div className="text-2xl font-black text-sky-300">
@@ -105,7 +123,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             <p className="text-[10px] text-white/70 font-semibold uppercase">Foiz</p>
           </div>
           <div>
-            <div className="text-2xl font-black text-amber-300 flex items-center justify-center gap-1">
+            <div className="text-2xl font-black text-emerald-300 flex items-center justify-center gap-1">
               <Clock className="w-4 h-4" />
               <span>{Math.round(attempt.timeSpentSeconds / 60)}d</span>
             </div>
@@ -265,28 +283,47 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         </div>
       </div>
 
-      {/* Retake and Done Actions */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => {
-            triggerHaptic('medium');
-            onRetake();
-          }}
-          className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Qayta topshirish</span>
-        </button>
+      {/* Retake, Start Next Block, and Done Actions */}
+      <div className="space-y-2.5">
+        {isPassed && nextBlock && (
+          <button
+            onClick={() => {
+              triggerHaptic('success');
+              if (onStartNextBlock) {
+                onStartNextBlock(nextBlock.id);
+              } else {
+                onDone();
+              }
+            }}
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
+          >
+            <span>'{decodeHtmlEntities(nextBlock.title)}' ni boshlash</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
 
-        <button
-          onClick={() => {
-            triggerHaptic('medium');
-            onDone();
-          }}
-          className="flex-1 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all active:scale-95"
-        >
-          <span>Testlar ro'yxatiga qaytish</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              triggerHaptic('medium');
+              onRetake();
+            }}
+            className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Qayta topshirish</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('medium');
+              onDone();
+            }}
+            className="flex-1 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all active:scale-95"
+          >
+            <span>Testlar ro'yxatiga qaytish</span>
+          </button>
+        </div>
       </div>
     </div>
   );

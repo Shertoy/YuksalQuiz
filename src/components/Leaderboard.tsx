@@ -19,30 +19,17 @@ import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
 import { INITIAL_UNIVERSITY_LEADERBOARD } from '../data/mockLeaderboard';
+import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 export const Leaderboard: React.FC = () => {
   const { leaderboard, profile, testAttempts, leaderboardScope, setLeaderboardScope, universities } = useQuizStore();
   const { t } = useTranslation();
 
-  // Metric filter: 'correct' (To'g'ri testlar) | 'percentage' (Aniqlik foizi & Tezlik) | 'weekly' (Haftalik faollar)
+  // Metric filter: 'correct' (Reyting ballari) | 'percentage' (Aniqlik foizi & Tezlik) | 'weekly' (Haftalik faollar)
   const [metric, setMetric] = useState<'correct' | 'percentage' | 'weekly'>('correct');
 
-  // Compute current user stats
-  const currentUserCorrectAnswers = testAttempts.reduce((acc, att) => acc + att.score, 0);
-  const currentUserTotalQuestions = testAttempts.reduce((acc, att) => acc + att.totalQuestions, 0);
-  
-  const currentUserAccuracy = currentUserTotalQuestions > 0
-    ? Math.round((currentUserCorrectAnswers / currentUserTotalQuestions) * 100)
-    : 80;
-
-  const validTimes = testAttempts.filter((a) => a.timeSpentSeconds > 0);
-  const currentUserBestTimeSeconds = validTimes.length > 0
-    ? Math.min(...validTimes.map((a) => a.timeSpentSeconds))
-    : 165; // default 02:45
-
-  const currentUserBestTime = `${Math.floor(currentUserBestTimeSeconds / 60)
-    .toString()
-    .padStart(2, '0')}:${(currentUserBestTimeSeconds % 60).toString().padStart(2, '0')}`;
+  // Compute current user stats based on latest attempt per unique block (4 points per correct answer)
+  const stats = calculateUserRatingStats(testAttempts);
 
   const currentUserEntry: LeaderboardUser = {
     id: profile.id,
@@ -52,12 +39,13 @@ export const Leaderboard: React.FC = () => {
     avatar: profile.avatar || DEFAULT_AVATAR,
     academicYear: profile.academicYear,
     coins: profile.coins,
-    testsCompleted: Math.max(profile.completedTestsCount, testAttempts.length),
-    correctAnswersCount: currentUserCorrectAnswers,
-    totalQuestionsAttempted: currentUserTotalQuestions,
-    accuracyPercentage: currentUserAccuracy,
-    bestTime: currentUserBestTime,
-    bestTimeSeconds: currentUserBestTimeSeconds,
+    testsCompleted: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+    correctAnswersCount: stats.totalCorrectAnswers,
+    scorePoints: stats.scorePoints,
+    totalQuestionsAttempted: stats.totalQuestionsAttempted,
+    accuracyPercentage: stats.accuracyPercentage,
+    bestTime: stats.bestTimeFormatted,
+    bestTimeSeconds: stats.bestTimeSeconds,
     weeklyActiveHours: 12.0,
     isCurrentUser: true,
   };
@@ -77,14 +65,22 @@ export const Leaderboard: React.FC = () => {
   });
 
   // Level 2 Sort for Students:
-  // - If metric === 'correct': sort by correct answers
+  // - If metric === 'correct': sort by scorePoints (4 points per correct answer on latest block attempt)
   // - If metric === 'percentage': sort by accuracy %, tie-breaker: faster time (lower seconds)
   // - If metric === 'weekly': sort by active hours
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     if (metric === 'correct') {
-      const aVal = a.correctAnswersCount ?? a.testsCompleted * 22;
-      const bVal = b.correctAnswersCount ?? b.testsCompleted * 22;
-      if (bVal !== aVal) return bVal - aVal;
+      const aPoints =
+        a.scorePoints ??
+        (a.correctAnswersCount !== undefined
+          ? a.correctAnswersCount * 4
+          : a.testsCompleted * 22 * 4);
+      const bPoints =
+        b.scorePoints ??
+        (b.correctAnswersCount !== undefined
+          ? b.correctAnswersCount * 4
+          : b.testsCompleted * 22 * 4);
+      if (bPoints !== aPoints) return bPoints - aPoints;
       return (a.bestTimeSeconds || 180) - (b.bestTimeSeconds || 180);
     }
 
@@ -101,7 +97,11 @@ export const Leaderboard: React.FC = () => {
       if (aTime !== bTime) {
         return aTime - bTime;
       }
-      return (b.correctAnswersCount || 0) - (a.correctAnswersCount || 0);
+      const aPoints =
+        a.scorePoints ?? (a.correctAnswersCount !== undefined ? a.correctAnswersCount * 4 : 0);
+      const bPoints =
+        b.scorePoints ?? (b.correctAnswersCount !== undefined ? b.correctAnswersCount * 4 : 0);
+      return bPoints - aPoints;
     }
 
     // Weekly active hours
@@ -120,6 +120,15 @@ export const Leaderboard: React.FC = () => {
         const activeStudentsCount = uniUsers.length;
         const totalCorrectAnswers = uniUsers.reduce(
           (sum, u) => sum + (u.correctAnswersCount ?? u.testsCompleted * 22),
+          0
+        );
+        const totalScorePoints = uniUsers.reduce(
+          (sum, u) =>
+            sum +
+            (u.scorePoints ??
+              (u.correctAnswersCount !== undefined
+                ? u.correctAnswersCount * 4
+                : u.testsCompleted * 22 * 4)),
           0
         );
         const averageAccuracy =
@@ -154,6 +163,7 @@ export const Leaderboard: React.FC = () => {
           region: uniUsers[0]?.region || "O'zbekiston",
           activeStudentsCount,
           totalCorrectAnswers,
+          totalScorePoints,
           averageAccuracy,
           averageTime,
           averageTimeSeconds,
@@ -173,6 +183,9 @@ export const Leaderboard: React.FC = () => {
         if (metric === 'weekly') {
           return b.activeStudentsCount - a.activeStudentsCount;
         }
+        if (b.totalScorePoints !== a.totalScorePoints) {
+          return (b.totalScorePoints || 0) - (a.totalScorePoints || 0);
+        }
         if (b.totalCorrectAnswers !== a.totalCorrectAnswers) {
           return b.totalCorrectAnswers - a.totalCorrectAnswers;
         }
@@ -190,16 +203,25 @@ export const Leaderboard: React.FC = () => {
   if (userRank > 1) {
     const aheadUser = sortedUsers[userRank - 2];
     if (metric === 'correct') {
-      const aheadVal = aheadUser.correctAnswersCount ?? aheadUser.testsCompleted * 22;
-      neededAnswers = Math.max(1, aheadVal - currentUserCorrectAnswers + 1);
-      progressPercent = aheadVal > 0 ? Math.min(100, Math.round((currentUserCorrectAnswers / aheadVal) * 100)) : 50;
+      const aheadPoints =
+        aheadUser.scorePoints ??
+        (aheadUser.correctAnswersCount !== undefined
+          ? aheadUser.correctAnswersCount * 4
+          : aheadUser.testsCompleted * 22 * 4);
+      neededAnswers = Math.max(4, aheadPoints - stats.scorePoints + 4);
+      progressPercent =
+        aheadPoints > 0 ? Math.min(100, Math.round((stats.scorePoints / aheadPoints) * 100)) : 50;
     } else if (metric === 'percentage') {
       const aheadAcc = aheadUser.accuracyPercentage ?? 80;
-      neededAnswers = Math.max(1, aheadAcc - currentUserAccuracy);
-      progressPercent = aheadAcc > 0 ? Math.min(100, Math.round((currentUserAccuracy / aheadAcc) * 100)) : 70;
+      neededAnswers = Math.max(1, aheadAcc - stats.accuracyPercentage);
+      progressPercent =
+        aheadAcc > 0 ? Math.min(100, Math.round((stats.accuracyPercentage / aheadAcc) * 100)) : 70;
     } else {
       const aheadHours = aheadUser.weeklyActiveHours;
-      progressPercent = Math.min(100, Math.round((currentUserEntry.weeklyActiveHours / aheadHours) * 100));
+      progressPercent = Math.min(
+        100,
+        Math.round((currentUserEntry.weeklyActiveHours / aheadHours) * 100)
+      );
     }
   }
 
@@ -215,7 +237,7 @@ export const Leaderboard: React.FC = () => {
   const uniThird = sortedUniversities[2];
   const uniList = sortedUniversities.slice(3);
 
-  // Format student metric value
+  // Format student metric value (shows points e.g. 72 ball, 80 ball, 100 ball, 200 ball, 400 ball)
   const formatMetricValue = (u: LeaderboardUser, isPodium: boolean = false) => {
     if (metric === 'percentage') {
       const acc = u.accuracyPercentage ?? 80;
@@ -235,13 +257,20 @@ export const Leaderboard: React.FC = () => {
     }
 
     if (metric === 'correct') {
+      const points =
+        u.scorePoints ??
+        (u.correctAnswersCount !== undefined
+          ? u.correctAnswersCount * 4
+          : u.testsCompleted * 22 * 4);
       const count = u.correctAnswersCount ?? u.testsCompleted * 22;
       return (
         <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
           <span className="font-extrabold text-xs text-indigo-600 dark:text-indigo-400">
-            {count.toLocaleString('uz-UZ')} ta
+            {points.toLocaleString('uz-UZ')} ball
           </span>
-          <span className="text-[10px] text-slate-400">{u.bestTime || '02:45'}</span>
+          <span className="text-[10px] text-slate-400 font-medium">
+            {count.toLocaleString('uz-UZ')} ta to'g'ri
+          </span>
         </div>
       );
     }
@@ -281,7 +310,7 @@ export const Leaderboard: React.FC = () => {
     return (
       <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
         <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">
-          {uni.totalCorrectAnswers.toLocaleString('uz-UZ')} ta
+          {(uni.totalScorePoints ?? uni.totalCorrectAnswers * 4).toLocaleString('uz-UZ')} ball
         </span>
         <span className="text-[10px] text-slate-400">{uni.activeStudentsCount} talabadan</span>
       </div>
@@ -334,21 +363,23 @@ export const Leaderboard: React.FC = () => {
                 <div>
                   <div className="text-base font-black text-emerald-400 flex items-center justify-end gap-1">
                     <Percent className="w-3.5 h-3.5" />
-                    <span>{currentUserAccuracy}%</span>
+                    <span>{stats.accuracyPercentage}%</span>
                   </div>
                   <div className="text-[10px] text-indigo-300/80 font-medium flex items-center justify-end gap-1">
                     <Clock className="w-3 h-3" />
-                    <span>{currentUserBestTime}</span>
+                    <span>{stats.bestTimeFormatted}</span>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div className="text-base font-black text-amber-300">
-                    {currentUserCorrectAnswers} ta
+                    {stats.scorePoints.toLocaleString('uz-UZ')} ball
                   </div>
-                  <div className="text-[10px] text-indigo-300/80 font-medium flex items-center justify-end gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{currentUserBestTime}</span>
+                  <div className="text-[10px] text-indigo-200/90 font-medium flex items-center justify-end gap-1">
+                    <span>{stats.totalCorrectAnswers} ta to'g'ri</span>
+                    <span>•</span>
+                    <Clock className="w-2.5 h-2.5 text-indigo-400 inline" />
+                    <span>{stats.bestTimeFormatted}</span>
                   </div>
                 </div>
               )}
@@ -363,7 +394,7 @@ export const Leaderboard: React.FC = () => {
                   ? 'Siz peshqadamsiz!'
                   : metric === 'percentage'
                   ? `Keyingi o'ringa chiqish uchun +${neededAnswers}% aniqlik yoki tezroq vaqt kerak`
-                  : `Keyingi o'ringa chiqish uchun ${neededAnswers} ta to'g'ri javob qoldi`}
+                  : `Keyingi o'ringa chiqish uchun yana ${neededAnswers} ball kerak`}
               </span>
               <span className="font-extrabold text-amber-300 shrink-0 ml-auto bg-amber-400/10 px-1.5 py-0.5 rounded-md border border-amber-400/20 text-[10px]">
                 {progressPercent}%
@@ -433,7 +464,7 @@ export const Leaderboard: React.FC = () => {
 
         {/* Level 2: Metric - Correct answers, then PERCENTAGE in the middle, then Weekly */}
         <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold border border-slate-200 dark:border-slate-800">
-          {/* 1. Correct answers */}
+          {/* 1. Correct answers & Points */}
           <button
             onClick={() => {
               triggerHaptic('selection');
@@ -446,7 +477,7 @@ export const Leaderboard: React.FC = () => {
             }`}
           >
             <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-            <span className="truncate">To'g'ri testlar</span>
+            <span className="truncate">Reyting ballari</span>
           </button>
 
           {/* 2. Percentage & Speed (In the MIDDLE) */}
@@ -643,7 +674,7 @@ export const Leaderboard: React.FC = () => {
         )
       ) : (
         /* Students Leaderboard View (Region or Uzbekistan) */
-        sortedUsers.length === 0 || (currentUserCorrectAnswers === 0 && sortedUsers.length <= 1) ? (
+        sortedUsers.length === 0 || (stats.scorePoints === 0 && sortedUsers.length <= 1) ? (
           <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center">
               <Trophy className="w-7 h-7" />

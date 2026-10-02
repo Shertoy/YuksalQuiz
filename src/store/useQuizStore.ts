@@ -21,6 +21,7 @@ import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
 import { generateIntegritySignature, verifyIntegritySignature, decodeHtmlEntities } from '../utils/security';
 import { soundFX, triggerHaptic } from '../utils/telegram';
+import { reconcilePackageWithProgress } from '../utils/progressUtils';
 
 import { Language } from '../i18n/translations';
 
@@ -766,16 +767,22 @@ export const useQuizStore = create<QuizState>()(
           if (pkg.id !== attempt.testPackageId) return pkg;
           currentTargetPkg = pkg;
 
-          const blockIndex = pkg.blocks.findIndex((b) => b.id === attempt.blockId);
+          const blockIndex = pkg.blocks.findIndex(
+            (b) => b.id === attempt.blockId || b.title === attempt.blockTitle
+          );
           if (blockIndex === -1) return pkg;
 
           const currentBlock = pkg.blocks[blockIndex];
-          const isPassed = attempt.score >= currentBlock.passingScore;
+          const passingScore =
+            currentBlock.passingScore ||
+            Math.max(1, Math.ceil((currentBlock.questions?.length || 25) * 0.7));
+          const isPassed = attempt.score >= passingScore || attempt.isPassed;
           const bestScore = Math.max(currentBlock.bestScore || 0, attempt.score);
 
           const updatedBlocks = [...pkg.blocks];
           updatedBlocks[blockIndex] = {
             ...currentBlock,
+            passingScore,
             bestScore,
             isPassed: currentBlock.isPassed || isPassed,
           };
@@ -783,12 +790,12 @@ export const useQuizStore = create<QuizState>()(
           // If passed, unlock the immediate next block!
           if (isPassed && blockIndex + 1 < updatedBlocks.length) {
             if (updatedBlocks[blockIndex + 1].isLocked) {
-              updatedBlocks[blockIndex + 1] = {
-                ...updatedBlocks[blockIndex + 1],
-                isLocked: false,
-              };
               unlockedNext = true;
             }
+            updatedBlocks[blockIndex + 1] = {
+              ...updatedBlocks[blockIndex + 1],
+              isLocked: false,
+            };
           }
 
           // 3. Check for Part 4-6 completion bonus (+5 bonus coins)
@@ -1160,6 +1167,11 @@ export const useQuizStore = create<QuizState>()(
                 })),
               })),
             }));
+
+            // Reconcile blocks with student's test attempts to restore unlocked blocks and best scores
+            state.testPackages = state.testPackages.map((pkg) =>
+              reconcilePackageWithProgress(pkg, pkg, state.testAttempts || [])
+            );
           }
 
           if (state.mistakes && Array.isArray(state.mistakes)) {

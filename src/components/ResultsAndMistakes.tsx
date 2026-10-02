@@ -26,6 +26,7 @@ import { MistakeItem } from '../types';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
+import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 export const ResultsAndMistakes: React.FC = () => {
   const {
@@ -41,9 +42,10 @@ export const ResultsAndMistakes: React.FC = () => {
 
   const [activeTab, setSubTab] = useState<'mistakes' | 'history'>('mistakes');
 
-  // Compute 4 Top Stat Badges
+  // Compute stats based on latest attempt per unique block (4 points per correct answer)
+  const stats = calculateUserRatingStats(testAttempts);
   const totalAttempts = Math.max(testAttempts.length, profile.completedTestsCount);
-  const totalCorrect = testAttempts.reduce((acc, att) => acc + att.score, 0);
+  const totalCorrect = stats.totalCorrectAnswers;
 
   // Best score (e.g. 25/25)
   const bestAttempt = testAttempts.length > 0
@@ -56,24 +58,15 @@ export const ResultsAndMistakes: React.FC = () => {
     : '0/25';
 
   // Fastest completion time (e.g. 03:45)
-  const validTimes = testAttempts.filter((a) => a.timeSpentSeconds > 0);
-  const fastestSec = validTimes.length > 0
-    ? Math.min(...validTimes.map((a) => a.timeSpentSeconds))
-    : 0;
-
-  const fastestDisplay = fastestSec > 0
-    ? `${Math.floor(fastestSec / 60).toString().padStart(2, '0')}:${(fastestSec % 60)
-        .toString()
-        .padStart(2, '0')}`
-    : '03:45';
+  const fastestDisplay = stats.bestTimeFormatted || '03:45';
 
   // Compute 2 Large Rank Action Cards
-  const currentUserScore = totalCorrect;
   const currentUserEntry = {
     id: profile.id,
     name: `${profile.firstName || 'Siz'} ${profile.lastName || ''}`.trim() || 'Siz',
     region: profile.region,
-    correctAnswersCount: currentUserScore,
+    correctAnswersCount: stats.totalCorrectAnswers,
+    scorePoints: stats.scorePoints,
     testsCompleted: totalAttempts,
     isCurrentUser: true,
   };
@@ -83,8 +76,16 @@ export const ResultsAndMistakes: React.FC = () => {
     ...leaderboard.filter((u) => u.region === profile.region && u.id !== profile.id),
     currentUserEntry,
   ].sort((a, b) => {
-    const aVal = (a as any).correctAnswersCount ?? (a as any).testsCompleted * 22;
-    const bVal = (b as any).correctAnswersCount ?? (b as any).testsCompleted * 22;
+    const aVal =
+      (a as any).scorePoints ??
+      ((a as any).correctAnswersCount !== undefined
+        ? (a as any).correctAnswersCount * 4
+        : (a as any).testsCompleted * 22 * 4);
+    const bVal =
+      (b as any).scorePoints ??
+      ((b as any).correctAnswersCount !== undefined
+        ? (b as any).correctAnswersCount * 4
+        : (b as any).testsCompleted * 22 * 4);
     return bVal - aVal;
   });
   const regionRankIndex = regionUsers.findIndex((u) => (u as any).isCurrentUser);
@@ -96,8 +97,16 @@ export const ResultsAndMistakes: React.FC = () => {
     ...leaderboard.filter((u) => u.id !== profile.id),
     currentUserEntry,
   ].sort((a, b) => {
-    const aVal = (a as any).correctAnswersCount ?? (a as any).testsCompleted * 22;
-    const bVal = (b as any).correctAnswersCount ?? (b as any).testsCompleted * 22;
+    const aVal =
+      (a as any).scorePoints ??
+      ((a as any).correctAnswersCount !== undefined
+        ? (a as any).correctAnswersCount * 4
+        : (a as any).testsCompleted * 22 * 4);
+    const bVal =
+      (b as any).scorePoints ??
+      ((b as any).correctAnswersCount !== undefined
+        ? (b as any).correctAnswersCount * 4
+        : (b as any).testsCompleted * 22 * 4);
     return bVal - aVal;
   });
   const uzbRankIndex = uzbUsers.findIndex((u) => (u as any).isCurrentUser);
@@ -215,17 +224,20 @@ export const ResultsAndMistakes: React.FC = () => {
           </div>
         </div>
 
-        {/* Badge 2: Jami to'g'ri javob */}
+        {/* Badge 2: Reyting bali */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3.5 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-indigo-500" />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-              Jami to'g'ri javob
+              Reyting bali
             </span>
-            <span className="text-base font-black text-slate-900 dark:text-white">
-              {totalCorrect} ta
+            <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+              {stats.scorePoints.toLocaleString('uz-UZ')} ball
+            </span>
+            <span className="text-[10px] text-slate-400 block font-medium">
+              {stats.totalCorrectAnswers} ta to'g'ri
             </span>
           </div>
         </div>
@@ -580,15 +592,11 @@ export const ResultsAndMistakes: React.FC = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      {att.score} / {att.totalQuestions}
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                      +{att.score * 4} ball
                     </span>
-                    <span
-                      className={`block text-[10px] font-bold ${
-                        att.isPassed ? 'text-emerald-500' : 'text-amber-500'
-                      }`}
-                    >
-                      {att.percentage}%
+                    <span className="block text-[10px] text-slate-400 font-medium">
+                      {att.score} / {att.totalQuestions} ({att.percentage}%)
                     </span>
                   </div>
 

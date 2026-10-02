@@ -2,21 +2,30 @@ import { getSupabase, getSupabaseConfig } from './supabase';
 import { TestPackage } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { decodeHtmlEntities } from '../utils/security';
+import { reconcilePackageWithProgress } from '../utils/progressUtils';
 
 /**
  * Maps Supabase DB row to application TestPackage model
  */
 function mapRowToTestPackage(row: any): TestPackage {
-  const blocks = (Array.isArray(row.blocks) ? row.blocks : []).map((b: any) => ({
-    ...b,
-    title: decodeHtmlEntities(b.title || ''),
-    questions: (Array.isArray(b.questions) ? b.questions : []).map((q: any) => ({
+  const blocks = (Array.isArray(row.blocks) ? row.blocks : []).map((b: any, idx: number) => {
+    const questions = (Array.isArray(b.questions) ? b.questions : []).map((q: any) => ({
       ...q,
       text: decodeHtmlEntities(q.text || ''),
       options: (Array.isArray(q.options) ? q.options : []).map((opt: string) => decodeHtmlEntities(opt || '')),
       explanation: q.explanation ? decodeHtmlEntities(q.explanation) : undefined,
-    })),
-  }));
+    }));
+    const passingScore = b.passingScore || Math.max(1, Math.ceil(questions.length * 0.7));
+
+    return {
+      ...b,
+      id: b.id || `block-${idx + 1}`,
+      blockNumber: b.blockNumber || idx + 1,
+      passingScore,
+      title: decodeHtmlEntities(b.title || `Test ${idx + 1}`),
+      questions,
+    };
+  });
 
   return {
     id: row.id,
@@ -91,7 +100,7 @@ export async function fetchCloudTests(): Promise<{
       return { success: false, count: 0, message: error.message };
     }
 
-    const { testPackages, universities, deletedPackageIds, profile } = useQuizStore.getState();
+    const { testPackages, universities, deletedPackageIds, profile, testAttempts } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
 
     if (!data || data.length === 0) {
@@ -109,7 +118,13 @@ export async function fetchCloudTests(): Promise<{
     // Filter out any packages that have been deleted locally
     const validCloudPackages = cloudPackages.filter((cp) => !deletedSet.has(cp.id));
 
-    // Cloud packages are the single authoritative source of truth.
+    // Cloud packages are the authoritative source of truth for questions.
+    // However, student progress (unlocked blocks, best scores, passed state) must be reconciled with local progress!
+    const localPkgMap = new Map((testPackages || []).map((p) => [p.id, p]));
+    const reconciledValidCloudPackages = validCloudPackages.map((cp) =>
+      reconcilePackageWithProgress(cp, localPkgMap.get(cp.id), testAttempts || [])
+    );
+
     // Retain only local packages that were created by THIS user while offline and pending sync.
     const localDrafts = (testPackages || []).filter(
       (localPkg: any) =>
@@ -119,7 +134,7 @@ export async function fetchCloudTests(): Promise<{
         !validCloudPackages.some((cp) => cp.id === localPkg.id)
     );
 
-    const mergedPackages: TestPackage[] = [...validCloudPackages, ...localDrafts];
+    const mergedPackages: TestPackage[] = [...reconciledValidCloudPackages, ...localDrafts];
 
     // Also extract all universities from cloud test packages and merge into store
     const cloudPackageUnis = validCloudPackages.map((p) => p.university?.trim()).filter(Boolean);
@@ -282,7 +297,7 @@ export async function syncAllTestsWithCloud(): Promise<{
     const remoteIdSet = new Set(remoteTests.map((t) => t.id));
 
     // 2. Identify local tests authored by this user that are pending upload
-    const { testPackages, universities, deletedPackageIds, profile } = useQuizStore.getState();
+    const { testPackages, universities, deletedPackageIds, profile, testAttempts } = useQuizStore.getState();
     const deletedSet = new Set(deletedPackageIds || []);
 
     // Only upload tests created by THIS user that are pending sync (never upload another user's deleted tests!)
@@ -329,9 +344,14 @@ export async function syncAllTestsWithCloud(): Promise<{
       }
     }
 
-    // 4. Remote tests are the authoritative source of truth.
-    // Prune all deleted tests from local store!
+    // 4. Remote tests are the authoritative source of truth for questions.
+    // Prune all deleted tests from local store, and reconcile student progress!
     const validRemoteTests = remoteTests.filter((t) => !deletedSet.has(t.id));
+    const localPkgMap = new Map((testPackages || []).map((p) => [p.id, p]));
+    const reconciledRemoteTests = validRemoteTests.map((rp) =>
+      reconcilePackageWithProgress(rp, localPkgMap.get(rp.id), (testAttempts as any) || [])
+    );
+
     const localDrafts = (testPackages || []).filter(
       (localT: any) =>
         localT.authorId === profile?.id &&
@@ -339,7 +359,7 @@ export async function syncAllTestsWithCloud(): Promise<{
         !deletedSet.has(localT.id) &&
         !validRemoteTests.some((m) => m.id === localT.id)
     );
-    const allMerged = [...validRemoteTests, ...localDrafts];
+    const allMerged = [...reconciledRemoteTests, ...localDrafts];
 
     useQuizStore.setState({
       testPackages: allMerged,

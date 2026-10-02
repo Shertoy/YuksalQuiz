@@ -184,6 +184,7 @@ export const App: React.FC = () => {
             nextBlockTitle={reviewState.nextBlockTitle}
             onRetake={handleRetakeTest}
             onDone={handleDoneReview}
+            onStartNextBlock={(nextBlockId) => handleStartTest(reviewState.pkg, nextBlockId)}
           />
         ) : (
           /* Normal Tab Views */

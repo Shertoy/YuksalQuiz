@@ -331,6 +331,7 @@ export interface LeaderboardUser {
   testsCompleted: number;
   weeklyActiveHours: number;
   correctAnswersCount?: number;
+  scorePoints?: number;
   bestTime?: string;
   bestTimeSeconds?: number;
   accuracyPercentage?: number;
@@ -351,6 +352,7 @@ export interface UniversityLeaderboardEntry {
   averageTime: string;
   averageTimeSeconds: number;
   totalCorrectAnswers: number;
+  totalScorePoints?: number;
 }
 
 export type AnnouncementTargetType = 'all' | 'university' | 'region' | 'user';

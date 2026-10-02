@@ -31,6 +31,7 @@ import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
+import { isBlockUnlocked } from '../utils/progressUtils';
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -39,7 +40,7 @@ interface TestListProps {
 }
 
 export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateModal, onEditTest }) => {
-  const { testPackages, universities, profile, deleteTestPackage } = useQuizStore();
+  const { testPackages, universities, profile, testAttempts, deleteTestPackage } = useQuizStore();
   const { t } = useTranslation();
 
   const [activeCategory, setActiveCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
@@ -152,12 +153,28 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
   };
 
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
+    const blockIndex = pkg.blocks.findIndex((b) => b.id === block.id);
+    const unlocked = isBlockUnlocked(pkg, blockIndex, testAttempts);
+
     // 1. If sequential block is locked
-    if (block.isLocked) {
+    if (!unlocked) {
       triggerHaptic('warning');
-      const prevBlock = pkg.blocks.find((b) => b.blockNumber === block.blockNumber - 1) || pkg.blocks[0];
-      const userScore = prevBlock.bestScore || 0;
-      const passing = prevBlock.passingScore;
+      const prevBlock =
+        pkg.blocks[blockIndex - 1] ||
+        pkg.blocks.find((b) => b.blockNumber === block.blockNumber - 1) ||
+        pkg.blocks[0];
+      const passing =
+        prevBlock.passingScore ||
+        Math.max(1, Math.ceil((prevBlock.questions?.length || 25) * 0.7));
+      const prevAttempts = (testAttempts || []).filter(
+        (a) =>
+          a.testPackageId === pkg.id &&
+          (a.blockId === prevBlock.id || a.blockTitle === prevBlock.title)
+      );
+      const userScore =
+        prevAttempts.length > 0
+          ? Math.max(...prevAttempts.map((a) => a.score))
+          : prevBlock.bestScore || 0;
 
       const message = getUnlockRequirementsMessage(
         prevBlock.title,
@@ -492,9 +509,27 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {pkg.blocks.map((block) => {
-                    const isLocked = block.isLocked;
-                    const isPassed = block.isPassed;
+                  {pkg.blocks.map((block, idx) => {
+                    const unlocked = isBlockUnlocked(pkg, idx, testAttempts);
+                    const isLocked = !unlocked;
+
+                    const blockAttempts = (testAttempts || []).filter(
+                      (a) =>
+                        a.testPackageId === pkg.id &&
+                        (a.blockId === block.id || a.blockTitle === block.title)
+                    );
+                    const passing =
+                      block.passingScore ||
+                      Math.max(1, Math.ceil((block.questions?.length || 25) * 0.7));
+                    const maxScore =
+                      blockAttempts.length > 0
+                        ? Math.max(...blockAttempts.map((a) => a.score))
+                        : block.bestScore || 0;
+                    const isPassed = Boolean(
+                      block.isPassed ||
+                      maxScore >= passing ||
+                      blockAttempts.some((a) => a.isPassed || a.score >= passing)
+                    );
 
                     return (
                       <button
@@ -529,8 +564,10 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                           <span>
                             {isLocked ? (
                               'Qulflangan'
-                            ) : block.bestScore !== undefined && block.bestScore > 0 ? (
-                              <span className="font-bold">Eng yaxshi: {block.bestScore}/{block.questions.length}</span>
+                            ) : maxScore > 0 ? (
+                              <span className="font-bold">
+                                Eng yaxshi: {maxScore}/{block.questions.length} ({maxScore * 4} ball)
+                              </span>
                             ) : (
                               'Boshlash'
                             )}
