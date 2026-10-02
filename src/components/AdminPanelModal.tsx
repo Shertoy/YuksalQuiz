@@ -60,6 +60,7 @@ import {
   fetchCloudTests,
   publishTestToCloud,
   deleteTestFromCloud,
+  clearAllTestsFromCloud,
   publishUniversityToCloud,
   deleteUniversityFromCloud,
 } from '../services/testSyncService';
@@ -404,22 +405,39 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   const handleConfirmDeleteTestByAdmin = async () => {
     if (!deletingTestPkg || isDeletingTest) return;
-    setIsDeletingTest(true);
-    triggerHaptic('medium');
     const targetId = deletingTestPkg.id;
     const targetTitle = deletingTestPkg.title;
 
+    triggerHaptic('medium');
+    // 1. Immediately delete from local store & log in deletedPackageIds (instant UI update)
     deleteTestPackage(targetId);
+    setDeletingTestPkg(null);
+    setIsDeletingTest(false);
+    triggerHaptic('success');
+    showNotification(`"${targetTitle}" testi muvaffaqiyatli o'chirildi!`);
+
+    // 2. Delete from cloud database in background
     try {
       await deleteTestFromCloud(targetId);
     } catch (err) {
       console.warn('Admin cloud delete error:', err);
     }
+  };
 
-    setIsDeletingTest(false);
-    setDeletingTestPkg(null);
-    triggerHaptic('success');
-    showNotification(`"${targetTitle}" testi muvaffaqiyatli o'chirildi!`);
+  const handleClearAllTestsByAdmin = async () => {
+    setShowClearAllConfirm(false);
+    triggerHaptic('warning');
+
+    // 1. Immediately clear local store & record all deleted package IDs
+    clearAllTests();
+    showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
+
+    // 2. Clear from Supabase cloud database
+    try {
+      await clearAllTestsFromCloud();
+    } catch (err) {
+      console.warn('Error clearing cloud tests:', err);
+    }
   };
 
   const filteredAdminTests = testPackages.filter((pkg) => {
@@ -1693,9 +1711,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <Database className="w-3.5 h-3.5 text-indigo-500" />
                     <span>Tizimdagi barcha testlar ({testPackages.length} ta)</span>
                   </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Istalgan testni o'chirish
-                  </span>
+                  {testPackages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('warning');
+                        setShowClearAllConfirm(true);
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold text-[11px] border border-rose-200 dark:border-rose-900/60 active:scale-95 transition-all flex items-center gap-1"
+                      title="Barcha testlarni bitta bosishda tozalash"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Barchasini tozalash</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Search & Category Filter */}
@@ -2180,45 +2209,16 @@ END $$;`}</pre>
                 <p className="text-[10px] text-rose-600/80 dark:text-rose-400">
                   Foydalanuvchilar o'zlari test tuzishlari uchun tizimdagi barcha testlarni bitta bosishda tozalash.
                 </p>
-                {!showClearAllConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic('warning');
-                      setShowClearAllConfirm(true);
-                    }}
-                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
-                  >
-                    Barcha testlarni tozalash
-                  </button>
-                ) : (
-                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 space-y-2 animate-in fade-in">
-                    <p className="text-xs font-bold text-rose-600 dark:text-rose-400">
-                      Rostdan ham tizimdagi BARCHA testlarni tozalashni tasdiqlaysizmi?
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowClearAllConfirm(false)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
-                      >
-                        Bekor qilish
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          clearAllTests();
-                          setShowClearAllConfirm(false);
-                          triggerHaptic('warning');
-                          showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm"
-                      >
-                        Ha, barchasini tozalash
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('warning');
+                    setShowClearAllConfirm(true);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                >
+                  Barcha testlarni tozalash
+                </button>
               </div>
             </div>
           )}
@@ -2235,9 +2235,46 @@ END $$;`}</pre>
           </button>
         </div>
 
+        {/* Admin Clear All Tests Confirmation Modal */}
+        {showClearAllConfirm && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+
+              <h3 className="font-extrabold text-base text-slate-900 dark:white mb-2">
+                Barcha testlarni tozalash
+              </h3>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                Rostdan ham tizimdagi va bulutli bazadagi <b className="text-rose-600 dark:text-rose-400">BARCHA testlarni</b> butunlay tozalashni tasdiqlaysizmi? Bu amal qaytarib bo'lmaydi!
+              </p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowClearAllConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAllTestsByAdmin}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Ha, barchasini tozalash</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Admin Test Delete Confirmation Modal */}
         {deletingTestPkg && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
                 <Trash2 className="w-7 h-7" />

@@ -83,9 +83,9 @@ export async function fetchCloudTests(): Promise<{
     const deletedSet = new Set(deletedPackageIds || []);
 
     if (!data || data.length === 0) {
-      // Cloud has 0 tests. Keep only non-deleted local packages (not cloud packages)
+      // Cloud has 0 tests. Keep only non-deleted local packages
       const cleanLocalPackages = (testPackages || []).filter(
-        (p) => !deletedSet.has(p.id) && !p.id.startsWith('pkg-')
+        (p) => !deletedSet.has(p.id)
       );
       useQuizStore.setState({ testPackages: cleanLocalPackages });
       return { success: true, count: 0, message: "Bulutli bazada hozircha testlar yo'q." };
@@ -102,8 +102,6 @@ export async function fetchCloudTests(): Promise<{
     for (const localPkg of testPackages || []) {
       if (deletedSet.has(localPkg.id)) continue;
       if (mergedPackages.some((cp) => cp.id === localPkg.id)) continue;
-      // If a package was a cloud package (starts with pkg-) but is missing from cloud, it was deleted!
-      if (localPkg.id.startsWith('pkg-')) continue;
       mergedPackages.push(localPkg);
     }
 
@@ -207,6 +205,30 @@ export async function deleteTestFromCloud(id: string): Promise<{
 }
 
 /**
+ * Deletes ALL test packages from Supabase cloud database.
+ */
+export async function clearAllTestsFromCloud(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { success: false, message: 'Supabase ulanmagan' };
+  }
+
+  try {
+    const { error } = await supabase.from('test_packages').delete().not('id', 'is', null);
+    if (error) {
+      console.warn('Supabase clear all error:', error.message);
+      return { success: false, message: error.message };
+    }
+    return { success: true, message: "Barcha testlar bulutli bazadan tozalandi." };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Xatolik' };
+  }
+}
+
+/**
  * Two-way sync: uploads any local tests not yet in cloud, and pulls down all cloud tests.
  */
 export async function syncAllTestsWithCloud(): Promise<{
@@ -279,7 +301,6 @@ export async function syncAllTestsWithCloud(): Promise<{
     for (const localT of testPackages || []) {
       if (deletedSet.has(localT.id)) continue;
       if (!allMerged.some((m) => m.id === localT.id)) {
-        if (localT.id.startsWith('pkg-')) continue;
         allMerged.push(localT);
       }
     }

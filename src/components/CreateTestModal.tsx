@@ -888,17 +888,16 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                         type="button"
                         disabled={isDeleting}
                         onClick={async () => {
-                          setIsDeleting(true);
+                          const targetId = editPackage.id;
                           triggerHaptic('medium');
-                          deleteTestPackage(editPackage.id);
+                          deleteTestPackage(targetId);
+                          triggerHaptic('success');
+                          onClose();
                           try {
-                            await deleteTestFromCloud(editPackage.id);
+                            await deleteTestFromCloud(targetId);
                           } catch (err) {
                             console.warn('Cloud delete error:', err);
                           }
-                          setIsDeleting(false);
-                          triggerHaptic('success');
-                          onClose();
                         }}
                         className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1"
                       >

@@ -337,7 +337,18 @@ export const useQuizStore = create<QuizState>()(
       },
 
       clearAllTests: () => {
-        set({ testPackages: [] });
+        const current = get().testPackages || [];
+        const currentIds = current.map((p) => p.id);
+        const currentDeleted = get().deletedPackageIds || [];
+        const allDeletedIds = Array.from(new Set([...currentDeleted, ...currentIds]));
+
+        triggerHaptic('warning');
+        set({
+          testPackages: [],
+          deletedPackageIds: allDeletedIds,
+          testAttempts: [],
+          mistakes: [],
+        });
       },
 
       restoreBackupData: (data: any) => {
@@ -684,6 +695,8 @@ export const useQuizStore = create<QuizState>()(
         set({
           testPackages: current.filter((p) => p.id !== id),
           deletedPackageIds: currentDeleted.includes(id) ? currentDeleted : [...currentDeleted, id],
+          testAttempts: (get().testAttempts || []).filter((a) => a.testPackageId !== id),
+          mistakes: (get().mistakes || []).filter((m) => m.testPackageId !== id),
         });
       },
 
@@ -1019,9 +1032,9 @@ export const useQuizStore = create<QuizState>()(
         }
 
         // Clear out any old pre-seeded mock tests and locally deleted tests
-        const deletedSet = new Set(state.deletedPackageIds);
+        const deletedSet = new Set(state.deletedPackageIds || []);
         state.testPackages = (state.testPackages || []).filter(
-          (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && pkg.isCommunityCreated && !deletedSet.has(pkg.id)
+          (pkg) => !pkg.id.startsWith('mock-') && !pkg.id.startsWith('demo-') && !deletedSet.has(pkg.id)
         );
 
         if (!state.universities || state.universities.length === 0) {

@@ -70,23 +70,21 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
   const handleConfirmDelete = async () => {
     if (!deletingPkg || isDeleting) return;
-    setIsDeleting(true);
-    triggerHaptic('medium');
     const targetId = deletingPkg.id;
 
+    triggerHaptic('medium');
     // 1. Immediately delete from local store (instant UI update)
     deleteTestPackage(targetId);
+    setDeletingPkg(null);
+    setIsDeleting(false);
+    triggerHaptic('success');
 
-    // 2. Delete from Supabase cloud
+    // 2. Delete from Supabase cloud in background
     try {
       await deleteTestFromCloud(targetId);
     } catch (err) {
       console.warn('Cloud delete error:', err);
     }
-
-    setIsDeleting(false);
-    setDeletingPkg(null);
-    triggerHaptic('success');
   };
 
   // Filter test packages by active category, author scope, and search query
