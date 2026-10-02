@@ -80,13 +80,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 max-w-md w-full overflow-hidden max-h-[88vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 max-w-md w-full overflow-hidden max-h-[86vh] sm:max-h-[82vh] flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header with Visual Editing Mode Status */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
-              <Edit3 className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
+              <Edit3 className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -117,8 +117,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
+        {/* Form with Scrollable Content Body and Pinned Footer */}
+        <form onSubmit={handleSave} className="flex-1 flex flex-col min-h-0 overflow-hidden text-xs">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 min-h-0 overscroll-contain">
           {/* Active Avatar Section with Live Preview */}
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-center">
             <div className="flex items-center justify-between mb-3 text-left">
@@ -269,29 +270,30 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </select>
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                onClose();
-              }}
-              className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
-            >
-              {t.cancel || 'Bekor qilish'}
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
-            >
-              <Check className="w-4 h-4" />
-              <span>{t.saveChangesBtn || "O'zgarishlarni saqlash"}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Pinned Footer with Action Buttons - Always Visible and Never Cut Off */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shrink-0 flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
+            className="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+          >
+            {t.cancel || 'Bekor qilish'}
+          </button>
+          <button
+            type="submit"
+            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
+          >
+            <Check className="w-4 h-4" />
+            <span>{t.saveChangesBtn || "O'zgarishlarni saqlash"}</span>
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
   );
 };

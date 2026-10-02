@@ -281,8 +281,10 @@ export const App: React.FC = () => {
         onClose={() => setIsAdminModalOpen(false)}
       />
 
-      {/* Persistent Bottom Navigation Bar */}
-      {!activeTestPkg && <BottomNav />}
+      {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
+      {!activeTestPkg && !isEditProfileOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
+        <BottomNav />
+      )}
 
       {/* Smooth Motivational Quotes & Minimalist Spinner App Loader */}
       {isAppLoading && <AppLoader isFadingOut={isLoaderFading} />}
