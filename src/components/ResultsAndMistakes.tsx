@@ -25,6 +25,7 @@ import {
 import { MistakeItem } from '../types';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
+import { decodeHtmlEntities } from '../utils/security';
 
 export const ResultsAndMistakes: React.FC = () => {
   const {
@@ -400,7 +401,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
                 {/* Question text */}
                 <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-relaxed mb-4">
-                  {practiceSession.questions[practiceSession.currentIndex].question.text}
+                  {decodeHtmlEntities(practiceSession.questions[practiceSession.currentIndex].question.text)}
                 </h4>
 
                 {/* Options */}
@@ -436,7 +437,7 @@ export const ResultsAndMistakes: React.FC = () => {
                           <span className="w-5 h-5 rounded-lg border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-[10px]">
                             {['A', 'B', 'C', 'D'][oIdx]}
                           </span>
-                          <span className="flex-1">{opt}</span>
+                          <span className="flex-1">{decodeHtmlEntities(opt)}</span>
                         </div>
                       </button>
                     );
@@ -525,7 +526,7 @@ export const ResultsAndMistakes: React.FC = () => {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-400">
-                        {m.testPackageTitle} • {m.blockTitle}
+                        {decodeHtmlEntities(m.testPackageTitle)} • {decodeHtmlEntities(m.blockTitle)}
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
                         {m.failCount} marta xato
@@ -533,12 +534,12 @@ export const ResultsAndMistakes: React.FC = () => {
                     </div>
 
                     <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-relaxed">
-                      {m.question.text}
+                      {decodeHtmlEntities(m.question.text)}
                     </h4>
 
                     <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200">
                       <span className="font-bold">To'g'ri javob: </span>
-                      <span>{m.question.options[m.question.correctOptionIndex]}</span>
+                      <span>{decodeHtmlEntities(m.question.options[m.question.correctOptionIndex])}</span>
                     </div>
                   </div>
                 ))}
@@ -571,10 +572,10 @@ export const ResultsAndMistakes: React.FC = () => {
               >
                 <div>
                   <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">
-                    {att.testPackageTitle}
+                    {decodeHtmlEntities(att.testPackageTitle)}
                   </h4>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {att.blockTitle} • {att.completedAt.split('T')[0]}
+                    {decodeHtmlEntities(att.blockTitle)} • {att.completedAt.split('T')[0]}
                   </p>
                 </div>
 

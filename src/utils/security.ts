@@ -61,22 +61,46 @@ export function verifyIntegritySignature(payload: ProtectedPayload, storedSignat
 }
 
 /**
+ * Decodes all HTML entities into normal UTF-8 characters.
+ * Fixes &#x27; -> ', &quot; -> ", etc.
+ */
+export function decodeHtmlEntities(input: string): string {
+  if (!input || typeof input !== 'string') return '';
+  return input
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&#x2F;/gi, '/')
+    .replace(/&#47;/gi, '/')
+    .replace(/&quot;/gi, '"')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .trim();
+}
+
+/**
  * XSS & HTML Injection Sanitization
- * Strips harmful HTML tags, scripts, and javascript: protocols from user inputs.
+ * Strips harmful HTML tags, scripts, and javascript: protocols from user inputs
+ * WITHOUT ruining Uzbek apostrophes ('), quotes ("), or slashes (/).
  */
 export function sanitizeText(input: string): string {
   if (!input || typeof input !== 'string') return '';
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/javascript:/gi, '')
-    .replace(/onerror/gi, '')
-    .replace(/onload/gi, '')
-    .trim();
+  // First decode any double-escaped entities
+  let clean = decodeHtmlEntities(input);
+
+  // Strip script and iframe tags completely
+  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+
+  // Strip javascript: protocols, event handlers
+  clean = clean.replace(/javascript\s*:/gi, '');
+  clean = clean.replace(/\bon\w+\s*=/gi, '');
+
+  // Strip raw HTML tags (e.g. <div>, <p>, <img ...>)
+  clean = clean.replace(/<[^>]*>?/gm, '');
+
+  return clean.trim();
 }
 
 /**

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Register Service Worker for Offline PWA resilience and network shielding
 if ('serviceWorker' in navigator && (import.meta.env.PROD || !['localhost', '127.0.0.1'].includes(window.location.hostname))) {
@@ -14,6 +15,8 @@ if ('serviceWorker' in navigator && (import.meta.env.PROD || !['localhost', '127
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

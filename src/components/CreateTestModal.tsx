@@ -11,7 +11,7 @@ import {
   MAIN_CATEGORIES,
 } from '../types';
 import { splitQuestionsIntoBlocks } from '../utils/testSplitter';
-import { sanitizeText } from '../utils/security';
+import { sanitizeText, decodeHtmlEntities } from '../utils/security';
 import {
   X,
   Plus,
@@ -44,7 +44,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
   const initialQuestions = React.useMemo(() => {
     if (editPackage?.blocks && editPackage.blocks.length > 0) {
       const flattened = editPackage.blocks.flatMap((b) => b.questions);
-      if (flattened.length > 0) return flattened;
+      if (flattened.length > 0) {
+        return flattened.map((q) => ({
+          ...q,
+          text: decodeHtmlEntities(q.text),
+          options: q.options.map((opt) => decodeHtmlEntities(opt)),
+          explanation: q.explanation ? decodeHtmlEntities(q.explanation) : '',
+        }));
+      }
     }
     return [
       {
@@ -57,7 +64,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
     ];
   }, [editPackage]);
 
-  const [title, setTitle] = useState(editPackage?.title || '');
+  const [title, setTitle] = useState(editPackage?.title ? decodeHtmlEntities(editPackage.title) : '');
   const [category, setCategory] = useState<MainCategory>(editPackage?.category || 'Oliy Ta\'lim (HEMIS)');
 
   const allKnownUnis = [...(universities || []), ...TOP_UNIVERSITIES, ...(customUniversities || [])];
@@ -90,9 +97,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
         return flattened
           .map((q) => {
             const opts = q.options
-              .map((opt, i) => (i === q.correctOptionIndex ? `#${opt}` : opt))
+              .map((opt, i) => (i === q.correctOptionIndex ? `#${decodeHtmlEntities(opt)}` : decodeHtmlEntities(opt)))
               .join('\n====\n');
-            return `${q.text}\n====\n${opts}\n++++`;
+            return `${decodeHtmlEntities(q.text)}\n====\n${opts}\n++++`;
           })
           .join('\n\n');
       }

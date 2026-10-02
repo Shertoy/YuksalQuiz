@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
+import { decodeHtmlEntities } from '../utils/security';
 
 interface PostTestReviewProps {
   attempt: TestAttempt;
@@ -74,8 +75,8 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               <span className="text-xs uppercase tracking-wider font-semibold opacity-80">
                 Natija xulosasi
               </span>
-              <h2 className="text-lg font-black">{attempt.testPackageTitle}</h2>
-              <p className="text-xs opacity-90">{attempt.blockTitle}</p>
+              <h2 className="text-lg font-black">{decodeHtmlEntities(attempt.testPackageTitle)}</h2>
+              <p className="text-xs opacity-90">{decodeHtmlEntities(attempt.blockTitle)}</p>
             </div>
           </div>
 
@@ -210,7 +211,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         {/* Current Question Review Details */}
         <div className="space-y-3">
           <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-relaxed">
-            {currentAnswer.questionText}
+            {decodeHtmlEntities(currentAnswer.questionText)}
           </p>
 
           <div className="space-y-2 text-xs">
@@ -234,7 +235,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                     <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-slate-200 dark:border-slate-600">
                       {['A', 'B', 'C', 'D'][optIdx]}
                     </span>
-                    <span>{opt}</span>
+                    <span>{decodeHtmlEntities(opt)}</span>
                   </div>
 
                   <div className="shrink-0 flex items-center gap-1">
@@ -258,7 +259,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
           {currentAnswer.explanation && (
             <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
               <span className="font-bold block mb-1">Izoh va tushuntirish:</span>
-              <span>{currentAnswer.explanation}</span>
+              <span>{decodeHtmlEntities(currentAnswer.explanation)}</span>
             </div>
           )}
         </div>

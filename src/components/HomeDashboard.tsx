@@ -21,6 +21,7 @@ import {
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
 import { TestPackage } from '../types';
+import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
 
 interface HomeDashboardProps {
@@ -344,10 +345,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   </div>
                   <div>
                     <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                      {pkg.title}
+                      {decodeHtmlEntities(pkg.title)}
                     </h4>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
-                      <span>{pkg.university}</span>
+                      <span>{decodeHtmlEntities(pkg.university || '')}</span>
                       <span>•</span>
                       <span>{pkg.blocks.length} blok ({pkg.totalQuestions} savol)</span>
                     </div>

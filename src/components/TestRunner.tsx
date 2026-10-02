@@ -5,6 +5,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { Clock, CheckCircle2, X, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
+import { decodeHtmlEntities } from '../utils/security';
 
 interface TestRunnerProps {
   testPackage: TestPackage;
@@ -23,7 +24,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   const { t } = useTranslation();
 
   const block = testPackage.blocks.find((b) => b.id === blockId) || testPackage.blocks[0];
-  const questions = block.questions;
+  const questions = block?.questions || [];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
@@ -31,7 +32,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   const [wrongShakeIndex, setWrongShakeIndex] = useState<number | null>(null);
 
   // Global uninterrupted countdown timer (60s per question, min 180s)
-  const totalTestDuration = Math.max(180, questions.length * 60);
+  const totalTestDuration = Math.max(180, (questions.length || 1) * 60);
   const [secondsRemaining, setSecondsRemaining] = useState(totalTestDuration);
   const [totalSecondsSpent, setTotalSecondsSpent] = useState(0);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
@@ -49,44 +50,49 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     isFinishedRef.current = true;
 
     let score = 0;
-    const userAnswers: UserAnswerRecord[] = questions.map((q, idx) => {
+    const userAnswers: UserAnswerRecord[] = (questions || []).map((q, idx) => {
       const selected = finalAnswers[idx] !== undefined ? finalAnswers[idx] : -1;
       const isCorrect = selected === q.correctOptionIndex;
       if (isCorrect) score += 1;
 
       return {
         questionId: q.id,
-        questionText: q.text,
-        options: q.options,
+        questionText: decodeHtmlEntities(q.text),
+        options: (q.options || []).map((o) => decodeHtmlEntities(o)),
         selectedOption: selected,
         correctOptionIndex: q.correctOptionIndex,
         isCorrect,
-        explanation: q.explanation,
+        explanation: q.explanation ? decodeHtmlEntities(q.explanation) : undefined,
       };
     });
 
-    const isPassed = score >= block.passingScore;
-    const nextBlock = testPackage.blocks.find((b) => b.blockNumber === block.blockNumber + 1);
+    const isPassed = score >= (block?.passingScore || 0);
+    const nextBlock = testPackage.blocks.find((b) => b.blockNumber === (block?.blockNumber || 0) + 1);
 
     const attempt: TestAttempt = {
       id: 'att-' + Math.random().toString(36).substring(2, 9),
       testPackageId: testPackage.id,
-      testPackageTitle: testPackage.title,
-      university: testPackage.university,
-      department: testPackage.department,
-      blockId: block.id,
-      blockTitle: block.title,
+      testPackageTitle: decodeHtmlEntities(testPackage.title),
+      university: decodeHtmlEntities(testPackage.university),
+      department: decodeHtmlEntities(testPackage.department),
+      blockId: block?.id || '',
+      blockTitle: decodeHtmlEntities(block?.title || ''),
       score,
       totalQuestions: questions.length,
-      percentage: Math.round((score / questions.length) * 100),
+      percentage: questions.length > 0 ? Math.round((score / questions.length) * 100) : 0,
       timeSpentSeconds: timeSpent,
       completedAt: new Date().toISOString(),
       isPassed,
       userAnswers,
     };
 
-    const { unlockedNext } = recordTestAttempt(attempt);
-    onFinish(attempt, unlockedNext, nextBlock?.title);
+    try {
+      const { unlockedNext } = recordTestAttempt(attempt);
+      onFinish(attempt, unlockedNext, nextBlock?.title);
+    } catch (e) {
+      console.warn('recordTestAttempt error in finishTestWithAnswers:', e);
+      onFinish(attempt, false, nextBlock?.title);
+    }
   };
 
   // Continuous uninterrupted global countdown timer
@@ -108,7 +114,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
 
   // Option selection with instant feedback + 700ms pause + auto-advance
   const handleSelectOption = (optIndex: number) => {
-    if (isTransitioning || selectedAnswers[currentIndex] !== undefined) return;
+    if (isTransitioning || selectedAnswers[currentIndex] !== undefined || !currentQ) return;
 
     setIsTransitioning(true);
     const updatedAnswers = {
@@ -117,19 +123,25 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     };
     setSelectedAnswers(updatedAnswers);
 
-    const isCorrect = optIndex === currentQ.correctOptionIndex;
-    if (isCorrect) {
-      soundFX.playCorrect();
-      triggerHaptic('success');
-      confetti({
-        particleCount: 20,
-        spread: 50,
-        origin: { y: 0.75 },
-      });
-    } else {
-      soundFX.playWrong();
-      triggerHaptic('warning');
-      setWrongShakeIndex(optIndex);
+    try {
+      const isCorrect = optIndex === currentQ.correctOptionIndex;
+      if (isCorrect) {
+        try { soundFX.playCorrect(); } catch {}
+        try { triggerHaptic('success'); } catch {}
+        try {
+          confetti({
+            particleCount: 20,
+            spread: 50,
+            origin: { y: 0.75 },
+          });
+        } catch {}
+      } else {
+        try { soundFX.playWrong(); } catch {}
+        try { triggerHaptic('warning'); } catch {}
+        setWrongShakeIndex(optIndex);
+      }
+    } catch (e) {
+      console.warn('handleSelectOption audio/haptic error:', e);
     }
 
     // 700ms pause, then one-way advance or finish
@@ -219,7 +231,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           </div>
 
           <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-relaxed mb-6">
-            {currentQ.text}
+            {decodeHtmlEntities(currentQ.text)}
           </h3>
 
           {/* Options */}
@@ -266,7 +278,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                   >
                     {letters[optIdx] || optIdx + 1}
                   </span>
-                  <span className="leading-relaxed flex-1">{opt}</span>
+                  <span className="leading-relaxed flex-1">{decodeHtmlEntities(opt)}</span>
                 </button>
               );
             })}

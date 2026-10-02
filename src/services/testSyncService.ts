@@ -1,26 +1,38 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
 import { TestPackage } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
+import { decodeHtmlEntities } from '../utils/security';
 
 /**
  * Maps Supabase DB row to application TestPackage model
  */
 function mapRowToTestPackage(row: any): TestPackage {
+  const blocks = (Array.isArray(row.blocks) ? row.blocks : []).map((b: any) => ({
+    ...b,
+    title: decodeHtmlEntities(b.title || ''),
+    questions: (Array.isArray(b.questions) ? b.questions : []).map((q: any) => ({
+      ...q,
+      text: decodeHtmlEntities(q.text || ''),
+      options: (Array.isArray(q.options) ? q.options : []).map((opt: string) => decodeHtmlEntities(opt || '')),
+      explanation: q.explanation ? decodeHtmlEntities(q.explanation) : undefined,
+    })),
+  }));
+
   return {
     id: row.id,
-    title: row.title,
+    title: decodeHtmlEntities(row.title || ''),
     category: row.category,
-    university: row.university,
+    university: decodeHtmlEntities(row.university || ''),
     isCustomUniversity: Boolean(row.is_custom_university),
     isPendingReview: Boolean(row.is_pending_review),
-    department: row.department,
+    department: (decodeHtmlEntities(row.department || '') as any) || 'Axborot Texnologiyalari',
     isPublic: Boolean(row.is_public),
     password: row.password || undefined,
     totalQuestions: Number(row.total_questions) || 0,
-    blocks: Array.isArray(row.blocks) ? row.blocks : [],
+    blocks,
     createdAt: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     authorId: row.author_id || 'community',
-    authorName: row.author_name || 'Muallif',
+    authorName: decodeHtmlEntities(row.author_name || 'Muallif'),
     isCommunityCreated: Boolean(row.is_community_created ?? true),
     authorWalletBalance: Number(row.author_wallet_balance) || 0,
   };

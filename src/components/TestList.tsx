@@ -30,6 +30,7 @@ import {
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
+import { decodeHtmlEntities } from '../utils/security';
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -396,7 +397,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
-                      {pkg.department}
+                      {decodeHtmlEntities(pkg.department)}
                     </span>
 
                     {!pkg.isPublic ? (
@@ -425,10 +426,10 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                   </div>
 
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    {pkg.title}
+                    {decodeHtmlEntities(pkg.title)}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {pkg.university} • Muallif: {pkg.authorName}
+                    {decodeHtmlEntities(pkg.university || '')} • Muallif: {decodeHtmlEntities(pkg.authorName || '')}
                   </p>
                 </div>
 
@@ -495,7 +496,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-bold text-xs flex items-center gap-1">
                             {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
-                            <span>{block.title}</span>
+                            <span>{decodeHtmlEntities(block.title)}</span>
                           </span>
                           {isLocked ? (
                             <Lock className="w-3.5 h-3.5 text-slate-400" />

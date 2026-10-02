@@ -19,7 +19,7 @@ import {
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
 import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
-import { generateIntegritySignature, verifyIntegritySignature } from '../utils/security';
+import { generateIntegritySignature, verifyIntegritySignature, decodeHtmlEntities } from '../utils/security';
 import { soundFX, triggerHaptic } from '../utils/telegram';
 
 import { Language } from '../i18n/translations';
@@ -1141,7 +1141,55 @@ export const useQuizStore = create<QuizState>()(
           state.leaderboard = [];
           if (!state.testPackages) {
             state.testPackages = [];
+          } else if (Array.isArray(state.testPackages)) {
+            // Clean up any previously stored HTML entities (&#x27;, &quot;, etc.)
+            state.testPackages = state.testPackages.map((pkg) => ({
+              ...pkg,
+              title: decodeHtmlEntities(pkg.title || ''),
+              department: (decodeHtmlEntities(pkg.department || '') as any) || 'Axborot Texnologiyalari',
+              university: decodeHtmlEntities(pkg.university || ''),
+              authorName: decodeHtmlEntities(pkg.authorName || ''),
+              blocks: (pkg.blocks || []).map((b) => ({
+                ...b,
+                title: decodeHtmlEntities(b.title || ''),
+                questions: (b.questions || []).map((q) => ({
+                  ...q,
+                  text: decodeHtmlEntities(q.text || ''),
+                  options: (q.options || []).map((opt) => decodeHtmlEntities(opt || '')),
+                  explanation: q.explanation ? decodeHtmlEntities(q.explanation) : undefined,
+                })),
+              })),
+            }));
           }
+
+          if (state.mistakes && Array.isArray(state.mistakes)) {
+            state.mistakes = state.mistakes.map((m) => ({
+              ...m,
+              testPackageTitle: decodeHtmlEntities(m.testPackageTitle || ''),
+              blockTitle: decodeHtmlEntities(m.blockTitle || ''),
+              question: {
+                ...m.question,
+                text: decodeHtmlEntities(m.question.text || ''),
+                options: (m.question.options || []).map((opt) => decodeHtmlEntities(opt || '')),
+                explanation: m.question.explanation ? decodeHtmlEntities(m.question.explanation) : undefined,
+              },
+            }));
+          }
+
+          if (state.testAttempts && Array.isArray(state.testAttempts)) {
+            state.testAttempts = state.testAttempts.map((att) => ({
+              ...att,
+              testPackageTitle: decodeHtmlEntities(att.testPackageTitle || ''),
+              blockTitle: decodeHtmlEntities(att.blockTitle || ''),
+              userAnswers: (att.userAnswers || []).map((ans) => ({
+                ...ans,
+                questionText: decodeHtmlEntities(ans.questionText || ''),
+                options: (ans.options || []).map((opt) => decodeHtmlEntities(opt || '')),
+                explanation: ans.explanation ? decodeHtmlEntities(ans.explanation) : undefined,
+              })),
+            }));
+          }
+
           if (!state.readAnnouncementIds) {
             state.readAnnouncementIds = [];
           }

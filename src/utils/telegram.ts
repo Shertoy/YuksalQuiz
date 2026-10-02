@@ -149,25 +149,29 @@ export function triggerTelegramNativeShare(
 }
 
 export function triggerHaptic(type: 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'error' | 'warning') {
-  const tg = getTelegramWebApp();
-  if (!tg?.HapticFeedback) {
-    // Fallback for vibration API on mobile browsers
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      if (type === 'selection' || type === 'light') navigator.vibrate(15);
-      else if (type === 'medium') navigator.vibrate(30);
-      else if (type === 'heavy' || type === 'error') navigator.vibrate([40, 30, 40]);
-      else if (type === 'success') navigator.vibrate([20, 50, 20]);
-    }
-    return;
-  }
-
   try {
-    if (type === 'selection') {
-      tg.HapticFeedback.selectionChanged();
-    } else if (type === 'success' || type === 'error' || type === 'warning') {
-      tg.HapticFeedback.notificationOccurred(type);
-    } else {
-      tg.HapticFeedback.impactOccurred(type);
+    const tg = getTelegramWebApp();
+    if (tg?.HapticFeedback) {
+      if (type === 'selection') {
+        tg.HapticFeedback.selectionChanged?.();
+      } else if (type === 'success' || type === 'error' || type === 'warning') {
+        tg.HapticFeedback.notificationOccurred?.(type);
+      } else {
+        tg.HapticFeedback.impactOccurred?.(type);
+      }
+      return;
+    }
+
+    // Safe fallback for vibration API on mobile browsers
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      try {
+        if (type === 'selection' || type === 'light') navigator.vibrate(15);
+        else if (type === 'medium') navigator.vibrate(30);
+        else if (type === 'heavy' || type === 'error') navigator.vibrate([40, 30, 40]);
+        else if (type === 'success') navigator.vibrate([20, 50, 20]);
+      } catch {
+        // Suppress iframe vibration SecurityError / NotAllowedError
+      }
     }
   } catch (e) {
     console.debug('Haptic error:', e);
@@ -184,117 +188,137 @@ class SoundEffectsManager {
   private getContext(): AudioContext | null {
     if (!this.soundEnabled) return null;
     if (typeof window === 'undefined') return null;
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
       }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      return this.ctx;
+    } catch {
+      return null;
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
-    return this.ctx;
   }
 
   // Play subtle cheerful chime on correct answer
   playCorrect() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
 
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
 
-    osc1.frequency.setValueAtTime(523.25, now); // C5
-    osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
-    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
+      osc1.frequency.setValueAtTime(523.25, now); // C5
+      osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
+      osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
 
-    osc2.frequency.setValueAtTime(1046.5, now); // C6
+      osc2.frequency.setValueAtTime(1046.5, now); // C6
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.35);
-    osc2.stop(now + 0.35);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.35);
+      osc2.stop(now + 0.35);
+    } catch (e) {
+      console.debug('playCorrect audio error:', e);
+    }
   }
 
   // Play gentle, non-annoying buzz on wrong answer
   playWrong() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, now); // A3
-    osc.frequency.exponentialRampToValueAtTime(180, now + 0.18); // F3
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, now); // A3
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.18); // F3
 
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (e) {
+      console.debug('playWrong audio error:', e);
+    }
   }
 
   // Coin reward bell
   playCoin() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(987.77, now); // B5
-    osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987.77, now); // B5
+      osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
 
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {
+      console.debug('playCoin audio error:', e);
+    }
   }
 
   // Subtle button click
   playClick() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
 
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } catch (e) {
+      console.debug('playClick audio error:', e);
+    }
   }
 }
 

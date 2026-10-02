@@ -47,7 +47,7 @@ import {
   AnnouncementTargetType,
   SubscriptionPlanType,
 } from '../types';
-import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
+import { exportEncryptedBackup, importEncryptedBackup, sanitizeText, decodeHtmlEntities } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
 import {
   getSupabaseConfig,
@@ -1777,7 +1777,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               {pkg.category || "Oliy Ta'lim (HEMIS)"}
                             </span>
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                              {pkg.department}
+                              {decodeHtmlEntities(pkg.department || '')}
                             </span>
                             {!pkg.isPublic ? (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
@@ -1796,15 +1796,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           </div>
 
                           <h5 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                            {pkg.title}
+                            {decodeHtmlEntities(pkg.title)}
                           </h5>
 
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                             <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {pkg.university}
+                              {decodeHtmlEntities(pkg.university || '')}
                             </span>
                             <span>•</span>
-                            <span>Muallif: <strong className="text-slate-800 dark:text-slate-200">{pkg.authorName}</strong></span>
+                            <span>Muallif: <strong className="text-slate-800 dark:text-slate-200">{decodeHtmlEntities(pkg.authorName || '')}</strong></span>
                             <span>•</span>
                             <span>{pkg.totalQuestions} ta savol ({pkg.blocks.length} blok)</span>
                           </div>
