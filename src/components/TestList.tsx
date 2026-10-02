@@ -14,6 +14,8 @@ import {
   Globe2,
   UserCheck,
   BookOpen,
+  RefreshCw,
+  Cloud,
 } from 'lucide-react';
 import {
   MAIN_CATEGORIES,
@@ -23,6 +25,7 @@ import {
 } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
+import { fetchCloudTests } from '../services/testSyncService';
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -39,6 +42,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
   const [targetBlockId, setTargetBlockId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Lock explanation modal state (sequential block lock)
   const [lockExplanation, setLockExplanation] = useState<{
@@ -160,16 +164,35 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
             {getCategoryTitle(activeCategory)}
           </p>
         </div>
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            onOpenCreateModal();
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{t.createTestBtn}</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={async () => {
+              triggerHaptic('light');
+              setIsSyncing(true);
+              await fetchCloudTests();
+              setIsSyncing(false);
+              triggerHaptic('success');
+            }}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 transition-colors active:scale-95"
+            title="Bulutdan testlarni yangilash"
+            aria-label="Refresh tests from cloud"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-sky-500' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onOpenCreateModal();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t.createTestBtn}</span>
+          </button>
+        </div>
       </div>
 
       {/* Multi-Track Category Tab Bar */}

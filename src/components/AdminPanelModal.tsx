@@ -31,6 +31,10 @@ import {
   Copy,
   CheckCircle2,
   Sparkles,
+  Cloud,
+  RefreshCw,
+  ExternalLink,
+  Code,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -45,6 +49,8 @@ import {
 } from '../types';
 import { exportEncryptedBackup, importEncryptedBackup, sanitizeText } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
+import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection } from '../services/supabase';
+import { syncAllTestsWithCloud, fetchCloudTests } from '../services/testSyncService';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -83,13 +89,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   } = useQuizStore();
 
   const [activeTab, setActiveTab] = useState<
-    'universities' | 'pending' | 'news' | 'pricing' | 'payments' | 'promocodes' | 'tests' | 'security'
+    'universities' | 'pending' | 'news' | 'supabase' | 'tests' | 'pricing' | 'payments' | 'promocodes' | 'security'
   >('universities');
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
   const [deletingUni, setDeletingUni] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Supabase Cloud Integration state
+  const initialSupabaseConfig = getSupabaseConfig();
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(initialSupabaseConfig.url);
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(initialSupabaseConfig.anonKey);
+  const [isTestingSupabase, setIsTestingSupabase] = useState(false);
+  const [supabaseStatusResult, setSupabaseStatusResult] = useState<{ success: boolean; message: string; tableReady?: boolean } | null>(null);
+  const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   // Subscription Pricing state
   const [priceForm3M, setPriceForm3M] = useState<number>(subscriptionPrices?.['3_months'] || 35000);
@@ -511,6 +526,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Testlar</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('supabase');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'supabase'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5 text-sky-500" />
+            <span>Supabase Baza</span>
+            {getSupabaseConfig().isConfigured ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+            )}
           </button>
 
           <button
@@ -1593,6 +1628,234 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 <span className="font-bold text-indigo-600 dark:text-indigo-400">
                   {testPackages.length} ta
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Supabase Cloud Database Tab */}
+          {activeTab === 'supabase' && (
+            <div className="space-y-4 animate-in fade-in">
+              {/* Header Card */}
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-sky-900/40 via-indigo-900/30 to-slate-900 border border-sky-500/30 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0 mt-0.5">
+                    <Cloud className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        Supabase Bulutli Baza (Umumiy Testlar Markazi)
+                      </h4>
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          getSupabaseConfig().isConfigured
+                            ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                        }`}
+                      >
+                        {getSupabaseConfig().isConfigured ? 'Ulangan' : 'Ulanmagan'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Supabase orqali bir foydalanuvchi yaratgan barcha testlar real vaqtda markaziy bazaga saqlanadi va boshqa barcha talabalarda avtomatik ko'rinadi.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status or Test Result Notification */}
+              {supabaseStatusResult && (
+                <div
+                  className={`p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-in fade-in ${
+                    supabaseStatusResult.success
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                  }`}
+                >
+                  {supabaseStatusResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    <span>{supabaseStatusResult.message}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Supabase Configuration Form */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div>
+                    <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                      Ulanish Kalitlari (Project API)
+                    </h5>
+                    <p className="text-[11px] text-slate-400">
+                      Supabase boshqaruv panelidan Project Settings &gt; API orqali olingan kalitlarni kiriting
+                    </p>
+                  </div>
+                  {getSupabaseConfig().source === 'env' && (
+                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold border border-indigo-200/50">
+                      .env orqali yuklangan
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Project URL:
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://your-project-id.supabase.co"
+                      value={supabaseUrlInput}
+                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Anon (Public) API Key:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      value={supabaseKeyInput}
+                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      saveSupabaseConfig(supabaseUrlInput, supabaseKeyInput);
+                      triggerHaptic('success');
+                      showNotification("Supabase sozlamalari muvaffaqiyatli saqlandi!");
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+                  >
+                    Saqlash
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isTestingSupabase || !supabaseUrlInput.trim() || !supabaseKeyInput.trim()}
+                    onClick={async () => {
+                      triggerHaptic('selection');
+                      setIsTestingSupabase(true);
+                      setSupabaseStatusResult(null);
+                      const res = await testSupabaseConnection(supabaseUrlInput, supabaseKeyInput);
+                      setIsTestingSupabase(false);
+                      setSupabaseStatusResult(res);
+                      triggerHaptic(res.success ? 'success' : 'error');
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingSupabase ? 'animate-spin' : ''}`} />
+                    <span>{isTestingSupabase ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSyncingSupabase || !getSupabaseConfig().isConfigured}
+                    onClick={async () => {
+                      triggerHaptic('medium');
+                      setIsSyncingSupabase(true);
+                      const res = await syncAllTestsWithCloud();
+                      setIsSyncingSupabase(false);
+                      showNotification(res.message);
+                      triggerHaptic(res.success ? 'success' : 'error');
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50 ml-auto"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingSupabase ? 'Sinxronlanmoqda...' : 'Hamma testlarni sinxronlash'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Ready SQL Schema Card */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Code className="w-4 h-4 text-sky-500" />
+                    <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                      Supabase SQL Jadval Skripti (Bir martalik o'rnatish)
+                    </h5>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\\n  id TEXT PRIMARY KEY,\\n  title TEXT NOT NULL,\\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\\n  university TEXT NOT NULL,\\n  is_custom_university BOOLEAN DEFAULT false,\\n  is_pending_review BOOLEAN DEFAULT false,\\n  department TEXT NOT NULL,\\n  is_public BOOLEAN DEFAULT true,\\n  password TEXT,\\n  total_questions INTEGER DEFAULT 0,\\n  blocks JSONB NOT NULL,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\\n  author_id TEXT,\\n  author_name TEXT,\\n  is_community_created BOOLEAN DEFAULT true,\\n  author_wallet_balance NUMERIC DEFAULT 0\\n);\\n\\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\\n\\nCREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\\nCREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\\nCREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\\nCREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\\n\\nALTER PUBLICATION supabase_realtime ADD TABLE public.test_packages;`;
+                      navigator.clipboard.writeText(sqlContent);
+                      triggerHaptic('success');
+                      setCopiedSql(true);
+                      setTimeout(() => setCopiedSql(false), 2500);
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                  >
+                    {copiedSql ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-600 font-bold">Nusxalandi!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>SQL Kodini Nusxalash</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="bg-slate-950 text-slate-200 p-3.5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-slate-800">
+                  <pre>{`-- Supabase SQL Editor ga qo'yib, 'RUN' tugmasini bosing:
+CREATE TABLE IF NOT EXISTS public.test_packages (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',
+  university TEXT NOT NULL,
+  is_custom_university BOOLEAN DEFAULT false,
+  is_pending_review BOOLEAN DEFAULT false,
+  department TEXT NOT NULL,
+  is_public BOOLEAN DEFAULT true,
+  password TEXT,
+  total_questions INTEGER DEFAULT 0,
+  blocks JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  author_id TEXT,
+  author_name TEXT,
+  is_community_created BOOLEAN DEFAULT true,
+  author_wallet_balance NUMERIC DEFAULT 0
+);
+
+ALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.test_packages;`}</pre>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-500" />
+                    <span>Qanday ulanadi (2 daqiqalik qo'llanma):</span>
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                    <li><b>supabase.com</b> saytida bepul ro'yxatdan o'tib, yangi loyiha (New Project) yarating.</li>
+                    <li>Loyihangizning <b>SQL Editor</b> bo'limiga kirib, yuqoridagi SQL kodni qo'ying va <b>RUN</b> ni bosing.</li>
+                    <li><b>Project Settings &gt; API</b> bo'limidan URL va anon keyni nusxalab, yuqoridagi maydonlarga joylang va <b>Saqlash</b> ni bosing.</li>
+                    <li>Bo'ldi! Endi kim test tuzsa, bir zumda butun platformadagi hamma talabalarda ko'rinadi.</li>
+                  </ol>
+                </div>
               </div>
             </div>
           )}

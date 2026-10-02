@@ -26,6 +26,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
+import { publishTestToCloud } from '../services/testSyncService';
 
 interface CreateTestModalProps {
   onClose: () => void;
@@ -315,6 +316,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose }) => 
 
     createTestPackage(newPackage);
     triggerHaptic('success');
+
+    // Publish to cloud so all students can immediately see the test
+    publishTestToCloud(newPackage).then((res) => {
+      if (res.success) {
+        console.log('Test published to Supabase:', newPackage.title);
+      }
+    });
+
     onClose();
   };
 

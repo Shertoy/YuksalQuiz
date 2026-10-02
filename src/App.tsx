@@ -18,6 +18,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
+import { fetchCloudTests, setupRealtimeTestSubscription } from './services/testSyncService';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -77,6 +78,14 @@ export const App: React.FC = () => {
         setIsAdminLoginOpen(true);
       }
     }
+
+    // Automatically sync public tests from Supabase cloud
+    fetchCloudTests();
+    const unsubRealtime = setupRealtimeTestSubscription();
+
+    return () => {
+      unsubRealtime?.();
+    };
   }, []);
 
   // Update HTML root class whenever theme changes
