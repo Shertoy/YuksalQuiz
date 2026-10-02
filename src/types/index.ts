@@ -87,6 +87,7 @@ export interface UserProfile {
   referralCount: number;
   subscriptionPlan?: 'none' | '3_months' | '6_months' | '1_year';
   subscriptionExpiry?: string;
+  registeredAt?: string;
   checksum?: string;
 }
 

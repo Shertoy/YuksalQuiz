@@ -225,6 +225,19 @@ export interface Translations {
   allStudentsListTitle: string;
   youBadge: string;
   daysUnit: string;
+  registeredDateLabel: string;
+  totalTimeSpent: string;
+  nextRankGoalText: string;
+  targetRankGoalText: string;
+  top20Badge: string;
+  top20Subtitle: string;
+  studentsRatingTab: string;
+  universitiesRatingTab: string;
+  scopeUzbekistanShort: string;
+  scopeRegionShort: string;
+  scopeOtmShort: string;
+  testsCountSuffix: string;
+  uzbekistanCountry: string;
 
   // Profile
   profileTitle: string;
@@ -488,6 +501,19 @@ export const translations: Record<Language, Translations> = {
     allStudentsListTitle: "Barcha ishtirokchilar (4–20 o'rinlar)",
     youBadge: 'Siz',
     daysUnit: 'kun',
+    registeredDateLabel: "A'zo bo'lgan sana",
+    totalTimeSpent: 'Sarflangan vaqt',
+    nextRankGoalText: "Keyingi o'ringa chiqish uchun {count} ta test qoldi",
+    targetRankGoalText: "{rank}-o'ringa chiqish uchun {count} ta to'g'ri test qoldi",
+    top20Badge: 'TOP 20',
+    top20Subtitle: "Eng yuqori natija ko'rsatgan 20 nafar bilimdon",
+    studentsRatingTab: 'Talabalar reytingi',
+    universitiesRatingTab: 'OTMlar reytingi',
+    scopeUzbekistanShort: 'Respublika',
+    scopeRegionShort: 'Viloyat',
+    scopeOtmShort: 'Mening OTMim',
+    testsCountSuffix: 'ta test',
+    uzbekistanCountry: "O'zbekiston",
 
     // Profile
     profileTitle: 'Talaba Profili',
@@ -750,6 +776,19 @@ export const translations: Record<Language, Translations> = {
     allStudentsListTitle: 'Все участники (4–20 места)',
     youBadge: 'Вы',
     daysUnit: 'дн',
+    registeredDateLabel: 'Дата регистрации',
+    totalTimeSpent: 'Затраченное время',
+    nextRankGoalText: 'Для перехода на следующее место осталось {count} тестов',
+    targetRankGoalText: 'Для выхода на {rank}-е место осталось {count} правильных тестов',
+    top20Badge: 'ТОП 20',
+    top20Subtitle: '20 лучших знатоков с наивысшими результатами',
+    studentsRatingTab: 'Рейтинг студентов',
+    universitiesRatingTab: 'Рейтинг ВУЗов',
+    scopeUzbekistanShort: 'Республика',
+    scopeRegionShort: 'Регион',
+    scopeOtmShort: 'Мой ВУЗ',
+    testsCountSuffix: 'тестов',
+    uzbekistanCountry: 'Узбекистан',
 
     // Profile
     profileTitle: 'Профиль студента',
@@ -1012,6 +1051,19 @@ export const translations: Record<Language, Translations> = {
     allStudentsListTitle: 'All Participants (4–20 Place)',
     youBadge: 'You',
     daysUnit: 'd',
+    registeredDateLabel: 'Joined date',
+    totalTimeSpent: 'Time spent',
+    nextRankGoalText: '{count} tests remaining to reach next rank',
+    targetRankGoalText: '{count} correct tests remaining to reach rank {rank}',
+    top20Badge: 'TOP 20',
+    top20Subtitle: 'Top 20 achievers with the highest scores',
+    studentsRatingTab: 'Students',
+    universitiesRatingTab: 'Universities',
+    scopeUzbekistanShort: 'Uzbekistan',
+    scopeRegionShort: 'Region',
+    scopeOtmShort: 'My University',
+    testsCountSuffix: 'tests',
+    uzbekistanCountry: 'Uzbekistan',
 
     // Profile
     profileTitle: 'Student Profile',

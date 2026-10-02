@@ -1,8 +1,9 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
-import { TestPackage } from '../types';
+import { TestPackage, LeaderboardUser, UserProfile } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
+import { UserRatingStats } from '../utils/ratingUtils';
 
 /**
  * Maps Supabase DB row to application TestPackage model
@@ -567,3 +568,80 @@ export function setupRealtimeTestSubscription(
     return null;
   }
 }
+
+/**
+ * Pushes real registered user rating progress to Supabase leaderboard.
+ */
+export async function syncUserProfileToCloud(
+  profile: UserProfile,
+  stats: UserRatingStats
+): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase || !profile || !profile.isRegistered) return;
+
+  try {
+    const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
+    const payload = {
+      id: profile.id,
+      name: fullName,
+      region: profile.region,
+      university: profile.university || 'TATU',
+      avatar: profile.avatar || '/avatars/avatar_1.png',
+      academic_year: profile.academicYear || 1,
+      coins: profile.coins || 0,
+      tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+      correct_answers_count: stats.totalCorrectAnswers,
+      score_points: stats.scorePoints,
+      total_questions_attempted: stats.totalQuestionsAttempted,
+      accuracy_percentage: stats.accuracyPercentage,
+      best_time: stats.bestTimeFormatted,
+      best_time_seconds: stats.bestTimeSeconds,
+      registered_at: profile.registeredAt || profile.lastLoginDate || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    await supabase.from('leaderboard_users').upsert(payload, { onConflict: 'id' });
+  } catch {
+    // Non-blocking fallback if leaderboard_users table is not yet migrated
+  }
+}
+
+/**
+ * Fetches real active users from Supabase cloud leaderboard.
+ */
+export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard_users')
+      .select('*')
+      .order('score_points', { ascending: false })
+      .limit(50);
+
+    if (error || !data) return [];
+
+    return data.map((row: any) => ({
+      id: row.id,
+      name: decodeHtmlEntities(row.name || 'Talaba'),
+      region: row.region || 'Toshkent shahri',
+      university: decodeHtmlEntities(row.university || ''),
+      avatar: row.avatar || '/avatars/avatar_1.png',
+      academicYear: (Math.min(Math.max(Number(row.academic_year) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
+      coins: Number(row.coins) || 0,
+      testsCompleted: Number(row.tests_completed) || 0,
+      correctAnswersCount: Number(row.correct_answers_count) || 0,
+      scorePoints: Number(row.score_points) || 0,
+      totalQuestionsAttempted: Number(row.total_questions_attempted) || 0,
+      accuracyPercentage: Number(row.accuracy_percentage) || 80,
+      bestTime: row.best_time || '02:45',
+      bestTimeSeconds: Number(row.best_time_seconds) || 165,
+      weeklyActiveHours: 12.0,
+      isCurrentUser: false,
+    }));
+  } catch {
+    return [];
+  }
+}
+

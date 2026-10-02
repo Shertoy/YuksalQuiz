@@ -29,6 +29,7 @@ import { TestPackage } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
+import { UserRankProgressCard } from './UserRankProgressCard';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -295,6 +296,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {dailyClaimedMessage}
         </div>
       )}
+
+      {/* User Personal Rank Progress Card */}
+      <UserRankProgressCard />
 
       {/* 100% Free Access Platform Banner */}
       <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-500/15 dark:to-indigo-500/15 border border-emerald-500/25 dark:border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between transition-all">

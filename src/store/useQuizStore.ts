@@ -221,6 +221,7 @@ const DEFAULT_PROFILE: UserProfile = {
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
+  registeredAt: new Date().toISOString().split('T')[0],
 };
 
 // Initial signature
@@ -645,6 +646,7 @@ export const useQuizStore = create<QuizState>()(
           coins: current.coins || 0,
           streak: current.streak || 1,
           lastLoginDate: today,
+          registeredAt: current.registeredAt || today,
           voucherBalance: 20000, // 20 000 UZS starting voucher guaranteed
         };
 
@@ -670,6 +672,17 @@ export const useQuizStore = create<QuizState>()(
           unit: "so'm",
           isPositive: true,
         });
+
+        setTimeout(async () => {
+          try {
+            const { syncUserProfileToCloud } = await import('../services/testSyncService');
+            const { calculateUserRatingStats } = await import('../utils/ratingUtils');
+            const stats = calculateUserRatingStats(get().testAttempts || []);
+            await syncUserProfileToCloud(newProfile, stats);
+          } catch {
+            // Non-critical background sync
+          }
+        }, 100);
       },
 
       checkDailyStreak: () => {
@@ -969,6 +982,19 @@ export const useQuizStore = create<QuizState>()(
           mistakes: newMistakes,
           profile: updatedProfile,
         });
+
+        // Trigger background cloud rating sync for real user
+        setTimeout(async () => {
+          try {
+            const { syncUserProfileToCloud } = await import('../services/testSyncService');
+            const { calculateUserRatingStats } = await import('../utils/ratingUtils');
+            const newAttempts = [attempt, ...testAttempts];
+            const stats = calculateUserRatingStats(newAttempts);
+            await syncUserProfileToCloud(updatedProfile, stats);
+          } catch {
+            // Non-critical background sync
+          }
+        }, 100);
 
         return { coinsEarned, bonusCoins, unlockedNext };
       },

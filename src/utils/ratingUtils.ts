@@ -8,6 +8,8 @@ export interface UserRatingStats {
   uniqueBlocksCount: number;       // Number of unique blocks completed
   bestTimeSeconds: number;         // Fastest completion time in seconds
   bestTimeFormatted: string;       // Formatted mm:ss
+  totalTimeSpentSeconds: number;   // Cumulative time spent solving tests in seconds
+  totalTimeSpentFormatted: string; // Formatted mm:ss or hh:mm:ss
 }
 
 /**
@@ -31,6 +33,8 @@ export function calculateUserRatingStats(testAttempts: TestAttempt[]): UserRatin
       uniqueBlocksCount: 0,
       bestTimeSeconds: 165,
       bestTimeFormatted: '02:45',
+      totalTimeSpentSeconds: 0,
+      totalTimeSpentFormatted: '00:00',
     };
   }
 
@@ -71,6 +75,15 @@ export function calculateUserRatingStats(testAttempts: TestAttempt[]): UserRatin
     .toString()
     .padStart(2, '0')}`;
 
+  const totalTimeSpentSeconds = testAttempts.reduce((sum, a) => sum + (a.timeSpentSeconds || 0), 0);
+  const totalHours = Math.floor(totalTimeSpentSeconds / 3600);
+  const totalMins = Math.floor((totalTimeSpentSeconds % 3600) / 60);
+  const totalSecs = totalTimeSpentSeconds % 60;
+  const totalTimeSpentFormatted =
+    totalHours > 0
+      ? `${totalHours.toString().padStart(2, '0')}:${totalMins.toString().padStart(2, '0')}:${totalSecs.toString().padStart(2, '0')}`
+      : `${totalMins.toString().padStart(2, '0')}:${totalSecs.toString().padStart(2, '0')}`;
+
   return {
     scorePoints,
     totalCorrectAnswers,
@@ -79,5 +92,7 @@ export function calculateUserRatingStats(testAttempts: TestAttempt[]): UserRatin
     uniqueBlocksCount: latestAttempts.length,
     bestTimeSeconds,
     bestTimeFormatted,
+    totalTimeSpentSeconds,
+    totalTimeSpentFormatted: totalTimeSpentSeconds > 0 ? totalTimeSpentFormatted : bestTimeFormatted,
   };
 }
