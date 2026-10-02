@@ -260,7 +260,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
                     {pkg.isCommunityCreated && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300">
-                        +100 so'm muallifga
+                        Hamjamiyat testi
                       </span>
                     )}
                   </div>
@@ -281,7 +281,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
               </div>
 
               {/* Sequential Test Blocks Selection */}
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
                 <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
                   Test bloklari:
                 </p>
@@ -295,7 +295,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                       <button
                         key={block.id}
                         onClick={() => handleTestClick(pkg, block)}
-                        className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                        className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
                           isLocked
                             ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
                             : isPassed

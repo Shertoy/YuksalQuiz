@@ -174,7 +174,12 @@ export const App: React.FC = () => {
               />
             )}
             {activeTab === 'results' && <ResultsAndMistakes />}
-            {activeTab === 'wallet' && <WalletView />}
+            {activeTab === 'wallet' && (
+              <HomeDashboard
+                onStartTest={handleStartTest}
+                onOpenCreateModal={() => setIsCreateModalOpen(true)}
+              />
+            )}
             {activeTab === 'leaderboard' && <Leaderboard />}
             {activeTab === 'profile' && (
               <ProfileView onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />

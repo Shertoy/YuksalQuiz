@@ -220,7 +220,7 @@ export const useQuizStore = create<QuizState>()(
         {
           id: 'ann-1',
           title: 'YuksalQuiz v1.0 ga xush kelibsiz! 🚀',
-          message: 'HEMIS va fan testlariga tayyorlaning, do\'stlaringizni taklif qilib har biridan 1 500 so\'m bonus oling hamda 20 000 so\'mlik vaucherdan foydalaning!',
+          message: 'HEMIS va fan testlariga tayyorlaning! Barcha testlar va imtihon mashqlari platformada to\'liq bepul va ochiq taqdim etiladi.',
           date: '2026-09-27',
           time: '10:00',
           tag: 'yangilik',

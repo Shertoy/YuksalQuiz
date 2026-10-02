@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
-import { ReferralShareCard } from './ReferralShareCard';
 import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 
@@ -142,37 +141,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
           </div>
         </div>
 
-        {/* Wallet & Author Earnings Highlight */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between">
+        {/* 100% Free Learning Mode Status */}
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-left">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <Coins className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                {profile.voucherBalance > 0
-                  ? `Vaucher: ${profile.voucherBalance.toLocaleString('uz-UZ')} so'm`
-                  : `Hamyon balansi: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm`}
+                100% Bepul Ta'lim Rejimi
               </div>
-              <div className="text-[10px] text-slate-500">
-                {profile.voucherBalance > 0
-                  ? `Hamyon: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`
-                  : `Referal: ${(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`}
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                Barcha imtihonlar va testlar cheklovlarsiz ochiq
               </div>
             </div>
           </div>
-
-          <button
-            onClick={() => setActiveTab('wallet')}
-            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Hamyon &rarr;
-          </button>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            Faol
+          </span>
         </div>
       </div>
-
-      {/* Referral Share System */}
-      <ReferralShareCard />
 
       {/* My Results & Mistakes Analytics Card */}
       <div

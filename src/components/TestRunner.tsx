@@ -262,7 +262,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                   } ${cardStyle}`}
                 >
                   <span
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${badgeStyle}`}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${badgeStyle}`}
                   >
                     {letters[optIdx] || optIdx + 1}
                   </span>
@@ -275,7 +275,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
 
         {/* Optional Skip Action (Strictly forward progression) */}
         {currentAnswer === undefined && (
-          <div className="flex justify-end pt-5 mt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end pt-4 mt-4 border-t border-slate-200/70 dark:border-slate-800/70">
             <button
               onClick={() => {
                 triggerHaptic('light');
@@ -285,7 +285,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                   finishTestWithAnswers(selectedAnswers, totalSecondsSpent);
                 }
               }}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors px-3 py-2 rounded-xl"
+              className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 flex items-center gap-1.5 transition-all px-4 py-2.5 rounded-xl active:scale-95 shadow-sm"
             >
               <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
               <ChevronRight className="w-3.5 h-3.5" />

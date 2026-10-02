@@ -220,61 +220,39 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* Action Voucher Card - Only shown if voucher > 0, no active subscription, and not dismissed */}
-      {profile.voucherBalance > 0 &&
-        (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') &&
-        !isVoucherDismissed && (
-          <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl p-4 shadow-xl shadow-indigo-950/20 space-y-3 relative overflow-hidden border border-indigo-700/50 animate-in fade-in">
-            <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
-
-            <div className="flex items-start justify-between relative z-10">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-emerald-500/25 shrink-0 mt-0.5">
-                  <Ticket className="w-5 h-5 text-white" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-extrabold text-white">
-                      20 000 so'm vaucheringiz faol!
-                    </h3>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 uppercase">
-                      Faol
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
-                    Istalgan obuna rejasini tanlang (3 oy, 6 oy yoki 1 yil) va 20 000 so'm vaucher chegirmasidan foydalaning.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('light');
-                  setIsVoucherDismissed(true);
-                }}
-                className="p-1 rounded-lg text-indigo-300 hover:text-white hover:bg-white/10 transition-colors ml-2 shrink-0"
-                title="Yopish"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1 relative z-10">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('medium');
-                  setActiveTab('wallet');
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-              >
-                <span>{t.activateOfferBtn}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+      {/* 100% Free Access Platform Banner */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-500/15 dark:to-indigo-500/15 border border-emerald-500/25 dark:border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between transition-all">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-        )}
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                Barcha testlar 100% bepul!
+              </h3>
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                Cheklovlarsiz
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+              Fanlar va imtihon bloklari bo'yicha mashqlarni erkin bajaring
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            setActiveTab('tests');
+          }}
+          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1 shrink-0 transition-transform active:scale-95"
+        >
+          <span>Mashq qilish</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
@@ -283,15 +261,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             triggerHaptic('light');
             setActiveTab('tests');
           }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-400 text-left transition-all group"
+          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-indigo-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
         >
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <BookOpen className="w-5 h-5" />
           </div>
-          <h4 className="font-bold text-xs text-slate-900 dark:text-white">{t.navTests}</h4>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            5 ta kategoriya bo'yicha mashq
-          </p>
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.navTests}</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+              5 ta kategoriya bo'yicha mashq
+            </p>
+          </div>
         </button>
 
         <button
@@ -299,15 +279,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             triggerHaptic('light');
             onOpenCreateModal();
           }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-400 text-left transition-all group"
+          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-indigo-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
             <PlusCircle className="w-5 h-5" />
           </div>
-          <h4 className="font-bold text-xs text-slate-900 dark:text-white">{t.createTestBtn}</h4>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Bulk parser (==== va ++++)
-          </p>
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.createTestBtn}</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+              Bulk parser (==== va ++++)
+            </p>
+          </div>
         </button>
       </div>
 

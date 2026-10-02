@@ -234,13 +234,12 @@ export const BottomNav: React.FC = () => {
   const navItems: NavItem[] = [
     { id: 'home', labelKey: 'navHome', icon: ModernHomeIcon },
     { id: 'tests', labelKey: 'navTests', icon: ModernTestsIcon },
-    { id: 'wallet', labelKey: 'navWallet', icon: ModernWalletIcon },
     { id: 'leaderboard', labelKey: 'navRating', icon: ModernRatingIcon },
     { id: 'profile', labelKey: 'navProfile', icon: ModernProfileIcon },
   ];
 
-  // Map sub-tabs like 'results' to 'profile'
-  const resolvedTab = activeTab === 'results' ? 'profile' : activeTab;
+  // Map sub-tabs like 'results' or 'wallet' to 'profile' or 'home'
+  const resolvedTab = activeTab === 'results' ? 'profile' : activeTab === 'wallet' ? 'home' : activeTab;
   const activeIndex = Math.max(0, navItems.findIndex((item) => item.id === resolvedTab));
 
   return (
