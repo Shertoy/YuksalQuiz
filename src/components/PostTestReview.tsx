@@ -57,7 +57,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-20 animate-in fade-in">
+    <div className="space-y-4 pb-20 select-none">
       {/* Result Summary Card */}
       <div
         className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-xl ${
@@ -232,7 +232,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                   className={`p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all ${style}`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-slate-200 dark:border-slate-600">
+                    <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-slate-300 dark:border-slate-600">
                       {['A', 'B', 'C', 'D'][optIdx]}
                     </span>
                     <span>{decodeHtmlEntities(opt)}</span>

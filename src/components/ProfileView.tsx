@@ -66,7 +66,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
   };
 
   return (
-    <div className="space-y-4 pb-20 animate-in fade-in">
+    <div className="space-y-4 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -239,7 +239,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin }) =>
 
       {/* Edit Form */}
       {isEditing && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm animate-in fade-in">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
           <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-3">
             Ma'lumotlarni o'zgartirish
           </h4>

@@ -289,7 +289,7 @@ export const Leaderboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-28 animate-in fade-in select-none">
+    <div className="space-y-4 pb-28 select-none">
       {/* Header */}
       <div>
         <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">

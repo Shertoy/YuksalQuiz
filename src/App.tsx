@@ -17,7 +17,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { TestPackage, TestAttempt } from './types';
-import { initTelegramApp, getTelegramWebApp } from './utils/telegram';
+import { initTelegramApp, getTelegramWebApp, syncTelegramTheme } from './utils/telegram';
 import {
   fetchCloudTests,
   fetchCloudUniversities,
@@ -98,9 +98,12 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
+    syncTelegramTheme(theme);
   }, [theme]);
 
   // Handlers for test flow
@@ -140,7 +143,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen max-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 select-none">
+    <div className="h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none">
       {/* Real-time Offline Connectivity Monitor & Banner */}
       <OfflineStatusBanner />
 
@@ -153,8 +156,10 @@ export const App: React.FC = () => {
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
       />
 
-      {/* Main Scrollable Container with Safe pb-32 to prevent bottom navigation overlap */}
-      <main className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 pb-32 relative scroll-smooth">
+      {/* Main Scrollable Container with Dynamic Safe Padding */}
+      <main className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative ${
+        activeTestPkg ? 'pb-4' : 'pb-32 scroll-smooth'
+      }`}>
         {/* Test Engine View */}
         {activeTestPkg ? (
           <TestRunner
@@ -190,12 +195,7 @@ export const App: React.FC = () => {
               />
             )}
             {activeTab === 'results' && <ResultsAndMistakes />}
-            {activeTab === 'wallet' && (
-              <HomeDashboard
-                onStartTest={handleStartTest}
-                onOpenCreateModal={() => setIsCreateModalOpen(true)}
-              />
-            )}
+            {activeTab === 'wallet' && <WalletView />}
             {activeTab === 'leaderboard' && <Leaderboard />}
             {activeTab === 'profile' && (
               <ProfileView onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />

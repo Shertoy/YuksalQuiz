@@ -58,6 +58,8 @@ interface TelegramWebApp {
     notificationOccurred(type: 'error' | 'success' | 'warning'): void;
     selectionChanged(): void;
   };
+  setHeaderColor?(color: string): void;
+  setBackgroundColor?(color: string): void;
   ready(): void;
   expand(): void;
   close(): void;
@@ -87,6 +89,24 @@ export function isTelegramEnvironment(): boolean {
   return Boolean(tg && tg.initData);
 }
 
+export function syncTelegramTheme(theme: 'dark' | 'light'): void {
+  const tg = getTelegramWebApp();
+  if (tg) {
+    const isDark = theme === 'dark';
+    const hex = isDark ? '#020617' : '#f8fafc';
+    try {
+      if (typeof tg.setBackgroundColor === 'function') {
+        tg.setBackgroundColor(hex);
+      }
+      if (typeof tg.setHeaderColor === 'function') {
+        tg.setHeaderColor(hex);
+      }
+    } catch (e) {
+      console.debug('Telegram theme sync error:', e);
+    }
+  }
+}
+
 export function initTelegramApp(): void {
   const tg = getTelegramWebApp();
   if (tg) {
@@ -94,6 +114,7 @@ export function initTelegramApp(): void {
       tg.ready();
       tg.expand();
       tg.enableClosingConfirmation();
+      syncTelegramTheme('dark');
     } catch (e) {
       console.warn('Telegram WebApp init notice:', e);
     }

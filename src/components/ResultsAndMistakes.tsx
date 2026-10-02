@@ -146,7 +146,6 @@ export const ResultsAndMistakes: React.FC = () => {
     if (isCorrect) {
       soundFX.playCorrect();
       triggerHaptic('success');
-      confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
       solveMistake(currentItem.question.id);
     } else {
       soundFX.playWrong();
@@ -187,7 +186,7 @@ export const ResultsAndMistakes: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-28 animate-in fade-in select-none">
+    <div className="space-y-4 pb-28 select-none">
       {/* Header */}
       <div>
         <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -362,7 +361,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
       {/* Mistakes Practice Modal */}
       {practiceSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800">
             {!practiceSession.isFinished ? (
               <div>

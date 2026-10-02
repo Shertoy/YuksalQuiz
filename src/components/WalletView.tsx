@@ -156,7 +156,7 @@ export const WalletView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-4 animate-in fade-in">
+    <div className="space-y-4 pb-4">
       {/* Mobile-Adapted Header */}
       <div className="flex items-center justify-between px-1">
         <div>

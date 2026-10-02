@@ -196,7 +196,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
   };
 
   return (
-    <div className="space-y-4 pb-20 animate-in fade-in">
+    <div className="space-y-4 pb-20">
       {/* Header & Create Test Button */}
       <div className="flex items-center justify-between">
         <div>
@@ -533,7 +533,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
       {/* Lock Explanation Modal */}
       {lockExplanation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
               <Lock className="w-7 h-7" />
@@ -559,7 +559,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
       {/* Private Test Password Modal: prompts exact text required */}
       {passwordModalPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -622,8 +622,8 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
       {/* Custom In-App Delete Confirmation Modal - 100% reliable across Telegram & Web */}
       {deletingPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
               <Trash2 className="w-7 h-7" />
             </div>

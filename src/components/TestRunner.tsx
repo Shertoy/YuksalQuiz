@@ -3,7 +3,6 @@ import { TestPackage, UserAnswerRecord, TestAttempt } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Clock, CheckCircle2, X, ChevronRight } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
 
@@ -128,13 +127,6 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       if (isCorrect) {
         try { soundFX.playCorrect(); } catch {}
         try { triggerHaptic('success'); } catch {}
-        try {
-          confetti({
-            particleCount: 20,
-            spread: 50,
-            origin: { y: 0.75 },
-          });
-        } catch {}
       } else {
         try { soundFX.playWrong(); } catch {}
         try { triggerHaptic('warning'); } catch {}
@@ -167,7 +159,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   const progressPercentage = Math.round(((currentIndex + 1) / questions.length) * 100);
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-6rem)] pb-6 animate-in fade-in select-none">
+    <div className="flex flex-col flex-1 pb-2 select-none">
       {/* Test Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm mb-3">
         <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -230,7 +222,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             {t.questionNumber} #{currentIndex + 1}
           </div>
 
-          <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-relaxed mb-6">
+          <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-relaxed mb-5 min-h-[44px]">
             {decodeHtmlEntities(currentQ.text)}
           </h3>
 
@@ -242,34 +234,35 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
               const isCorrectAnswer = currentQ.correctOptionIndex === optIdx;
               const isShaking = wrongShakeIndex === optIdx;
 
-              // Interactive styling during feedback
-              let cardStyle = 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700';
-              let badgeStyle = 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600';
+              // Interactive styling during feedback (100% solid, opaque, no white bleed)
+              let cardStyle = 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600';
+              let badgeStyle = 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
 
               if (currentAnswer !== undefined) {
                 if (isSelected && isCorrectAnswer) {
                   // User selected correct answer
-                  cardStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold shadow-sm';
+                  cardStyle = 'bg-emerald-100 dark:bg-emerald-950 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold shadow-sm';
                   badgeStyle = 'bg-emerald-600 text-white border-emerald-600';
                 } else if (isSelected && !isCorrectAnswer) {
                   // User selected wrong answer
-                  cardStyle = 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-950 dark:text-rose-100 font-bold';
+                  cardStyle = 'bg-rose-100 dark:bg-rose-950 border-rose-500 text-rose-950 dark:text-rose-100 font-bold';
                   badgeStyle = 'bg-rose-600 text-white border-rose-600';
                 } else if (!isSelected && isCorrectAnswer) {
                   // Reveal correct answer when user was wrong
-                  cardStyle = 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-400 text-emerald-900 dark:text-emerald-200 border-dashed';
-                  badgeStyle = 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400';
+                  cardStyle = 'bg-emerald-50 dark:bg-emerald-950/90 border-emerald-400 text-emerald-900 dark:text-emerald-200 border-dashed';
+                  badgeStyle = 'bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border-emerald-400';
                 } else {
-                  cardStyle = 'opacity-40 bg-slate-50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 text-slate-400';
+                  cardStyle = 'opacity-40 bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500';
+                  badgeStyle = 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800';
                 }
               }
 
               return (
                 <button
-                  key={optIdx}
+                  key={`q${currentIndex}-opt${optIdx}`}
                   disabled={isTransitioning || currentAnswer !== undefined}
                   onClick={() => handleSelectOption(optIdx)}
-                  className={`w-full p-3.5 rounded-2xl border text-left text-xs font-semibold flex items-center gap-3 transition-all duration-150 active:scale-[0.99] ${
+                  className={`w-full p-3.5 rounded-2xl border text-left text-xs font-semibold flex items-center gap-3 transition-colors duration-100 touch-manipulation ${
                     isShaking ? 'animate-wrong-shake' : ''
                   } ${cardStyle}`}
                 >
@@ -285,25 +278,26 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           </div>
         </div>
 
-        {/* Optional Skip Action (Strictly forward progression) */}
-        {currentAnswer === undefined && (
-          <div className="flex justify-end pt-4 mt-4 border-t border-slate-200/70 dark:border-slate-800/70">
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                if (currentIndex < questions.length - 1) {
-                  setCurrentIndex((idx) => idx + 1);
-                } else {
-                  finishTestWithAnswers(selectedAnswers, totalSecondsSpent);
-                }
-              }}
-              className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 flex items-center gap-1.5 transition-all px-4 py-2.5 rounded-xl active:scale-95 shadow-sm"
-            >
-              <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+        {/* Fixed Height Bottom Skip Bar - Completely eliminates layout shifting */}
+        <div className="flex justify-end pt-3 mt-4 border-t border-slate-200/60 dark:border-slate-800/60 min-h-[48px] items-center">
+          <button
+            disabled={isTransitioning || currentAnswer !== undefined}
+            onClick={() => {
+              triggerHaptic('light');
+              if (currentIndex < questions.length - 1) {
+                setCurrentIndex((idx) => idx + 1);
+              } else {
+                finishTestWithAnswers(selectedAnswers, totalSecondsSpent);
+              }
+            }}
+            className={`text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 flex items-center gap-1.5 px-4 py-2 rounded-xl active:scale-95 shadow-sm transition-opacity ${
+              currentAnswer !== undefined ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
+          >
+            <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Confirm Exit Modal */}
