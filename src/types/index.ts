@@ -326,6 +326,7 @@ export interface LeaderboardUser {
   name: string;
   region: Region;
   university: string;
+  gender?: Gender;
   avatar: string;
   academicYear: AcademicYear;
   coins: number;
@@ -339,6 +340,7 @@ export interface LeaderboardUser {
   totalTimeSpentFormatted?: string;
   accuracyPercentage?: number;
   totalQuestionsAttempted?: number;
+  registeredAt?: string;
   isCurrentUser?: boolean;
 }
 
@@ -384,6 +386,7 @@ export interface Announcement {
   id: string;
   title: string;
   message: string;
+  link?: string;
   date: string;
   time?: string;
   tag?: 'yangilik' | 'eslatma' | 'muhim';

@@ -1,5 +1,5 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
-import { TestPackage, LeaderboardUser, UserProfile } from '../types';
+import { TestPackage, LeaderboardUser, UserProfile, Announcement } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
@@ -570,6 +570,16 @@ export function setupRealtimeTestSubscription(
             useQuizStore.getState().deleteTestPackage(payload.old.id);
           }
           if (
+            payload?.new?.category === 'Announcement' ||
+            payload?.old?.category === 'Announcement' ||
+            payload?.new?.id?.startsWith('ann_') ||
+            payload?.old?.id?.startsWith('ann_')
+          ) {
+            await fetchCloudAnnouncements();
+            onUpdate?.();
+            return;
+          }
+          if (
             payload?.new?.category === 'LeaderboardUser' ||
             payload?.old?.category === 'LeaderboardUser' ||
             payload?.new?.id?.startsWith('lead_') ||
@@ -668,6 +678,8 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     region: row.region || row.department || 'Toshkent shahri',
     university: decodeHtmlEntities(row.university || ''),
     avatar: row.avatar || '/avatars/avatar_1.png',
+    gender: row.gender || (row.avatar === '/avatars/avatar_1.png' || row.avatar === '/avatars/avatar_2.png' ? 'female' : 'male'),
+    registeredAt: row.registered_at || row.registeredAt || '2026-10-03',
     academicYear: (Math.min(Math.max(Number(row.academic_year ?? row.academicYear) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
     coins: Number(row.coins) || 0,
     testsCompleted: Number(row.tests_completed ?? row.testsCompleted) || (score > 0 ? Math.max(1, Math.ceil(score / 100)) : 0),
@@ -706,6 +718,7 @@ export async function syncUserProfileToCloud(
   const userRatingObject = {
     id: profile.id,
     name: fullName,
+    gender: profile.gender || 'male',
     region,
     university,
     avatar: profile.avatar || '/avatars/avatar_1.png',
@@ -914,4 +927,111 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
 
   return allList;
 }
+
+/**
+ * -------------------------------------------------------------
+ * Cloud Announcements Sync Services
+ * -------------------------------------------------------------
+ */
+
+/**
+ * Fetches all announcements stored in Supabase cloud database
+ */
+export async function fetchCloudAnnouncements(): Promise<Announcement[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('test_packages')
+      .select('*')
+      .eq('category', 'Announcement')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+
+    const cloudAnnouncements: Announcement[] = [];
+    for (const row of data) {
+      const annBlock = Array.isArray(row.blocks) ? row.blocks[0] : null;
+      if (annBlock && (annBlock.title || annBlock.message)) {
+        cloudAnnouncements.push({
+          id: String(row.id).replace(/^ann_/, ''),
+          title: decodeHtmlEntities(annBlock.title || row.title || 'Bildirishnoma'),
+          message: decodeHtmlEntities(annBlock.message || ''),
+          link: annBlock.link || undefined,
+          date: annBlock.date || row.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          time: annBlock.time || undefined,
+          tag: annBlock.tag || 'yangilik',
+          targetType: annBlock.targetType || (row.department as any) || 'all',
+          targetValue: annBlock.targetValue || row.university || '',
+          targetLabel: annBlock.targetLabel || 'Barchaga',
+        });
+      }
+    }
+
+    if (cloudAnnouncements.length > 0) {
+      useQuizStore.setState((state) => {
+        const existingMap = new Map<string, Announcement>();
+        // Keep existing
+        for (const a of state.announcements || []) {
+          existingMap.set(a.id, a);
+        }
+        // Merge cloud ones
+        for (const a of cloudAnnouncements) {
+          existingMap.set(a.id, a);
+        }
+        return { announcements: Array.from(existingMap.values()) };
+      });
+    }
+
+    return cloudAnnouncements;
+  } catch (err) {
+    console.warn('Error fetching cloud announcements:', err);
+    return [];
+  }
+}
+
+/**
+ * Uploads an announcement to Supabase cloud
+ */
+export async function publishAnnouncementToCloud(ann: Announcement): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase || !ann || !ann.id) return;
+
+  const annRow = {
+    id: `ann_${ann.id}`,
+    title: ann.title,
+    category: 'Announcement',
+    university: ann.targetValue || '',
+    department: ann.targetType || 'all',
+    author_id: 'admin',
+    author_name: 'Admin',
+    total_questions: 0,
+    blocks: [ann],
+    is_public: true,
+    is_community_created: false,
+  };
+
+  try {
+    await supabase.from('test_packages').upsert(annRow, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('publishAnnouncementToCloud error:', err);
+  }
+}
+
+/**
+ * Deletes an announcement from Supabase cloud
+ */
+export async function deleteAnnouncementFromCloud(annId: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase || !annId) return;
+
+  try {
+    const cleanId = annId.startsWith('ann_') ? annId : `ann_${annId}`;
+    await supabase.from('test_packages').delete().eq('id', cleanId);
+  } catch (err) {
+    console.warn('deleteAnnouncementFromCloud error:', err);
+  }
+}
+
 

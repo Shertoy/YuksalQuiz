@@ -89,7 +89,57 @@ export default async function handler(req: any, res: any) {
   }
 
   const update = req.body;
-  if (!update || !update.message) {
+  if (!update) {
+    return res.status(200).json({ ok: true });
+  }
+
+  // Handle direct Admin Broadcast requests
+  if (update.action === 'send_broadcast' || update.action === 'broadcast') {
+    const { chatIds, title, message, link } = update;
+    if (!BOT_TOKEN) {
+      return res.status(400).json({ ok: false, error: 'TELEGRAM_BOT_TOKEN missing on server' });
+    }
+    if (!Array.isArray(chatIds) || chatIds.length === 0) {
+      return res.status(400).json({ ok: false, error: 'chatIds array required' });
+    }
+
+    const header = title ? `📢 <b>${title}</b>\n\n` : '';
+    const body = `${header}${message || ''}`;
+    const inline_keyboard: any[] = [];
+    if (link) {
+      inline_keyboard.push([{ text: '🔗 Havolani ochish', url: link }]);
+    }
+    inline_keyboard.push([{ text: '🚀 Testni boshlash (Mini App)', web_app: { url: WEBAPP_URL } }]);
+
+    const results = { sent: 0, failed: 0 };
+    for (const id of chatIds) {
+      const clean = String(id).replace(/^tg_/, '').replace(/^user_/, '').trim();
+      if (!/^\d+$/.test(clean)) {
+        results.failed++;
+        continue;
+      }
+      try {
+        const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: clean,
+            text: body,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard },
+          }),
+        });
+        const d = await resp.json();
+        if (d.ok) results.sent++;
+        else results.failed++;
+      } catch {
+        results.failed++;
+      }
+    }
+    return res.status(200).json({ ok: true, results });
+  }
+
+  if (!update.message) {
     return res.status(200).json({ ok: true });
   }
 

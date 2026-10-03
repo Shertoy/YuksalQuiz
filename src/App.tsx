@@ -22,6 +22,7 @@ import {
   fetchCloudTests,
   fetchCloudUniversities,
   fetchCloudLeaderboard,
+  fetchCloudAnnouncements,
   setupRealtimeTestSubscription,
 } from './services/testSyncService';
 import { LeaderboardUser } from './types';
@@ -96,9 +97,10 @@ export const App: React.FC = () => {
       }
     }
 
-    // Automatically sync public tests, universities, and leaderboard from Supabase cloud
+    // Automatically sync public tests, universities, leaderboard and announcements from Supabase cloud
     fetchCloudTests();
     fetchCloudUniversities();
+    fetchCloudAnnouncements();
     fetchCloudLeaderboard()
       .then((remoteUsers) => {
         if (remoteUsers && remoteUsers.length > 0) {

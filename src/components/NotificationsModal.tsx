@@ -13,6 +13,7 @@ import {
   Building2,
   MapPin,
   User,
+  ExternalLink,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser, formatDateTime } from '../utils/announcements';
@@ -183,6 +184,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {item.message}
                     </p>
+                    {item.link && (
+                      <div className="pt-2">
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          <span>Havolani ochish</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {/* User Discussion / Thread (if any) */}

@@ -212,6 +212,131 @@ export function resetAdminRateLimit(): void {
 }
 
 /**
+ * -------------------------------------------------------------
+ * Admin Telegram ID Whitelist & Access Control Security
+ * -------------------------------------------------------------
+ */
+const ADMIN_WHITELIST_STORAGE_KEY = 'yuksal_admin_whitelist_v1';
+const ADMIN_SESSION_KEY = 'yuksal_admin_authenticated_session';
+
+// Default authorized Telegram IDs (Owner, Devs, Administrators)
+export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
+  '6219808382', // Alisher Alijonov / Owner
+  '123456789',  // Dev Test Admin
+  '987654321',  // System Admin
+];
+
+export function cleanTelegramId(rawId?: string | number | null): string {
+  if (rawId === undefined || rawId === null) return '';
+  return String(rawId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+}
+
+/**
+ * Returns all currently authorized Admin Telegram IDs (Env + Storage + Defaults)
+ */
+export function getAuthorizedAdminTelegramIds(): string[] {
+  const idsSet = new Set<string>();
+
+  // 1. Defaults
+  for (const id of DEFAULT_ADMIN_TELEGRAM_IDS) {
+    const cleaned = cleanTelegramId(id);
+    if (cleaned) idsSet.add(cleaned);
+  }
+
+  // 2. Vite Environment variable (e.g. VITE_ADMIN_TELEGRAM_IDS="6219808382,123456789")
+  try {
+    const envIds = (import.meta.env?.VITE_ADMIN_TELEGRAM_IDS as string) || '';
+    if (envIds) {
+      envIds.split(',').forEach((item) => {
+        const cleaned = cleanTelegramId(item);
+        if (cleaned) idsSet.add(cleaned);
+      });
+    }
+  } catch {}
+
+  // 3. Stored Custom Whitelist in localStorage
+  try {
+    const raw = localStorage.getItem(ADMIN_WHITELIST_STORAGE_KEY);
+    if (raw) {
+      const parsed: string[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          const cleaned = cleanTelegramId(item);
+          if (cleaned) idsSet.add(cleaned);
+        });
+      }
+    }
+  } catch {}
+
+  return Array.from(idsSet);
+}
+
+/**
+ * Checks whether the given Telegram ID or user ID is authorized as an Admin.
+ */
+export function isTelegramIdAuthorizedAdmin(rawId?: string | number | null): boolean {
+  if (rawId === undefined || rawId === null) return false;
+  const target = cleanTelegramId(rawId);
+  if (!target) return false;
+
+  const authorized = getAuthorizedAdminTelegramIds();
+  return authorized.includes(target);
+}
+
+/**
+ * Adds a new Admin Telegram ID to the local whitelist
+ */
+export function addAuthorizedAdminTelegramId(rawId: string | number): boolean {
+  const cleaned = cleanTelegramId(rawId);
+  if (!cleaned) return false;
+
+  const current = getAuthorizedAdminTelegramIds();
+  if (!current.includes(cleaned)) {
+    const updated = [...current, cleaned];
+    try {
+      localStorage.setItem(ADMIN_WHITELIST_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
+  }
+  return true;
+}
+
+/**
+ * Removes an Admin Telegram ID from the whitelist
+ */
+export function removeAuthorizedAdminTelegramId(rawId: string | number): boolean {
+  const cleaned = cleanTelegramId(rawId);
+  if (!cleaned) return false;
+
+  const current = getAuthorizedAdminTelegramIds().filter((id) => id !== cleaned);
+  try {
+    localStorage.setItem(ADMIN_WHITELIST_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+  return true;
+}
+
+/**
+ * Check if the current browser session has active admin authorization
+ */
+export function isAdminSessionAuthenticated(): boolean {
+  try {
+    const session = sessionStorage.getItem(ADMIN_SESSION_KEY);
+    return session === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setAdminSessionAuthenticated(authenticated: boolean): void {
+  try {
+    if (authenticated) {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    } else {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    }
+  } catch {}
+}
+
+/**
  * Anti-Cheat Test Attempt Validation
  * Ensures that human users actually answered the quiz and didn't submit an automated bot payload.
  */

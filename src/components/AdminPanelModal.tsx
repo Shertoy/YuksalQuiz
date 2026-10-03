@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import {
   ShieldCheck,
@@ -35,6 +35,16 @@ import {
   RefreshCw,
   ExternalLink,
   Code,
+  Filter,
+  RotateCcw,
+  UserCheck,
+  Smartphone,
+  Trophy,
+  Award,
+  Mail,
+  ChevronRight,
+  UserPlus,
+  ShieldBan,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -46,8 +56,20 @@ import {
   Region,
   AnnouncementTargetType,
   SubscriptionPlanType,
+  LeaderboardUser,
+  Gender,
 } from '../types';
-import { exportEncryptedBackup, importEncryptedBackup, sanitizeText, decodeHtmlEntities } from '../utils/security';
+import {
+  exportEncryptedBackup,
+  importEncryptedBackup,
+  sanitizeText,
+  decodeHtmlEntities,
+  getAuthorizedAdminTelegramIds,
+  addAuthorizedAdminTelegramId,
+  removeAuthorizedAdminTelegramId,
+  cleanTelegramId,
+  isTelegramIdAuthorizedAdmin,
+} from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
 import {
   getSupabaseConfig,
@@ -63,7 +85,12 @@ import {
   clearAllTestsFromCloud,
   publishUniversityToCloud,
   deleteUniversityFromCloud,
+  fetchCloudLeaderboard,
+  fetchCloudAnnouncements,
+  publishAnnouncementToCloud,
+  deleteAnnouncementFromCloud,
 } from '../services/testSyncService';
+import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 
 interface AdminPanelModalProps {
@@ -104,13 +131,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   } = useQuizStore();
 
   const [activeTab, setActiveTab] = useState<
-    'universities' | 'pending' | 'news' | 'supabase' | 'tests' | 'pricing' | 'payments' | 'promocodes' | 'security'
-  >('universities');
+    'users' | 'news' | 'universities' | 'pending' | 'tests' | 'supabase' | 'pricing' | 'payments' | 'promocodes' | 'security'
+  >('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
   const [deletingUni, setDeletingUni] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Users statistics & filter state
+  const [usersList, setUsersList] = useState<LeaderboardUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userGenderFilter, setUserGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [userUniFilter, setUserUniFilter] = useState('all');
+  const [userRegionFilter, setUserRegionFilter] = useState('all');
 
   // Supabase Cloud Integration state
   const initialSupabaseConfig = getSupabaseConfig();
@@ -140,13 +175,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   // New announcement form state
   const [newsTitle, setNewsTitle] = useState('');
   const [newsMessage, setNewsMessage] = useState('');
+  const [newsLink, setNewsLink] = useState('');
   const [newsTag, setNewsTag] = useState<'yangilik' | 'eslatma' | 'muhim'>('yangilik');
   const [newsTargetType, setNewsTargetType] = useState<AnnouncementTargetType>('all');
   const [newsTargetUni, setNewsTargetUni] = useState(universities[0] || 'TATU');
   const [newsTargetRegion, setNewsTargetRegion] = useState<Region>('Toshkent shahri');
   const [newsTargetUser, setNewsTargetUser] = useState('');
+  const [newsSendViaTelegram, setNewsSendViaTelegram] = useState(false);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [broadcastReport, setBroadcastReport] = useState<BroadcastResult | null>(null);
   const [newsSubTab, setNewsSubTab] = useState<'send' | 'inquiries'>('send');
   const [adminReplyTexts, setAdminReplyTexts] = useState<Record<string, string>>({});
+
+  // Admin Telegram ID Whitelist management state
+  const [authorizedAdminIds, setAuthorizedAdminIds] = useState<string[]>([]);
+  const [newAdminIdInput, setNewAdminIdInput] = useState('');
 
   // Simple recommended test creator state
   const [testTitle, setTestTitle] = useState('');
@@ -310,7 +353,70 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     showNotification(`"${name}" taklifi rad etildi`);
   };
 
-  const handleSendNews = (e: React.FormEvent) => {
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const cloudUsers = await fetchCloudLeaderboard();
+      const currentLeaderboard = useQuizStore.getState().leaderboard || [];
+      const currentProfile = useQuizStore.getState().profile;
+
+      const userMap = new Map<string, LeaderboardUser>();
+
+      // 1. Cloud users
+      for (const u of cloudUsers) {
+        const cId = cleanTelegramId(u.id);
+        if (cId) userMap.set(cId, { ...u, id: cId });
+      }
+
+      // 2. Local leaderboard
+      for (const u of currentLeaderboard) {
+        const cId = cleanTelegramId(u.id);
+        if (cId && !userMap.has(cId)) {
+          userMap.set(cId, { ...u, id: cId });
+        }
+      }
+
+      // 3. Current profile
+      if (currentProfile?.isRegistered) {
+        const cId = cleanTelegramId(currentProfile.id);
+        if (cId && !userMap.has(cId)) {
+          userMap.set(cId, {
+            id: cId,
+            name: `${currentProfile.firstName} ${currentProfile.lastName}`.trim() || 'Talaba',
+            gender: currentProfile.gender || 'male',
+            university: currentProfile.university || 'TATU',
+            region: currentProfile.region || 'Toshkent shahri',
+            avatar: currentProfile.avatar || '/avatars/avatar_1.png',
+            academicYear: currentProfile.academicYear || 1,
+            coins: currentProfile.coins || 0,
+            testsCompleted: currentProfile.completedTestsCount || 0,
+            weeklyActiveHours: 12,
+            registeredAt: currentProfile.registeredAt || '2026-10-03',
+          });
+        }
+      }
+
+      setUsersList(Array.from(userMap.values()));
+    } catch (err) {
+      console.warn('Load users error:', err);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const refreshAdminWhitelist = () => {
+    setAuthorizedAdminIds(getAuthorizedAdminTelegramIds());
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadUsers();
+      refreshAdminWhitelist();
+      fetchCloudAnnouncements().catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleSendNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsTitle.trim() || !newsMessage.trim()) return;
 
@@ -325,23 +431,69 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       targetLabel = `Viloyat: ${newsTargetRegion}`;
     } else if (newsTargetType === 'user') {
       targetValue = newsTargetUser.trim();
-      targetLabel = `Shaxsiy: ${newsTargetUser.trim()}`;
+      targetLabel = `ID: ${newsTargetUser.trim()}`;
     }
 
-    addAnnouncement({
-      title: newsTitle.trim(),
-      message: newsMessage.trim(),
-      tag: newsTag,
-      targetType: newsTargetType,
-      targetValue,
-      targetLabel,
-    });
+    setIsSendingBroadcast(true);
+    try {
+      const result = await sendTargetedAnnouncement({
+        title: newsTitle.trim(),
+        message: newsMessage.trim(),
+        link: newsLink.trim() || undefined,
+        tag: newsTag,
+        targetType: newsTargetType,
+        targetValue,
+        targetLabel,
+        sendViaTelegramBot: newsSendViaTelegram,
+        registeredUsers: usersList,
+      });
 
-    setNewsTitle('');
-    setNewsMessage('');
-    setNewsTargetUser('');
+      triggerHaptic('success');
+      showNotification(result.message);
+      setBroadcastReport(result);
+
+      setNewsTitle('');
+      setNewsMessage('');
+      setNewsLink('');
+      setNewsTargetUser('');
+    } catch (err: any) {
+      triggerHaptic('error');
+      showNotification(`Xatolik: ${err?.message || 'Xabar yuborib bo\'lmadi'}`);
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (annId: string) => {
+    deleteAnnouncement(annId);
+    await deleteAnnouncementFromCloud(annId);
+    triggerHaptic('light');
+    showNotification("Bildirishnoma o'chirildi!");
+  };
+
+  const handleDirectMessageUser = (user: LeaderboardUser) => {
+    triggerHaptic('selection');
+    setNewsTargetType('user');
+    setNewsTargetUser(user.id);
+    setActiveTab('news');
+  };
+
+  const handleAddAdminId = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = cleanTelegramId(newAdminIdInput);
+    if (!clean) return;
+    addAuthorizedAdminTelegramId(clean);
+    setNewAdminIdInput('');
+    refreshAdminWhitelist();
     triggerHaptic('success');
-    showNotification("Xabar muvaffaqiyatli yuborildi va belgilangan auditoriya bildirishnomasiga qo'shildi!");
+    showNotification(`Admin Telegram ID (${clean}) qo'shildi!`);
+  };
+
+  const handleRemoveAdminId = (id: string) => {
+    removeAuthorizedAdminTelegramId(id);
+    refreshAdminWhitelist();
+    triggerHaptic('light');
+    showNotification(`Admin Telegram ID (${id}) o'chirildi!`);
   };
 
   const handleSendAdminReply = (replyId: string) => {
@@ -510,6 +662,44 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <button
             onClick={() => {
               triggerHaptic('selection');
+              setActiveTab('users');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+              activeTab === 'users'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>Foydalanuvchilar</span>
+            {usersList.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                {usersList.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('news');
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
+              activeTab === 'news'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>Xabarnomalar</span>
+            {(announcementReplies || []).some((r) => !r.adminReply) && (
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
               setActiveTab('universities');
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
@@ -537,24 +727,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             <span>Takliflar</span>
             {pendingUniversities.length > 0 && (
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('news');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
-              activeTab === 'news'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Bell className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Xabarlar</span>
-            {(announcementReplies || []).some((r) => !r.adminReply) && (
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
             )}
           </button>
 
@@ -656,6 +828,428 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 pb-20 sm:pb-8 space-y-4">
+          {/* USERS STATISTICS & FILTERING TAB */}
+          {activeTab === 'users' && (
+            <div className="space-y-4 animate-in fade-in">
+              {/* Top Banner / Headline */}
+              <div className="p-4 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                    <Users className="w-5 h-5" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Foydalanuvchilar Statistikasi</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        {usersList.length} ta talaba
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Jinsi, OTMlar va viloyatlar kesimida talabalar hisoboti va filtri
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    loadUsers();
+                  }}
+                  disabled={isLoadingUsers}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs self-start sm:self-auto shrink-0"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isLoadingUsers ? 'animate-spin text-emerald-500' : ''}`} strokeWidth={1.75} />
+                  <span>{isLoadingUsers ? 'Yuklanmoqda...' : 'Yangilash'}</span>
+                </button>
+              </div>
+
+              {/* 4 Summary Metric Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Jami Talabalar</span>
+                    <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {usersList.length}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" strokeWidth={1.75} />
+                    <span>Ro'yxatdan o'tgan</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Erkak Talabalar</span>
+                    <User className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {usersList.filter((u) => u.gender === 'male').length}
+                  </div>
+                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                    {usersList.length > 0 ? `${Math.round((usersList.filter((u) => u.gender === 'male').length / usersList.length) * 100)}% ulush` : '0%'}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Ayol Talabalar</span>
+                    <User className="w-4 h-4 text-rose-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {usersList.filter((u) => u.gender === 'female').length}
+                  </div>
+                  <div className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
+                    {usersList.length > 0 ? `${Math.round((usersList.filter((u) => u.gender === 'female').length / usersList.length) * 100)}% ulush` : '0%'}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Filtrlangan Natija</span>
+                    <Filter className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {usersList.filter((u) => {
+                      if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+                      if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+                      if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+                      if (userSearchQuery.trim()) {
+                        const q = userSearchQuery.trim().toLowerCase();
+                        const mName = (u.name || '').toLowerCase().includes(q);
+                        const mId = (u.id || '').toLowerCase().includes(q);
+                        const mUni = (u.university || '').toLowerCase().includes(q);
+                        const mReg = (u.region || '').toLowerCase().includes(q);
+                        if (!mName && !mId && !mUni && !mReg) return false;
+                      }
+                      return true;
+                    }).length} <span className="text-xs font-normal text-slate-400">/ {usersList.length}</span>
+                  </div>
+                  <div className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
+                    {usersList.filter((u) => {
+                      if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+                      if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+                      if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+                      if (userSearchQuery.trim()) {
+                        const q = userSearchQuery.trim().toLowerCase();
+                        const mName = (u.name || '').toLowerCase().includes(q);
+                        const mId = (u.id || '').toLowerCase().includes(q);
+                        const mUni = (u.university || '').toLowerCase().includes(q);
+                        const mReg = (u.region || '').toLowerCase().includes(q);
+                        if (!mName && !mId && !mUni && !mReg) return false;
+                      }
+                      return true;
+                    }).length === usersList.length ? "Barchasi ko'rsatilmoqda" : "Filtr qo'llanilgan"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Controls Bar */}
+              <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <Filter className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                    <span>Filtrlash parametrlari:</span>
+                  </div>
+
+                  {(userGenderFilter !== 'all' || userUniFilter !== 'all' || userRegionFilter !== 'all' || userSearchQuery) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setUserGenderFilter('all');
+                        setUserUniFilter('all');
+                        setUserRegionFilter('all');
+                        setUserSearchQuery('');
+                      }}
+                      className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline font-bold flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" strokeWidth={1.75} />
+                      <span>Filtrlarni tozalash</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={1.75} />
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Qidiruv: Ism, Telegram ID yoki OTM nomi bo'yicha..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                  {userSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setUserSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    </button>
+                  )}
+                </div>
+
+                {/* 3 Dropdown Filters: Gender, University, Region */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* 1. Gender Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                      Jinsi bo'yicha:
+                    </label>
+                    <select
+                      value={userGenderFilter}
+                      onChange={(e) => {
+                        triggerHaptic('selection');
+                        setUserGenderFilter(e.target.value as any);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="all">Barchasi (Erkak va Ayol)</option>
+                      <option value="male">👨 Erkak talabalar</option>
+                      <option value="female">👩 Ayol talabalar</option>
+                    </select>
+                  </div>
+
+                  {/* 2. University Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                      OTMlar (Universitetlar) kesimida:
+                    </label>
+                    <select
+                      value={userUniFilter}
+                      onChange={(e) => {
+                        triggerHaptic('selection');
+                        setUserUniFilter(e.target.value);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+                    >
+                      <option value="all">Barcha OTMlar</option>
+                      {Array.from(
+                        new Set(
+                          usersList
+                            .map((u) => (u.university || '').trim())
+                            .filter(Boolean)
+                        )
+                      )
+                        .sort((a, b) => a.localeCompare(b, 'uz'))
+                        .map((uni) => (
+                          <option key={uni} value={uni}>
+                            {uni}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* 3. Region Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                      Viloyatlar kesimida:
+                    </label>
+                    <select
+                      value={userRegionFilter}
+                      onChange={(e) => {
+                        triggerHaptic('selection');
+                        setUserRegionFilter(e.target.value);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="all">Barcha viloyatlar</option>
+                      {UZBEKISTAN_REGIONS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Talabalar Ro'yxati</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                      {usersList.filter((u) => {
+                        if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+                        if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+                        if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+                        if (userSearchQuery.trim()) {
+                          const q = userSearchQuery.trim().toLowerCase();
+                          const mName = (u.name || '').toLowerCase().includes(q);
+                          const mId = (u.id || '').toLowerCase().includes(q);
+                          const mUni = (u.university || '').toLowerCase().includes(q);
+                          const mReg = (u.region || '').toLowerCase().includes(q);
+                          if (!mName && !mId && !mUni && !mReg) return false;
+                        }
+                        return true;
+                      }).length} ta
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    Top natijalar va profillar
+                  </span>
+                </div>
+
+                {usersList.filter((u) => {
+                  if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+                  if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+                  if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+                  if (userSearchQuery.trim()) {
+                    const q = userSearchQuery.trim().toLowerCase();
+                    const mName = (u.name || '').toLowerCase().includes(q);
+                    const mId = (u.id || '').toLowerCase().includes(q);
+                    const mUni = (u.university || '').toLowerCase().includes(q);
+                    const mReg = (u.region || '').toLowerCase().includes(q);
+                    if (!mName && !mId && !mUni && !mReg) return false;
+                  }
+                  return true;
+                }).length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs space-y-2">
+                    <Users className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
+                    <p className="font-bold text-slate-600 dark:text-slate-300">
+                      Belgilangan parametrlar bo'yicha hech qanday talaba topilmadi
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      Filtrlarni o'zgartiring yoki barcha talabalarni ko'rish uchun filtrlarni tozalang.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserGenderFilter('all');
+                        setUserUniFilter('all');
+                        setUserRegionFilter('all');
+                        setUserSearchQuery('');
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    >
+                      Barchasini ko'rsatish
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                        <tr>
+                          <th className="py-3 px-3 w-10 text-center">№</th>
+                          <th className="py-3 px-3">Talaba</th>
+                          <th className="py-3 px-3">Jinsi</th>
+                          <th className="py-3 px-3">OTM (Universitet)</th>
+                          <th className="py-3 px-3">Viloyat</th>
+                          <th className="py-3 px-3 text-center">Ball / Testlar</th>
+                          <th className="py-3 px-3 text-right">Amal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {usersList.filter((u) => {
+                          if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+                          if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+                          if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+                          if (userSearchQuery.trim()) {
+                            const q = userSearchQuery.trim().toLowerCase();
+                            const mName = (u.name || '').toLowerCase().includes(q);
+                            const mId = (u.id || '').toLowerCase().includes(q);
+                            const mUni = (u.university || '').toLowerCase().includes(q);
+                            const mReg = (u.region || '').toLowerCase().includes(q);
+                            if (!mName && !mId && !mUni && !mReg) return false;
+                          }
+                          return true;
+                        }).map((student, idx) => {
+                          const isFemale = student.gender === 'female';
+                          return (
+                            <tr
+                              key={student.id}
+                              className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                            >
+                              <td className="py-3 px-3 text-center font-bold text-slate-400 text-xs">
+                                {idx + 1}
+                              </td>
+
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <img
+                                    src={student.avatar || '/avatars/avatar_1.png'}
+                                    alt={student.name}
+                                    className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/avatars/avatar_1.png';
+                                    }}
+                                  />
+                                  <div>
+                                    <div className="font-extrabold text-xs text-slate-900 dark:text-white">
+                                      {student.name}
+                                    </div>
+                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                                      <Smartphone className="w-2.5 h-2.5 text-emerald-500" strokeWidth={1.75} />
+                                      <span>ID: {student.id}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-3">
+                                {isFemale ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                                    <span>👩 Ayol</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                                    <span>👨 Erkak</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-3 px-3">
+                                <div className="font-semibold text-slate-700 dark:text-slate-300 text-xs max-w-xs truncate" title={student.university}>
+                                  {student.university || 'Kiritilmagan'}
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {student.academicYear}-bosqich talabasi
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" strokeWidth={1.75} />
+                                  <span>{student.region || 'Toshkent shahri'}</span>
+                                </span>
+                              </td>
+
+                              <td className="py-3 px-3 text-center">
+                                <div className="font-black text-emerald-600 dark:text-emerald-400 text-xs">
+                                  {student.scorePoints ?? (student.correctAnswersCount ? student.correctAnswersCount * 4 : 0)} ball
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-semibold">
+                                  {student.testsCompleted || 0} ta test • {student.correctAnswersCount || 0} ta to'g'ri
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDirectMessageUser(student)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                  title="Ushbu talabaga shaxsiy xabar yuborish"
+                                >
+                                  <Send className="w-3 h-3" strokeWidth={1.75} />
+                                  <span>Xabar</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'universities' && (
             <>
               {/* Add New University Form */}
@@ -905,45 +1499,90 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <form onSubmit={handleSendNews} className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                       <Send className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                      <span>Foydalanuvchilarga yangilik yoki xabar yuborish:</span>
+                      <span>Foydalanuvchilarga bildirishnoma va xabar yuborish:</span>
                     </h4>
+
+                    {/* Broadcast report feedback */}
+                    {broadcastReport && (
+                      <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs space-y-1 animate-in fade-in">
+                        <div className="font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" strokeWidth={1.75} />
+                          <span>Yetkazish Natijasi</span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                          {broadcastReport.message}
+                        </p>
+                        {broadcastReport.telegramBroadcast && (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/50 flex items-center gap-2">
+                            <span>Telegram orqali yetkazildi: <b>{broadcastReport.telegramBroadcast.sent}</b> ta</span>
+                            {broadcastReport.telegramBroadcast.failed > 0 && (
+                              <span className="text-orange-500">Yetib bormadi: {broadcastReport.telegramBroadcast.failed} ta</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Title */}
                     <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Sarlavha:
+                      </label>
                       <input
                         type="text"
                         required
                         value={newsTitle}
                         onChange={(e) => setNewsTitle(e.target.value)}
-                        placeholder="Sarlavha (masalan: Yangi fan testlari qo'shildi)..."
+                        placeholder="Masalan: HEMIS Oraliq Nazorat Testlari Boshlandi!"
                         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
 
                     {/* Message Body */}
                     <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Xabar matni:
+                      </label>
                       <textarea
                         required
                         rows={3}
                         value={newsMessage}
                         onChange={(e) => setNewsMessage(e.target.value)}
-                        placeholder="Xabar matni... Foydalanuvchilar bildirishnoma sifatida qabul qilishadi va javob qaytara olishadi."
+                        placeholder="Xabar matni... Talabalar bildirishnoma sifatida qabul qilishadi."
                         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 resize-none"
                       />
                     </div>
 
+                    {/* Optional Link / Havola */}
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1 flex items-center justify-between">
+                        <span>Havola (URL - ixtiyoriy):</span>
+                        <span className="text-[9px] text-slate-400 font-normal">Tugma sifatida ochiladi</span>
+                      </label>
+                      <div className="relative">
+                        <ExternalLink className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={1.75} />
+                        <input
+                          type="url"
+                          value={newsLink}
+                          onChange={(e) => setNewsLink(e.target.value)}
+                          placeholder="https://t.me/YuksalQuizBot yoki https://..."
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
                     {/* Target Audience Selector */}
-                    <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <div className="space-y-1.5 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                       <label className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-                        Xabar kimlar uchun yuboriladi? (Auditoriya):
+                        Xabar kimlar uchun yuboriladi? (Auditoriya filtri):
                       </label>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
                         {[
                           { id: 'all', label: 'Barchaga', icon: Users },
-                          { id: 'university', label: 'OTM / Markaz', icon: Building2 },
-                          { id: 'region', label: 'Viloyat', icon: MapPin },
-                          { id: 'user', label: 'Shaxsiy', icon: User },
+                          { id: 'university', label: 'OTM Talabalariga', icon: Building2 },
+                          { id: 'region', label: 'Viloyatga', icon: MapPin },
+                          { id: 'user', label: 'Aniq ID ga', icon: User },
                         ].map((target) => {
                           const Icon = target.icon;
                           const isSelected = newsTargetType === target.id;
@@ -1003,18 +1642,50 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       {newsTargetType === 'user' && (
                         <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in">
                           <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                            Talaba ID'si yoki Ismi:
+                            Aniq Telegram ID yoki Talaba ID raqami:
                           </label>
                           <input
                             type="text"
                             required
                             value={newsTargetUser}
                             onChange={(e) => setNewsTargetUser(e.target.value)}
-                            placeholder="Masalan: user-abc123 yoki Sherzod..."
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                            placeholder="Masalan: 6219808382 yoki user-qjhlguo..."
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono"
                           />
                         </div>
                       )}
+                    </div>
+
+                    {/* Delivery Channel Selector */}
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newsSendViaTelegram}
+                          onChange={(e) => {
+                            triggerHaptic('selection');
+                            setNewsSendViaTelegram(e.target.checked);
+                          }}
+                          className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700"
+                        />
+                        <div className="text-xs">
+                          <span className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Send className="w-3.5 h-3.5 text-blue-500" strokeWidth={1.75} />
+                            <span>Telegram bot orqali ham yuborish (Direct sendMessage)</span>
+                          </span>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {newsSendViaTelegram ? (
+                              <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                                🚀 Xabar Mini App'ga tushadi VA Telegram Bot API orqali talabaning chatiga to'g'ridan-to'g'ri yuboriladi.
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">
+                                ℹ️ Xabar FAQAT Mini App ichidagi "Bildirishnomalar" bo'limiga tushadi va foydalanuvchi ilovaga kirganda qizil nuqta (badge) bilan ko'rinadi.
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </label>
                     </div>
 
                     {/* Tag & Submit Button */}
@@ -1031,10 +1702,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95 transition-all"
+                        disabled={isSendingBroadcast}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95 transition-all disabled:cursor-not-allowed"
                       >
-                        <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        <span>Xabarni Yuborish</span>
+                        <Send className={`w-3.5 h-3.5 ${isSendingBroadcast ? 'animate-spin' : ''}`} strokeWidth={1.75} />
+                        <span>{isSendingBroadcast ? 'Yuborilmoqda...' : 'Xabarni Yuborish'}</span>
                       </button>
                     </div>
                   </form>
@@ -1049,7 +1721,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         key={ann.id}
                         className="p-3 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-2"
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 uppercase">
                               {ann.tag || 'yangilik'}
@@ -1057,6 +1729,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                               Auditoriya: {ann.targetLabel || 'Barchaga'}
                             </span>
+                            {ann.link && (
+                              <a
+                                href={ann.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                <ExternalLink className="w-2.5 h-2.5" strokeWidth={1.75} />
+                                <span>Havola</span>
+                              </a>
+                            )}
                             <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
                               {ann.title}
                             </h5>
@@ -1072,10 +1755,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                         <button
                           type="button"
-                          onClick={() => {
-                            deleteAnnouncement(ann.id);
-                            showNotification("Bildirishnoma o'chirildi");
-                          }}
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
                           className="p-1 rounded-lg text-slate-400 hover:text-orange-500 transition-colors shrink-0"
                           title="O'chirish"
                         >
@@ -2281,6 +2961,90 @@ END $$;`}</pre>
                   <p className="text-[10px] text-slate-400">
                     Savollarga tezlik monitoringi va botlarga qarshi filtr.
                   </p>
+                </div>
+              </div>
+
+              {/* Admin Telegram Whitelist Management */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                      <span>Admin Telegram ID Ruxsatnomalari (Whitelist)</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Faqat quyidagi Telegram ID egalari Admin paneliga kira oladi.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                    {authorizedAdminIds.length} ta admin
+                  </span>
+                </div>
+
+                {/* Add new Admin Telegram ID form */}
+                <form onSubmit={handleAddAdminId} className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={newAdminIdInput}
+                    onChange={(e) => setNewAdminIdInput(e.target.value)}
+                    placeholder="Yangi Admin Telegram ID (masalan: 6219808382)..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    <span>Qo'shish</span>
+                  </button>
+                </form>
+
+                {/* Whitelist ID list */}
+                <div className="space-y-1.5">
+                  {authorizedAdminIds.map((id) => (
+                    <div
+                      key={id}
+                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          Telegram ID: {id}
+                        </span>
+                        {id === '6219808382' && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                            Bosh Administrator
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(id);
+                            triggerHaptic('light');
+                            showNotification(`Telegram ID (${id}) nusxalandi!`);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                          title="Nusxalash"
+                        >
+                          <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </button>
+                        {authorizedAdminIds.length > 1 && id !== '6219808382' && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdminId(id)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                            title="O'chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
