@@ -22,6 +22,7 @@ import {
   HelpCircle,
   ArrowRight,
   Upload,
+  Zap,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
@@ -304,8 +305,9 @@ export const WalletView: React.FC = () => {
               <h3 className="text-xs font-black text-slate-900 dark:text-white truncate">
                 P2P Chekni Tekshirish
               </h3>
-              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase">
-                Gemini AI ⚡
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500 text-white uppercase flex items-center gap-1">
+                <Zap className="w-2.5 h-2.5" strokeWidth={2} />
+                <span>Gemini AI</span>
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug line-clamp-2">

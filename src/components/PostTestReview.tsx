@@ -300,7 +300,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
           >
             <span>'{decodeHtmlEntities(nextBlock.title)}' ni boshlash</span>
-            <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+            <ArrowRight className="w-5 h-5 text-white" strokeWidth={2} />
           </button>
         )}
 

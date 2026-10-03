@@ -159,7 +159,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               }}
               className="py-1.5 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
+              <PlusCircle className="w-4 h-4 text-white" strokeWidth={1.75} />
               <span>+ To'ldirish</span>
             </button>
             <button
@@ -171,7 +171,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
               title="Hamyon tarixi"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
             </button>
           </div>
         </div>
@@ -186,7 +186,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             }}
             className="w-full py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
           >
-            <Edit3 className="w-4 h-4" strokeWidth={1.75} />
+            <Edit3 className="w-5 h-5 text-white" strokeWidth={2} />
             <span>{t.editProfileBtn || 'Profilni tahrirlash'}</span>
           </button>
         </div>
@@ -401,7 +401,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           className="w-full py-3 px-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-between transition-all active:scale-[0.99]"
         >
           <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
+            <Lock className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
             <span>{t.adminLoginBtn}</span>
           </div>
           <span className="text-[10px] text-slate-400 font-medium">{t.adminControlPanel}</span>

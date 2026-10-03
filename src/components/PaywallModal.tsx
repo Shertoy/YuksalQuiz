@@ -71,7 +71,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         <div className="relative z-10 text-center -mt-2">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500 via-orange-500 to-emerald-500 p-0.5 shadow-xl shadow-orange-500/25 mx-auto ring-4 ring-orange-500/15 flex items-center justify-center animate-bounce">
             <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[22px] flex items-center justify-center">
-              <Lock className="w-7 h-7 text-orange-500 dark:text-orange-400" strokeWidth={2.5} />
+              <Lock className="w-7 h-7 text-orange-500 dark:text-orange-400" strokeWidth={2} />
             </div>
           </div>
 
@@ -144,14 +144,14 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* Action Buttons */}
         <div className="relative z-10 mt-5 space-y-2.5">
-          {/* Asosiy tugma: "💳 Hisobni to'ldirish" */}
+          {/* Asosiy tugma: "Hisobni to'ldirish" */}
           <button
             type="button"
             onClick={handleTopUpClick}
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-400/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
-            <CreditCard className="w-4 h-4 text-emerald-100" />
-            <span>💳 Hisobni to'ldirish</span>
+            <CreditCard className="w-5 h-5 text-white" strokeWidth={2} />
+            <span>Hisobni to'ldirish</span>
           </button>
 
           {/* Agar hisobida mablag' bo'lsa, to'g'ridan-to'g'ri tarif faollashtirish imkoni */}

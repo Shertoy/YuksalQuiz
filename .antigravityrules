@@ -1,0 +1,12 @@
+# Antigravity Project Rules & Guidelines - YuksalQuiz
+
+[UI & ICON STANDARDS]
+1. Emojilarni tugma va sarlavhalarda ishlatish QAT'IYAN TAQIQLANADI (🚀, 🏆, 💡 o'rniga faqat SVG ikonkalar ishlatilsin).
+2. Barcha ikonkalar faqat `lucide-react` kutubxonasidan import qilinsin.
+3. Ikonka parametrlari standarti:
+   - Uslub: Minimalist Outline (hech qanday filled/to'ldirilgan yoki 3D belgilar bo'lmasin).
+   - Chiziq qalinligi: `strokeWidth={2}` yoki `strokeWidth={1.75}`.
+   - O'lchamlar: Tugmalar ichida `w-5 h-5`, menyu va kichik joylarda `w-4 h-4`.
+4. Ranglar:
+   - "Testni boshlash" tugmasida: `lucide-react`ning `Play` yoki `Flame` ikonkasidan foydalanilsin, rangi tugma matni kabi toza oq yoki apelsinrang bo'lsin.
+   - Barcha navigatsiya, sarlavha va kartochkalardagi ikonkalar faqat Emerald-500 (yashil), Amber-500 (apelsinrang) yoki Slate-400 (neytral) bo'lsin.

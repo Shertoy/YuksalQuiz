@@ -332,7 +332,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             type="submit"
             className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
           >
-            <Check className="w-4 h-4" />
+            <Check className="w-5 h-5 text-white" strokeWidth={2} />
             <span>{t.saveChangesBtn || "O'zgarishlarni saqlash"}</span>
           </button>
         </div>

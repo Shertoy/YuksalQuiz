@@ -76,7 +76,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-slate-400 dark:text-slate-500'
                     }`}
-                    strokeWidth={isActive ? 2.2 : 1.75}
+                    strokeWidth={isActive ? 2 : 1.75}
                   />
                 </div>
                 <span

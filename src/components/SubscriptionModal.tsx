@@ -166,7 +166,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               }}
               className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 active:scale-95 transition-all shadow-xs shrink-0"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
+              <PlusCircle className="w-4 h-4 text-white" strokeWidth={1.75} />
               <span>+ To'ldirish</span>
             </button>
           </div>
@@ -319,7 +319,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 onClick={handlePayFromBalance}
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <Check className="w-4 h-4 stroke-[3]" />
+                <Check className="w-5 h-5 text-white" strokeWidth={2} />
                 <span>Hisobdan to'lash ({planCost.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
@@ -332,7 +332,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   }}
                   className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  <PlusCircle className="w-4 h-4" />
+                  <PlusCircle className="w-5 h-5 text-white" strokeWidth={2} />
                   <span>Hisobni to'ldirish (+{deficit.toLocaleString('uz-UZ')} so'm kerak)</span>
                 </button>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center font-medium">

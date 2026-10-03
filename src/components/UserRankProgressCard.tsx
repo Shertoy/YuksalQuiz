@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
-import { Clock } from 'lucide-react';
+import { Clock, Trophy } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { LeaderboardUser } from '../types';
@@ -83,10 +83,10 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   if (!hasCurrentUserTakenTests) {
     progressPercent = 0;
-    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching! 🚀";
+    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching!";
   } else if (userRank === 1) {
     progressPercent = 100;
-    motivationText = t.youAreLeading || "Siz peshqadamsiz! O'rningizni saqlab qoling 🏆";
+    motivationText = t.youAreLeading || "Siz peshqadamsiz! O'rningizni saqlab qoling";
   } else {
     const aheadUser = sortedUsers[userRank - 2];
     const aheadUserTests =
@@ -194,8 +194,9 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
       {/* Bottom Motivational Block & Progress Bar */}
       <div className="relative z-10 bg-slate-950/70 dark:bg-black/50 rounded-2xl p-2.5 sm:p-3 border border-white/10 mt-3.5 shadow-inner">
         <div className="flex items-center justify-between gap-2 text-xs font-semibold text-white mb-2">
-          <span className="truncate pr-1 text-slate-200">
-            {motivationText}
+          <span className="truncate pr-1 text-slate-200 flex items-center gap-1.5">
+            <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" strokeWidth={1.75} />
+            <span className="truncate">{motivationText}</span>
           </span>
           <span className="font-black text-white shrink-0 text-xs">
             {progressPercent}%

@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Zap,
   Wallet,
+  Play,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
@@ -106,10 +107,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   if (!hasCurrentUserTakenTests) {
     progressPercent = 0;
-    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching! 🚀";
+    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching!";
   } else if (isRankOne) {
     progressPercent = 100;
-    motivationText = "Siz 1-o'rinda peshqadamsiz! O'rningizni saqlab qoling 🏆";
+    motivationText = "Siz 1-o'rinda peshqadamsiz! O'rningizni saqlab qoling";
   } else {
     const aheadUser = allUsers[userRank - 2];
     const aheadUserTests =
@@ -393,7 +394,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* Katta va ko'zga tashlanadigan "🚀 Testni boshlash" Bosh Tugmasi */}
+      {/* Katta va ko'zga tashlanadigan "Testni boshlash" Bosh Tugmasi */}
       <button
         type="button"
         onClick={() => {
@@ -403,8 +404,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-between group border border-emerald-400/30 cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-xs group-hover:scale-110 transition-transform shrink-0">
-            🚀
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform shrink-0">
+            <Play className="w-5 h-5 text-white" strokeWidth={2} />
           </div>
           <div className="text-left">
             <div className="text-sm sm:text-base font-black tracking-wide leading-tight">
@@ -417,7 +418,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform shrink-0">
-          <ChevronRight className="w-5 h-5 text-white" />
+          <ChevronRight className="w-5 h-5 text-white" strokeWidth={2} />
         </div>
       </button>
 

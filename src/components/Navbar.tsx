@@ -72,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
             className="flex items-center gap-2.5 text-left focus:outline-none group active:scale-95 transition-transform"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
-              <Sparkles className="w-4 h-4 text-orange-200" />
+              <Sparkles className="w-4 h-4 text-white" strokeWidth={1.75} />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
                 title="Tilni o'zgartirish"
               >
-                <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                 <span className="uppercase text-[11px] font-black">{language}</span>
               </button>
 
@@ -120,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                         }`}
                       >
                         <span>{lang === 'uz' ? "O'zbek" : lang === 'ru' ? 'Русский' : 'English'}</span>
-                        {language === lang && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                        {language === lang && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />}
                       </button>
                     ))}
                   </div>
@@ -137,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 title="Bildirishnomalar va Yangiliklar"
                 aria-label="Notifications"
               >
-                <Bell className="w-4 h-4 text-orange-500" />
+                <Bell className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-3.5 px-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-in zoom-in-75">
                     {unreadCount}
@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 title="Admin Paneli (Veb orqali)"
                 aria-label="Admin Login"
               >
-                <Lock className="w-4 h-4 text-slate-500 hover:text-emerald-500" strokeWidth={1.75} />
+                <Lock className="w-4 h-4 text-slate-400 hover:text-emerald-500" strokeWidth={1.75} />
               </button>
             )}
           </div>

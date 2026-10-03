@@ -322,7 +322,7 @@ export const TestList: React.FC<TestListProps> = ({
             </div>
             <div className="text-left min-w-0">
               <span className="block truncate text-slate-900 dark:text-white font-extrabold text-[11px] sm:text-xs">
-                To'lov chekini tekshirish (Gemini AI ⚡)
+                To'lov chekini tekshirish (Gemini AI)
               </span>
               <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 Click, Payme, Uzum chekini yuklang va bir zumda kiring

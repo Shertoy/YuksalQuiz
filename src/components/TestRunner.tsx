@@ -229,7 +229,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                 : 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <Clock className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
             <span>{formatTimer(secondsRemaining)}</span>
           </div>
         </div>
@@ -334,7 +334,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             }`}
           >
             <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" strokeWidth={2} />
           </button>
         </div>
       </div>

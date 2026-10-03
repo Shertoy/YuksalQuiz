@@ -454,7 +454,7 @@ export const OnboardingModal: React.FC = () => {
                     disabled={!acceptedOferta}
                     className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    <Check className="w-4 h-4 stroke-[3]" />
+                    <Check className="w-5 h-5 text-white" strokeWidth={2} />
                     <span>{t.completeRegistration}</span>
                   </button>
                 </div>

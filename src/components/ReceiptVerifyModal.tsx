@@ -290,8 +290,9 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                   Hisobni To'ldirish
                 </h3>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                  Gemini AI ⚡
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5" strokeWidth={2} />
+                  <span>Gemini AI</span>
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -328,11 +329,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {result?.status === 'approved' && (
             <div className="text-center py-6 px-4 space-y-3.5 bg-gradient-to-b from-emerald-500/10 to-transparent rounded-3xl border border-emerald-500/30">
               <div className="w-16 h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30 animate-bounce">
-                <CheckCircle2 className="w-8 h-8" strokeWidth={2.5} />
+                <CheckCircle2 className="w-8 h-8" strokeWidth={2} />
               </div>
               <div>
                 <h4 className="text-lg font-black text-slate-900 dark:text-white">
-                  Hisobingiz Muvaffaqiyatli To'ldirildi! 🎉
+                  Hisobingiz Muvaffaqiyatli To'ldirildi!
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                   Gemini AI to'lov chekingizni haqiqiyligini tasdiqladi. Balansingizga +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} so'm qo'shildi!

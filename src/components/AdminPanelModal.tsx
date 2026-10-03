@@ -1015,8 +1015,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="all">Barchasi (Erkak va Ayol)</option>
-                      <option value="male">👨 Erkak talabalar</option>
-                      <option value="female">👩 Ayol talabalar</option>
+                      <option value="male">Erkak talabalar</option>
+                      <option value="female">Ayol talabalar</option>
                     </select>
                   </div>
 
@@ -1200,11 +1200,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               <td className="py-3 px-3">
                                 {isFemale ? (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
-                                    <span>👩 Ayol</span>
+                                    <span>Ayol</span>
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                                    <span>👨 Erkak</span>
+                                    <span>Erkak</span>
                                   </span>
                                 )}
                               </td>
@@ -1682,11 +1682,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {newsSendViaTelegram ? (
                               <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                                🚀 Xabar Mini App'ga tushadi VA Telegram Bot API orqali talabaning chatiga to'g'ridan-to'g'ri yuboriladi.
+                                Xabar Mini App'ga tushadi VA Telegram Bot API orqali talabaning chatiga to'g'ridan-to'g'ri yuboriladi.
                               </span>
                             ) : (
                               <span className="text-slate-400">
-                                ℹ️ Xabar FAQAT Mini App ichidagi "Bildirishnomalar" bo'limiga tushadi va foydalanuvchi ilovaga kirganda qizil nuqta (badge) bilan ko'rinadi.
+                                Xabar FAQAT Mini App ichidagi "Bildirishnomalar" bo'limiga tushadi va foydalanuvchi ilovaga kirganda qizil nuqta (badge) bilan ko'rinadi.
                               </span>
                             )}
                           </p>
