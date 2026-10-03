@@ -121,7 +121,12 @@ export async function fetchCloudTests(): Promise<{
     }
 
     const cloudPackages: TestPackage[] = data
-      .filter((row: any) => !row.id?.startsWith('__system_'))
+      .filter(
+        (row: any) =>
+          !row.id?.startsWith('__system_') &&
+          !row.id?.startsWith('lead_') &&
+          row.category !== 'LeaderboardUser'
+      )
       .map(mapRowToTestPackage);
 
     // Filter out any packages that have been deleted locally
@@ -257,7 +262,13 @@ export async function clearAllTestsFromCloud(): Promise<{
   }
 
   try {
-    const { error } = await supabase.from('test_packages').delete().not('id', 'is', null);
+    const { error } = await supabase
+      .from('test_packages')
+      .delete()
+      .neq('category', 'LeaderboardUser')
+      .neq('category', 'System')
+      .not('id', 'like', 'lead_%')
+      .not('id', 'like', '__system_%');
     if (error) {
       console.warn('Supabase clear all error:', error.message);
       return { success: false, message: error.message };
@@ -302,7 +313,14 @@ export async function syncAllTestsWithCloud(): Promise<{
       };
     }
 
-    const remoteTests = (remoteData || []).map(mapRowToTestPackage);
+    const remoteTests = (remoteData || [])
+      .filter(
+        (row: any) =>
+          !row.id?.startsWith('__system_') &&
+          !row.id?.startsWith('lead_') &&
+          row.category !== 'LeaderboardUser'
+      )
+      .map(mapRowToTestPackage);
     const remoteIdSet = new Set(remoteTests.map((t) => t.id));
 
     // 2. Identify local tests authored by this user that are pending upload
@@ -552,6 +570,10 @@ export function setupRealtimeTestSubscription(
             useQuizStore.getState().deleteTestPackage(payload.old.id);
           }
           if (
+            payload?.new?.category === 'LeaderboardUser' ||
+            payload?.old?.category === 'LeaderboardUser' ||
+            payload?.new?.id?.startsWith('lead_') ||
+            payload?.old?.id?.startsWith('lead_') ||
             payload?.new?.id === '__system_leaderboard_sync__' ||
             payload?.old?.id === '__system_leaderboard_sync__'
           ) {
@@ -650,9 +672,10 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
 
 /**
  * Pushes real registered user rating progress to Supabase leaderboard.
- * Dual-layer sync:
- * 1. Attempts to upsert to public.leaderboard_users
- * 2. If table is not yet created, falls back to synchronized system record in test_packages
+ * Multi-layer sync:
+ * 1. Dedicated row in test_packages with category: 'LeaderboardUser' (eliminates race condition overwrites)
+ * 2. public.leaderboard_users table (if available)
+ * 3. Legacy __system_leaderboard_sync__
  */
 export async function syncUserProfileToCloud(
   profile: UserProfile,
@@ -662,11 +685,14 @@ export async function syncUserProfileToCloud(
   if (!supabase || !profile || !profile.id) return;
 
   const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
-  const payload = {
+  const university = profile.university || 'Toshkent Axborot Texnologiyalari Universiteti (TATU)';
+  const region = profile.region || 'Toshkent shahri';
+
+  const userRatingObject = {
     id: profile.id,
     name: fullName,
-    region: profile.region,
-    university: profile.university || 'TATU',
+    region,
+    university,
     avatar: profile.avatar || '/avatars/avatar_1.png',
     academic_year: profile.academicYear || 1,
     coins: profile.coins || 0,
@@ -683,17 +709,35 @@ export async function syncUserProfileToCloud(
     updated_at: new Date().toISOString(),
   };
 
-  let primarySuccess = false;
+  // 1. Primary: Dedicated row in test_packages to prevent ANY race-condition overwriting!
+  const userRow = {
+    id: `lead_${profile.id}`,
+    title: fullName,
+    category: 'LeaderboardUser',
+    university,
+    department: region,
+    author_id: profile.id,
+    author_name: fullName,
+    total_questions: Number(stats.scorePoints) || 0,
+    blocks: [userRatingObject],
+    is_public: false,
+    is_community_created: false,
+  };
+
   try {
-    const { error } = await supabase.from('leaderboard_users').upsert(payload, { onConflict: 'id' });
-    if (!error) {
-      primarySuccess = true;
-    }
-  } catch {
-    primarySuccess = false;
+    await supabase.from('test_packages').upsert(userRow, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Dedicated leaderboard user row upsert warning:', err);
   }
 
-  // Resilient fallback sync to guarantee live updates even if table is not yet migrated
+  // 2. Future-proof: Attempt public.leaderboard_users table if it exists
+  try {
+    await supabase.from('leaderboard_users').upsert(userRatingObject, { onConflict: 'id' });
+  } catch {
+    // Non-critical if table does not exist
+  }
+
+  // 3. Fallback: also maintain legacy __system_leaderboard_sync__
   try {
     const { data: cur } = await supabase
       .from('test_packages')
@@ -702,11 +746,11 @@ export async function syncUserProfileToCloud(
       .maybeSingle();
 
     let list = Array.isArray(cur?.blocks) ? [...cur.blocks] : [];
-    const existingIdx = list.findIndex((u: any) => u.id === payload.id);
+    const existingIdx = list.findIndex((u: any) => u.id === userRatingObject.id);
     if (existingIdx >= 0) {
-      list[existingIdx] = payload;
+      list[existingIdx] = userRatingObject;
     } else {
-      list.push(payload);
+      list.push(userRatingObject);
     }
 
     list.sort((a: any, b: any) => {
@@ -730,36 +774,73 @@ export async function syncUserProfileToCloud(
       { onConflict: 'id' }
     );
   } catch (err) {
-    if (!primarySuccess) {
-      console.warn('Leaderboard cloud sync fallback failed:', err);
-    }
+    // Non-critical fallback
   }
 }
 
 /**
  * Fetches real active users from Supabase cloud leaderboard.
- * Dual-layer fetch:
+ * Multi-layer fetch:
  * 1. Checks public.leaderboard_users table
- * 2. Falls back to synchronized system store in test_packages
+ * 2. Checks individual LeaderboardUser rows in test_packages
+ * 3. Falls back to legacy __system_leaderboard_sync__
  */
 export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
 
+  const userMap = new Map<string, LeaderboardUser>();
+
+  // 1. Fetch from leaderboard_users table if available
   try {
     const { data, error } = await supabase
       .from('leaderboard_users')
       .select('*')
       .order('score_points', { ascending: false })
-      .limit(50);
+      .limit(100);
 
-    if (!error && data && data.length > 0) {
-      return data.map(mapRowToLeaderboardUser);
+    if (!error && data && Array.isArray(data)) {
+      for (const row of data) {
+        const u = mapRowToLeaderboardUser(row);
+        if (u && u.id) userMap.set(u.id, u);
+      }
     }
   } catch {
-    // Fall through to fallback
+    // Fall through
   }
 
+  // 2. Fetch all individual LeaderboardUser rows from test_packages
+  try {
+    const { data: leadRows, error: leadErr } = await supabase
+      .from('test_packages')
+      .select('*')
+      .eq('category', 'LeaderboardUser')
+      .order('total_questions', { ascending: false })
+      .limit(100);
+
+    if (!leadErr && leadRows && Array.isArray(leadRows)) {
+      for (const row of leadRows) {
+        const blockUser = Array.isArray(row.blocks) && row.blocks[0] ? row.blocks[0] : null;
+        const mapped = mapRowToLeaderboardUser(blockUser || {
+          id: row.author_id || row.id.replace('lead_', ''),
+          name: row.title,
+          university: row.university,
+          region: row.department,
+          score_points: row.total_questions,
+        });
+        if (mapped && mapped.id) {
+          const existing = userMap.get(mapped.id);
+          if (!existing || (mapped.scorePoints || 0) >= (existing.scorePoints || 0)) {
+            userMap.set(mapped.id, mapped);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching LeaderboardUser rows from test_packages:', err);
+  }
+
+  // 3. Fallback: also check legacy __system_leaderboard_sync__
   try {
     const { data: sysPkg } = await supabase
       .from('test_packages')
@@ -768,12 +849,28 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
       .maybeSingle();
 
     if (sysPkg && Array.isArray(sysPkg.blocks) && sysPkg.blocks.length > 0) {
-      return sysPkg.blocks.map(mapRowToLeaderboardUser);
+      for (const row of sysPkg.blocks) {
+        const mapped = mapRowToLeaderboardUser(row);
+        if (mapped && mapped.id && !userMap.has(mapped.id)) {
+          userMap.set(mapped.id, mapped);
+        }
+      }
     }
   } catch {
     // Fail gracefully
   }
 
-  return [];
+  const allList = Array.from(userMap.values());
+  // Sort descending by score_points, then ascending by total_time_spent_seconds (kamroq vaqt sarflagan yuqoriga)
+  allList.sort((a, b) => {
+    const pDiff = (b.scorePoints || 0) - (a.scorePoints || 0);
+    if (pDiff !== 0) return pDiff;
+    const aTime = a.totalTimeSpentSeconds || a.bestTimeSeconds || 180;
+    const bTime = b.totalTimeSpentSeconds || b.bestTimeSeconds || 180;
+    if (aTime !== bTime) return aTime - bTime;
+    return (a.id || '').localeCompare(b.id || '');
+  });
+
+  return allList;
 }
 

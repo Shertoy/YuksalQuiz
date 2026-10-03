@@ -25,7 +25,7 @@ import {
   validateAndSanitizeName,
   validateTestAttempt,
 } from '../utils/security';
-import { soundFX, triggerHaptic, setVibrationEnabled } from '../utils/telegram';
+import { soundFX, triggerHaptic, setVibrationEnabled, getInitialUserId } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
 
@@ -210,7 +210,7 @@ export const DEFAULT_PROMOCODES: Promocode[] = [
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
-  id: 'user-' + Math.random().toString(36).substring(2, 9),
+  id: getInitialUserId(),
   firstName: '',
   lastName: '',
   region: 'Toshkent shahri',
@@ -673,9 +673,15 @@ export const useQuizStore = create<QuizState>()(
         const vFirst = validateAndSanitizeName(data.firstName || '');
         const vLast = validateAndSanitizeName(data.lastName || '');
 
+        let resolvedId = current.id;
+        if (!resolvedId || resolvedId === 'guest_12345') {
+          resolvedId = getInitialUserId();
+        }
+
         const newProfile: UserProfile = {
           ...current,
           ...data,
+          id: resolvedId,
           firstName: vFirst.sanitized || current.firstName,
           lastName: vLast.sanitized || current.lastName,
           isRegistered: true,
@@ -737,14 +743,11 @@ export const useQuizStore = create<QuizState>()(
           isPositive: true,
         });
 
-        setTimeout(async () => {
-          try {
-            const { syncUserProfileToCloud } = await import('../services/testSyncService');
-            await syncUserProfileToCloud(newProfile, stats);
-          } catch {
-            // Non-critical background sync
-          }
-        }, 100);
+        import('../services/testSyncService')
+          .then(({ syncUserProfileToCloud }) => {
+            syncUserProfileToCloud(newProfile, stats).catch(() => {});
+          })
+          .catch(() => {});
       },
 
       checkDailyStreak: () => {
@@ -863,14 +866,11 @@ export const useQuizStore = create<QuizState>()(
         });
 
         // Background sync to backend cloud
-        setTimeout(async () => {
-          try {
-            const { syncUserProfileToCloud } = await import('../services/testSyncService');
-            await syncUserProfileToCloud(updated, stats);
-          } catch {
-            // Non-critical background sync
-          }
-        }, 50);
+        import('../services/testSyncService')
+          .then(({ syncUserProfileToCloud }) => {
+            syncUserProfileToCloud(updated, stats).catch(() => {});
+          })
+          .catch(() => {});
       },
 
       addCustomUniversity: (name: string) => {
@@ -1197,14 +1197,11 @@ export const useQuizStore = create<QuizState>()(
         });
 
         // Trigger background cloud rating sync for real user
-        setTimeout(async () => {
-          try {
-            const { syncUserProfileToCloud } = await import('../services/testSyncService');
-            await syncUserProfileToCloud(updatedProfile, updatedStats);
-          } catch {
-            // Non-critical background sync
-          }
-        }, 50);
+        import('../services/testSyncService')
+          .then(({ syncUserProfileToCloud }) => {
+            syncUserProfileToCloud(updatedProfile, updatedStats).catch(() => {});
+          })
+          .catch(() => {});
 
         return { coinsEarned, bonusCoins, unlockedNext };
       },
@@ -1487,6 +1484,11 @@ export const useQuizStore = create<QuizState>()(
             state.profile.voucherBalance = 20000;
           } else {
             state.profile.voucherBalance = Math.min(Math.max(state.profile.voucherBalance ?? 0, 0), 20000);
+          }
+
+          // Ensure unique, persistent user ID (never guest_12345)
+          if (!state.profile.id || state.profile.id === 'guest_12345') {
+            state.profile.id = getInitialUserId();
           }
         }
 

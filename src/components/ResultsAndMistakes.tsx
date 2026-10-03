@@ -26,7 +26,7 @@ import { MistakeItem } from '../types';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
-import { calculateUserRatingStats } from '../utils/ratingUtils';
+import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 
 export const ResultsAndMistakes: React.FC = () => {
   const {
@@ -75,19 +75,7 @@ export const ResultsAndMistakes: React.FC = () => {
   const regionUsers = [
     ...leaderboard.filter((u) => u.region === profile.region && u.id !== profile.id),
     currentUserEntry,
-  ].sort((a, b) => {
-    const aVal =
-      (a as any).scorePoints ??
-      ((a as any).correctAnswersCount !== undefined
-        ? (a as any).correctAnswersCount * 4
-        : (a as any).testsCompleted * 22 * 4);
-    const bVal =
-      (b as any).scorePoints ??
-      ((b as any).correctAnswersCount !== undefined
-        ? (b as any).correctAnswersCount * 4
-        : (b as any).testsCompleted * 22 * 4);
-    return bVal - aVal;
-  });
+  ].sort((a, b) => compareLeaderboardUsers(a as any, b as any, 'correct'));
   const regionRankIndex = regionUsers.findIndex((u) => (u as any).isCurrentUser);
   const regionRank = regionRankIndex !== -1 ? regionRankIndex + 1 : 12;
   const regionTotal = Math.max(regionUsers.length, 45);
@@ -96,19 +84,7 @@ export const ResultsAndMistakes: React.FC = () => {
   const uzbUsers = [
     ...leaderboard.filter((u) => u.id !== profile.id),
     currentUserEntry,
-  ].sort((a, b) => {
-    const aVal =
-      (a as any).scorePoints ??
-      ((a as any).correctAnswersCount !== undefined
-        ? (a as any).correctAnswersCount * 4
-        : (a as any).testsCompleted * 22 * 4);
-    const bVal =
-      (b as any).scorePoints ??
-      ((b as any).correctAnswersCount !== undefined
-        ? (b as any).correctAnswersCount * 4
-        : (b as any).testsCompleted * 22 * 4);
-    return bVal - aVal;
-  });
+  ].sort((a, b) => compareLeaderboardUsers(a as any, b as any, 'correct'));
   const uzbRankIndex = uzbUsers.findIndex((u) => (u as any).isCurrentUser);
   const uzbRank = uzbRankIndex !== -1 ? uzbRankIndex + 1 : 29;
   const uzbTotal = Math.max(uzbUsers.length, 250);

@@ -50,11 +50,13 @@ export const Leaderboard: React.FC = () => {
       const { syncUserProfileToCloud, fetchCloudLeaderboard } = await import(
         '../services/testSyncService'
       );
-      // Push current user's latest stats to cloud
-      await syncUserProfileToCloud(profile, stats);
+      // Run push and fetch in parallel so neither blocks the other
+      const [_, fetchRes] = await Promise.allSettled([
+        syncUserProfileToCloud(profile, stats),
+        fetchCloudLeaderboard(),
+      ]);
 
-      // Fetch remote real users
-      const remoteUsers = await fetchCloudLeaderboard();
+      const remoteUsers = fetchRes.status === 'fulfilled' ? fetchRes.value : [];
       if (remoteUsers && remoteUsers.length > 0) {
         useQuizStore.setState((state) => {
           const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
@@ -113,7 +115,7 @@ export const Leaderboard: React.FC = () => {
   // Level 1 Scope Filter: 'otm' | 'region' | 'uzbekistan'
   const filteredUsers = allUsers.filter((u) => {
     if (leaderboardScope === 'region') {
-      return u.region === profile.region;
+      return (u.region || '').trim().toLowerCase() === (profile.region || '').trim().toLowerCase();
     }
     if (leaderboardScope === 'otm') {
       return (
@@ -122,7 +124,7 @@ export const Leaderboard: React.FC = () => {
         u.university.trim().toLowerCase() === profile.university.trim().toLowerCase()
       );
     }
-    return true; // 'uzbekistan' (Respublika)
+    return true; // 'uzbekistan' (Respublika - includes everyone unconditionally)
   });
 
   // Level 2 Sort for Students:

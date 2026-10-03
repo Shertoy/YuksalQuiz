@@ -134,7 +134,33 @@ export function getTelegramUserId(): string {
   if (tg?.initDataUnsafe?.user?.id) {
     return tg.initDataUnsafe.user.id.toString();
   }
-  return 'guest_12345';
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const cached = window.localStorage.getItem('yuksalquiz_user_id');
+    if (cached && cached !== 'guest_12345') {
+      return cached;
+    }
+    const newId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    window.localStorage.setItem('yuksalquiz_user_id', newId);
+    return newId;
+  }
+  return `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+export function getInitialUserId(): string {
+  const tg = getTelegramWebApp();
+  if (tg?.initDataUnsafe?.user?.id) {
+    return `tg_${tg.initDataUnsafe.user.id}`;
+  }
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const cached = window.localStorage.getItem('yuksalquiz_user_id');
+    if (cached && cached !== 'guest_12345') {
+      return cached;
+    }
+    const newId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    window.localStorage.setItem('yuksalquiz_user_id', newId);
+    return newId;
+  }
+  return `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 }
 
 export function generateReferralLink(userId?: string): string {
