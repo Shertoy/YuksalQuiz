@@ -282,13 +282,17 @@ export const ParticleBackground: React.FC = () => {
     // Start loop
     animationFrameId = requestAnimationFrame(render);
 
+    let isDisposed = false;
+
     // Pause animation when tab or Telegram is backgrounded to save 100% battery
     const onVisibilityChange = () => {
+      if (isDisposed) return;
       if (document.hidden) {
         isRunning = false;
         cancelAnimationFrame(animationFrameId);
-      } else {
+      } else if (!isRunning) {
         isRunning = true;
+        cancelAnimationFrame(animationFrameId);
         animationFrameId = requestAnimationFrame(render);
       }
     };
@@ -296,6 +300,7 @@ export const ParticleBackground: React.FC = () => {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
+      isDisposed = true;
       isRunning = false;
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resize);

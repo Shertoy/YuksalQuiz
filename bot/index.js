@@ -11,8 +11,73 @@
  *    - Ruscha: "🚀 Начать тестирование" (va "📱 Открыть приложение")
  */
 
+import crypto from 'crypto';
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
+
+/**
+ * Validates Telegram WebApp initData with HMAC-SHA256 and replay protection
+ */
+export function validateTelegramInitData(initData, botToken = BOT_TOKEN) {
+  if (!initData || typeof initData !== 'string') {
+    return { isValid: false, error: 'Missing or invalid initData' };
+  }
+  if (!botToken) {
+    return { isValid: false, error: 'TELEGRAM_BOT_TOKEN missing' };
+  }
+
+  try {
+    const searchParams = new URLSearchParams(initData);
+    const hash = searchParams.get('hash');
+    if (!hash) {
+      return { isValid: false, error: 'Missing hash parameter' };
+    }
+
+    searchParams.delete('hash');
+    const sortedKeys = Array.from(searchParams.keys()).sort();
+    const dataCheckArr = [];
+    for (const key of sortedKeys) {
+      dataCheckArr.push(`${key}=${searchParams.get(key)}`);
+    }
+    const dataCheckString = dataCheckArr.join('\n');
+
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+    const calculatedBuffer = Buffer.from(calculatedHash, 'utf-8');
+    const hashBuffer = Buffer.from(hash, 'utf-8');
+
+    if (calculatedBuffer.length !== hashBuffer.length || !crypto.timingSafeEqual(calculatedBuffer, hashBuffer)) {
+      return { isValid: false, error: 'Invalid HMAC-SHA256 signature' };
+    }
+
+    const authDateStr = searchParams.get('auth_date');
+    const authDate = authDateStr ? parseInt(authDateStr, 10) : 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (!authDate || now - authDate > 86400) {
+      return { isValid: false, error: 'initData has expired (max 24 hours allowed)' };
+    }
+
+    const userStr = searchParams.get('user');
+    let user;
+    if (userStr) {
+      try {
+        user = JSON.parse(userStr);
+      } catch {
+        // ignore
+      }
+    }
+
+    return {
+      isValid: true,
+      user,
+      authDate,
+    };
+  } catch (err) {
+    return { isValid: false, error: err?.message || 'Verification exception' };
+  }
+}
 
 export const MESSAGES = {
   uz: {

@@ -280,6 +280,9 @@ export interface Translations {
   uniNotFound: string;
   uniNotFoundTip: string;
   addAsCustomBtn: string;
+  retryBtn: string;
+  networkErrorNotice: string;
+  emptyDatabasePrompt: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -471,7 +474,7 @@ export const translations: Record<Language, Translations> = {
     leaderboardSubtitle: "OTMlar, viloyatlar va O'zbekiston bo'ylab eng faol bilimdonlar",
     rankPlace: "-o'rin",
     correctAnswersShort: "ta to'g'ri",
-    youAreLeading: 'Siz peshqadamsiz!',
+    youAreLeading: "Siz peshqadamsiz! O'rningizni saqlab qoling 🏆",
     nextRankAccReq: "Keyingi o'ringa chiqish uchun +{count}% aniqlik yoki tezroq vaqt kerak",
     nextRankPointsReq: "Keyingi o'ringa chiqish uchun yana {count} ball kerak",
     scopeUnis: 'OTMlar',
@@ -556,6 +559,9 @@ export const translations: Record<Language, Translations> = {
     uniNotFound: "bo'yicha OTM topilmadi",
     uniNotFoundTip: "Qidiruv so'zini qisqartirib ko'ring yoki yangi OTM sifatida qo'shing.",
     addAsCustomBtn: "Yangi OTM sifatida qo'shish",
+    retryBtn: "Qayta urinish",
+    networkErrorNotice: "Internet aloqasi uzildi yoki server javob bermayapti",
+    emptyDatabasePrompt: "Hozircha testlar mavjud emas. Yangi test yarating!",
   },
 
   ru: {
@@ -746,7 +752,7 @@ export const translations: Record<Language, Translations> = {
     leaderboardSubtitle: 'Самые активные знатоки по ВУЗам, регионам и Узбекистану',
     rankPlace: '-е место',
     correctAnswersShort: 'правильных',
-    youAreLeading: 'Вы на 1-м месте!',
+    youAreLeading: 'Вы лидер! Удерживайте 1-е место 🏆',
     nextRankAccReq: 'Для следующего места нужно +{count}% точности или лучшее время',
     nextRankPointsReq: 'Для следующего места нужно еще {count} баллов',
     scopeUnis: 'ВУЗы',
@@ -831,6 +837,9 @@ export const translations: Record<Language, Translations> = {
     uniNotFound: 'ВУЗ не найден',
     uniNotFoundTip: 'Попробуйте изменить запрос или добавьте как новый ВУЗ.',
     addAsCustomBtn: 'Добавить как новый ВУЗ',
+    retryBtn: 'Повторить попытку',
+    networkErrorNotice: 'Соединение с интернетом потеряно или сервер не отвечает',
+    emptyDatabasePrompt: 'Пока нет тестов. Создайте новый тест!',
   },
 
   en: {
@@ -1021,7 +1030,7 @@ export const translations: Record<Language, Translations> = {
     leaderboardSubtitle: 'Top academic achievers across Universities, Regions, and Uzbekistan',
     rankPlace: 'th Place',
     correctAnswersShort: 'correct',
-    youAreLeading: 'You are in 1st place!',
+    youAreLeading: 'You are the leader! Keep your spot 🏆',
     nextRankAccReq: 'Need +{count}% accuracy or faster time to reach next rank',
     nextRankPointsReq: 'Need {count} more points to reach next rank',
     scopeUnis: 'Universities',
@@ -1106,5 +1115,8 @@ export const translations: Record<Language, Translations> = {
     uniNotFound: 'No university found',
     uniNotFoundTip: 'Try shortening your query or add it as a new university.',
     addAsCustomBtn: 'Add as New University',
+    retryBtn: 'Retry',
+    networkErrorNotice: 'Network connection lost or server not responding',
+    emptyDatabasePrompt: 'No tests available yet. Create a new test!',
   },
 };

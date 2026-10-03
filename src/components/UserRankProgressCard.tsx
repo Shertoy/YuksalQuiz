@@ -37,6 +37,8 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
     accuracyPercentage: stats.accuracyPercentage,
     bestTime: stats.bestTimeFormatted,
     bestTimeSeconds: stats.bestTimeSeconds,
+    totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
+    totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
     weeklyActiveHours: 12.0,
     isCurrentUser: true,
   };
@@ -62,7 +64,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
     return true; // uzbekistan / respublika
   });
 
-  // Sort by score points / correct answers
+  // Sort by score points / correct answers (Tie-breaker: lower time spent ranks higher)
   const sortedUsers = [...scopedUsers].sort((a, b) => {
     const aPoints =
       a.scorePoints ??
@@ -75,7 +77,9 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
         ? b.correctAnswersCount * 4
         : b.testsCompleted * 22 * 4);
     if (bPoints !== aPoints) return bPoints - aPoints;
-    return (a.bestTimeSeconds || 180) - (b.bestTimeSeconds || 180);
+    const aTime = a.totalTimeSpentSeconds ?? a.bestTimeSeconds ?? 180;
+    const bTime = b.totalTimeSpentSeconds ?? b.bestTimeSeconds ?? 180;
+    return aTime - bTime;
   });
 
   const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);
@@ -89,7 +93,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   if (isRankOne) {
     progressPercent = 100;
-    motivationText = t.youAreLeading || "Siz 1-o'rinda peshqadamsiz! 🏆";
+    motivationText = t.youAreLeading || "Siz peshqadamsiz! O'rningizni saqlab qoling 🏆";
   } else {
     const aheadUser = sortedUsers[userRank - 2];
     const aheadUserTests =

@@ -103,19 +103,25 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
 
   // Rotate quotes every 3 seconds with a smooth fade in/out transition
   useEffect(() => {
+    if (isFadingOut) return;
+
+    let fadeTimeout: ReturnType<typeof setTimeout> | null = null;
     const interval = setInterval(() => {
       // 1. Fade out current quote
       setIsVisible(false);
 
       // 2. Switch quote and fade back in after 350ms
-      setTimeout(() => {
+      fadeTimeout = setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % quotesList.length);
         setIsVisible(true);
       }, 350);
     }, 3000);
 
-    return () => clearInterval(interval);
-  }, [quotesList.length]);
+    return () => {
+      clearInterval(interval);
+      if (fadeTimeout) clearTimeout(fadeTimeout);
+    };
+  }, [quotesList.length, isFadingOut]);
 
   const currentItem = quotesList[currentIndex] || quotesList[0];
 

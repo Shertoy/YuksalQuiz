@@ -18,8 +18,13 @@ import {
   Promocode,
 } from '../types';
 import { INITIAL_TEST_PACKAGES } from '../data/mockTests';
-import { INITIAL_LEADERBOARD_USERS } from '../data/mockLeaderboard';
-import { generateIntegritySignature, verifyIntegritySignature, decodeHtmlEntities } from '../utils/security';
+import {
+  generateIntegritySignature,
+  verifyIntegritySignature,
+  decodeHtmlEntities,
+  validateAndSanitizeName,
+  validateTestAttempt,
+} from '../utils/security';
 import { soundFX, triggerHaptic } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 
@@ -250,6 +255,9 @@ const getInitialLanguage = (): Language => {
   return 'uz';
 };
 
+// Module-level anti-flood rate limiter for test attempt submissions
+let lastAttemptTimestamp = 0;
+
 export const useQuizStore = create<QuizState>()(
   persist(
     (set, get) => ({
@@ -260,7 +268,7 @@ export const useQuizStore = create<QuizState>()(
       testPackages: INITIAL_TEST_PACKAGES,
       testAttempts: [],
       mistakes: [],
-      leaderboard: INITIAL_LEADERBOARD_USERS,
+      leaderboard: [],
       leaderboardScope: 'uzbekistan',
       customUniversities: [],
       universities: deduplicateUniversities(TOP_UNIVERSITIES),
@@ -638,9 +646,14 @@ export const useQuizStore = create<QuizState>()(
       registerUser: (data) => {
         const current = get().profile;
         const today = new Date().toISOString().split('T')[0];
+        const vFirst = validateAndSanitizeName(data.firstName || '');
+        const vLast = validateAndSanitizeName(data.lastName || '');
+
         const newProfile: UserProfile = {
           ...current,
           ...data,
+          firstName: vFirst.sanitized || current.firstName,
+          lastName: vLast.sanitized || current.lastName,
           isRegistered: true,
           acceptedOferta: true,
           coins: current.coins || 0,
@@ -737,9 +750,20 @@ export const useQuizStore = create<QuizState>()(
 
       updateProfile: (data) => {
         const current = get().profile;
+        const cleanFirstName =
+          data.firstName !== undefined
+            ? validateAndSanitizeName(data.firstName).sanitized || current.firstName
+            : current.firstName;
+        const cleanLastName =
+          data.lastName !== undefined
+            ? validateAndSanitizeName(data.lastName).sanitized || current.lastName
+            : current.lastName;
+
         const updated: UserProfile = {
           ...current,
           ...data,
+          firstName: cleanFirstName,
+          lastName: cleanLastName,
         };
 
         updated.checksum = generateIntegritySignature({
@@ -850,28 +874,86 @@ export const useQuizStore = create<QuizState>()(
         let bonusCoins = 0;
         let unlockedNext = false;
 
-        // 1. Check for Perfect Score reward (+1 coin for 25/25 or 100% score)
-        if (attempt.score === attempt.totalQuestions && attempt.totalQuestions >= 20) {
+        // Anti-Cheat 1: Anti-flood submission rate limiting (reject requests < 2.5s apart)
+        const now = Date.now();
+        if (now - lastAttemptTimestamp < 2500) {
+          console.warn('YuksalQuiz Anti-Cheat: Rapid test submission throttled.');
+          return { coinsEarned: 0, bonusCoins: 0, unlockedNext: false };
+        }
+        lastAttemptTimestamp = now;
+
+        // Anti-Cheat 2: Re-verify questions and answers against official package data
+        let currentTargetPkg = testPackages.find((p) => p.id === attempt.testPackageId);
+        const blockIndex = currentTargetPkg
+          ? currentTargetPkg.blocks.findIndex(
+              (b) => b.id === attempt.blockId || b.title === attempt.blockTitle
+            )
+          : -1;
+
+        const currentBlock =
+          currentTargetPkg && blockIndex !== -1 ? currentTargetPkg.blocks[blockIndex] : undefined;
+
+        let verifiedScore = 0;
+        let verifiedAnswers = attempt.userAnswers || [];
+
+        if (currentBlock && currentBlock.questions && currentBlock.questions.length > 0) {
+          verifiedAnswers = (attempt.userAnswers || []).map((ans, idx) => {
+            const q =
+              currentBlock.questions.find((item) => item.id === ans.questionId) ||
+              currentBlock.questions[idx];
+            if (q) {
+              const userSelected = ans.selectedOption !== undefined ? ans.selectedOption : (ans as any).selectedOptionIndex;
+              const isCorrect = userSelected === q.correctOptionIndex;
+              if (isCorrect) verifiedScore++;
+              return {
+                ...ans,
+                isCorrect,
+                correctOptionIndex: q.correctOptionIndex,
+              };
+            }
+            if (ans.isCorrect) verifiedScore++;
+            return ans;
+          });
+        } else {
+          verifiedScore = attempt.score;
+        }
+
+        // Anti-Cheat 3: Check realistic completion time
+        const isRealisticSpeed = validateTestAttempt(attempt.totalQuestions, attempt.timeSpentSeconds);
+        if (!isRealisticSpeed) {
+          console.warn('YuksalQuiz Anti-Cheat: Superhuman speed detected. Score recorded without coin rewards.');
+        }
+
+        const safeAttempt: TestAttempt = {
+          ...attempt,
+          score: verifiedScore,
+          userAnswers: verifiedAnswers,
+          percentage:
+            attempt.totalQuestions > 0
+              ? Math.round((verifiedScore / attempt.totalQuestions) * 100)
+              : 0,
+        };
+
+        // 1. Perfect score reward (+1 coin for 25/25 or 100% score) only if human speed verified
+        if (
+          safeAttempt.score === safeAttempt.totalQuestions &&
+          safeAttempt.totalQuestions >= 20 &&
+          isRealisticSpeed
+        ) {
           coinsEarned += 1;
         }
 
         // 2. Process package block update and sequential unlock
-        let currentTargetPkg: TestPackage | undefined;
         const updatedPackages = testPackages.map((pkg) => {
           if (pkg.id !== attempt.testPackageId) return pkg;
-          currentTargetPkg = pkg;
 
-          const blockIndex = pkg.blocks.findIndex(
-            (b) => b.id === attempt.blockId || b.title === attempt.blockTitle
-          );
-          if (blockIndex === -1) return pkg;
+          if (blockIndex === -1 || !currentBlock) return pkg;
 
-          const currentBlock = pkg.blocks[blockIndex];
           const passingScore =
             currentBlock.passingScore ||
             Math.max(1, Math.ceil((currentBlock.questions?.length || 25) * 0.7));
-          const isPassed = attempt.score >= passingScore || attempt.isPassed;
-          const bestScore = Math.max(currentBlock.bestScore || 0, attempt.score);
+          const isPassed = safeAttempt.score >= passingScore || attempt.isPassed;
+          const bestScore = Math.max(currentBlock.bestScore || 0, safeAttempt.score);
 
           const updatedBlocks = [...pkg.blocks];
           updatedBlocks[blockIndex] = {
@@ -893,7 +975,13 @@ export const useQuizStore = create<QuizState>()(
           }
 
           // 3. Check for Part 4-6 completion bonus (+5 bonus coins)
-          if (isPassed && currentBlock.blockNumber >= 4 && currentBlock.blockNumber <= 6 && !currentBlock.isPassed) {
+          if (
+            isPassed &&
+            currentBlock.blockNumber >= 4 &&
+            currentBlock.blockNumber <= 6 &&
+            !currentBlock.isPassed &&
+            isRealisticSpeed
+          ) {
             bonusCoins += 5;
           }
 

@@ -12,6 +12,7 @@ import {
   Percent,
   Zap,
   Users,
+  RefreshCw,
 } from 'lucide-react';
 import { LeaderboardUser, UniversityLeaderboardEntry } from '../types';
 import { triggerHaptic } from '../utils/telegram';
@@ -40,37 +41,41 @@ export const Leaderboard: React.FC = () => {
   // Compute current user stats based on latest attempt per unique block (4 points per correct answer)
   const stats = calculateUserRatingStats(testAttempts);
 
+  const [syncError, setSyncError] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  const syncLeaderboard = async () => {
+    setIsSyncing(true);
+    try {
+      const { syncUserProfileToCloud, fetchCloudLeaderboard } = await import(
+        '../services/testSyncService'
+      );
+      // Push current user's latest stats to cloud
+      await syncUserProfileToCloud(profile, stats);
+
+      // Fetch remote real users
+      const remoteUsers = await fetchCloudLeaderboard();
+      if (remoteUsers && remoteUsers.length > 0) {
+        useQuizStore.setState((state) => {
+          const existingIds = new Set([state.profile.id, ...state.leaderboard.map((u) => u.id)]);
+          const newUsers = remoteUsers.filter((u) => !existingIds.has(u.id));
+          if (newUsers.length > 0) {
+            return { leaderboard: [...state.leaderboard, ...newUsers] };
+          }
+          return state;
+        });
+      }
+      setSyncError(false);
+    } catch {
+      setSyncError(true);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Sync real users from cloud and sync current user
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const { syncUserProfileToCloud, fetchCloudLeaderboard } = await import(
-          '../services/testSyncService'
-        );
-        // Push current user's latest stats to cloud
-        await syncUserProfileToCloud(profile, stats);
-
-        // Fetch remote real users
-        const remoteUsers = await fetchCloudLeaderboard();
-        if (isMounted && remoteUsers && remoteUsers.length > 0) {
-          useQuizStore.setState((state) => {
-            const existingIds = new Set([state.profile.id, ...state.leaderboard.map((u) => u.id)]);
-            const newUsers = remoteUsers.filter((u) => !existingIds.has(u.id));
-            if (newUsers.length > 0) {
-              return { leaderboard: [...state.leaderboard, ...newUsers] };
-            }
-            return state;
-          });
-        }
-      } catch {
-        // Non-blocking
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
+    syncLeaderboard();
   }, []);
 
   const currentUserEntry: LeaderboardUser = {
@@ -88,6 +93,8 @@ export const Leaderboard: React.FC = () => {
     accuracyPercentage: stats.accuracyPercentage,
     bestTime: stats.bestTimeFormatted,
     bestTimeSeconds: stats.bestTimeSeconds,
+    totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
+    totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
     weeklyActiveHours: 12.0,
     isCurrentUser: true,
   };
@@ -115,6 +122,7 @@ export const Leaderboard: React.FC = () => {
 
   // Level 2 Sort for Students:
   // - If metric === 'correct': sort by scorePoints (4 points per correct answer on latest block attempt)
+  //   Tie-breaker: if correct answers/points are equal, user with lower total time spent ranks higher
   // - If metric === 'percentage': sort by accuracy %, tie-breaker: faster time (lower seconds)
   // - If metric === 'weekly': sort by active hours
   const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -130,7 +138,9 @@ export const Leaderboard: React.FC = () => {
           ? b.correctAnswersCount * 4
           : b.testsCompleted * 22 * 4);
       if (bPoints !== aPoints) return bPoints - aPoints;
-      return (a.bestTimeSeconds || 180) - (b.bestTimeSeconds || 180);
+      const aTime = a.totalTimeSpentSeconds ?? a.bestTimeSeconds ?? 180;
+      const bTime = b.totalTimeSpentSeconds ?? b.bestTimeSeconds ?? 180;
+      return aTime - bTime;
     }
 
     if (metric === 'percentage') {
@@ -349,6 +359,28 @@ export const Leaderboard: React.FC = () => {
           TOP 20
         </div>
       </div>
+
+      {/* Network / Cloud Sync Error Banner with Retry */}
+      {syncError && (
+        <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="truncate">{t.networkErrorNotice}</span>
+          </div>
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={() => {
+              triggerHaptic('light');
+              syncLeaderboard();
+            }}
+            className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 transition-colors active:scale-95 flex items-center gap-1.5 shadow-sm"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{t.retryBtn}</span>
+          </button>
+        </div>
+      )}
 
       {/* View Mode Switcher: Talabalar reytingi | OTMlar reytingi */}
       <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold border border-slate-200 dark:border-slate-800">

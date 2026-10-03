@@ -335,6 +335,8 @@ export interface LeaderboardUser {
   scorePoints?: number;
   bestTime?: string;
   bestTimeSeconds?: number;
+  totalTimeSpentSeconds?: number;
+  totalTimeSpentFormatted?: string;
   accuracyPercentage?: number;
   totalQuestionsAttempted?: number;
   isCurrentUser?: boolean;

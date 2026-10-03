@@ -7,6 +7,7 @@ import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle } fro
 import { PublicOfferModal } from './PublicOfferModal';
 import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
+import { validateAndSanitizeName } from '../utils/security';
 
 export const OnboardingModal: React.FC = () => {
   const { profile, registerUser } = useQuizStore();
@@ -71,12 +72,16 @@ export const OnboardingModal: React.FC = () => {
     e.preventDefault();
     const errors: typeof fieldErrors = {};
 
-    if (!firstName.trim()) {
-      errors.firstName = getRequiredMsg();
+    const vFirst = validateAndSanitizeName(firstName);
+    if (!vFirst.isValid) {
+      errors.firstName = vFirst.error;
     }
-    if (!lastName.trim()) {
-      errors.lastName = getRequiredMsg();
+
+    const vLast = validateAndSanitizeName(lastName);
+    if (!vLast.isValid) {
+      errors.lastName = vLast.error;
     }
+
     if (!birthDate) {
       errors.birthDate = getRequiredMsg();
     }
@@ -96,8 +101,8 @@ export const OnboardingModal: React.FC = () => {
 
     setFieldErrors({});
     registerUser({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: vFirst.sanitized,
+      lastName: vLast.sanitized,
       region,
       birthDate,
       gender,
@@ -228,6 +233,8 @@ export const OnboardingModal: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      minLength={2}
+                      maxLength={25}
                       value={firstName}
                       onChange={(e) => {
                         setFirstName(e.target.value);
@@ -253,6 +260,8 @@ export const OnboardingModal: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      minLength={2}
+                      maxLength={25}
                       value={lastName}
                       onChange={(e) => {
                         setLastName(e.target.value);

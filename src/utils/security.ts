@@ -104,6 +104,49 @@ export function sanitizeText(input: string): string {
 }
 
 /**
+ * Strict Name Validation & XSS Sanitization:
+ * - Strips all HTML/script tags and special symbols
+ * - Enforces length between 2 and 25 characters
+ * - Allows Latin & Cyrillic alphabets, Uzbek apostrophes (' and ʻ) and hyphens
+ */
+export function validateAndSanitizeName(rawName: string): {
+  isValid: boolean;
+  sanitized: string;
+  error?: string;
+} {
+  if (!rawName || typeof rawName !== 'string') {
+    return { isValid: false, sanitized: '', error: "Maydon to'ldirilishi shart" };
+  }
+
+  // 1. Strip HTML tags, script injections, and unescape entities
+  let clean = sanitizeText(rawName);
+
+  // 2. Remove characters that are not letters, space, apostrophe, or hyphen
+  clean = clean.replace(/[^a-zA-Zа-яА-ЯёЁўЎқҚғҒҳҲ\s'ʻ’\-]/g, '');
+
+  // 3. Normalize whitespace
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  // 4. Check length (2 to 25 chars)
+  if (clean.length < 2) {
+    return {
+      isValid: false,
+      sanitized: clean,
+      error: "Kamida 2 ta harfdan iborat bo'lishi kerak",
+    };
+  }
+
+  if (clean.length > 25) {
+    clean = clean.substring(0, 25).trim();
+  }
+
+  return {
+    isValid: true,
+    sanitized: clean,
+  };
+}
+
+/**
  * Brute-Force Rate Limiting for Admin Login
  */
 interface RateLimitData {

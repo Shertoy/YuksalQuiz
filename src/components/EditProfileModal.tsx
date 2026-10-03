@@ -23,6 +23,7 @@ import { triggerHaptic, soundFX } from '../utils/telegram';
 import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
+import { validateAndSanitizeName } from '../utils/security';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [studyType, setStudyType] = useState<StudyType>(profile.studyType);
   const [academicYear, setAcademicYear] = useState<AcademicYear>(profile.academicYear);
   const [avatar, setAvatar] = useState(profile.avatar);
+  const [formErrors, setFormErrors] = useState<{ firstName?: string; lastName?: string }>({});
 
   // Sync state whenever modal opens
   useEffect(() => {
@@ -63,12 +65,26 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const vFirst = validateAndSanitizeName(firstName);
+    const vLast = validateAndSanitizeName(lastName);
+
+    if (!vFirst.isValid || !vLast.isValid) {
+      triggerHaptic('error');
+      setFormErrors({
+        firstName: vFirst.error,
+        lastName: vLast.error,
+      });
+      return;
+    }
+
+    setFormErrors({});
     triggerHaptic('success');
     soundFX.playCorrect();
 
     updateProfile({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: vFirst.sanitized,
+      lastName: vLast.sanitized,
       region,
       university,
       studyType,
@@ -186,11 +202,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <input
                 type="text"
                 required
+                minLength={2}
+                maxLength={25}
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                placeholder="Ismingiz"
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  if (formErrors.firstName) setFormErrors({ ...formErrors, firstName: undefined });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border ${
+                  formErrors.firstName
+                    ? 'border-rose-500 focus:ring-rose-500'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+                } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
+                placeholder="Ismingiz (2-25 belgi)"
               />
+              {formErrors.firstName && (
+                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                  {formErrors.firstName}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -199,11 +229,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <input
                 type="text"
                 required
+                minLength={2}
+                maxLength={25}
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                placeholder="Familiyangiz"
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (formErrors.lastName) setFormErrors({ ...formErrors, lastName: undefined });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border ${
+                  formErrors.lastName
+                    ? 'border-rose-500 focus:ring-rose-500'
+                    : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+                } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
+                placeholder="Familiyangiz (2-25 belgi)"
               />
+              {formErrors.lastName && (
+                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                  {formErrors.lastName}
+                </p>
+              )}
             </div>
           </div>
 

@@ -52,10 +52,26 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const handleSyncTests = async () => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetchCloudTests();
+      if (!res.success && res.message && !res.message.includes("yo'q")) {
+        setSyncError(res.message);
+      }
+    } catch (err: any) {
+      setSyncError(err?.message || 'Tarmoq xatosi');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Automatically sync with cloud on mount and when window regains focus
   useEffect(() => {
-    fetchCloudTests().catch((err) => console.debug('TestList sync notice:', err));
+    handleSyncTests();
 
     const handleFocus = () => {
       fetchCloudTests().catch(() => {});
@@ -244,9 +260,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
             disabled={isSyncing}
             onClick={async () => {
               triggerHaptic('light');
-              setIsSyncing(true);
-              await fetchCloudTests();
-              setIsSyncing(false);
+              await handleSyncTests();
               triggerHaptic('success');
             }}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 transition-colors active:scale-95"
@@ -268,6 +282,28 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
           </button>
         </div>
       </div>
+
+      {/* Network / Cloud Sync Error Banner with Retry */}
+      {syncError && (
+        <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="truncate">{t.networkErrorNotice}</span>
+          </div>
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={() => {
+              triggerHaptic('light');
+              handleSyncTests();
+            }}
+            className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 transition-colors active:scale-95 flex items-center gap-1.5 shadow-sm"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{t.retryBtn}</span>
+          </button>
+        </div>
+      )}
 
       {/* Scope Selector: All Tests vs My Created Tests */}
       <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
@@ -407,16 +443,31 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 ? t.myTestsEmptyDesc
                 : t.emptyCategoryDesc}
             </p>
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                onOpenCreateModal();
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t.createTestBtn}</span>
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenCreateModal();
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.createTestBtn}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={() => {
+                  triggerHaptic('light');
+                  handleSyncTests();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:scale-95 transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-500' : ''}`} />
+                <span>{t.retryBtn}</span>
+              </button>
+            </div>
           </div>
         ) : (
           filteredPackages.map((pkg) => (
