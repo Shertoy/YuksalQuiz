@@ -116,7 +116,7 @@ export const App: React.FC = () => {
     fetchCloudAnnouncements();
     fetchCloudLeaderboard()
       .then((remoteUsers) => {
-        if (remoteUsers && remoteUsers.length > 0) {
+        if (remoteUsers) {
           useQuizStore.setState((state) => {
             const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
             const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
@@ -124,12 +124,6 @@ export const App: React.FC = () => {
             for (const u of remoteOthers) {
               const cleanId = (u.id || '').replace(/^lead_/, '');
               remoteMap.set(cleanId, { ...u, id: cleanId });
-            }
-            for (const u of state.leaderboard) {
-              const cleanId = (u.id || '').replace(/^lead_/, '');
-              if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
-                remoteMap.set(cleanId, { ...u, id: cleanId });
-              }
             }
             return { leaderboard: Array.from(remoteMap.values()) };
           });
@@ -171,7 +165,7 @@ export const App: React.FC = () => {
       fetchCloudTests().catch(() => {});
       fetchCloudLeaderboard()
         .then((remoteUsers) => {
-          if (remoteUsers && remoteUsers.length > 0) {
+          if (remoteUsers) {
             useQuizStore.setState((state) => {
               const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
               const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
@@ -179,12 +173,6 @@ export const App: React.FC = () => {
               for (const u of remoteOthers) {
                 const cleanId = (u.id || '').replace(/^lead_/, '');
                 remoteMap.set(cleanId, { ...u, id: cleanId });
-              }
-              for (const u of state.leaderboard) {
-                const cleanId = (u.id || '').replace(/^lead_/, '');
-                if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
-                  remoteMap.set(cleanId, { ...u, id: cleanId });
-                }
               }
               return { leaderboard: Array.from(remoteMap.values()) };
             });

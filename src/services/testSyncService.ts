@@ -676,21 +676,38 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
   if (!row) return {} as LeaderboardUser;
   const cleanId = String(row.id || '').replace(/^lead_/, '');
   const score = Number(
+    row.total_score ??
     row.score_points ??
     row.scorePoints ??
     (row.total_questions !== undefined ? row.total_questions : undefined) ??
+    (row.correct_answers !== undefined ? row.correct_answers * 4 : undefined) ??
     (row.correct_answers_count ? row.correct_answers_count * 4 : 0)
   ) || 0;
 
   const corrects = Number(
+    row.correct_answers ??
     row.correct_answers_count ??
     row.correctAnswersCount ??
     (score > 0 ? Math.floor(score / 4) : 0)
   ) || 0;
 
+  const displayName = row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.title || 'Talaba';
+  const totalSeconds = Number(
+    row.total_time ??
+    row.total_time_spent_seconds ??
+    row.totalTimeSpentSeconds ??
+    row.best_time_seconds ??
+    row.bestTimeSeconds ??
+    165
+  );
+
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
   return {
     id: cleanId,
-    name: decodeHtmlEntities(row.name || row.title || 'Talaba'),
+    name: decodeHtmlEntities(displayName),
     region: row.region || row.department || 'Toshkent shahri',
     university: decodeHtmlEntities(row.university || ''),
     avatar: row.avatar || '/avatars/avatar_1.png',
@@ -703,11 +720,10 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     scorePoints: score,
     totalQuestionsAttempted: Number(row.total_questions_attempted ?? row.totalQuestionsAttempted) || Math.max(corrects, 25),
     accuracyPercentage: Number(row.accuracy_percentage ?? row.accuracyPercentage) || 85,
-    bestTime: row.best_time || row.bestTime || '02:45',
-    bestTimeSeconds: Number(row.best_time_seconds ?? row.bestTimeSeconds) || 165,
-    totalTimeSpentSeconds:
-      Number(row.total_time_spent_seconds ?? row.totalTimeSpentSeconds) || Number(row.best_time_seconds ?? row.bestTimeSeconds) || 165,
-    totalTimeSpentFormatted: row.total_time_spent_formatted || row.totalTimeSpentFormatted || row.best_time || row.bestTime || '02:45',
+    bestTime: row.best_time || row.bestTime || formattedTime,
+    bestTimeSeconds: Number(row.best_time_seconds ?? row.bestTimeSeconds) || Math.min(totalSeconds, 165),
+    totalTimeSpentSeconds: totalSeconds,
+    totalTimeSpentFormatted: row.total_time_spent_formatted || row.totalTimeSpentFormatted || formattedTime,
     weeklyActiveHours: 12.0,
     isCurrentUser: false,
   };
@@ -715,10 +731,7 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
 
 /**
  * Pushes real registered user rating progress to Supabase leaderboard.
- * Multi-layer sync:
- * 1. Dedicated row in test_packages with category: 'LeaderboardUser' (eliminates race condition overwrites)
- * 2. public.leaderboard_users table (if available)
- * 3. Legacy __system_leaderboard_sync__
+ * Direct write into public.users, with multi-layer fallback.
  */
 export async function syncUserProfileToCloud(
   profile: UserProfile,
@@ -753,7 +766,40 @@ export async function syncUserProfileToCloud(
     updated_at: new Date().toISOString(),
   };
 
-  // 1. Primary: Dedicated row in test_packages to prevent ANY race-condition overwriting!
+  // 1. Primary: Direct upsert to public.users table!
+  const userRowForUsersTable = {
+    id: profile.id,
+    first_name: profile.firstName || '',
+    last_name: profile.lastName || '',
+    name: fullName,
+    avatar: profile.avatar || '/avatars/avatar_1.png',
+    university,
+    region,
+    gender: profile.gender || 'male',
+    academic_year: profile.academicYear || 1,
+    coins: profile.coins || 0,
+    balance: profile.walletBalance || 0,
+    wallet_balance: profile.walletBalance || 0,
+    has_paid: Boolean(profile.has_paid),
+    paid_until: profile.paid_until || null,
+    tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+    correct_answers: stats.totalCorrectAnswers,
+    correct_answers_count: stats.totalCorrectAnswers,
+    total_score: stats.scorePoints,
+    score_points: stats.scorePoints,
+    total_time: stats.totalTimeSpentSeconds,
+    total_time_spent_seconds: stats.totalTimeSpentSeconds,
+    accuracy_percentage: stats.accuracyPercentage,
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    await supabase.from('users').upsert(userRowForUsersTable, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('users table upsert warning:', err);
+  }
+
+  // 2. Dedicated row in test_packages to prevent race conditions
   const userRow = {
     id: `lead_${profile.id}`,
     title: fullName,
@@ -774,14 +820,12 @@ export async function syncUserProfileToCloud(
     console.warn('Dedicated leaderboard user row upsert warning:', err);
   }
 
-  // 2. Future-proof: Attempt public.leaderboard_users table if it exists
+  // 3. Fallback: leaderboard_users table if available
   try {
     await supabase.from('leaderboard_users').upsert(userRatingObject, { onConflict: 'id' });
-  } catch {
-    // Non-critical if table does not exist
-  }
+  } catch {}
 
-  // 3. Fallback: also maintain legacy __system_leaderboard_sync__
+  // 4. Legacy __system_leaderboard_sync__
   try {
     const { data: cur } = await supabase
       .from('test_packages')
@@ -817,17 +861,51 @@ export async function syncUserProfileToCloud(
       },
       { onConflict: 'id' }
     );
+  } catch {}
+}
+
+/**
+ * Pushes test completion results directly to Supabase's `users` and `test_results` tables.
+ */
+export async function syncTestAttemptToCloud(
+  profile: UserProfile,
+  stats: UserRatingStats,
+  attempt: any
+): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase || !profile || !profile.id) return;
+
+  // 1. Upsert users rating and progress into `users` table
+  await syncUserProfileToCloud(profile, stats);
+
+  // 2. Direct insert into `test_results` table
+  try {
+    const testResultRow = {
+      id: attempt.id || `res_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      user_id: profile.id,
+      test_package_id: attempt.testPackageId || '',
+      test_title: attempt.testPackageTitle || '',
+      block_id: attempt.blockId || '',
+      block_title: attempt.blockTitle || '',
+      score: Number(attempt.score) || 0,
+      total_questions: Number(attempt.totalQuestions) || 0,
+      percentage: Number(attempt.percentage) || 0,
+      time_spent_seconds: Number(attempt.timeSpentSeconds) || 0,
+      total_time: Number(attempt.timeSpentSeconds) || 0,
+      is_passed: Boolean(attempt.isPassed),
+      user_answers: attempt.userAnswers || [],
+      created_at: attempt.completedAt || new Date().toISOString(),
+    };
+
+    await supabase.from('test_results').upsert(testResultRow, { onConflict: 'id' });
   } catch (err) {
-    // Non-critical fallback
+    console.warn('test_results table upsert error:', err);
   }
 }
 
 /**
  * Fetches real active users from Supabase cloud leaderboard.
- * Multi-layer fetch:
- * 1. Checks public.leaderboard_users table
- * 2. Checks individual LeaderboardUser rows in test_packages
- * 3. Falls back to legacy __system_leaderboard_sync__
+ * Directly reads TOP 20 from public.users table sorted by correct_answers, total_score, and total_time.
  */
 export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
   const supabase = getSupabase();
@@ -835,31 +913,48 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
 
   const userMap = new Map<string, LeaderboardUser>();
 
-  // 1. Fetch from leaderboard_users table if available
+  // 1. Primary: Fetch users from public.users table (Zero mock data!)
+  try {
+    const { data: usersData, error: usersErr } = await supabase
+      .from('users')
+      .select('*')
+      .limit(100);
+
+    if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
+      for (const row of usersData) {
+        const u = mapRowToLeaderboardUser(row);
+        if (u && u.id) {
+          userMap.set(u.id, u);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('fetchCloudLeaderboard users table error:', err);
+  }
+
+  // 2. Multi-layer fallback: leaderboard_users table if available
   try {
     const { data, error } = await supabase
       .from('leaderboard_users')
       .select('*')
-      .order('score_points', { ascending: false })
       .limit(100);
 
     if (!error && data && Array.isArray(data)) {
       for (const row of data) {
         const u = mapRowToLeaderboardUser(row);
-        if (u && u.id) userMap.set(u.id, u);
+        if (u && u.id && !userMap.has(u.id)) {
+          userMap.set(u.id, u);
+        }
       }
     }
-  } catch {
-    // Fall through
-  }
+  } catch {}
 
-  // 2. Fetch all individual LeaderboardUser rows from test_packages
+  // 3. Multi-layer fallback: individual LeaderboardUser rows from test_packages
   try {
     const { data: leadRows, error: leadErr } = await supabase
       .from('test_packages')
       .select('*')
       .eq('category', 'LeaderboardUser')
-      .order('total_questions', { ascending: false })
       .limit(100);
 
     if (!leadErr && leadRows && Array.isArray(leadRows)) {
@@ -898,7 +993,7 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
     console.warn('Error fetching LeaderboardUser rows from test_packages:', err);
   }
 
-  // 3. Fallback: also check legacy __system_leaderboard_sync__
+  // 4. Legacy __system_leaderboard_sync__
   try {
     const { data: sysPkg } = await supabase
       .from('test_packages')
@@ -926,22 +1021,31 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
         }
       }
     }
-  } catch {
-    // Fail gracefully
-  }
+  } catch {}
 
   const allList = Array.from(userMap.values());
-  // Sort descending by score_points, then ascending by total_time_spent_seconds (kamroq vaqt sarflagan yuqoriga)
+
+  // Sort descending by correct_answers and total_score, tie-breaker: ascending by total_time
   allList.sort((a, b) => {
-    const pDiff = (b.scorePoints || 0) - (a.scorePoints || 0);
-    if (pDiff !== 0) return pDiff;
+    // 1. Primary: Score points / correct answers
+    const aScore = a.scorePoints ?? ((a.correctAnswersCount || 0) * 4);
+    const bScore = b.scorePoints ?? ((b.correctAnswersCount || 0) * 4);
+    if (bScore !== aScore) return bScore - aScore;
+
+    const aCorrect = a.correctAnswersCount || 0;
+    const bCorrect = b.correctAnswersCount || 0;
+    if (bCorrect !== aCorrect) return bCorrect - aCorrect;
+
+    // 2. Tie-breaker: Lower total time spent ranks higher
     const aTime = a.totalTimeSpentSeconds || a.bestTimeSeconds || 180;
     const bTime = b.totalTimeSpentSeconds || b.bestTimeSeconds || 180;
     if (aTime !== bTime) return aTime - bTime;
+
     return (a.id || '').localeCompare(b.id || '');
   });
 
-  return allList;
+  // Strictly TOP 20
+  return allList.slice(0, 20);
 }
 
 /**

@@ -1,10 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TestPackage, UserAnswerRecord, TestAttempt } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Clock, CheckCircle2, X, ChevronRight } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
+
+/**
+ * Fisher-Yates algorithm to shuffle options client-side uniformly.
+ * Eliminates repetitive pattern of option 'B' always being correct without server load.
+ */
+function shuffleOptionsWithFisherYates(options: string[], correctOptionIndex: number) {
+  const items = options.map((opt, idx) => ({
+    text: opt,
+    isCorrect: idx === correctOptionIndex,
+  }));
+
+  // Fisher-Yates shuffle
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = items[i];
+    items[i] = items[j];
+    items[j] = temp;
+  }
+
+  const shuffledOptions = items.map((item) => item.text);
+  const newCorrectOptionIndex = items.findIndex((item) => item.isCorrect);
+
+  return {
+    options: shuffledOptions,
+    correctOptionIndex: newCorrectOptionIndex >= 0 ? newCorrectOptionIndex : 0,
+  };
+}
 
 interface TestRunnerProps {
   testPackage: TestPackage;
@@ -23,7 +50,19 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   const { t } = useTranslation();
 
   const block = testPackage.blocks.find((b) => b.id === blockId) || testPackage.blocks[0];
-  const questions = block?.questions || [];
+
+  // Client-side Fisher-Yates shuffle for options of each question
+  const questions = useMemo(() => {
+    return (block?.questions || []).map((q) => {
+      if (!q.options || q.options.length <= 1) return q;
+      const shuffled = shuffleOptionsWithFisherYates(q.options, q.correctOptionIndex);
+      return {
+        ...q,
+        options: shuffled.options,
+        correctOptionIndex: shuffled.correctOptionIndex,
+      };
+    });
+  }, [block?.id]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { Moon, Sun, Volume2, VolumeX, ShieldAlert, Sparkles, Globe, Bell, Check, Lock } from 'lucide-react';
+import { ShieldAlert, Sparkles, Globe, Bell, Check, Lock } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
@@ -13,10 +13,6 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdminLogin }) => {
   const {
-    theme,
-    setTheme,
-    soundEnabled,
-    toggleSound,
     tamperDetected,
     resetTamperWarning,
     profile,
@@ -34,10 +30,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
   );
   const unreadCount = unreadAnnouncements.length;
 
-  const handleThemeToggle = () => {
-    triggerHaptic('light');
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
 
   const handleLanguageChange = (lang: Language) => {
     triggerHaptic('selection');
@@ -87,14 +79,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 <h1 className="font-black text-base tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-orange-500 bg-clip-text text-transparent dark:from-emerald-400 dark:via-teal-300 dark:to-orange-400">
                   YuksalQuiz
                 </h1>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
-                  v1.0
-                </span>
               </div>
             </div>
           </button>
 
-          {/* Clean Controls: Language + Sound + Theme */}
+          {/* Clean Controls: Language + Notifications + Admin */}
           <div className="flex items-center gap-2">
             {/* Language Switcher Pill */}
             <div className="relative">
@@ -138,39 +127,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 </>
               )}
             </div>
-
-            {/* Sound Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                toggleSound();
-              }}
-              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
-              title={soundEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
-              aria-label="Sound Toggle"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-slate-400" />
-              )}
-            </button>
-
-            {/* Theme Toggle */}
-            <button
-              type="button"
-              onClick={handleThemeToggle}
-              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
-              title="Mavzuni almashtirish"
-              aria-label="Theme Toggle"
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-orange-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-emerald-600" />
-              )}
-            </button>
 
             {/* Notifications Trigger */}
             {onOpenNotifications && (

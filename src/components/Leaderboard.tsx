@@ -57,7 +57,7 @@ export const Leaderboard: React.FC = () => {
       ]);
 
       const remoteUsers = fetchRes.status === 'fulfilled' ? fetchRes.value : [];
-      if (remoteUsers && remoteUsers.length > 0) {
+      if (remoteUsers) {
         useQuizStore.setState((state) => {
           const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
           const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
@@ -65,12 +65,6 @@ export const Leaderboard: React.FC = () => {
           for (const u of remoteOthers) {
             const cleanId = (u.id || '').replace(/^lead_/, '');
             remoteMap.set(cleanId, { ...u, id: cleanId });
-          }
-          for (const u of state.leaderboard) {
-            const cleanId = (u.id || '').replace(/^lead_/, '');
-            if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
-              remoteMap.set(cleanId, { ...u, id: cleanId });
-            }
           }
           return { leaderboard: Array.from(remoteMap.values()) };
         });

@@ -1009,7 +1009,22 @@ export const useQuizStore = create<QuizState>()(
               currentBlock.questions[idx];
             if (q) {
               const userSelected = ans.selectedOption !== undefined ? ans.selectedOption : (ans as any).selectedOptionIndex;
-              const isCorrect = userSelected === q.correctOptionIndex;
+              let isCorrect = false;
+              if (
+                ans.options &&
+                userSelected >= 0 &&
+                userSelected < ans.options.length &&
+                q.options &&
+                q.correctOptionIndex >= 0 &&
+                q.correctOptionIndex < q.options.length
+              ) {
+                isCorrect = ans.options[userSelected].trim() === q.options[q.correctOptionIndex].trim();
+              } else if (ans.isCorrect !== undefined) {
+                isCorrect = ans.isCorrect;
+              } else {
+                isCorrect = userSelected === q.correctOptionIndex;
+              }
+
               if (isCorrect) verifiedScore++;
               return {
                 ...ans,
@@ -1205,10 +1220,10 @@ export const useQuizStore = create<QuizState>()(
           leaderboard: updatedLeaderboard,
         });
 
-        // Trigger background cloud rating sync for real user
+        // Trigger background cloud rating and test_results sync for real user
         import('../services/testSyncService')
-          .then(({ syncUserProfileToCloud }) => {
-            syncUserProfileToCloud(updatedProfile, updatedStats).catch(() => {});
+          .then(({ syncTestAttemptToCloud }) => {
+            syncTestAttemptToCloud(updatedProfile, updatedStats, safeAttempt).catch(() => {});
           })
           .catch(() => {});
 

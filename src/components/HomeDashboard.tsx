@@ -30,7 +30,6 @@ import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
-import { UserRankProgressCard } from './UserRankProgressCard';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -93,6 +92,33 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   ].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
 
   const userRank = Math.max(1, allUsers.findIndex((u) => u.id === cleanProfileId) + 1);
+
+  // Compact motivation calculation: Next rank progress
+  const isRankOne = userRank === 1;
+  let testsRemaining = 1;
+  let progressPercent = 100;
+  let motivationText = '';
+
+  if (isRankOne) {
+    progressPercent = 100;
+    motivationText = "Siz 1-o'rinda peshqadamsiz! O'rningizni saqlab qoling 🏆";
+  } else {
+    const aheadUser = allUsers[userRank - 2];
+    const aheadUserTests =
+      aheadUser?.correctAnswersCount ??
+      (aheadUser?.scorePoints ? Math.floor(aheadUser.scorePoints / 4) : 0);
+    const currentUserTests = stats.totalCorrectAnswers;
+    const diff = aheadUserTests - currentUserTests;
+    testsRemaining = Math.max(1, diff > 0 ? diff : 1);
+
+    if (aheadUserTests > 0) {
+      progressPercent = Math.min(99, Math.max(0, Math.round((currentUserTests / aheadUserTests) * 100)));
+    } else {
+      progressPercent = currentUserTests > 0 ? 100 : 0;
+    }
+
+    motivationText = `Keyingi o'ringa chiqish uchun ${testsRemaining} ta to'g'ri test qoldi`;
+  }
 
   const bestAttemptScore = (testAttempts || []).length > 0
     ? Math.max(...(testAttempts || []).map((a) => a.score))
@@ -340,8 +366,24 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       )}
 
-      {/* User Personal Rank Progress Card */}
-      <UserRankProgressCard />
+      {/* Ixcham 1-qatorli Motivatsiya Bloki va Yashil Progress-Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-2">
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 truncate">
+            <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="truncate">{motivationText}</span>
+          </div>
+          <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 shrink-0">
+            {progressPercent}%
+          </span>
+        </div>
+        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-xs"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
 
       {/* Starting Voucher Card */}
       {profile.voucherBalance > 0 && (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') && (

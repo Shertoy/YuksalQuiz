@@ -18,6 +18,8 @@ import {
   Vibrate,
   Wallet,
   PlusCircle,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
@@ -42,6 +44,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     toggleSound,
     vibrationEnabled,
     toggleVibration,
+    theme,
+    setTheme,
   } = useQuizStore();
   const { t } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
@@ -307,6 +311,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
                 vibrationEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Dark/Light Theme Toggle Row */}
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              theme === 'dark'
+                ? 'bg-amber-500/15 text-amber-500'
+                : 'bg-emerald-500/15 text-emerald-600'
+            }`}>
+              {theme === 'dark' ? (
+                <Moon className="w-4 h-4" strokeWidth={1.75} />
+              ) : (
+                <Sun className="w-4 h-4" strokeWidth={1.75} />
+              )}
+            </div>
+            <div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
+                {theme === 'dark' ? "Tungi rejim (Qorong'i)" : "Kunduzgi rejim (Yorug')"}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                Ilova tashqi ko'rinish mavzusi
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={theme === 'dark'}
+            onClick={() => {
+              triggerHaptic('light');
+              setTheme(theme === 'dark' ? 'light' : 'dark');
+            }}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              theme === 'dark' ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
