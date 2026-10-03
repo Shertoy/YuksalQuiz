@@ -79,6 +79,7 @@ async function notifyAdmin(payload: {
   status: 'approved' | 'pending' | 'rejected';
   paymentId?: string;
   reason?: string | null;
+  receiptImageUrl?: string | null;
 }) {
   if (!BOT_TOKEN) return;
 
@@ -101,6 +102,10 @@ async function notifyAdmin(payload: {
       text += `📝 <b>Qabul qiluvchi:</b> ${payload.recipientName}\n`;
     }
     text += `🕒 <b>Vaqt:</b> ${new Date().toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}\n`;
+
+    if (payload.receiptImageUrl) {
+      text += `🖼️ <b>Kvitansiya:</b> <a href="${payload.receiptImageUrl}">Chek rasmini ko'rish</a>\n`;
+    }
 
     if (payload.reason) {
       text += `\n⚠️ <b>Izoh:</b> ${payload.reason}\n`;
@@ -164,6 +169,7 @@ export default async function handler(req: any, res: any) {
     userId = 'anonymous_user',
     userName = 'Talaba',
     expectedAmount = 20000,
+    receiptImageUrl: clientReceiptUrl = null,
   } = req.body || {};
 
   if (!image || typeof image !== 'string') {
@@ -185,6 +191,33 @@ export default async function handler(req: any, res: any) {
         detectedMime = mimeMatch[1];
       }
       base64Data = base64Data.substring(commaIndex + 1);
+    }
+  }
+
+  // 1.1 Ensure receipt image is saved to Supabase Storage bucket 'receipts'
+  let receiptImageUrl: string | null = clientReceiptUrl;
+  if (!receiptImageUrl && base64Data) {
+    try {
+      const fileBuffer = Buffer.from(base64Data, 'base64');
+      const cleanUserId = (userId || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const ext = detectedMime.includes('png') ? 'png' : detectedMime.includes('webp') ? 'webp' : 'jpg';
+      const storagePath = `${cleanUserId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('receipts')
+        .upload(storagePath, fileBuffer, {
+          contentType: detectedMime,
+          upsert: true,
+        });
+
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(storagePath);
+        receiptImageUrl = urlData?.publicUrl || storagePath;
+      }
+    } catch (storageErr) {
+      console.warn('Storage upload error in verify-receipt:', storageErr);
     }
   }
 
@@ -278,6 +311,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         await supabase.from('payments').insert({
           user_id: userId,
           amount: aiData.amount || expectedAmount || 0,
+          receipt_image_url: receiptImageUrl,
           status: 'rejected',
           notes: rejectReason,
           created_at: new Date().toISOString(),
@@ -423,6 +457,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             user_id: userId,
             amount: paidAmount,
             transaction_id: txId,
+            receipt_image_url: receiptImageUrl,
             status: 'approved',
             notes: `Gemini AI tasdiqladi (${aiData.payment_system || 'P2P'}, Karta: ${aiData.recipient_card || '0093'}, Ism: ${aiData.recipient_name || 'Alijonova X.'})`,
             created_at: new Date().toISOString(),
@@ -479,6 +514,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         recipientName: aiData.recipient_name || OFFICIAL_CARD_HOLDER,
         status: 'approved',
         reason: `${aiData.payment_system} cheki to'g'ri keldi. Hisobiga +${paidAmount.toLocaleString('uz-UZ')} so'm qo'shildi (Yangi balans: ${newBalance.toLocaleString('uz-UZ')} so'm).`,
+        receiptImageUrl,
       });
 
       return res.status(200).json({
@@ -511,6 +547,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         user_id: userId,
         amount: finalAmount,
         transaction_id: fallbackTxId,
+        receipt_image_url: receiptImageUrl,
         status: 'pending',
         notes: aiError || aiData?.rejection_reason || 'AI rasm xiraligi sababli aniqlay olmadi, admin tekshiruviga yuborildi',
         created_at: new Date().toISOString(),
@@ -534,6 +571,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     recipientName: aiData?.recipient_name || 'Aniqlanmadi',
     status: 'pending',
     paymentId: pendingPaymentId,
+    receiptImageUrl,
     reason: aiData
       ? `AI rasm xiraligi yoki ishonch pastligi sababli aniqlay olmadi (${aiData.confidence}). Iltimos, chekni ko'rib tasdiqlang.`
       : `AI javob bermadi (${aiError || 'Noma\'lum'}). Qo'lda tekshirish zarur.`,

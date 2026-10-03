@@ -1,6 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
+  "crons": [
+    {
+      "path": "/api/cleanup-receipts",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",

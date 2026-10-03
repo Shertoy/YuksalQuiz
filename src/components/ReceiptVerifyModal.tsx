@@ -23,6 +23,8 @@ import {
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReceiptVerificationResult } from '../types';
+import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
+import { uploadReceiptToStorage } from '../services/receiptService';
 
 interface ReceiptVerifyModalProps {
   isOpen: boolean;
@@ -50,6 +52,12 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copiedCard, setCopiedCard] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
+  const [compressedBase64, setCompressedBase64] = useState<string | null>(null);
+  const [originalSizeBytes, setOriginalSizeBytes] = useState<number>(0);
+  const [compressedSizeBytes, setCompressedSizeBytes] = useState<number>(0);
+  const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const [verifyStepText, setVerifyStepText] = useState('');
   const [result, setResult] = useState<ReceiptVerificationResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -100,7 +108,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -109,22 +117,54 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("Rasm hajmi juda katta (maksimal 10 MB).");
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadError("Rasm hajmi juda katta (maksimal 25 MB).");
       return;
     }
 
     setUploadError(null);
-    setSelectedFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    setIsCompressing(true);
     triggerHaptic('light');
+
+    try {
+      // 1. Klient tomonida sifatini buzmagan holda maksimal 300 KB gacha siqish
+      const comp = await compressReceiptImage(file, 300 * 1024);
+      setSelectedFile(comp.file);
+      setCompressedBlob(comp.blob);
+      setCompressedBase64(comp.base64);
+      setOriginalSizeBytes(comp.originalSize);
+      setCompressedSizeBytes(comp.compressedSize);
+      setPreviewUrl(comp.base64);
+
+      // 2. Siqilgan kvitansiyani Supabase Storage 'receipts' bucketiga yuklash
+      uploadReceiptToStorage(profile.id, comp.blob).then((res) => {
+        if (res?.publicUrl) {
+          setUploadedReceiptUrl(res.publicUrl);
+        }
+      });
+    } catch (err: any) {
+      console.warn('Receipt compression error:', err);
+      setSelectedFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      setOriginalSizeBytes(file.size);
+      setCompressedSizeBytes(file.size);
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleRemoveImage = () => {
     setSelectedFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewUrl && !previewUrl.startsWith('data:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setPreviewUrl(null);
+    setCompressedBlob(null);
+    setCompressedBase64(null);
+    setOriginalSizeBytes(0);
+    setCompressedSizeBytes(0);
+    setUploadedReceiptUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setResult(null);
     triggerHaptic('light');
@@ -153,7 +193,18 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
     try {
       setVerifyStepText("Kvitansiya tasviri tayyorlanmoqda...");
-      const base64Data = await convertFileToBase64(selectedFile);
+      const base64Data = compressedBase64 || (await convertFileToBase64(selectedFile));
+
+      // Agar oldin yuklanmagan bo'lsa, Supabase Storage'ga yuklash
+      let finalReceiptUrl = uploadedReceiptUrl;
+      if (!finalReceiptUrl && compressedBlob) {
+        setVerifyStepText("Kvitansiya Supabase Storage'ga saqlanmoqda...");
+        const upRes = await uploadReceiptToStorage(profile.id, compressedBlob);
+        if (upRes?.publicUrl) {
+          finalReceiptUrl = upRes.publicUrl;
+          setUploadedReceiptUrl(finalReceiptUrl);
+        }
+      }
 
       setVerifyStepText("Gemini 1.5 Flash Vision kvitansiyani tahlil qilmoqda...");
 
@@ -165,7 +216,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
         },
         body: JSON.stringify({
           image: base64Data,
-          mimeType: selectedFile.type || 'image/jpeg',
+          receiptImageUrl: finalReceiptUrl || null,
+          mimeType: 'image/jpeg',
           userId: profile.id,
           userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
           expectedAmount: selectedAmount,
@@ -497,23 +549,47 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     </span>
                   </label>
                 ) : (
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-56 bg-slate-950 flex items-center justify-center">
-                    {previewUrl && (
-                      <img
-                        src={previewUrl}
-                        alt="Kvitansiya cheki"
-                        className="max-h-56 object-contain w-full"
-                      />
+                  <div className="space-y-2">
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-56 bg-slate-950 flex items-center justify-center">
+                      {previewUrl && (
+                        <img
+                          src={previewUrl}
+                          alt="Kvitansiya cheki"
+                          className="max-h-56 object-contain w-full"
+                        />
+                      )}
+
+                      {/* Scanner animation overlay when active */}
+                      {isVerifying && (
+                        <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
+                          <div className="w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse absolute top-1/2 -translate-y-1/2 shadow-lg shadow-emerald-400/80" />
+                          <div className="p-3 rounded-2xl bg-slate-900/90 text-white border border-emerald-500/50 flex items-center gap-2.5 shadow-2xl z-10">
+                            <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+                            <span className="text-xs font-bold">{verifyStepText}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Compression indicator & file size badge */}
+                    {isCompressing && (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold animate-pulse">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                        <span>Rasm sifati saqlangan holda 300 KB gacha siqilmoqda...</span>
+                      </div>
                     )}
 
-                    {/* Scanner animation overlay when active */}
-                    {isVerifying && (
-                      <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
-                        <div className="w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse absolute top-1/2 -translate-y-1/2 shadow-lg shadow-emerald-400/80" />
-                        <div className="p-3 rounded-2xl bg-slate-900/90 text-white border border-emerald-500/50 flex items-center gap-2.5 shadow-2xl z-10">
-                          <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
-                          <span className="text-xs font-bold">{verifyStepText}</span>
+                    {!isCompressing && compressedSizeBytes > 0 && (
+                      <div className="flex items-center justify-between text-[11px] px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold shadow-xs">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>Hajmi: <b>{formatBytes(compressedSizeBytes)}</b> (≤300 KB siqildi)</span>
                         </div>
+                        {originalSizeBytes > compressedSizeBytes && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Asl: {formatBytes(originalSizeBytes)} (-{Math.round((1 - compressedSizeBytes / originalSizeBytes) * 100)}%)
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
