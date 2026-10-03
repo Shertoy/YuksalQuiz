@@ -1,4 +1,4 @@
-import { TestAttempt } from '../types';
+import { TestAttempt, LeaderboardUser } from '../types';
 
 export interface UserRatingStats {
   scorePoints: number;              // Total rating points (sum of latest attempt score * 4 per unique test block)
@@ -95,4 +95,69 @@ export function calculateUserRatingStats(testAttempts: TestAttempt[]): UserRatin
     totalTimeSpentSeconds,
     totalTimeSpentFormatted: totalTimeSpentSeconds > 0 ? totalTimeSpentFormatted : bestTimeFormatted,
   };
+}
+
+/**
+ * Compares two leaderboard users according to official ranking rules.
+ *
+ * Rules:
+ * 1. Primary sort: Score points (each correct answer awards 4 points) / Total correct answers count.
+ * 2. Tie-breaker: If score points / correct answers are equal, the user who spent LESS total time ranks higher.
+ * 3. Fallback tie-breaker: User with faster bestTimeSeconds ranks higher.
+ * 4. Deterministic order: Alphabetical comparison on ID.
+ */
+export function compareLeaderboardUsers(
+  a: LeaderboardUser,
+  b: LeaderboardUser,
+  metric: 'correct' | 'percentage' | 'weekly' = 'correct'
+): number {
+  if (metric === 'correct') {
+    const aPoints =
+      a.scorePoints ??
+      (a.correctAnswersCount !== undefined
+        ? a.correctAnswersCount * 4
+        : (a.testsCompleted || 0) * 22 * 4);
+    const bPoints =
+      b.scorePoints ??
+      (b.correctAnswersCount !== undefined
+        ? b.correctAnswersCount * 4
+        : (b.testsCompleted || 0) * 22 * 4);
+
+    if (bPoints !== aPoints) {
+      return bPoints - aPoints; // Highest score points first
+    }
+
+    // Tie-breaker: Lower total time spent ranks higher!
+    const aTime =
+      a.totalTimeSpentSeconds && a.totalTimeSpentSeconds > 0
+        ? a.totalTimeSpentSeconds
+        : a.bestTimeSeconds || 180;
+    const bTime =
+      b.totalTimeSpentSeconds && b.totalTimeSpentSeconds > 0
+        ? b.totalTimeSpentSeconds
+        : b.bestTimeSeconds || 180;
+
+    if (aTime !== bTime) {
+      return aTime - bTime; // Lower total time is better
+    }
+
+    return (a.id || '').localeCompare(b.id || '');
+  }
+
+  if (metric === 'percentage') {
+    const aAcc = a.accuracyPercentage ?? 80;
+    const bAcc = b.accuracyPercentage ?? 80;
+    if (bAcc !== aAcc) return bAcc - aAcc;
+
+    const aTime = a.bestTimeSeconds || 180;
+    const bTime = b.bestTimeSeconds || 180;
+    if (aTime !== bTime) return aTime - bTime;
+
+    const aPoints = a.scorePoints ?? 0;
+    const bPoints = b.scorePoints ?? 0;
+    return bPoints - aPoints;
+  }
+
+  // Weekly active hours
+  return (b.weeklyActiveHours || 0) - (a.weeklyActiveHours || 0);
 }

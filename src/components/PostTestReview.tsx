@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TestAttempt, TestPackage } from '../types';
+import { useQuizStore } from '../store/useQuizStore';
 import {
   Trophy,
   Coins,
@@ -40,6 +41,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   onDone,
   onStartNextBlock,
 }) => {
+  const { setActiveTab } = useQuizStore();
   const [reviewIndex, setReviewIndex] = useState(0);
 
   const currentBlockIndex = testPackage.blocks.findIndex(
@@ -324,6 +326,18 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             <span>Testlar ro'yxatiga qaytish</span>
           </button>
         </div>
+
+        <button
+          onClick={() => {
+            triggerHaptic('selection');
+            setActiveTab('leaderboard');
+            onDone();
+          }}
+          className="w-full py-2.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+        >
+          <Trophy className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+          <span>Reytingdagi o'rningizni ko'rish</span>
+        </button>
       </div>
     </div>
   );

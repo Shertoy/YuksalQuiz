@@ -25,10 +25,10 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
-import { TestPackage } from '../types';
+import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
-import { calculateUserRatingStats } from '../utils/ratingUtils';
+import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { UserRankProgressCard } from './UserRankProgressCard';
 
 interface HomeDashboardProps {
@@ -62,21 +62,31 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   // Compute rating stats and ranking
   const stats = calculateUserRatingStats(testAttempts);
 
-  const currentUserEntry = {
+  const currentUserEntry: LeaderboardUser = {
     id: profile.id,
+    name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
+    region: profile.region,
+    university: profile.university || 'TATU',
+    avatar: profile.avatar || '/avatars/avatar_1.png',
+    academicYear: profile.academicYear,
+    coins: profile.coins,
+    testsCompleted: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+    correctAnswersCount: stats.totalCorrectAnswers,
     scorePoints: stats.scorePoints,
+    totalQuestionsAttempted: stats.totalQuestionsAttempted,
+    accuracyPercentage: stats.accuracyPercentage,
+    bestTime: stats.bestTimeFormatted,
     bestTimeSeconds: stats.bestTimeSeconds,
+    totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
+    totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
+    weeklyActiveHours: 12.0,
+    isCurrentUser: true,
   };
 
-  const allUsers = [
+  const allUsers: LeaderboardUser[] = [
     ...leaderboard.filter((u) => u.id !== profile.id),
     currentUserEntry,
-  ].sort((a, b) => {
-    const aPts = a.scorePoints ?? 0;
-    const bPts = b.scorePoints ?? 0;
-    if (bPts !== aPts) return bPts - aPts;
-    return (a.bestTimeSeconds || 180) - (b.bestTimeSeconds || 180);
-  });
+  ].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
 
   const userRank = Math.max(1, allUsers.findIndex((u) => u.id === profile.id) + 1);
 

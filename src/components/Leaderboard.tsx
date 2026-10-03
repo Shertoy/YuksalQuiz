@@ -18,7 +18,7 @@ import { LeaderboardUser, UniversityLeaderboardEntry } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
-import { calculateUserRatingStats } from '../utils/ratingUtils';
+import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { UserRankProgressCard } from './UserRankProgressCard';
 
 export const Leaderboard: React.FC = () => {
@@ -57,12 +57,17 @@ export const Leaderboard: React.FC = () => {
       const remoteUsers = await fetchCloudLeaderboard();
       if (remoteUsers && remoteUsers.length > 0) {
         useQuizStore.setState((state) => {
-          const existingIds = new Set([state.profile.id, ...state.leaderboard.map((u) => u.id)]);
-          const newUsers = remoteUsers.filter((u) => !existingIds.has(u.id));
-          if (newUsers.length > 0) {
-            return { leaderboard: [...state.leaderboard, ...newUsers] };
+          const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+          const remoteMap = new Map<string, LeaderboardUser>();
+          for (const u of remoteOthers) {
+            remoteMap.set(u.id, u);
           }
-          return state;
+          for (const u of state.leaderboard) {
+            if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
+              remoteMap.set(u.id, u);
+            }
+          }
+          return { leaderboard: Array.from(remoteMap.values()) };
         });
       }
       setSyncError(false);
@@ -125,43 +130,7 @@ export const Leaderboard: React.FC = () => {
   //   Tie-breaker: if correct answers/points are equal, user with lower total time spent ranks higher
   // - If metric === 'percentage': sort by accuracy %, tie-breaker: faster time (lower seconds)
   // - If metric === 'weekly': sort by active hours
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (metric === 'correct') {
-      const aPoints =
-        a.scorePoints ??
-        (a.correctAnswersCount !== undefined
-          ? a.correctAnswersCount * 4
-          : a.testsCompleted * 22 * 4);
-      const bPoints =
-        b.scorePoints ??
-        (b.correctAnswersCount !== undefined
-          ? b.correctAnswersCount * 4
-          : b.testsCompleted * 22 * 4);
-      if (bPoints !== aPoints) return bPoints - aPoints;
-      const aTime = a.totalTimeSpentSeconds ?? a.bestTimeSeconds ?? 180;
-      const bTime = b.totalTimeSpentSeconds ?? b.bestTimeSeconds ?? 180;
-      return aTime - bTime;
-    }
-
-    if (metric === 'percentage') {
-      const aAcc = a.accuracyPercentage ?? 80;
-      const bAcc = b.accuracyPercentage ?? 80;
-      if (bAcc !== aAcc) return bAcc - aAcc;
-
-      const aTime = a.bestTimeSeconds || 180;
-      const bTime = b.bestTimeSeconds || 180;
-      if (aTime !== bTime) return aTime - bTime;
-
-      const aPoints =
-        a.scorePoints ?? (a.correctAnswersCount !== undefined ? a.correctAnswersCount * 4 : 0);
-      const bPoints =
-        b.scorePoints ?? (b.correctAnswersCount !== undefined ? b.correctAnswersCount * 4 : 0);
-      return bPoints - aPoints;
-    }
-
-    // Weekly active hours
-    return b.weeklyActiveHours - a.weeklyActiveHours;
-  });
+  const sortedUsers = [...filteredUsers].sort((a, b) => compareLeaderboardUsers(a, b, metric));
 
   // STRICT LIMIT: Exactly TOP 20 users across filters
   const top20Users = sortedUsers.slice(0, 20);
@@ -354,9 +323,23 @@ export const Leaderboard: React.FC = () => {
           </p>
         </div>
 
-        {/* TOP 20 Badge */}
-        <div className="px-2.5 py-1 rounded-xl bg-amber-400/15 border border-amber-400/30 text-amber-600 dark:text-amber-400 font-black text-xs shadow-xs">
-          TOP 20
+        {/* Header Actions: Refresh & TOP 20 Badge */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={() => {
+              triggerHaptic('light');
+              syncLeaderboard();
+            }}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
+            title="Yangilash"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+          <div className="px-2.5 py-1 rounded-xl bg-amber-400/15 border border-amber-400/30 text-amber-600 dark:text-amber-400 font-black text-xs shadow-xs">
+            TOP 20
+          </div>
         </div>
       </div>
 
@@ -668,7 +651,9 @@ export const Leaderboard: React.FC = () => {
         )
       ) : (
         /* Students Leaderboard View (TOP 20 with Respublika, Viloyat, OTM filters) */
-        top20Users.length === 0 || (stats.scorePoints === 0 && top20Users.length <= 1) ? (
+        top20Users.length === 0 ||
+        (!top20Users.some((u) => (u.scorePoints || 0) > 0 || (u.testsCompleted || 0) > 0) &&
+          testAttempts.length === 0) ? (
           <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center">
               <Trophy className="w-7 h-7" />

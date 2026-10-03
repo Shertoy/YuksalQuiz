@@ -110,13 +110,19 @@ export async function fetchCloudTests(): Promise<{
       // Cloud has 0 tests. The database is empty or all tests have been cleared.
       // Retain only un-synced offline drafts created by this user
       const localDrafts = (testPackages || []).filter(
-        (p: any) => p.authorId === profile?.id && p._isPendingSync === true && !deletedSet.has(p.id)
+        (p: any) =>
+          !p.id?.startsWith('__system_') &&
+          p.authorId === profile?.id &&
+          p._isPendingSync === true &&
+          !deletedSet.has(p.id)
       );
       useQuizStore.setState({ testPackages: localDrafts });
       return { success: true, count: 0, message: "Bulutli bazada hozircha testlar yo'q." };
     }
 
-    const cloudPackages: TestPackage[] = data.map(mapRowToTestPackage);
+    const cloudPackages: TestPackage[] = data
+      .filter((row: any) => !row.id?.startsWith('__system_'))
+      .map(mapRowToTestPackage);
 
     // Filter out any packages that have been deleted locally
     const validCloudPackages = cloudPackages.filter((cp) => !deletedSet.has(cp.id));
@@ -545,6 +551,29 @@ export function setupRealtimeTestSubscription(
           if (payload?.eventType === 'DELETE' && payload?.old?.id) {
             useQuizStore.getState().deleteTestPackage(payload.old.id);
           }
+          if (
+            payload?.new?.id === '__system_leaderboard_sync__' ||
+            payload?.old?.id === '__system_leaderboard_sync__'
+          ) {
+            const fresh = await fetchCloudLeaderboard();
+            if (fresh && fresh.length > 0) {
+              useQuizStore.setState((state) => {
+                const remoteOthers = fresh.filter((u) => u.id !== state.profile.id);
+                const remoteMap = new Map<string, LeaderboardUser>();
+                for (const u of remoteOthers) {
+                  remoteMap.set(u.id, u);
+                }
+                for (const u of state.leaderboard) {
+                  if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
+                    remoteMap.set(u.id, u);
+                  }
+                }
+                return { leaderboard: Array.from(remoteMap.values()) };
+              });
+            }
+            onUpdate?.();
+            return;
+          }
           await fetchCloudTests();
           onUpdate?.();
         }
@@ -555,6 +584,29 @@ export function setupRealtimeTestSubscription(
         async () => {
           // Refresh universities list from cloud
           await fetchCloudUniversities();
+          onUpdate?.();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leaderboard_users' },
+        async () => {
+          const fresh = await fetchCloudLeaderboard();
+          if (fresh && fresh.length > 0) {
+            useQuizStore.setState((state) => {
+              const remoteOthers = fresh.filter((u) => u.id !== state.profile.id);
+              const remoteMap = new Map<string, LeaderboardUser>();
+              for (const u of remoteOthers) {
+                remoteMap.set(u.id, u);
+              }
+              for (const u of state.leaderboard) {
+                if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
+                  remoteMap.set(u.id, u);
+                }
+              }
+              return { leaderboard: Array.from(remoteMap.values()) };
+            });
+          }
           onUpdate?.();
         }
       )
@@ -570,44 +622,125 @@ export function setupRealtimeTestSubscription(
 }
 
 /**
+ * Maps DB row / sync object to LeaderboardUser
+ */
+function mapRowToLeaderboardUser(row: any): LeaderboardUser {
+  return {
+    id: row.id,
+    name: decodeHtmlEntities(row.name || 'Talaba'),
+    region: row.region || 'Toshkent shahri',
+    university: decodeHtmlEntities(row.university || ''),
+    avatar: row.avatar || '/avatars/avatar_1.png',
+    academicYear: (Math.min(Math.max(Number(row.academic_year) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
+    coins: Number(row.coins) || 0,
+    testsCompleted: Number(row.tests_completed) || 0,
+    correctAnswersCount: Number(row.correct_answers_count) || 0,
+    scorePoints: Number(row.score_points) || 0,
+    totalQuestionsAttempted: Number(row.total_questions_attempted) || 0,
+    accuracyPercentage: Number(row.accuracy_percentage) || 80,
+    bestTime: row.best_time || '02:45',
+    bestTimeSeconds: Number(row.best_time_seconds) || 165,
+    totalTimeSpentSeconds:
+      Number(row.total_time_spent_seconds) || Number(row.best_time_seconds) || 165,
+    totalTimeSpentFormatted: row.total_time_spent_formatted || row.best_time || '02:45',
+    weeklyActiveHours: 12.0,
+    isCurrentUser: false,
+  };
+}
+
+/**
  * Pushes real registered user rating progress to Supabase leaderboard.
+ * Dual-layer sync:
+ * 1. Attempts to upsert to public.leaderboard_users
+ * 2. If table is not yet created, falls back to synchronized system record in test_packages
  */
 export async function syncUserProfileToCloud(
   profile: UserProfile,
   stats: UserRatingStats
 ): Promise<void> {
   const supabase = getSupabase();
-  if (!supabase || !profile || !profile.isRegistered) return;
+  if (!supabase || !profile || !profile.id) return;
 
+  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
+  const payload = {
+    id: profile.id,
+    name: fullName,
+    region: profile.region,
+    university: profile.university || 'TATU',
+    avatar: profile.avatar || '/avatars/avatar_1.png',
+    academic_year: profile.academicYear || 1,
+    coins: profile.coins || 0,
+    tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+    correct_answers_count: stats.totalCorrectAnswers,
+    score_points: stats.scorePoints,
+    total_questions_attempted: stats.totalQuestionsAttempted,
+    accuracy_percentage: stats.accuracyPercentage,
+    best_time: stats.bestTimeFormatted,
+    best_time_seconds: stats.bestTimeSeconds,
+    total_time_spent_seconds: stats.totalTimeSpentSeconds,
+    total_time_spent_formatted: stats.totalTimeSpentFormatted,
+    registered_at: profile.registeredAt || profile.lastLoginDate || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  let primarySuccess = false;
   try {
-    const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
-    const payload = {
-      id: profile.id,
-      name: fullName,
-      region: profile.region,
-      university: profile.university || 'TATU',
-      avatar: profile.avatar || '/avatars/avatar_1.png',
-      academic_year: profile.academicYear || 1,
-      coins: profile.coins || 0,
-      tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
-      correct_answers_count: stats.totalCorrectAnswers,
-      score_points: stats.scorePoints,
-      total_questions_attempted: stats.totalQuestionsAttempted,
-      accuracy_percentage: stats.accuracyPercentage,
-      best_time: stats.bestTimeFormatted,
-      best_time_seconds: stats.bestTimeSeconds,
-      registered_at: profile.registeredAt || profile.lastLoginDate || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    await supabase.from('leaderboard_users').upsert(payload, { onConflict: 'id' });
+    const { error } = await supabase.from('leaderboard_users').upsert(payload, { onConflict: 'id' });
+    if (!error) {
+      primarySuccess = true;
+    }
   } catch {
-    // Non-blocking fallback if leaderboard_users table is not yet migrated
+    primarySuccess = false;
+  }
+
+  // Resilient fallback sync to guarantee live updates even if table is not yet migrated
+  try {
+    const { data: cur } = await supabase
+      .from('test_packages')
+      .select('blocks')
+      .eq('id', '__system_leaderboard_sync__')
+      .maybeSingle();
+
+    let list = Array.isArray(cur?.blocks) ? [...cur.blocks] : [];
+    const existingIdx = list.findIndex((u: any) => u.id === payload.id);
+    if (existingIdx >= 0) {
+      list[existingIdx] = payload;
+    } else {
+      list.push(payload);
+    }
+
+    list.sort((a: any, b: any) => {
+      const pDiff = (b.score_points || 0) - (a.score_points || 0);
+      if (pDiff !== 0) return pDiff;
+      return (a.total_time_spent_seconds || 180) - (b.total_time_spent_seconds || 180);
+    });
+    list = list.slice(0, 100);
+
+    await supabase.from('test_packages').upsert(
+      {
+        id: '__system_leaderboard_sync__',
+        title: 'Leaderboard Sync Store',
+        category: 'System',
+        university: 'YuksalQuiz System',
+        department: 'Leaderboard',
+        is_public: false,
+        blocks: list,
+        author_id: 'system',
+      },
+      { onConflict: 'id' }
+    );
+  } catch (err) {
+    if (!primarySuccess) {
+      console.warn('Leaderboard cloud sync fallback failed:', err);
+    }
   }
 }
 
 /**
  * Fetches real active users from Supabase cloud leaderboard.
+ * Dual-layer fetch:
+ * 1. Checks public.leaderboard_users table
+ * 2. Falls back to synchronized system store in test_packages
  */
 export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
   const supabase = getSupabase();
@@ -620,28 +753,27 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
       .order('score_points', { ascending: false })
       .limit(50);
 
-    if (error || !data) return [];
-
-    return data.map((row: any) => ({
-      id: row.id,
-      name: decodeHtmlEntities(row.name || 'Talaba'),
-      region: row.region || 'Toshkent shahri',
-      university: decodeHtmlEntities(row.university || ''),
-      avatar: row.avatar || '/avatars/avatar_1.png',
-      academicYear: (Math.min(Math.max(Number(row.academic_year) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
-      coins: Number(row.coins) || 0,
-      testsCompleted: Number(row.tests_completed) || 0,
-      correctAnswersCount: Number(row.correct_answers_count) || 0,
-      scorePoints: Number(row.score_points) || 0,
-      totalQuestionsAttempted: Number(row.total_questions_attempted) || 0,
-      accuracyPercentage: Number(row.accuracy_percentage) || 80,
-      bestTime: row.best_time || '02:45',
-      bestTimeSeconds: Number(row.best_time_seconds) || 165,
-      weeklyActiveHours: 12.0,
-      isCurrentUser: false,
-    }));
+    if (!error && data && data.length > 0) {
+      return data.map(mapRowToLeaderboardUser);
+    }
   } catch {
-    return [];
+    // Fall through to fallback
   }
+
+  try {
+    const { data: sysPkg } = await supabase
+      .from('test_packages')
+      .select('blocks')
+      .eq('id', '__system_leaderboard_sync__')
+      .maybeSingle();
+
+    if (sysPkg && Array.isArray(sysPkg.blocks) && sysPkg.blocks.length > 0) {
+      return sysPkg.blocks.map(mapRowToLeaderboardUser);
+    }
+  } catch {
+    // Fail gracefully
+  }
+
+  return [];
 }
 

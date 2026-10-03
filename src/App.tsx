@@ -21,8 +21,10 @@ import { initTelegramApp, getTelegramWebApp, syncTelegramTheme } from './utils/t
 import {
   fetchCloudTests,
   fetchCloudUniversities,
+  fetchCloudLeaderboard,
   setupRealtimeTestSubscription,
 } from './services/testSyncService';
+import { LeaderboardUser } from './types';
 import { ParticleBackground } from './components/ParticleBackground';
 import { AppLoader } from './components/AppLoader';
 import { EditProfileModal } from './components/EditProfileModal';
@@ -94,9 +96,29 @@ export const App: React.FC = () => {
       }
     }
 
-    // Automatically sync public tests and universities from Supabase cloud
+    // Automatically sync public tests, universities, and leaderboard from Supabase cloud
     fetchCloudTests();
     fetchCloudUniversities();
+    fetchCloudLeaderboard()
+      .then((remoteUsers) => {
+        if (remoteUsers && remoteUsers.length > 0) {
+          useQuizStore.setState((state) => {
+            const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+            const remoteMap = new Map<string, LeaderboardUser>();
+            for (const u of remoteOthers) {
+              remoteMap.set(u.id, u);
+            }
+            for (const u of state.leaderboard) {
+              if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
+                remoteMap.set(u.id, u);
+              }
+            }
+            return { leaderboard: Array.from(remoteMap.values()) };
+          });
+        }
+      })
+      .catch(() => {});
+
     const unsubRealtime = setupRealtimeTestSubscription();
 
     // Smooth quote-loader transition: display quotes then fade out into dashboard
@@ -125,10 +147,29 @@ export const App: React.FC = () => {
     syncTelegramTheme(theme);
   }, [theme]);
 
-  // Sync cloud tests whenever user navigates to tests or home tab
+  // Sync cloud tests and leaderboard whenever user navigates tabs
   useEffect(() => {
-    if (activeTab === 'tests' || activeTab === 'home') {
+    if (activeTab === 'tests' || activeTab === 'home' || activeTab === 'leaderboard') {
       fetchCloudTests().catch(() => {});
+      fetchCloudLeaderboard()
+        .then((remoteUsers) => {
+          if (remoteUsers && remoteUsers.length > 0) {
+            useQuizStore.setState((state) => {
+              const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+              const remoteMap = new Map<string, LeaderboardUser>();
+              for (const u of remoteOthers) {
+                remoteMap.set(u.id, u);
+              }
+              for (const u of state.leaderboard) {
+                if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
+                  remoteMap.set(u.id, u);
+                }
+              }
+              return { leaderboard: Array.from(remoteMap.values()) };
+            });
+          }
+        })
+        .catch(() => {});
     }
   }, [activeTab]);
 

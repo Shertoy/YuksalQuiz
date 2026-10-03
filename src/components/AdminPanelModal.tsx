@@ -2008,7 +2008,100 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <button
                     type="button"
                     onClick={() => {
-                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\n  university TEXT NOT NULL,\n  is_custom_university BOOLEAN DEFAULT false,\n  is_pending_review BOOLEAN DEFAULT false,\n  department TEXT NOT NULL,\n  is_public BOOLEAN DEFAULT true,\n  password TEXT,\n  total_questions INTEGER DEFAULT 0,\n  blocks JSONB NOT NULL,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\n  author_id TEXT,\n  author_name TEXT,\n  is_community_created BOOLEAN DEFAULT true,\n  author_wallet_balance NUMERIC DEFAULT 0\n);\n\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN\n    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN\n    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public update access') THEN\n    CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public delete access') THEN\n    CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\n  END IF;\nEND $$;\n\n-- OTMlar umumiy sinxronizatsiya jadvali\nCREATE TABLE IF NOT EXISTS public.universities (\n  name TEXT PRIMARY KEY,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\n);\n\nALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN\n    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN\n    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public update universities') THEN\n    CREATE POLICY "Allow public update universities" ON public.universities FOR UPDATE TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public delete universities') THEN\n    CREATE POLICY "Allow public delete universities" ON public.universities FOR DELETE TO anon, authenticated USING (true);\n  END IF;\nEND $$;`;
+                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',
+  university TEXT NOT NULL,
+  is_custom_university BOOLEAN DEFAULT false,
+  is_pending_review BOOLEAN DEFAULT false,
+  department TEXT NOT NULL,
+  is_public BOOLEAN DEFAULT true,
+  password TEXT,
+  total_questions INTEGER DEFAULT 0,
+  blocks JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  author_id TEXT,
+  author_name TEXT,
+  is_community_created BOOLEAN DEFAULT true,
+  author_wallet_balance NUMERIC DEFAULT 0
+);
+
+ALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN
+    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN
+    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public update access') THEN
+    CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public delete access') THEN
+    CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);
+  END IF;
+END $$;
+
+-- OTMlar umumiy sinxronizatsiya jadvali
+CREATE TABLE IF NOT EXISTS public.universities (
+  name TEXT PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN
+    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN
+    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public update universities') THEN
+    CREATE POLICY "Allow public update universities" ON public.universities FOR UPDATE TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public delete universities') THEN
+    CREATE POLICY "Allow public delete universities" ON public.universities FOR DELETE TO anon, authenticated USING (true);
+  END IF;
+END $$;
+
+-- Talabalar Reyting (Leaderboard) sinxronizatsiya jadvali
+CREATE TABLE IF NOT EXISTS public.leaderboard_users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  region TEXT NOT NULL,
+  university TEXT,
+  avatar TEXT DEFAULT '/avatars/avatar_1.png',
+  academic_year INTEGER DEFAULT 1,
+  coins INTEGER DEFAULT 0,
+  tests_completed INTEGER DEFAULT 0,
+  correct_answers_count INTEGER DEFAULT 0,
+  score_points INTEGER DEFAULT 0,
+  total_questions_attempted INTEGER DEFAULT 0,
+  accuracy_percentage INTEGER DEFAULT 80,
+  best_time TEXT DEFAULT '02:45',
+  best_time_seconds INTEGER DEFAULT 165,
+  total_time_spent_seconds INTEGER DEFAULT 0,
+  total_time_spent_formatted TEXT DEFAULT '00:00',
+  registered_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.leaderboard_users ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public read leaderboard_users') THEN
+    CREATE POLICY "Allow public read leaderboard_users" ON public.leaderboard_users FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public insert leaderboard_users') THEN
+    CREATE POLICY "Allow public insert leaderboard_users" ON public.leaderboard_users FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public update leaderboard_users') THEN
+    CREATE POLICY "Allow public update leaderboard_users" ON public.leaderboard_users FOR UPDATE TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public delete leaderboard_users') THEN
+    CREATE POLICY "Allow public delete leaderboard_users" ON public.leaderboard_users FOR DELETE TO anon, authenticated USING (true);
+  END IF;
+END $$;`;
                       navigator.clipboard.writeText(sqlContent);
                       triggerHaptic('success');
                       setCopiedSql(true);
@@ -2074,6 +2167,38 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN
     CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);
+  END IF;
+END $$;
+
+-- Talabalar Reyting (Leaderboard) sinxronizatsiya jadvali
+CREATE TABLE IF NOT EXISTS public.leaderboard_users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  region TEXT NOT NULL,
+  university TEXT,
+  avatar TEXT DEFAULT '/avatars/avatar_1.png',
+  academic_year INTEGER DEFAULT 1,
+  coins INTEGER DEFAULT 0,
+  tests_completed INTEGER DEFAULT 0,
+  correct_answers_count INTEGER DEFAULT 0,
+  score_points INTEGER DEFAULT 0,
+  total_questions_attempted INTEGER DEFAULT 0,
+  accuracy_percentage INTEGER DEFAULT 80,
+  best_time TEXT DEFAULT '02:45',
+  best_time_seconds INTEGER DEFAULT 165,
+  total_time_spent_seconds INTEGER DEFAULT 0,
+  total_time_spent_formatted TEXT DEFAULT '00:00',
+  registered_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.leaderboard_users ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public read leaderboard_users') THEN
+    CREATE POLICY "Allow public read leaderboard_users" ON public.leaderboard_users FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public insert leaderboard_users') THEN
+    CREATE POLICY "Allow public insert leaderboard_users" ON public.leaderboard_users FOR INSERT TO anon, authenticated WITH CHECK (true);
   END IF;
 END $$;`}</pre>
                 </div>

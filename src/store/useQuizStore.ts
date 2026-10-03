@@ -27,6 +27,7 @@ import {
 } from '../utils/security';
 import { soundFX, triggerHaptic } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
+import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 import { Language } from '../i18n/translations';
 
@@ -676,7 +677,34 @@ export const useQuizStore = create<QuizState>()(
         triggerHaptic('success');
         soundFX.playCoin();
 
-        set({ profile: newProfile });
+        const stats = calculateUserRatingStats(get().testAttempts || []);
+        const currentUserEntry: LeaderboardUser = {
+          id: newProfile.id,
+          name: `${newProfile.firstName || 'Talaba'} ${newProfile.lastName || ''}`.trim() || 'Talaba',
+          region: newProfile.region,
+          university: newProfile.university || 'TATU',
+          avatar: newProfile.avatar || '/avatars/avatar_1.png',
+          academicYear: newProfile.academicYear,
+          coins: newProfile.coins,
+          testsCompleted: Math.max(newProfile.completedTestsCount, stats.uniqueBlocksCount),
+          correctAnswersCount: stats.totalCorrectAnswers,
+          scorePoints: stats.scorePoints,
+          totalQuestionsAttempted: stats.totalQuestionsAttempted,
+          accuracyPercentage: stats.accuracyPercentage,
+          bestTime: stats.bestTimeFormatted,
+          bestTimeSeconds: stats.bestTimeSeconds,
+          totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
+          totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
+          weeklyActiveHours: 12.0,
+          isCurrentUser: true,
+        };
+
+        const existingOthers = (get().leaderboard || []).filter((u) => u.id !== newProfile.id);
+
+        set({
+          profile: newProfile,
+          leaderboard: [currentUserEntry, ...existingOthers],
+        });
 
         get().addTransaction({
           type: 'voucher',
@@ -689,8 +717,6 @@ export const useQuizStore = create<QuizState>()(
         setTimeout(async () => {
           try {
             const { syncUserProfileToCloud } = await import('../services/testSyncService');
-            const { calculateUserRatingStats } = await import('../utils/ratingUtils');
-            const stats = calculateUserRatingStats(get().testAttempts || []);
             await syncUserProfileToCloud(newProfile, stats);
           } catch {
             // Non-critical background sync
@@ -874,12 +900,15 @@ export const useQuizStore = create<QuizState>()(
         let bonusCoins = 0;
         let unlockedNext = false;
 
-        // Anti-Cheat 1: Anti-flood submission rate limiting (reject requests < 2.5s apart)
-        const now = Date.now();
-        if (now - lastAttemptTimestamp < 2500) {
-          console.warn('YuksalQuiz Anti-Cheat: Rapid test submission throttled.');
+        // Anti-Cheat 1: Anti-flood submission rate limiting & deduplication
+        const isDuplicateAttempt = testAttempts.some((att) => att.id === attempt.id);
+        if (isDuplicateAttempt) {
+          console.warn('YuksalQuiz Anti-Cheat: Duplicate test attempt ignored.');
           return { coinsEarned: 0, bonusCoins: 0, unlockedNext: false };
         }
+
+        const now = Date.now();
+        const isRapidSubmission = now - lastAttemptTimestamp < 1500;
         lastAttemptTimestamp = now;
 
         // Anti-Cheat 2: Re-verify questions and answers against official package data
@@ -1064,25 +1093,50 @@ export const useQuizStore = create<QuizState>()(
           soundFX.playCoin();
         }
 
+        const updatedAttempts = [safeAttempt, ...testAttempts];
+        const updatedStats = calculateUserRatingStats(updatedAttempts);
+
+        const currentUserEntry: LeaderboardUser = {
+          id: updatedProfile.id,
+          name: `${updatedProfile.firstName || 'Talaba'} ${updatedProfile.lastName || ''}`.trim() || 'Talaba',
+          region: updatedProfile.region,
+          university: updatedProfile.university || 'TATU',
+          avatar: updatedProfile.avatar || '/avatars/avatar_1.png',
+          academicYear: updatedProfile.academicYear,
+          coins: updatedProfile.coins,
+          testsCompleted: Math.max(updatedProfile.completedTestsCount, updatedStats.uniqueBlocksCount),
+          correctAnswersCount: updatedStats.totalCorrectAnswers,
+          scorePoints: updatedStats.scorePoints,
+          totalQuestionsAttempted: updatedStats.totalQuestionsAttempted,
+          accuracyPercentage: updatedStats.accuracyPercentage,
+          bestTime: updatedStats.bestTimeFormatted,
+          bestTimeSeconds: updatedStats.bestTimeSeconds,
+          totalTimeSpentSeconds: updatedStats.totalTimeSpentSeconds,
+          totalTimeSpentFormatted: updatedStats.totalTimeSpentFormatted,
+          weeklyActiveHours: 12.0,
+          isCurrentUser: true,
+        };
+
+        const existingOthers = (get().leaderboard || []).filter((u) => u.id !== updatedProfile.id);
+        const updatedLeaderboard = [currentUserEntry, ...existingOthers];
+
         set({
           testPackages: updatedPackages,
-          testAttempts: [attempt, ...testAttempts],
+          testAttempts: updatedAttempts,
           mistakes: newMistakes,
           profile: updatedProfile,
+          leaderboard: updatedLeaderboard,
         });
 
         // Trigger background cloud rating sync for real user
         setTimeout(async () => {
           try {
             const { syncUserProfileToCloud } = await import('../services/testSyncService');
-            const { calculateUserRatingStats } = await import('../utils/ratingUtils');
-            const newAttempts = [attempt, ...testAttempts];
-            const stats = calculateUserRatingStats(newAttempts);
-            await syncUserProfileToCloud(updatedProfile, stats);
+            await syncUserProfileToCloud(updatedProfile, updatedStats);
           } catch {
             // Non-critical background sync
           }
-        }, 100);
+        }, 50);
 
         return { coinsEarned, bonusCoins, unlockedNext };
       },

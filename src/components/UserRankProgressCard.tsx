@@ -3,7 +3,7 @@ import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Clock } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
-import { calculateUserRatingStats } from '../utils/ratingUtils';
+import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { LeaderboardUser } from '../types';
 import { DEFAULT_AVATAR } from '../constants/avatars';
 
@@ -65,22 +65,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
   });
 
   // Sort by score points / correct answers (Tie-breaker: lower time spent ranks higher)
-  const sortedUsers = [...scopedUsers].sort((a, b) => {
-    const aPoints =
-      a.scorePoints ??
-      (a.correctAnswersCount !== undefined
-        ? a.correctAnswersCount * 4
-        : a.testsCompleted * 22 * 4);
-    const bPoints =
-      b.scorePoints ??
-      (b.correctAnswersCount !== undefined
-        ? b.correctAnswersCount * 4
-        : b.testsCompleted * 22 * 4);
-    if (bPoints !== aPoints) return bPoints - aPoints;
-    const aTime = a.totalTimeSpentSeconds ?? a.bestTimeSeconds ?? 180;
-    const bTime = b.totalTimeSpentSeconds ?? b.bestTimeSeconds ?? 180;
-    return aTime - bTime;
-  });
+  const sortedUsers = [...scopedUsers].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
 
   const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);
   const userRank = userRankIndex !== -1 ? userRankIndex + 1 : 1;
