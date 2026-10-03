@@ -1085,7 +1085,7 @@ export const WalletView: React.FC = () => {
       <ReceiptVerifyModal
         isOpen={isReceiptModalOpen}
         onClose={() => setIsReceiptModalOpen(false)}
-        initialPlan={receiptPlan}
+        initialAmount={20000}
       />
     </div>
   );

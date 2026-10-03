@@ -22,6 +22,7 @@ import {
   Trophy,
   CheckCircle2,
   Zap,
+  Wallet,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
@@ -257,6 +258,35 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Wallet Balance & Quick Deposit Card */}
+      <div className="rounded-2xl p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+            <Wallet className="w-5 h-5" strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              Hisobingiz:
+            </span>
+            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
+              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            onOpenReceiptModal?.();
+          }}
+          className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all shrink-0"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>+ To'ldirish</span>
+        </button>
       </div>
 
       {/* Daily Streak & Interactive Bonus Card - Disappears upon claim with animation & hidden today */}

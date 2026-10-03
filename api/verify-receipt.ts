@@ -4,6 +4,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '6219808382';
 const OFFICIAL_CARD_NUMBER = (process.env.OFFICIAL_CARD_NUMBER || '9860080382320093').replace(/\D/g, '');
 const OFFICIAL_CARD_SUFFIX = '0093';
+const OFFICIAL_CARD_HOLDER = process.env.OFFICIAL_CARD_HOLDER || 'Alijonova Xalimaxon';
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
@@ -21,8 +22,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 interface GeminiReceiptAnalysis {
   is_receipt: boolean;
   is_successful: boolean;
-  transaction_id: string | null;
   amount: number | null;
+  transaction_id: string | null;
   recipient_card: string | null;
   recipient_name: string | null;
   transaction_time: string | null;
@@ -38,13 +39,11 @@ function parseReceiptDate(dateStr: string | null): Date | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
 
   const trimmed = dateStr.trim();
-  // 1. Direct ISO / standard parse
   const direct = new Date(trimmed);
   if (!isNaN(direct.getTime()) && trimmed.includes('-')) {
     return direct;
   }
 
-  // 2. Format: DD.MM.YYYY HH:mm(:ss)? or DD/MM/YYYY HH:mm(:ss)?
   const dmyMatch = trimmed.match(
     /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/
   );
@@ -76,6 +75,7 @@ async function notifyAdmin(payload: {
   amount?: number | null;
   transactionId?: string | null;
   card?: string | null;
+  recipientName?: string | null;
   status: 'approved' | 'pending' | 'rejected';
   paymentId?: string;
   reason?: string | null;
@@ -97,10 +97,13 @@ async function notifyAdmin(payload: {
     if (payload.card) {
       text += `💳 <b>Karta:</b> ${payload.card}\n`;
     }
+    if (payload.recipientName) {
+      text += `📝 <b>Qabul qiluvchi:</b> ${payload.recipientName}\n`;
+    }
     text += `🕒 <b>Vaqt:</b> ${new Date().toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}\n`;
 
     if (payload.reason) {
-      text += `\n📝 <b>Izoh:</b> ${payload.reason}\n`;
+      text += `\n⚠️ <b>Izoh:</b> ${payload.reason}\n`;
     }
 
     const body: Record<string, any> = {
@@ -160,8 +163,7 @@ export default async function handler(req: any, res: any) {
     mimeType = 'image/jpeg',
     userId = 'anonymous_user',
     userName = 'Talaba',
-    plan = '3_months',
-    expectedAmount = 35000,
+    expectedAmount = 20000,
   } = req.body || {};
 
   if (!image || typeof image !== 'string') {
@@ -203,11 +205,11 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
 
 {
   "is_receipt": boolean, // Bu to'lov cheki/kvitansiyasi yoki o'tkazma skrinshotimi
-  "is_successful": boolean, // O'tkazma muvaffaqiyatli bo'lganmi (masalan: Muvaffaqiyatli, O'tkazildi, Bajarildi, Успешно, Оплачено, Исполнен)
-  "transaction_id": string | null, // Fiskal belgi, chek raqami, tranzaksiya kodi yoki IDsi (masalan: 12345678, CLK-123456, TX123456789). Faqat unikal ID. Topilmasa null
-  "amount": number | null, // To'langan summa faqat toza butun son ko'rinishida (masalan: 35000, 50000, 90000). So'm, UZS so'zlari yoki nuqtalarsiz
-  "recipient_card": string | null, // Pul o'tkazilgan karta raqami yoki oxirgi 4 raqami (masalan: "9860080382320093", "82320093", "0093"). Topilmasa null
-  "recipient_name": string | null, // Qabul qiluvchi ismi/familiyasi (masalan: "ALIJONOVA X", "ALISHER A", "YUKSAK"). Topilmasa null
+  "is_successful": boolean, // To'lov muvaffaqiyatli yakunlanganmi (masalan: Muvaffaqiyatli, O'tkazildi, Bajarildi, Успешно, Оплачено, Исполнен)
+  "amount": number | null, // To'langan aniq summa faqat toza butun son ko'rinishida (masalan: 20000, 35000, 40000, 50000). So'm, UZS so'zlari yoki nuqtalarsiz
+  "transaction_id": string | null, // Chek kodi, fiskal belgi yoki tranzaksiya ID si (masalan: 12345678, CLK-123456, TX123456789). Faqat unikal ID. Topilmasa null
+  "recipient_card": string | null, // Pul o'tkazilgan qabul qiluvchi karta raqami yoki oxirgi 4 raqami (masalan: "9860080382320093", "82320093", "0093"). Topilmasa null
+  "recipient_name": string | null, // Qabul qiluvchi ismi/familiyasi ("Alijonova Xalimaxon" yoki shunga yaqin: "Alijonova X.", "Alijonova Halimaxon"). Topilmasa null
   "transaction_time": string | null, // O'tkazma vaqti va sanasi (masalan: "2026-10-03 21:40:00" yoki "03.10.2026 21:40")
   "payment_system": string, // "Click" | "Payme" | "Uzum" | "Bank" | "Unknown"
   "confidence": "high" | "medium" | "low", // Tahlil ishonchliligi
@@ -261,28 +263,17 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     aiError = 'Serverda GEMINI_API_KEY o\'rnatilmagan (Admin tekshiruviga yuboriladi)';
   }
 
-  // Calculate subscription duration
-  let planMonths = 3;
-  if (plan === '6_months') planMonths = 6;
-  if (plan === '1_year') planMonths = 12;
-
-  const paidUntilDate = new Date();
-  paidUntilDate.setMonth(paidUntilDate.getMonth() + planMonths);
-  const paidUntilIso = paidUntilDate.toISOString();
-
   // =========================================================================
-  // 3. STRICT ANTI-CHEAT VALIDATIONS
+  // 3. STRICT ANTI-CHEAT & SECURITY VALIDATIONS
   // =========================================================================
 
-  // If AI was able to extract structured data
   if (aiData) {
-    // Check 0: Is this a legitimate receipt and was it completed successfully?
-    if (aiData.is_receipt === false || aiData.is_successful === false) {
+    // Filtrlash 1: Agar is_successful false bo'lsa -> Rad etilsin
+    if (aiData.is_successful === false || aiData.is_receipt === false) {
       const rejectReason =
         aiData.rejection_reason ||
-        "Taqdim etilgan rasm to'lov cheki emas yoki to'lov muvaffaqiyatli yakunlanmagan.";
+        "Taqdim etilgan rasm to'lov cheki emas yoki to'lov muvaffaqiyatli yakunlanmagan (Bekor qilingan).";
 
-      // Record rejected payment in DB
       try {
         await supabase.from('payments').insert({
           user_id: userId,
@@ -301,7 +292,53 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
       });
     }
 
-    // Check 1: Duplicate Transaction ID check (Anti-Cheat 1)
+    // Filtrlash 2: recipient_card yoki recipient_name bizning rekvizitlarga to'g'ri kelishi shart!
+    const cardDigits = String(aiData.recipient_card || '').replace(/\D/g, '');
+    const cardMatches =
+      cardDigits.endsWith(OFFICIAL_CARD_SUFFIX) ||
+      cardDigits === OFFICIAL_CARD_NUMBER ||
+      (OFFICIAL_CARD_NUMBER.length >= 8 && cardDigits.includes(OFFICIAL_CARD_NUMBER.slice(-8)));
+
+    const normName = String(aiData.recipient_name || '').toLowerCase();
+    const nameMatches =
+      normName.includes('alijonov') ||
+      normName.includes('xalima') ||
+      normName.includes('halima');
+
+    // Agar na karta, na ism to'g'ri kelmasa -> Rad etilsin!
+    if (!cardMatches && !nameMatches && (cardDigits.length >= 4 || normName.length >= 3)) {
+      const wrongRequisitesReason = `Qabul qiluvchi karta yoki ism bizning rekvizitlarga (9860 **** **** ${OFFICIAL_CARD_SUFFIX}, ${OFFICIAL_CARD_HOLDER}) to'g'ri kelmadi.`;
+
+      try {
+        await supabase.from('payments').insert({
+          user_id: userId,
+          amount: aiData.amount || expectedAmount || 0,
+          status: 'rejected',
+          notes: wrongRequisitesReason,
+          created_at: new Date().toISOString(),
+        });
+      } catch {}
+
+      await notifyAdmin({
+        title: "Boshqa kartaga to'lov cheki aniqlandi (Anti-Cheat)",
+        userId,
+        userName,
+        amount: aiData.amount,
+        card: aiData.recipient_card,
+        recipientName: aiData.recipient_name,
+        status: 'rejected',
+        reason: wrongRequisitesReason,
+      });
+
+      return res.status(200).json({
+        ok: false,
+        status: 'rejected',
+        reason: wrongRequisitesReason,
+        message: "Kvitansiyadagi rekvizitlar (karta yoki ism) bizning rasmiy rekvizitlarimizga mos emas!",
+      });
+    }
+
+    // Filtrlash 3: transaction_id bazadagi payments jadvalida allaqachon mavjud bo'lsa -> Rad etilsin!
     if (aiData.transaction_id) {
       const cleanTxId = String(aiData.transaction_id).trim();
       try {
@@ -312,7 +349,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
           .maybeSingle();
 
         if (existingTx) {
-          const duplicateReason = `Ushbu kvitansiya avval tizimda ishlatilgan (Tranzaksiya ID: ${cleanTxId}). Bir xil chekdan qayta foydalanish taqiqlanadi!`;
+          const duplicateReason = `Bu chek allaqachon ishlatilgan (Tranzaksiya ID: ${cleanTxId}). Bir xil chekdan qayta foydalanish taqiqlanadi!`;
 
           await notifyAdmin({
             title: "Qayta ishlatilgan chek aniqlandi (Anti-Cheat)",
@@ -328,7 +365,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             ok: false,
             status: 'rejected',
             reason: duplicateReason,
-            message: "Ushbu kvitansiya avval ishlatilgan!",
+            message: "Bu chek allaqachon ishlatilgan!",
           });
         }
       } catch (dbErr) {
@@ -336,47 +373,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
       }
     }
 
-    // Check 2: Recipient Card check (Anti-Cheat 2)
-    if (aiData.recipient_card) {
-      const cardDigits = String(aiData.recipient_card).replace(/\D/g, '');
-      const isOfficialMatch =
-        cardDigits.endsWith(OFFICIAL_CARD_SUFFIX) ||
-        cardDigits === OFFICIAL_CARD_NUMBER ||
-        (OFFICIAL_CARD_NUMBER.length >= 8 && cardDigits.includes(OFFICIAL_CARD_NUMBER.slice(-8)));
-
-      if (cardDigits.length >= 4 && !isOfficialMatch) {
-        const wrongCardReason = `Qabul qiluvchi karta raqami (${aiData.recipient_card}) bizning rasmiy kartamizga (9860 **** **** ${OFFICIAL_CARD_SUFFIX}) mos kelmadi.`;
-
-        try {
-          await supabase.from('payments').insert({
-            user_id: userId,
-            amount: aiData.amount || expectedAmount || 0,
-            status: 'rejected',
-            notes: wrongCardReason,
-            created_at: new Date().toISOString(),
-          });
-        } catch {}
-
-        await notifyAdmin({
-          title: "Boshqa kartaga to'lov cheki yuborildi (Anti-Cheat)",
-          userId,
-          userName,
-          amount: aiData.amount,
-          card: aiData.recipient_card,
-          status: 'rejected',
-          reason: wrongCardReason,
-        });
-
-        return res.status(200).json({
-          ok: false,
-          status: 'rejected',
-          reason: wrongCardReason,
-          message: "Kvitansiyadagi karta raqami bizning rasmiy kartamizga mos emas!",
-        });
-      }
-    }
-
-    // Check 3: Transaction Time freshness (Anti-Cheat 3 - Max 30 minutes old)
+    // Filtrlash 4: Vaqt yangiligi tekshiruvi (Maksimal 30 daqiqa oldingi chek)
     if (aiData.transaction_time) {
       const parsedDate = parseReceiptDate(aiData.transaction_time);
       if (parsedDate) {
@@ -384,7 +381,6 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         const diffMs = nowMs - parsedDate.getTime();
         const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
-        // If older than 30 minutes
         if (diffMinutes > 30) {
           const expiredReason = `Kvitansiya vaqti 30 daqiqadan eski (${diffMinutes} daqiqa oldin: ${aiData.transaction_time}). Iltimos, yangi to'lov chekini yuklang.`;
 
@@ -405,31 +401,20 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             message: "To'lov chekining amal qilish muddati (30 daqiqa) o'tib ketgan!",
           });
         }
-
-        // If future timestamp (> 10 minutes into the future)
-        if (diffMinutes < -10) {
-          const futureReason = `Kvitansiya vaqti noto'g'ri (kelajak vaqti ko'rsatilgan: ${aiData.transaction_time}).`;
-          return res.status(200).json({
-            ok: false,
-            status: 'rejected',
-            reason: futureReason,
-            message: "To'lov vaqti haqiqiy emas!",
-          });
-        }
       }
     }
 
-    // Check 4: Check if AI had high or medium confidence and valid transaction ID & amount
-    const hasValidTxId = Boolean(aiData.transaction_id && aiData.transaction_id.length >= 4);
-    const hasValidAmount = Boolean(aiData.amount && aiData.amount >= 10000);
+    // =========================================================================
+    // AVTOMATIK TASDIQLASH (AI AUTOMATIC APPROVAL)
+    // =========================================================================
+    const hasValidTxId = Boolean(aiData.transaction_id && aiData.transaction_id.length >= 3);
+    const paidAmount = Number(aiData.amount);
+    const hasValidAmount = Boolean(paidAmount && paidAmount > 0);
 
     if (aiData.confidence !== 'low' && hasValidTxId && hasValidAmount) {
-      // =========================================================================
-      // SUCCESS: AI AUTOMATIC APPROVAL
-      // =========================================================================
       const txId = aiData.transaction_id!;
-      const paidAmount = Number(aiData.amount);
 
+      // 1. payments jadvaliga status: 'approved' qilib yozish
       let paymentRecordId = '';
       try {
         const { data: payRow } = await supabase
@@ -439,7 +424,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             amount: paidAmount,
             transaction_id: txId,
             status: 'approved',
-            notes: `Gemini AI avtomatik tasdiqladi (${aiData.payment_system || 'P2P'}, vaqt: ${aiData.transaction_time || 'N/A'})`,
+            notes: `Gemini AI tasdiqladi (${aiData.payment_system || 'P2P'}, Karta: ${aiData.recipient_card || '0093'}, Ism: ${aiData.recipient_name || 'Alijonova X.'})`,
             created_at: new Date().toISOString(),
           })
           .select('id')
@@ -450,26 +435,50 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         console.warn('Payment insert error:', err);
       }
 
-      // Update users table in Supabase
+      // 2. Foydalanuvchining users.balance hisobiga o'sha summani darhol qo'shish (balance = balance + amount)
+      let currentBalance = 0;
+      try {
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('balance, wallet_balance')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (userRow) {
+          currentBalance = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+        }
+      } catch {}
+
+      const newBalance = currentBalance + paidAmount;
+
       try {
         await supabase.from('users').upsert({
           id: userId,
-          has_paid: true,
-          paid_until: paidUntilIso,
+          balance: newBalance,
+          wallet_balance: newBalance,
           updated_at: new Date().toISOString(),
         });
       } catch {}
 
-      // Notify Telegram Admin of automatic success
+      try {
+        await supabase.from('user_profiles').upsert({
+          id: userId,
+          balance: newBalance,
+          wallet_balance: newBalance,
+        });
+      } catch {}
+
+      // Telegram Admin xabarnomasi
       await notifyAdmin({
-        title: "To'lov Gemini AI tomonidan avtomatik tasdiqlandi!",
+        title: "To'lov Gemini AI tomonidan avtomatik tasdiqlandi va balans to'ldirildi!",
         userId,
         userName,
         amount: paidAmount,
         transactionId: txId,
         card: aiData.recipient_card || `*${OFFICIAL_CARD_SUFFIX}`,
+        recipientName: aiData.recipient_name || OFFICIAL_CARD_HOLDER,
         status: 'approved',
-        reason: `${aiData.payment_system} orqali to'lov muvaffaqiyatli aniqlandi va obuna berildi.`,
+        reason: `${aiData.payment_system} cheki to'g'ri keldi. Hisobiga +${paidAmount.toLocaleString('uz-UZ')} so'm qo'shildi (Yangi balans: ${newBalance.toLocaleString('uz-UZ')} so'm).`,
       });
 
       return res.status(200).json({
@@ -477,10 +486,9 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         status: 'approved',
         transactionId: txId,
         amount: paidAmount,
-        paidUntil: paidUntilIso,
-        plan,
+        newBalance: newBalance,
         paymentSystem: aiData.payment_system,
-        message: "Kvitansiya muvaffaqiyatli tasdiqlandi! Obunangiz faollashtirildi.",
+        message: `Kvitansiya muvaffaqiyatli tasdiqlandi! Hisobingizga ${paidAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
       });
     }
   }
@@ -488,16 +496,12 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
   // =========================================================================
   // 4. FALLBACK: PENDING REVIEW BY TELEGRAM ADMIN
   // =========================================================================
-  // Triggered when:
-  // - AI had low confidence
-  // - Transaction ID could not be cleanly extracted
-  // - Receipt image is blurry or partial
-  // - Gemini API was unavailable
+  // Agar AI rasm xiraligi sababli aniqlay olmasa -> status: 'pending' qilinib adminga inline tugmalar bilan yuboriladi
   const fallbackTxId =
     aiData?.transaction_id ||
     `PENDING_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-  const finalAmount = aiData?.amount || expectedAmount || 35000;
+  const finalAmount = aiData?.amount || expectedAmount || 20000;
   let pendingPaymentId = '';
 
   try {
@@ -508,7 +512,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         amount: finalAmount,
         transaction_id: fallbackTxId,
         status: 'pending',
-        notes: aiError || aiData?.rejection_reason || 'AI to\'liq aniqlay olmadi, admin tekshiruviga yuborildi',
+        notes: aiError || aiData?.rejection_reason || 'AI rasm xiraligi sababli aniqlay olmadi, admin tekshiruviga yuborildi',
         created_at: new Date().toISOString(),
       })
       .select('id')
@@ -519,7 +523,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     console.warn('Insert pending payment error:', err);
   }
 
-  // Dispatch inline verification notification to Admin Telegram chat
+  // Admin botiga [✅ Tasdiqlash] va [❌ Rad etish] inline tugmalari bilan yuborish
   await notifyAdmin({
     title: "Yangi Kvitansiya (Admin Tasdiqlashi Kutilmoqda)",
     userId,
@@ -527,10 +531,11 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     amount: finalAmount,
     transactionId: fallbackTxId,
     card: aiData?.recipient_card || 'Aniqlanmadi',
+    recipientName: aiData?.recipient_name || 'Aniqlanmadi',
     status: 'pending',
     paymentId: pendingPaymentId,
     reason: aiData
-      ? `AI ishonch darajasi past (${aiData.confidence}). Kvitansiyani ko'rib chiqib tasdiqlang.`
+      ? `AI rasm xiraligi yoki ishonch pastligi sababli aniqlay olmadi (${aiData.confidence}). Iltimos, chekni ko'rib tasdiqlang.`
       : `AI javob bermadi (${aiError || 'Noma\'lum'}). Qo'lda tekshirish zarur.`,
   });
 
@@ -541,6 +546,6 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     transactionId: fallbackTxId,
     amount: finalAmount,
     message:
-      "Kvitansiya qabul qilindi. AI tasvirni to'liq taniy olmaganligi sababli chek adminga yuborildi. 15-30 daqiqa ichida tekshirilib tasdiqlanadi.",
+      "Kvitansiya qabul qilindi. AI rasm xiraligi sababli to'liq aniqlay olmadi va chek adminga yuborildi. 15-30 daqiqa ichida tekshirilib tasdiqlanadi.",
   });
 }

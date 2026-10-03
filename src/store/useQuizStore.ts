@@ -141,6 +141,7 @@ interface QuizState {
   recordTestAttempt: (attempt: TestAttempt) => { coinsEarned: number; bonusCoins: number; unlockedNext: boolean };
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
+  depositBalance: (amount: number, transactionId: string) => { newBalance: number };
   applySubscription: (plan: SubscriptionPlanType) => { success: boolean; message: string };
   applyReceiptPaymentApproval: (data: {
     plan: SubscriptionPlanType;
@@ -1268,6 +1269,8 @@ export const useQuizStore = create<QuizState>()(
           voucherBalance: newVoucherBalance,
           subscriptionPlan: plan,
           subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+          has_paid: true,
+          paid_until: expiryDate.toISOString(),
         };
 
         updatedProfile.checksum = generateIntegritySignature({
@@ -1309,6 +1312,40 @@ export const useQuizStore = create<QuizState>()(
             ? `20 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
             : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
+      },
+
+      // Deposit wallet balance upon AI verified or admin approved payment
+      depositBalance: (amount: number, transactionId: string) => {
+        const { profile } = get();
+        const newBalance = (profile.walletBalance || 0) + amount;
+        const updatedProfile: UserProfile = {
+          ...profile,
+          walletBalance: newBalance,
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'deposit',
+          title: `Hisob to'ldirildi (P2P chek) - #${transactionId.slice(-8)}`,
+          amount,
+          unit: "so'm",
+          isPositive: true,
+        });
+
+        triggerHaptic('success');
+        soundFX.playCoin();
+        return { newBalance };
       },
 
       // Apply direct P2P Payment approval verified by Gemini AI or Telegram Admin

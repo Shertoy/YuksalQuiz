@@ -30,6 +30,7 @@ import { ParticleBackground } from './components/ParticleBackground';
 import { AppLoader } from './components/AppLoader';
 import { EditProfileModal } from './components/EditProfileModal';
 import { ReceiptVerifyModal } from './components/ReceiptVerifyModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -66,6 +67,14 @@ export const App: React.FC = () => {
 
   // P2P Receipt AI Verification Modal
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [depositSuggestedAmount, setDepositSuggestedAmount] = useState<number | undefined>(undefined);
+
+  // Subscription / Tariff Modal State
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [pendingTestStart, setPendingTestStart] = useState<{
+    pkg: TestPackage;
+    blockId: string;
+  } | null>(null);
 
   // Initialize Telegram WebApp and Theme Synchronization
   useEffect(() => {
@@ -191,6 +200,21 @@ export const App: React.FC = () => {
 
   // Handlers for test flow
   const handleStartTest = (pkg: TestPackage, blockId: string) => {
+    // Check if user has active paid subscription
+    const hasActiveSubscription =
+      Boolean(profile.has_paid) ||
+      Boolean(
+        profile.subscriptionPlan &&
+        profile.subscriptionPlan !== 'none' &&
+        (!profile.subscriptionExpiry || new Date(profile.subscriptionExpiry) > new Date())
+      );
+
+    if (!hasActiveSubscription) {
+      setPendingTestStart({ pkg, blockId });
+      setIsSubscriptionModalOpen(true);
+      return;
+    }
+
     setReviewState(null);
     setActiveTestPkg(pkg);
     setActiveBlockId(blockId);
@@ -295,6 +319,7 @@ export const App: React.FC = () => {
               <ProfileView
                 onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                 onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                onOpenReceiptModal={() => setIsReceiptModalOpen(true)}
               />
             )}
           </>
@@ -307,10 +332,44 @@ export const App: React.FC = () => {
         onClose={() => setIsEditProfileOpen(false)}
       />
 
-      {/* P2P Receipt AI Verification Modal */}
+      {/* Subscription & Tariff Modal */}
+      <SubscriptionModal
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => {
+          setIsSubscriptionModalOpen(false);
+          setPendingTestStart(null);
+        }}
+        onSuccessAndStart={() => {
+          setIsSubscriptionModalOpen(false);
+          if (pendingTestStart) {
+            setReviewState(null);
+            setActiveTestPkg(pendingTestStart.pkg);
+            setActiveBlockId(pendingTestStart.blockId);
+            setPendingTestStart(null);
+          }
+        }}
+        onOpenDepositModal={(deficit) => {
+          setIsSubscriptionModalOpen(false);
+          setDepositSuggestedAmount(deficit);
+          setIsReceiptModalOpen(true);
+        }}
+      />
+
+      {/* P2P Receipt AI Verification Modal (Hisobni to'ldirish) */}
       <ReceiptVerifyModal
         isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setDepositSuggestedAmount(undefined);
+        }}
+        initialAmount={depositSuggestedAmount}
+        onSuccess={() => {
+          if (pendingTestStart) {
+            setTimeout(() => {
+              setIsSubscriptionModalOpen(true);
+            }, 1000);
+          }
+        }}
       />
 
       {/* Create / Edit Test Modal */}
@@ -347,7 +406,7 @@ export const App: React.FC = () => {
       />
 
       {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
-      {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
+      {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isSubscriptionModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
         <BottomNav onTabSelect={() => setReviewState(null)} />
       )}
 

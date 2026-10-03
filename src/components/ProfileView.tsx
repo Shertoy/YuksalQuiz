@@ -17,6 +17,7 @@ import {
   VolumeX,
   Vibrate,
   Wallet,
+  PlusCircle,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
@@ -26,9 +27,14 @@ import { ReferralShareCard } from './ReferralShareCard';
 interface ProfileViewProps {
   onOpenAdminLogin?: () => void;
   onOpenEditProfile?: () => void;
+  onOpenReceiptModal?: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOpenEditProfile }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({
+  onOpenAdminLogin,
+  onOpenEditProfile,
+  onOpenReceiptModal,
+}) => {
   const {
     profile,
     setActiveTab,
@@ -124,36 +130,46 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
           </div>
         </div>
 
-        {/* Wallet & Author Earnings Highlight */}
-        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+        {/* Wallet Balance & Deposit Action Highlight */}
+        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Wallet className="w-4 h-4" strokeWidth={1.75} />
             </div>
-            <div>
-              <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                {profile.voucherBalance > 0
-                  ? `Vaucher: ${profile.voucherBalance.toLocaleString('uz-UZ')} so'm`
-                  : `Hamyon balansi: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm`}
+            <div className="min-w-0">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold truncate">
+                Hisobingiz:
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                {profile.voucherBalance > 0
-                  ? `Hamyon: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`
-                  : `Referal: ${(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`}
+              <div className="font-black text-sm text-slate-900 dark:text-white truncate">
+                {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
               </div>
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              setActiveTab('wallet');
-            }}
-            className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
-          >
-            <span>Hamyon</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenReceiptModal?.();
+              }}
+              className="py-1.5 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>+ To'ldirish</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setActiveTab('wallet');
+              }}
+              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+              title="Hamyon tarixi"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Direct Edit Profile Action Button */}

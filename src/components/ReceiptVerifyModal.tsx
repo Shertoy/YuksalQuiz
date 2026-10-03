@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
+import React, { useState, useRef, useEffect } from 'react';
+import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   CreditCard,
@@ -11,34 +11,41 @@ import {
   Copy,
   Check,
   X,
-  FileImage,
   RefreshCw,
   Send,
   Zap,
-  Ticket,
   ChevronRight,
   ShieldCheck,
   AlertTriangle,
+  Wallet,
+  PlusCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
-import { SubscriptionPlanType, ReceiptVerificationResult } from '../types';
+import { ReceiptVerificationResult } from '../types';
 
 interface ReceiptVerifyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialPlan?: SubscriptionPlanType;
+  initialAmount?: number;
+  onSuccess?: (creditedAmount: number) => void;
 }
 
 export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
   isOpen,
   onClose,
-  initialPlan = '6_months',
+  initialAmount = 20000,
+  onSuccess,
 }) => {
-  const { profile, subscriptionPrices, applyReceiptPaymentApproval, setActiveTab } = useQuizStore();
+  const { profile, depositBalance } = useQuizStore();
   const { t } = useTranslation();
 
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanType>(initialPlan);
+  const QUICK_AMOUNTS = [20000, 40000, 50000, 90000];
+
+  const [selectedAmount, setSelectedAmount] = useState<number>(initialAmount);
+  const [customAmountStr, setCustomAmountStr] = useState<string>('');
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(!QUICK_AMOUNTS.includes(initialAmount));
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copiedCard, setCopiedCard] = useState(false);
@@ -49,27 +56,24 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (initialAmount) {
+      if (QUICK_AMOUNTS.includes(initialAmount)) {
+        setSelectedAmount(initialAmount);
+        setIsCustomMode(false);
+      } else {
+        setSelectedAmount(initialAmount);
+        setCustomAmountStr(initialAmount.toString());
+        setIsCustomMode(true);
+      }
+    }
+  }, [initialAmount]);
+
   if (!isOpen) return null;
 
   const CARD_NUMBER_RAW = '9860080382320093';
   const CARD_NUMBER_FORMATTED = '9860 0803 8232 0093';
-  const CARD_HOLDER = 'Adminka Alijonova X...';
-
-  // Dynamic Plan Pricing from store
-  const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
-  const price3M = prices['3_months'] || 35000;
-  const price6M = prices['6_months'] || 50000;
-  const price1Y = prices['1_year'] || 90000;
-
-  // 20 000 UZS starting voucher discount
-  const voucherDiscount = profile.voucherBalance > 0 ? Math.min(profile.voucherBalance, 20000) : 0;
-
-  const getPlanCost = (plan: SubscriptionPlanType) => {
-    const raw = plan === '3_months' ? price3M : plan === '6_months' ? price6M : price1Y;
-    return Math.max(0, raw - voucherDiscount);
-  };
-
-  const currentPlanCost = getPlanCost(selectedPlan);
+  const CARD_HOLDER = 'Alijonova Xalimaxon';
 
   const handleCopyCard = () => {
     triggerHaptic('light');
@@ -78,6 +82,22 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     }
     setCopiedCard(true);
     setTimeout(() => setCopiedCard(false), 2500);
+  };
+
+  const handleSelectQuickAmount = (amt: number) => {
+    triggerHaptic('selection');
+    setSelectedAmount(amt);
+    setIsCustomMode(false);
+    setCustomAmountStr('');
+  };
+
+  const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '');
+    setCustomAmountStr(val);
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num > 0) {
+      setSelectedAmount(num);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,8 +168,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           mimeType: selectedFile.type || 'image/jpeg',
           userId: profile.id,
           userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          plan: selectedPlan,
-          expectedAmount: currentPlanCost,
+          expectedAmount: selectedAmount,
         }),
       });
 
@@ -169,12 +188,15 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           origin: { y: 0.6 },
         });
 
-        applyReceiptPaymentApproval({
-          plan: selectedPlan,
-          amount: data.amount || currentPlanCost,
-          transactionId: data.transactionId || `PAY_${Date.now()}`,
-          paidUntil: data.paidUntil,
-        });
+        const creditedAmount = data.amount || selectedAmount;
+        const txId = data.transactionId || `PAY_${Date.now()}`;
+
+        // Deposit balance directly in local store
+        depositBalance(creditedAmount, txId);
+
+        if (onSuccess) {
+          onSuccess(creditedAmount);
+        }
       } else if (data.status === 'pending') {
         triggerHaptic('warning');
       } else {
@@ -198,9 +220,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     }
   };
 
-  const handleFinishAndStart = () => {
+  const handleFinishAndContinue = () => {
     onClose();
-    setActiveTab('tests');
   };
 
   return (
@@ -210,19 +231,19 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0">
-              <Sparkles className="w-5 h-5 text-white" strokeWidth={2} />
+              <Wallet className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  Obunani Faollashtirish
+                  Hisobni To'ldirish
                 </h3>
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                   Gemini AI ⚡
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                P2P chekni avtomatik tekshirish va tasdiqlash tizimi
+                P2P chekni avtomatik tekshirish va balansni to'ldirish
               </p>
             </div>
           </div>
@@ -241,6 +262,16 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          {/* Current Balance Bar */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Joriy hisobingiz:
+            </span>
+            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+            </span>
+          </div>
+
           {/* SUCCESS VIEW */}
           {result?.status === 'approved' && (
             <div className="text-center py-6 px-4 space-y-3.5 bg-gradient-to-b from-emerald-500/10 to-transparent rounded-3xl border border-emerald-500/30">
@@ -249,11 +280,20 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               </div>
               <div>
                 <h4 className="text-lg font-black text-slate-900 dark:text-white">
-                  Obuna Muvaffaqiyatli Faollashtirildi! 🎉
+                  Hisobingiz Muvaffaqiyatli To'ldirildi! 🎉
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  Gemini AI to'lov chekingizni haqiqiyligini tasdiqladi. Barcha testlar va imkoniyatlar siz uchun cheksiz ochildi!
+                  Gemini AI to'lov chekingizni haqiqiyligini tasdiqladi. Balansingizga +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} so'm qo'shildi!
                 </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">
+                  Yangi balansingiz:
+                </span>
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+                </span>
               </div>
 
               {result.transactionId && (
@@ -264,10 +304,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
               <button
                 type="button"
-                onClick={handleFinishAndStart}
+                onClick={handleFinishAndContinue}
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <span>Testlarni Yechishni Boshlash</span>
+                <span>Davom Etish</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -328,71 +368,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {/* NORMAL FORM (When not approved) */}
           {result?.status !== 'approved' && (
             <>
-              {/* Plan Selector Tabs */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Tarifni Tanlang:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    {
-                      id: '3_months' as SubscriptionPlanType,
-                      name: '3 Oy',
-                      price: price3M,
-                      cost: getPlanCost('3_months'),
-                      badge: null,
-                    },
-                    {
-                      id: '6_months' as SubscriptionPlanType,
-                      name: '6 Oy',
-                      price: price6M,
-                      cost: getPlanCost('6_months'),
-                      badge: 'Tavsiya',
-                    },
-                    {
-                      id: '1_year' as SubscriptionPlanType,
-                      name: '1 Yil',
-                      price: price1Y,
-                      cost: getPlanCost('1_year'),
-                      badge: 'Eng arzon',
-                    },
-                  ].map((p) => {
-                    const isSelected = selectedPlan === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('selection');
-                          setSelectedPlan(p.id);
-                        }}
-                        className={`p-3 rounded-2xl border text-left transition-all relative ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30'
-                        }`}
-                      >
-                        {p.badge && (
-                          <span className="absolute -top-2 right-2 text-[8px] font-black px-1.5 py-0.2 rounded-full bg-orange-500 text-white uppercase shadow-xs">
-                            {p.badge}
-                          </span>
-                        )}
-                        <span className="text-xs font-black block text-slate-900 dark:text-white">
-                          {p.name}
-                        </span>
-                        <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-                          {p.cost.toLocaleString('uz-UZ')} so'm
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Official Card Requisites */}
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 text-white space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-medium">To'lov uchun karta:</span>
+                  <span className="text-slate-400 font-medium">To'lov uchun karta (Humo):</span>
                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
                     0% Komissiya
                   </span>
@@ -400,10 +379,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
                 <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15">
                   <div>
-                    <span className="font-mono font-black text-sm tracking-wider select-all block text-emerald-300">
+                    <span className="font-mono font-black text-sm sm:text-base tracking-wider select-all block text-emerald-300">
                       {CARD_NUMBER_FORMATTED}
                     </span>
-                    <span className="text-[10px] text-slate-300 font-medium">
+                    <span className="text-[11px] text-slate-300 font-bold">
                       {CARD_HOLDER}
                     </span>
                   </div>
@@ -426,13 +405,56 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     )}
                   </button>
                 </div>
+              </div>
 
-                {voucherDiscount > 0 && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-amber-300 pt-1">
-                    <Ticket className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>20 000 so'm boshlang'ich vaucher chegirmasi avtomatik hisobga olindi!</span>
+              {/* Amount Selection Section */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  To'ldirish Summasi:
+                </label>
+
+                {/* Quick Amount Buttons */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {QUICK_AMOUNTS.map((amt) => {
+                    const isSelected = !isCustomMode && selectedAmount === amt;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleSelectQuickAmount(amt)}
+                        className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition-all border ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                        }`}
+                      >
+                        {amt.toLocaleString('uz-UZ')}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Amount Input Option */}
+                <div className="pt-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ixtiyoriy summa (masalan: 30000)"
+                      value={customAmountStr}
+                      onChange={handleCustomAmountChange}
+                      onFocus={() => setIsCustomMode(true)}
+                      className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all ${
+                        isCustomMode
+                          ? 'border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ring-2 ring-emerald-500/20'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                      so'm
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Receipt File Upload */}
@@ -513,7 +535,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 </div>
                 <p>
                   • Kvitansiya oxirgi 30 daqiqa ichida amalga oshirilgan bo'lishi shart.<br />
-                  • Bir xil chekdan faqat bir marta foydalanish mumkin (Tranzaksiya ID tekshiriladi).
+                  • Bir xil chekdan faqat bir marta foydalanish mumkin (Tranzaksiya ID tekshiriladi).<br />
+                  • Karta raqami (9860080382320093) va egasi (Alijonova Xalimaxon) mos kelishi kerak.
                 </p>
               </div>
 
@@ -536,7 +559,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Tekshirish (Gemini AI bilan)</span>
+                    <span>Kvitansiyani Tekshirish (Gemini AI bilan)</span>
                   </>
                 )}
               </button>

@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS balance NUMERIC DEFAULT 0;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFAULT 0;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS has_paid BOOLEAN DEFAULT false;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS paid_until TIMESTAMPTZ;
 
@@ -63,10 +65,14 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS paid_until TIMESTAMPTZ;
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_profiles') THEN
+        ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS balance NUMERIC DEFAULT 0;
+        ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFAULT 0;
         ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS has_paid BOOLEAN DEFAULT false;
         ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS paid_until TIMESTAMPTZ;
     END IF;
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'leaderboard_users') THEN
+        ALTER TABLE public.leaderboard_users ADD COLUMN IF NOT EXISTS balance NUMERIC DEFAULT 0;
+        ALTER TABLE public.leaderboard_users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFAULT 0;
         ALTER TABLE public.leaderboard_users ADD COLUMN IF NOT EXISTS has_paid BOOLEAN DEFAULT false;
         ALTER TABLE public.leaderboard_users ADD COLUMN IF NOT EXISTS paid_until TIMESTAMPTZ;
     END IF;

@@ -212,16 +212,24 @@ export default async function handler(req: any, res: any) {
             })
             .eq('id', paymentId);
 
-          // If approved, update user subscription access in Supabase
+          // If approved, update user balance in Supabase (balance = balance + amount)
           if (isApprove && targetUserId) {
-            const months = targetAmount >= 80000 ? 12 : targetAmount >= 45000 ? 6 : 3;
-            const paidUntil = new Date();
-            paidUntil.setMonth(paidUntil.getMonth() + months);
+            let currentBal = 0;
+            const { data: userRow } = await supabase
+              .from('users')
+              .select('balance, wallet_balance')
+              .eq('id', targetUserId)
+              .maybeSingle();
+
+            if (userRow) {
+              currentBal = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+            }
+            const newBal = currentBal + targetAmount;
 
             await supabase.from('users').upsert({
               id: targetUserId,
-              has_paid: true,
-              paid_until: paidUntil.toISOString(),
+              balance: newBal,
+              wallet_balance: newBal,
               updated_at: new Date().toISOString(),
             });
 
@@ -229,8 +237,8 @@ export default async function handler(req: any, res: any) {
             try {
               await supabase.from('user_profiles').upsert({
                 id: targetUserId,
-                has_paid: true,
-                paid_until: paidUntil.toISOString(),
+                balance: newBal,
+                wallet_balance: newBal,
               });
             } catch {}
           }
@@ -280,7 +288,7 @@ export default async function handler(req: any, res: any) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: cleanUserChatId,
-              text: `🎉 <b>Tabriklaymiz! To'lovingiz admin tomonidan tasdiqlandi!</b>\n\nYuksalQuiz platformasidagi obunangiz faollashtirildi. Barcha testlar va imkoniyatlar endi siz uchun to'liq ochiq!`,
+              text: `🎉 <b>Tabriklaymiz! To'lovingiz admin tomonidan tasdiqlandi!</b>\n\nHisobingizga <b>+${targetAmount.toLocaleString('uz-UZ')} so'm</b> qo'shildi. Endi istalgan test va tariflarni hisobingizdan bemalol faollashtirishingiz mumkin!`,
               parse_mode: 'HTML',
               reply_markup: {
                 inline_keyboard: [
