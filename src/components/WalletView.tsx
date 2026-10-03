@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
+import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES, DEFAULT_PAYMENT_METHODS } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   Wallet,
@@ -32,6 +32,7 @@ export const WalletView: React.FC = () => {
     applySubscription,
     transactions,
     subscriptionPrices,
+    paymentMethods,
     activatePromocode,
   } = useQuizStore();
   const { t } = useTranslation();
@@ -45,6 +46,20 @@ export const WalletView: React.FC = () => {
   const [promoLoading, setPromoLoading] = useState(false);
   const [copiedCard, setCopiedCard] = useState(false);
   const promoInputRef = useRef<HTMLInputElement>(null);
+
+  // Active Payment Method State
+  const availablePaymentMethods = (paymentMethods && paymentMethods.length > 0)
+    ? paymentMethods.filter((pm) => pm.isActive)
+    : DEFAULT_PAYMENT_METHODS.filter((pm) => pm.isActive);
+
+  const [selectedPmId, setSelectedPmId] = useState<string>(
+    availablePaymentMethods[0]?.id || 'pm-1'
+  );
+
+  const currentPaymentMethod =
+    availablePaymentMethods.find((pm) => pm.id === selectedPmId) ||
+    availablePaymentMethods[0] ||
+    DEFAULT_PAYMENT_METHODS[0];
 
   // Instructional Modal State (NO fake payment buttons!)
   const [instructionModal, setInstructionModal] = useState<{
@@ -146,10 +161,13 @@ export const WalletView: React.FC = () => {
     setTimeout(() => setFeedback(null), 6000);
   };
 
-  const handleCopyCardNumber = () => {
+  const handleCopyCardNumber = (customText?: string) => {
     triggerHaptic('light');
+    const textToCopy = customText || currentPaymentMethod?.details || '9860 0803 8232 0093';
+    const match = textToCopy.match(/\d{4}\s*\d{4}\s*\d{4}\s*\d{4}/);
+    const cleanNumber = match ? match[0] : textToCopy;
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText('9860 0803 8232 0093');
+      navigator.clipboard.writeText(cleanNumber);
     }
     setCopiedCard(true);
     setTimeout(() => setCopiedCard(false), 2500);
@@ -598,27 +616,51 @@ export const WalletView: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
           <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-            Hamyoningizni to'ldirish uchun quyidagi rasmiy karta raqamiga pul o'tkazing va to'lov kvitansiyasini (chek) botimizga yuboring:
+            Hamyoningizni to'ldirish uchun quyidagi rasmiy to'lov usulini tanlang, pul o'tkazing va to'lov kvitansiyasini (chek) botimizga yuboring:
           </p>
+
+          {/* Payment Method Selector Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+            {availablePaymentMethods.map((pm) => {
+              const isSelected = pm.id === currentPaymentMethod?.id;
+              return (
+                <button
+                  key={pm.id}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setSelectedPmId(pm.id);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {pm.name}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Primary Official Card Display */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                Qabul qiluvchi: <b className="text-slate-900 dark:text-white">Adminka Alijonova X...</b>
+                To'lov usuli: <b className="text-slate-900 dark:text-white">{currentPaymentMethod?.name}</b>
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                Humo / Uzcard
+                0% Komissiya
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
-              <span className="font-mono font-black text-sm sm:text-base tracking-wider text-slate-900 dark:text-white select-all">
-                9860 0803 8232 0093
+              <span className="font-mono font-black text-sm sm:text-base tracking-wider text-slate-900 dark:text-white select-all truncate">
+                {currentPaymentMethod?.details}
               </span>
               <button
                 type="button"
-                onClick={handleCopyCardNumber}
+                onClick={() => handleCopyCardNumber(currentPaymentMethod?.details)}
                 className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
               >
                 {copiedCard ? (
@@ -634,6 +676,12 @@ export const WalletView: React.FC = () => {
                 )}
               </button>
             </div>
+
+            {currentPaymentMethod?.instructions && (
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                {currentPaymentMethod.instructions}
+              </p>
+            )}
           </div>
 
           {/* 4 Step Process Explanation */}
@@ -731,20 +779,20 @@ export const WalletView: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-slate-500 dark:text-slate-400 font-medium">
-                    Karta egasi: <b className="text-slate-900 dark:text-white">Adminka Alijonova X...</b>
+                    To'lov usuli: <b className="text-slate-900 dark:text-white">{currentPaymentMethod?.name}</b>
                   </span>
                   <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                    Humo / Uzcard
+                    0% Komissiya
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                  <span className="font-mono font-black text-sm tracking-wider text-slate-900 dark:text-white select-all">
-                    9860 0803 8232 0093
+                  <span className="font-mono font-black text-sm tracking-wider text-slate-900 dark:text-white select-all truncate">
+                    {currentPaymentMethod?.details}
                   </span>
                   <button
                     type="button"
-                    onClick={handleCopyCardNumber}
+                    onClick={() => handleCopyCardNumber(currentPaymentMethod?.details)}
                     className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shrink-0"
                   >
                     {copiedCard ? (

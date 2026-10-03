@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Share2, Copy, Check, Users, Coins, Sparkles, Gift } from 'lucide-react';
 import { generateReferralLink, triggerTelegramNativeShare, triggerHaptic } from '../utils/telegram';
+import { useQuizStore } from '../store/useQuizStore';
 
 interface ReferralShareCardProps {
   userId?: string;
 }
 
 export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) => {
+  const { profile } = useQuizStore();
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Generate dynamic Telegram deep-link for referral
-  const inviteLink = generateReferralLink(userId);
+  const inviteLink = generateReferralLink(userId || profile?.id);
 
   // Handle native link copy to clipboard
   const handleCopyLink = async () => {
@@ -46,8 +48,8 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
     }
   };
 
-  // Referral count
-  const referralCount = 3;
+  // Live Referral count & earnings from store
+  const referralCount = profile?.referralCount || 0;
   const referralEarnings = referralCount * 1500;
 
   return (

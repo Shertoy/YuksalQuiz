@@ -311,6 +311,48 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* User Personal Rank Progress Card */}
       <UserRankProgressCard />
 
+      {/* Starting Voucher Card */}
+      {profile.voucherBalance > 0 && (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/30 text-white rounded-3xl p-4 shadow-xl space-y-3 relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
+
+          <div className="flex items-start justify-between relative z-10">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0 mt-0.5">
+                <Ticket className="w-5 h-5 text-slate-950" strokeWidth={1.75} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-extrabold text-white">
+                    {profile.voucherBalance.toLocaleString('uz-UZ')} so'm vaucheringiz faol!
+                  </h3>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
+                    Faol
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-100 leading-relaxed font-medium">
+                  Istalgan Premium obuna rejasini tanlang (3 oy, 6 oy yoki 1 yil) va {profile.voucherBalance.toLocaleString('uz-UZ')} so'm chegirmadan foydalaning.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 relative z-10">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('medium');
+                setActiveTab('wallet');
+              }}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+            >
+              <span>{t.activateOfferBtn || "Tarifni faollashtirish"}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 100% Free Access Platform Banner */}
       <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 dark:from-emerald-500/15 dark:to-emerald-500/10 border border-emerald-500/25 dark:border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between transition-all">
         <div className="flex items-center gap-3">

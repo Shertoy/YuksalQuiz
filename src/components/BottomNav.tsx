@@ -3,7 +3,7 @@ import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { TabType } from '../types';
 import { triggerHaptic } from '../utils/telegram';
-import { Home, BookOpen, Trophy, User } from 'lucide-react';
+import { Home, BookOpen, Trophy, User, Wallet } from 'lucide-react';
 
 interface NavItem {
   id: TabType;
@@ -22,12 +22,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
   const navItems: NavItem[] = [
     { id: 'home', labelKey: 'navHome', icon: Home },
     { id: 'tests', labelKey: 'navTests', icon: BookOpen },
+    { id: 'wallet', labelKey: 'navWallet', icon: Wallet },
     { id: 'leaderboard', labelKey: 'navRating', icon: Trophy },
     { id: 'profile', labelKey: 'navProfile', icon: User },
   ];
 
-  // Map sub-tabs like 'results' or 'wallet' to 'profile' or 'home'
-  const resolvedTab = activeTab === 'results' ? 'profile' : activeTab === 'wallet' ? 'home' : activeTab;
+  // Map sub-tabs like 'results' to 'profile'
+  const resolvedTab = activeTab === 'results' ? 'profile' : activeTab;
   const activeIndex = Math.max(0, navItems.findIndex((item) => item.id === resolvedTab));
 
   return (

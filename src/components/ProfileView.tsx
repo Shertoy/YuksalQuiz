@@ -16,10 +16,12 @@ import {
   Volume2,
   VolumeX,
   Vibrate,
+  Wallet,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
 import { UserAvatar } from './UserAvatar';
+import { ReferralShareCard } from './ReferralShareCard';
 
 interface ProfileViewProps {
   onOpenAdminLogin?: () => void;
@@ -122,24 +124,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
           </div>
         </div>
 
-        {/* 100% Free Learning Mode Status */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-left">
-          <div className="flex items-center gap-2">
+        {/* Wallet & Author Earnings Highlight */}
+        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+              <Wallet className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div>
               <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                {t.freeModeTitle}
+                {profile.voucherBalance > 0
+                  ? `Vaucher: ${profile.voucherBalance.toLocaleString('uz-UZ')} so'm`
+                  : `Hamyon balansi: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm`}
               </div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                {t.freeModeDesc}
+                {profile.voucherBalance > 0
+                  ? `Hamyon: ${profile.walletBalance.toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`
+                  : `Referal: ${(profile.referralCount * 1500).toLocaleString('uz-UZ')} so'm • Mualliflik: +${profile.authorEarnings.toLocaleString('uz-UZ')} so'm`}
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            {t.activeStatus}
-          </span>
+
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              setActiveTab('wallet');
+            }}
+            className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+          >
+            <span>Hamyon</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* Direct Edit Profile Action Button */}
@@ -157,6 +171,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
           </button>
         </div>
       </div>
+
+      {/* Referral Share System */}
+      <ReferralShareCard userId={profile.id} />
 
       {/* My Results & Mistakes Analytics Card */}
       <div
