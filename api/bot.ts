@@ -3,28 +3,84 @@ const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
 
 const MESSAGES = {
   uz: {
-    text: 'Kundan kunga test orqali ilmingizni rivojlantiring.',
-    button: '🚀 Testlarni boshlash',
-    menuButton: '📱 Ilovani ochish',
+    welcome: `<b>Assalomu alaykum! YuksalQuiz ta'lim platformasiga xush kelibsiz! 🎓</b>
+
+HEMIS, xalqaro sertifikatlar (IELTS, TOPIK, SAT) va maktab fanlariga tayyorlanish uchun yagona test platformasi!
+
+✨ <b>Platforma imkoniyatlari:</b>
+• Real vaqtli HEMIS va fan testlari (100% bepul)
+• Respublika va OTMlar bo'yicha talabalar reytingi
+• Xatolar ustida ishlash va batafsil tahlillar
+• Kunlik bonuslar va qiziqarli musobaqalar
+
+👇 Test topshirishni boshlash uchun quyidagi tugmani bosing:`,
+    button: '🚀 Testni boshlash',
+    menuText: '🚀 Testni boshlash',
   },
   ru: {
-    text: 'Развивайте свои знания день за днем с помощью тестов.',
-    button: '🚀 Начать тестирование',
-    menuButton: '📱 Открыть приложение',
+    welcome: `<b>Здравствуйте! Добро пожаловать в YuksalQuiz! 🎓</b>
+
+Единая тестовая платформа для подготовки к вузам (HEMIS), международным сертификатам (IELTS, TOPIK, SAT) и школьным предметам!
+
+✨ <b>Возможности платформы:</b>
+• Тесты по предметам и стандартам HEMIS (100% бесплатно)
+• Рейтинг студентов по вузам и Узбекистану
+• Анализ результатов и работа над ошибками
+• Ежедневные бонусы и онлайн-соревнования
+
+👇 Нажмите кнопку ниже, чтобы начать тестирование:`,
+    button: '🚀 Начать тест',
+    menuText: '🚀 Начать тест',
   },
   en: {
-    text: 'Develop your knowledge day by day with tests.',
-    button: '🚀 Start Testing',
-    menuButton: '📱 Open App',
+    welcome: `<b>Welcome to YuksalQuiz! 🎓</b>
+
+All-in-one test prep platform for universities (HEMIS), global certificates (IELTS, TOPIK, SAT), and academic subjects!
+
+✨ <b>Features:</b>
+• Real-time exams and subject tests (100% free)
+• University and national student leaderboards
+• Mistake practice and performance analytics
+• Daily streak bonuses and interactive quizzes
+
+👇 Click the button below to start:`,
+    button: '🚀 Start Quiz',
+    menuText: '🚀 Start Quiz',
   },
 };
 
-function getLanguage(code?: string) {
+function getLanguage(code?: string): 'uz' | 'ru' | 'en' {
   if (!code || typeof code !== 'string') return 'uz';
   const lower = code.toLowerCase();
   if (lower.startsWith('ru')) return 'ru';
   if (lower.startsWith('en')) return 'en';
   return 'uz';
+}
+
+/**
+ * Configure Telegram chat menu button (bottom-left corner) to open Mini App
+ */
+async function configureChatMenuButton(chatId?: number | string, buttonText: string = '🚀 Testni boshlash') {
+  if (!BOT_TOKEN) return;
+  try {
+    const payload: Record<string, any> = {
+      menu_button: {
+        type: 'web_app',
+        text: buttonText,
+        web_app: { url: WEBAPP_URL },
+      },
+    };
+    if (chatId) {
+      payload.chat_id = chatId;
+    }
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.debug('configureChatMenuButton error:', err);
+  }
 }
 
 export default async function handler(req: any, res: any) {
@@ -44,6 +100,9 @@ export default async function handler(req: any, res: any) {
 
   if (
     text.startsWith('/start') ||
+    text === '🚀 Testni boshlash' ||
+    text === '🚀 Начать тест' ||
+    text === '🚀 Start Quiz' ||
     text === '📱 Ilovani ochish' ||
     text === '📱 Открыть приложение' ||
     text === '📱 Open App'
@@ -51,9 +110,10 @@ export default async function handler(req: any, res: any) {
     const lang = getLanguage(langCode);
     const content = MESSAGES[lang] || MESSAGES.uz;
 
+    // Send Welcome Message with Inline WebApp Button
     const payload = {
       chat_id: chatId,
-      text: content.text,
+      text: content.welcome,
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
@@ -67,7 +127,7 @@ export default async function handler(req: any, res: any) {
         keyboard: [
           [
             {
-              text: content.menuButton,
+              text: content.button,
               web_app: { url: WEBAPP_URL },
             },
           ],
@@ -77,11 +137,14 @@ export default async function handler(req: any, res: any) {
     };
 
     if (BOT_TOKEN) {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      await Promise.allSettled([
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }),
+        configureChatMenuButton(chatId, content.menuText),
+      ]);
     }
   }
 
