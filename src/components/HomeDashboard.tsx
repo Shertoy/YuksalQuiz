@@ -35,12 +35,14 @@ interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
   onOpenCreateModal: () => void;
   onOpenEditProfile: () => void;
+  onOpenReceiptModal?: () => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onStartTest,
   onOpenCreateModal,
   onOpenEditProfile,
+  onOpenReceiptModal,
 }) => {
   const {
     profile,
@@ -337,16 +339,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1 relative z-10">
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 relative z-10">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic('medium');
+                if (onOpenReceiptModal) {
+                  onOpenReceiptModal();
+                } else {
+                  setActiveTab('wallet');
+                }
+              }}
+              className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Chekni tekshirish (Gemini AI)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
                 setActiveTab('wallet');
               }}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+              className="w-full sm:w-auto py-2.5 px-3.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors"
             >
-              <span>{t.activateOfferBtn || "Tarifni faollashtirish"}</span>
+              <span>{t.activateOfferBtn || "Tariflar"}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>

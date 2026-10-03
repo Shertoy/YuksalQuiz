@@ -21,9 +21,11 @@ import {
   Send,
   HelpCircle,
   ArrowRight,
+  Upload,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReferralShareCard } from './ReferralShareCard';
+import { ReceiptVerifyModal } from './ReceiptVerifyModal';
 import { TransactionType, SubscriptionPlanType } from '../types';
 
 export const WalletView: React.FC = () => {
@@ -40,6 +42,8 @@ export const WalletView: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | TransactionType>('all');
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptPlan, setReceiptPlan] = useState<SubscriptionPlanType>('6_months');
 
   // Promocode state
   const [promoInput, setPromoInput] = useState('');
@@ -288,6 +292,41 @@ export const WalletView: React.FC = () => {
           </span>
         </div>
       )}
+
+      {/* Gemini AI P2P Receipt Verification Banner */}
+      <div className="bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/10 border border-emerald-500/30 rounded-3xl p-4 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
+            <Sparkles className="w-5 h-5 text-amber-300" strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                P2P Chekni Tekshirish
+              </h3>
+              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase">
+                Gemini AI ⚡
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug line-clamp-2">
+              Click, Payme yoki Uzum chekingizni yuklang, sun'iy intellekt 5 soniyada obunani ochadi!
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('medium');
+            setReceiptPlan('6_months');
+            setIsReceiptModalOpen(true);
+          }}
+          className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md shadow-emerald-600/25 active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          <span>Chekni yuklash</span>
+        </button>
+      </div>
 
       {/* SECTION 1: Subscription Plans (Mobile Adapted) */}
       <div className="space-y-3">
@@ -836,14 +875,28 @@ export const WalletView: React.FC = () => {
 
               {/* Action Buttons in Modal */}
               <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = instructionModal.plan;
+                    handleCloseInstruction();
+                    setReceiptPlan(p);
+                    setIsReceiptModalOpen(true);
+                  }}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" strokeWidth={2} />
+                  <span>Chekni Gemini AI orqali tekshirish (Tezkor)</span>
+                </button>
+
                 <a
                   href="https://t.me/YuksalQuiz_bot?text=Men%20to'lov%20qildim"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => triggerHaptic('medium')}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Send className="w-4 h-4" strokeWidth={1.75} />
+                  <Send className="w-4 h-4 text-emerald-500" strokeWidth={1.75} />
                   <span>Chekni botga yuborish (@YuksalQuiz_bot)</span>
                 </a>
 
@@ -1027,6 +1080,13 @@ export const WalletView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* P2P RECEIPT AI VERIFICATION MODAL */}
+      <ReceiptVerifyModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        initialPlan={receiptPlan}
+      />
     </div>
   );
 };

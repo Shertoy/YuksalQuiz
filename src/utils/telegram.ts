@@ -413,6 +413,15 @@ class SoundEffectsManager {
       console.debug('playClick audio error:', e);
     }
   }
+
+  // Aliases for intuitive semantic usage
+  playSuccess() {
+    this.playCorrect();
+  }
+
+  playError() {
+    this.playWrong();
+  }
 }
 
 export const soundFX = new SoundEffectsManager();

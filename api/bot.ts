@@ -1,5 +1,21 @@
+import { createClient } from '@supabase/supabase-js';
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
+const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '6219808382';
+
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  'https://kupbaphqyyvmpqxmrtrn.supabase.co';
+
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const MESSAGES = {
   uz: {
@@ -137,6 +153,147 @@ export default async function handler(req: any, res: any) {
       }
     }
     return res.status(200).json({ ok: true, results });
+  }
+
+  // Handle Admin Inline Keyboard Callbacks (Payment approval & rejection)
+  if (update.callback_query) {
+    const cq = update.callback_query;
+    const data = cq.data || '';
+    const queryId = cq.id;
+    const fromId = cq.from?.id ? String(cq.from.id) : '';
+    const messageId = cq.message?.message_id;
+    const chatId = cq.message?.chat?.id;
+
+    if (data.startsWith('approve_pay_') || data.startsWith('reject_pay_')) {
+      const isApprove = data.startsWith('approve_pay_');
+      const paymentId = data.replace(isApprove ? 'approve_pay_' : 'reject_pay_', '');
+
+      // Verify Admin permissions
+      const adminIds = ['6219808382', ADMIN_TELEGRAM_ID].filter(Boolean);
+      if (!adminIds.includes(fromId)) {
+        if (BOT_TOKEN && queryId) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: queryId,
+              text: "⚠️ Sizda to'lovni tasdiqlash huquqi yo'q!",
+              show_alert: true,
+            }),
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      let targetUserId = '';
+      let targetAmount = 35000;
+
+      if (paymentId) {
+        try {
+          const { data: payRow } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('id', paymentId)
+            .maybeSingle();
+
+          if (payRow) {
+            targetUserId = payRow.user_id || '';
+            targetAmount = Number(payRow.amount) || 35000;
+          }
+
+          // Update payment record in Supabase
+          await supabase
+            .from('payments')
+            .update({
+              status: isApprove ? 'approved' : 'rejected',
+              notes: isApprove
+                ? `Admin (${fromId}) tomonidan tasdiqlandi: ${new Date().toISOString()}`
+                : `Admin (${fromId}) tomonidan rad etildi: ${new Date().toISOString()}`,
+            })
+            .eq('id', paymentId);
+
+          // If approved, update user subscription access in Supabase
+          if (isApprove && targetUserId) {
+            const months = targetAmount >= 80000 ? 12 : targetAmount >= 45000 ? 6 : 3;
+            const paidUntil = new Date();
+            paidUntil.setMonth(paidUntil.getMonth() + months);
+
+            await supabase.from('users').upsert({
+              id: targetUserId,
+              has_paid: true,
+              paid_until: paidUntil.toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+            // Also try user_profiles table if present
+            try {
+              await supabase.from('user_profiles').upsert({
+                id: targetUserId,
+                has_paid: true,
+                paid_until: paidUntil.toISOString(),
+              });
+            } catch {}
+          }
+        } catch (dbErr) {
+          console.error('Error updating payment approval in Supabase:', dbErr);
+        }
+      }
+
+      // Answer Telegram Callback Query
+      if (BOT_TOKEN && queryId) {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            callback_query_id: queryId,
+            text: isApprove ? "✅ To'lov muvaffaqiyatli tasdiqlandi!" : "❌ To'lov rad etildi!",
+          }),
+        }).catch(() => {});
+      }
+
+      // Edit Telegram original message to remove buttons and append status
+      if (BOT_TOKEN && chatId && messageId) {
+        const originalText = cq.message?.text || '';
+        const statusBadge = isApprove
+          ? `\n\n✅ <b>ADMIN TOMONIDAN TASDIQLANDI</b> (${new Date().toLocaleTimeString('uz-UZ')})`
+          : `\n\n❌ <b>ADMIN TOMONIDAN RAD ETILDI</b> (${new Date().toLocaleTimeString('uz-UZ')})`;
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            text: `${originalText}${statusBadge}`,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [] },
+          }),
+        }).catch(() => {});
+      }
+
+      // Send congratulations message directly to student if Telegram chat_id
+      if (isApprove && targetUserId && BOT_TOKEN) {
+        const cleanUserChatId = String(targetUserId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+        if (/^\d+$/.test(cleanUserChatId)) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: cleanUserChatId,
+              text: `🎉 <b>Tabriklaymiz! To'lovingiz admin tomonidan tasdiqlandi!</b>\n\nYuksalQuiz platformasidagi obunangiz faollashtirildi. Barcha testlar va imkoniyatlar endi siz uchun to'liq ochiq!`,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '🚀 Testlarni boshlash', web_app: { url: WEBAPP_URL } }],
+                ],
+              },
+            }),
+          }).catch(() => {});
+        }
+      }
+
+      return res.status(200).json({ ok: true });
+    }
   }
 
   if (!update.message) {

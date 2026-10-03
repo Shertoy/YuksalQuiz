@@ -142,6 +142,12 @@ interface QuizState {
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
   applySubscription: (plan: SubscriptionPlanType) => { success: boolean; message: string };
+  applyReceiptPaymentApproval: (data: {
+    plan: SubscriptionPlanType;
+    amount: number;
+    transactionId: string;
+    paidUntil?: string;
+  }) => void;
   addReferralBonus: () => { bonusAdded: number; newTotal: number };
   resetTamperWarning: () => void;
   clearAllTests: () => void;
@@ -231,6 +237,8 @@ const DEFAULT_PROFILE: UserProfile = {
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
+  has_paid: false,
+  paid_until: undefined,
   registeredAt: new Date().toISOString().split('T')[0],
 };
 
@@ -1301,6 +1309,64 @@ export const useQuizStore = create<QuizState>()(
             ? `20 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
             : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
+      },
+
+      // Apply direct P2P Payment approval verified by Gemini AI or Telegram Admin
+      applyReceiptPaymentApproval: (data: {
+        plan: SubscriptionPlanType;
+        amount: number;
+        transactionId: string;
+        paidUntil?: string;
+      }) => {
+        const { profile } = get();
+        let expiryDate = new Date();
+        if (data.paidUntil) {
+          expiryDate = new Date(data.paidUntil);
+        } else {
+          if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
+            expiryDate = new Date(profile.subscriptionExpiry);
+          }
+          const months = data.plan === '1_year' ? 12 : data.plan === '6_months' ? 6 : 3;
+          expiryDate.setMonth(expiryDate.getMonth() + months);
+        }
+
+        const planLabel =
+          data.plan === '3_months'
+            ? '3 oylik'
+            : data.plan === '6_months'
+            ? '6 oylik'
+            : '1 yillik';
+
+        const updatedProfile: UserProfile = {
+          ...profile,
+          has_paid: true,
+          paid_until: expiryDate.toISOString(),
+          subscriptionPlan: data.plan,
+          subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'deposit',
+          title: `P2P To'lov (${planLabel}) - Tranzaksiya #${data.transactionId.slice(-8)}`,
+          amount: data.amount,
+          unit: "so'm",
+          isPositive: true,
+        });
+
+        triggerHaptic('success');
+        soundFX.playSuccess();
       },
 
 

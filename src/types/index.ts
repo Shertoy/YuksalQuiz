@@ -87,6 +87,8 @@ export interface UserProfile {
   referralCount: number;
   subscriptionPlan?: 'none' | '3_months' | '6_months' | '1_year';
   subscriptionExpiry?: string;
+  has_paid?: boolean;
+  paid_until?: string;
   registeredAt?: string;
   checksum?: string;
 }
@@ -446,6 +448,30 @@ export interface Promocode {
   isUsed: boolean;
   usedBy?: string;
   createdAt: string;
+}
+
+export interface ReceiptPayment {
+  id: string;
+  user_id: string;
+  amount: number;
+  receipt_image_url?: string;
+  transaction_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  notes?: string;
+}
+
+export interface ReceiptVerificationResult {
+  ok: boolean;
+  status: 'approved' | 'pending' | 'rejected';
+  transactionId?: string;
+  amount?: number;
+  paidUntil?: string;
+  plan?: SubscriptionPlanType;
+  paymentSystem?: string;
+  paymentId?: string;
+  reason?: string;
+  message: string;
 }
 
 

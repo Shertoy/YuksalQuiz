@@ -2830,7 +2830,42 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'leaderboard_users' AND policyname = 'Allow public delete leaderboard_users') THEN
     CREATE POLICY "Allow public delete leaderboard_users" ON public.leaderboard_users FOR DELETE TO anon, authenticated USING (true);
   END IF;
-END $$;`;
+END $$;
+
+-- P2P To'lovlar (payments) jadvali
+CREATE TABLE IF NOT EXISTS public.payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  receipt_image_url TEXT,
+  transaction_id TEXT UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_transaction_id ON public.payments (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON public.payments (user_id);
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read payments" ON public.payments FOR SELECT USING (true);
+CREATE POLICY "Allow public insert payments" ON public.payments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update payments" ON public.payments FOR UPDATE USING (true);
+
+-- Foydalanuvchilar (users) obuna holati
+CREATE TABLE IF NOT EXISTS public.users (
+  id TEXT PRIMARY KEY,
+  first_name TEXT,
+  last_name TEXT,
+  university TEXT,
+  region TEXT,
+  coins NUMERIC DEFAULT 0,
+  has_paid BOOLEAN DEFAULT false,
+  paid_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS has_paid BOOLEAN DEFAULT false;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS paid_until TIMESTAMPTZ;`;
                       navigator.clipboard.writeText(sqlContent);
                       triggerHaptic('success');
                       setCopiedSql(true);

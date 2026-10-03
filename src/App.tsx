@@ -29,6 +29,7 @@ import { LeaderboardUser } from './types';
 import { ParticleBackground } from './components/ParticleBackground';
 import { AppLoader } from './components/AppLoader';
 import { EditProfileModal } from './components/EditProfileModal';
+import { ReceiptVerifyModal } from './components/ReceiptVerifyModal';
 
 export const App: React.FC = () => {
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
@@ -62,6 +63,9 @@ export const App: React.FC = () => {
   // Admin login and panel modal
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
+  // P2P Receipt AI Verification Modal
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
   // Initialize Telegram WebApp and Theme Synchronization
   useEffect(() => {
@@ -273,6 +277,7 @@ export const App: React.FC = () => {
                 onStartTest={handleStartTest}
                 onOpenCreateModal={() => setIsCreateModalOpen(true)}
                 onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                onOpenReceiptModal={() => setIsReceiptModalOpen(true)}
               />
             )}
             {activeTab === 'tests' && (
@@ -280,6 +285,7 @@ export const App: React.FC = () => {
                 onStartTest={handleStartTest}
                 onOpenCreateModal={() => setIsCreateModalOpen(true)}
                 onEditTest={(pkg) => setEditingTestPkg(pkg)}
+                onOpenReceiptModal={() => setIsReceiptModalOpen(true)}
               />
             )}
             {activeTab === 'results' && <ResultsAndMistakes />}
@@ -299,6 +305,12 @@ export const App: React.FC = () => {
       <EditProfileModal
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
+      />
+
+      {/* P2P Receipt AI Verification Modal */}
+      <ReceiptVerifyModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
       />
 
       {/* Create / Edit Test Modal */}
@@ -335,7 +347,7 @@ export const App: React.FC = () => {
       />
 
       {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
-      {!activeTestPkg && !isEditProfileOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
+      {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
         <BottomNav onTabSelect={() => setReviewState(null)} />
       )}
 
