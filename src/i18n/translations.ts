@@ -283,6 +283,13 @@ export interface Translations {
   retryBtn: string;
   networkErrorNotice: string;
   emptyDatabasePrompt: string;
+
+  // Settings
+  settingsTitle: string;
+  soundEffectsTitle: string;
+  soundEffectsDesc: string;
+  vibrationTitle: string;
+  vibrationDesc: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -562,6 +569,11 @@ export const translations: Record<Language, Translations> = {
     retryBtn: "Qayta urinish",
     networkErrorNotice: "Internet aloqasi uzildi yoki server javob bermayapti",
     emptyDatabasePrompt: "Hozircha testlar mavjud emas. Yangi test yarating!",
+    settingsTitle: "Sozlamalar",
+    soundEffectsTitle: "Ovoz effektlari",
+    soundEffectsDesc: "To'g'ri va xato javob tovushlari",
+    vibrationTitle: "Vibratsiya (Tebranish)",
+    vibrationDesc: "Telegram WebApp tebranish signallari",
   },
 
   ru: {
@@ -840,6 +852,11 @@ export const translations: Record<Language, Translations> = {
     retryBtn: 'Повторить попытку',
     networkErrorNotice: 'Соединение с интернетом потеряно или сервер не отвечает',
     emptyDatabasePrompt: 'Пока нет тестов. Создайте новый тест!',
+    settingsTitle: 'Настройки',
+    soundEffectsTitle: 'Звуковые эффекты',
+    soundEffectsDesc: 'Звуки правильных и неверных ответов',
+    vibrationTitle: 'Вибрация (Haptic)',
+    vibrationDesc: 'Тактильный отклик Telegram WebApp',
   },
 
   en: {
@@ -1118,5 +1135,10 @@ export const translations: Record<Language, Translations> = {
     retryBtn: 'Retry',
     networkErrorNotice: 'Network connection lost or server not responding',
     emptyDatabasePrompt: 'No tests available yet. Create a new test!',
+    settingsTitle: 'Settings',
+    soundEffectsTitle: 'Sound Effects',
+    soundEffectsDesc: 'Chimes and buzzers for answers',
+    vibrationTitle: 'Haptic Vibration',
+    vibrationDesc: 'Telegram WebApp tactile feedback',
   },
 };

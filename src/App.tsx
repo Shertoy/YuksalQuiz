@@ -171,6 +171,10 @@ export const App: React.FC = () => {
         })
         .catch(() => {});
     }
+
+    if (reviewState) {
+      setReviewState(null);
+    }
   }, [activeTab]);
 
   // Handlers for test flow
@@ -324,7 +328,7 @@ export const App: React.FC = () => {
 
       {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
       {!activeTestPkg && !isEditProfileOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
-        <BottomNav />
+        <BottomNav onTabSelect={() => setReviewState(null)} />
       )}
 
       {/* Smooth Motivational Quotes & Minimalist Spinner App Loader */}

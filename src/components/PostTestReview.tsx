@@ -71,7 +71,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-20 select-none">
+    <div className="space-y-4 pb-28 select-none">
       {/* Result Summary Card */}
       <div
         className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-xl ${

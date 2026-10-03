@@ -129,7 +129,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
         try { triggerHaptic('success'); } catch {}
       } else {
         try { soundFX.playWrong(); } catch {}
-        try { triggerHaptic('warning'); } catch {}
+        try { triggerHaptic('error'); } catch {}
         setWrongShakeIndex(optIndex);
       }
     } catch (e) {

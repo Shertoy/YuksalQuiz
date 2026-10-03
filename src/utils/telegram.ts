@@ -169,7 +169,14 @@ export function triggerTelegramNativeShare(
   return false;
 }
 
+export let vibrationEnabled = true;
+
+export function setVibrationEnabled(enabled: boolean): void {
+  vibrationEnabled = enabled;
+}
+
 export function triggerHaptic(type: 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'error' | 'warning') {
+  if (!vibrationEnabled) return;
   try {
     const tg = getTelegramWebApp();
     if (tg?.HapticFeedback) {
@@ -206,6 +213,10 @@ class SoundEffectsManager {
   private ctx: AudioContext | null = null;
   public soundEnabled: boolean = true;
 
+  public setSoundEnabled(enabled: boolean): void {
+    this.soundEnabled = enabled;
+  }
+
   private getContext(): AudioContext | null {
     if (!this.soundEnabled) return null;
     if (typeof window === 'undefined') return null;
@@ -225,64 +236,99 @@ class SoundEffectsManager {
     }
   }
 
-  // Play subtle cheerful chime on correct answer
+  // Play pleasant, sparkling success chime on correct answer (success ding)
   playCorrect() {
     try {
       const ctx = this.getContext();
       if (!ctx) return;
       const now = ctx.currentTime;
 
+      // Note 1: E5 (659.25 Hz)
       const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
+      const gain1 = ctx.createGain();
       osc1.type = 'sine';
-      osc2.type = 'triangle';
-
-      osc1.frequency.setValueAtTime(523.25, now); // C5
-      osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
-      osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
-
-      osc2.frequency.setValueAtTime(1046.5, now); // C6
-
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.14, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
       osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 0.35);
+      osc1.stop(now + 0.15);
+
+      // Note 2: A5 (880 Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.08);
+      gain2.gain.setValueAtTime(0.16, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.08);
       osc2.stop(now + 0.35);
+
+      // Note 3 (harmonic shimmer): E6 (1318.5 Hz)
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(1318.5, now + 0.14);
+      gain3.gain.setValueAtTime(0.09, now + 0.14);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.14);
+      osc3.stop(now + 0.45);
     } catch (e) {
       console.debug('playCorrect audio error:', e);
     }
   }
 
-  // Play gentle, non-annoying buzz on wrong answer
+  // Play distinct game-show error buzzer (two fast buzz pulses)
   playWrong() {
     try {
       const ctx = this.getContext();
       if (!ctx) return;
       const now = ctx.currentTime;
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      // Pulse 1
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      const filter1 = ctx.createBiquadFilter();
+      filter1.type = 'lowpass';
+      filter1.frequency.setValueAtTime(500, now);
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(220, now); // A3
-      osc.frequency.exponentialRampToValueAtTime(180, now + 0.18); // F3
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(150, now);
+      osc1.frequency.linearRampToValueAtTime(130, now + 0.09);
 
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      gain1.gain.setValueAtTime(0.14, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      osc1.connect(filter1);
+      filter1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.09);
 
-      osc.start(now);
-      osc.stop(now + 0.2);
+      // Pulse 2 (short pause of 30ms, then second buzz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      const filter2 = ctx.createBiquadFilter();
+      filter2.type = 'lowpass';
+      filter2.frequency.setValueAtTime(450, now + 0.12);
+
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(130, now + 0.12);
+      osc2.frequency.linearRampToValueAtTime(110, now + 0.23);
+
+      gain2.gain.setValueAtTime(0.14, now + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.23);
+
+      osc2.connect(filter2);
+      filter2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.23);
     } catch (e) {
       console.debug('playWrong audio error:', e);
     }

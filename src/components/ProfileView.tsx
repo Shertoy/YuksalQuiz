@@ -12,6 +12,10 @@ import {
   ScrollText,
   CheckSquare,
   ChevronRight,
+  SlidersHorizontal,
+  Volume2,
+  VolumeX,
+  Vibrate,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
@@ -23,7 +27,14 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOpenEditProfile }) => {
-  const { profile, setActiveTab } = useQuizStore();
+  const {
+    profile,
+    setActiveTab,
+    soundEnabled,
+    toggleSound,
+    vibrationEnabled,
+    toggleVibration,
+  } = useQuizStore();
   const { t } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
@@ -150,6 +161,100 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
         <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
           <span>{t.viewBtn}</span>
           <ChevronRight className="w-4 h-4" />
+        </div>
+      </div>
+
+      {/* Settings (Ovoz va Vibratsiya) Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
+        <div className="flex items-center gap-2 mb-1 px-1">
+          <div className="w-7 h-7 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <SlidersHorizontal className="w-4 h-4" strokeWidth={1.75} />
+          </div>
+          <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+            {t.settingsTitle}
+          </h4>
+        </div>
+
+        {/* Sound FX Toggle Row */}
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              soundEnabled
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
+            }`}>
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" strokeWidth={1.75} />
+              ) : (
+                <VolumeX className="w-4 h-4" strokeWidth={1.75} />
+              )}
+            </div>
+            <div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
+                {t.soundEffectsTitle}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t.soundEffectsDesc}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={soundEnabled}
+            onClick={() => {
+              toggleSound();
+            }}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              soundEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                soundEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Vibration / Haptic Toggle Row */}
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              vibrationEnabled
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
+            }`}>
+              <Vibrate className="w-4 h-4" strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
+                {t.vibrationTitle}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t.vibrationDesc}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={vibrationEnabled}
+            onClick={() => {
+              toggleVibration();
+            }}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              vibrationEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                vibrationEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 

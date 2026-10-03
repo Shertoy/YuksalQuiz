@@ -25,7 +25,7 @@ import {
   validateAndSanitizeName,
   validateTestAttempt,
 } from '../utils/security';
-import { soundFX, triggerHaptic } from '../utils/telegram';
+import { soundFX, triggerHaptic, setVibrationEnabled } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
 
@@ -82,6 +82,7 @@ interface QuizState {
   paymentMethods: PaymentMethod[];
   promocodes: Promocode[];
   soundEnabled: boolean;
+  vibrationEnabled: boolean;
   tamperDetected: boolean;
   deletedPackageIds: string[];
 
@@ -129,6 +130,9 @@ interface QuizState {
   ) => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   toggleSound: () => void;
+  setSoundEnabled: (enabled: boolean) => void;
+  toggleVibration: () => void;
+  setVibrationEnabled: (enabled: boolean) => void;
   checkDailyStreak: () => { streakAwarded: boolean; streakCount: number };
   addCustomUniversity: (name: string) => void;
   createTestPackage: (pkg: TestPackage) => void;
@@ -295,6 +299,7 @@ export const useQuizStore = create<QuizState>()(
       paymentMethods: DEFAULT_PAYMENT_METHODS,
       promocodes: DEFAULT_PROMOCODES,
       soundEnabled: true,
+      vibrationEnabled: true,
       tamperDetected: false,
       deletedPackageIds: [],
 
@@ -642,6 +647,24 @@ export const useQuizStore = create<QuizState>()(
         const next = !get().soundEnabled;
         soundFX.soundEnabled = next;
         set({ soundEnabled: next });
+        if (next) soundFX.playClick();
+      },
+
+      setSoundEnabled: (enabled: boolean) => {
+        soundFX.soundEnabled = enabled;
+        set({ soundEnabled: enabled });
+      },
+
+      toggleVibration: () => {
+        const next = !get().vibrationEnabled;
+        setVibrationEnabled(next);
+        set({ vibrationEnabled: next });
+        if (next) triggerHaptic('selection');
+      },
+
+      setVibrationEnabled: (enabled: boolean) => {
+        setVibrationEnabled(enabled);
+        set({ vibrationEnabled: enabled });
       },
 
       registerUser: (data) => {
@@ -1497,6 +1520,15 @@ export const useQuizStore = create<QuizState>()(
           }
           if (!state.promocodes) {
             state.promocodes = DEFAULT_PROMOCODES;
+          }
+          if (typeof state.soundEnabled === 'boolean') {
+            soundFX.soundEnabled = state.soundEnabled;
+          }
+          if (typeof state.vibrationEnabled === 'boolean') {
+            setVibrationEnabled(state.vibrationEnabled);
+          } else {
+            state.vibrationEnabled = true;
+            setVibrationEnabled(true);
           }
         }
 

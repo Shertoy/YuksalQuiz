@@ -11,7 +11,11 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
-export const BottomNav: React.FC = () => {
+export interface BottomNavProps {
+  onTabSelect?: (tab: TabType) => void;
+}
+
+export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
   const { activeTab, setActiveTab } = useQuizStore();
   const { t } = useTranslation();
 
@@ -56,6 +60,7 @@ export const BottomNav: React.FC = () => {
                 onClick={() => {
                   triggerHaptic('selection');
                   setActiveTab(item.id);
+                  onTabSelect?.(item.id);
                 }}
                 className={`relative z-10 flex-1 flex flex-col items-center justify-center h-[50px] rounded-2xl transition-colors duration-200 active:scale-95 ${
                   isActive
