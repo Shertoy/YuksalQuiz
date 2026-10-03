@@ -49,15 +49,15 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col p-5 sm:p-6 text-slate-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full max-h-[85vh] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col text-slate-900 dark:text-white">
         
         {/* Glowing Orange and Emerald Accent Blur Orbs */}
         <div className="absolute -top-10 -right-10 w-36 h-36 bg-orange-500/20 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
 
         {/* Top Close Button */}
-        <div className="relative z-10 flex justify-end">
+        <div className="relative z-10 flex justify-end p-4 pb-0 shrink-0">
           <button
             type="button"
             onClick={handleBackClick}
@@ -66,6 +66,9 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <X className="w-4 h-4" strokeWidth={2} />
           </button>
         </div>
+
+        {/* Modal Scrollable Content Wrapper */}
+        <div className="overflow-y-auto overscroll-contain p-5 pb-8 space-y-4 flex-1 relative z-10">
 
         {/* Vibrant Lock & Sparkle Center Badge */}
         <div className="relative z-10 text-center -mt-2">
@@ -180,6 +183,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           </button>
         </div>
 
+        </div>
       </div>
     </div>
   );

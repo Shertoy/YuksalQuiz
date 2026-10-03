@@ -435,7 +435,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-extrabold text-white">
-                    {profile.voucherBalance.toLocaleString('uz-UZ')} so'm vaucheringiz faol!
+                    {profile.voucherBalance.toLocaleString('uz-UZ')} so'm boshlang'ich vaucheringiz faol!
                   </h3>
                   <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
                     Faol
@@ -448,33 +448,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 relative z-10">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('medium');
-                if (onOpenReceiptModal) {
-                  onOpenReceiptModal();
-                } else {
-                  setActiveTab('wallet');
-                }
-              }}
-              className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Chekni tekshirish (Gemini AI)</span>
-            </button>
-
+          <div className="pt-1 relative z-10">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic('light');
                 setActiveTab('wallet');
               }}
-              className="w-full sm:w-auto py-2.5 px-3.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all active:scale-[0.98]"
             >
-              <span>{t.activateOfferBtn || "Tariflar"}</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <span>Tariflarni ko'rish</span>
+              <ChevronRight className="w-4 h-4 text-slate-950" strokeWidth={2} />
             </button>
           </div>
         </div>

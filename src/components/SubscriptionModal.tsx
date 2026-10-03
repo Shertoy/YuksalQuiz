@@ -47,8 +47,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   // Dynamic Plan Pricing from store
   const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
   const price3M = prices['3_months'] || 35000;
-  const price6M = prices['6_months'] || 50000;
-  const price1Y = prices['1_year'] || 90000;
+  const price6M = prices['6_months'] || 60000;
+  const price1Y = prices['1_year'] || 100000;
 
   const cost3Months = hasVoucher ? Math.max(0, price3M - voucherDiscount) : price3M;
   const cost6Months = hasVoucher ? Math.max(0, price6M - voucherDiscount) : price6M;
@@ -107,10 +107,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+      <div className="w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
         {/* Modal Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
               <Crown className="w-5 h-5 text-white" strokeWidth={2} />
@@ -141,7 +141,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div className="p-4 space-y-3.5 overflow-y-auto flex-1">
+        <div className="overflow-y-auto overscroll-contain p-5 pb-8 space-y-4 flex-1">
           {/* User Balance Bar */}
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">

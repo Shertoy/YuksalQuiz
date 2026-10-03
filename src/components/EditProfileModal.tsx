@@ -96,8 +96,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 max-w-md w-full overflow-hidden max-h-[86vh] sm:max-h-[82vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 animate-in zoom-in-95 duration-200">
         {/* Header with Visual Editing Mode Status */}
         <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -135,7 +135,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         {/* Form with Scrollable Content Body and Pinned Footer */}
         <form onSubmit={handleSave} className="flex-1 flex flex-col min-h-0 overflow-hidden text-xs">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 min-h-0 overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-5 pb-8 space-y-4 min-h-0">
           {/* Active Avatar Section with Live Preview */}
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-center">
             <div className="flex items-center justify-between mb-3 text-left">

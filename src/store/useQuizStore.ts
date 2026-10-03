@@ -157,8 +157,8 @@ interface QuizState {
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
   '3_months': 35000,
-  '6_months': 50000,
-  '1_year': 90000,
+  '6_months': 60000,
+  '1_year': 100000,
 };
 
 export const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
@@ -1257,7 +1257,7 @@ export const useQuizStore = create<QuizState>()(
       applySubscription: (plan: SubscriptionPlanType) => {
         const { profile, subscriptionPrices } = get();
         const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
-        const originalPrice = prices[plan] || (plan === '3_months' ? 35000 : plan === '6_months' ? 50000 : 90000);
+        const originalPrice = prices[plan] || (plan === '3_months' ? 35000 : plan === '6_months' ? 60000 : 100000);
 
         // 20 000 voucher discount applies to ANY subscription plan (3_months, 6_months, or 1_year)
         const voucherUsed = Math.min(profile.voucherBalance || 0, 20000, originalPrice);
@@ -1270,7 +1270,7 @@ export const useQuizStore = create<QuizState>()(
           triggerHaptic('error');
           return {
             success: false,
-            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Balansni to'ldiring yoki to'lov chekini Telegram botga yuboring.`,
+            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Iltimos, hisobingizni to'ldiring.`,
           };
         }
 
@@ -1437,10 +1437,10 @@ export const useQuizStore = create<QuizState>()(
       },
 
 
-      // Referral invitation bonus (+1 500 UZS)
+      // Referral invitation bonus (+1 000 UZS)
       addReferralBonus: () => {
         const { profile } = get();
-        const bonus = 1500;
+        const bonus = 1000;
         const updated: UserProfile = {
           ...profile,
           walletBalance: (profile.walletBalance || 0) + bonus,
