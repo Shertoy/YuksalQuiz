@@ -264,6 +264,7 @@ export interface Translations {
   courseLabel: string;
   saveChangesBtn: string;
   officialVersion: string;
+  editProfileBtn: string;
 
   // TestRunner
   confirmExitTitle: string;
@@ -550,6 +551,7 @@ export const translations: Record<Language, Translations> = {
     courseLabel: 'Kurs:',
     saveChangesBtn: "O'zgarishlarni saqlash",
     officialVersion: 'YuksalQuiz v1.0 • Rasmiy versiya',
+    editProfileBtn: 'Profilni tahrirlash',
 
     // TestRunner
     confirmExitTitle: 'Testni tark etasizmi?',
@@ -572,7 +574,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: "Sozlamalar",
     soundEffectsTitle: "Ovoz effektlari",
     soundEffectsDesc: "To'g'ri va xato javob tovushlari",
-    vibrationTitle: "Vibratsiya (Tebranish)",
+    vibrationTitle: "Vibratsiya (Haptic feedback)",
     vibrationDesc: "Telegram WebApp tebranish signallari",
   },
 
@@ -833,6 +835,7 @@ export const translations: Record<Language, Translations> = {
     courseLabel: 'Курс:',
     saveChangesBtn: 'Сохранить изменения',
     officialVersion: 'YuksalQuiz v1.0 • Официальная версия',
+    editProfileBtn: 'Редактировать профиль',
 
     // TestRunner
     confirmExitTitle: 'Выйти из теста?',
@@ -855,7 +858,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: 'Настройки',
     soundEffectsTitle: 'Звуковые эффекты',
     soundEffectsDesc: 'Звуки правильных и неверных ответов',
-    vibrationTitle: 'Вибрация (Haptic)',
+    vibrationTitle: 'Вибрация (Haptic feedback)',
     vibrationDesc: 'Тактильный отклик Telegram WebApp',
   },
 
@@ -1116,6 +1119,7 @@ export const translations: Record<Language, Translations> = {
     courseLabel: 'Course Year:',
     saveChangesBtn: 'Save Changes',
     officialVersion: 'YuksalQuiz v1.0 • Official Release',
+    editProfileBtn: 'Edit Profile',
 
     // TestRunner
     confirmExitTitle: 'Leave Test?',
@@ -1138,7 +1142,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: 'Settings',
     soundEffectsTitle: 'Sound Effects',
     soundEffectsDesc: 'Chimes and buzzers for answers',
-    vibrationTitle: 'Haptic Vibration',
+    vibrationTitle: 'Vibration (Haptic feedback)',
     vibrationDesc: 'Telegram WebApp tactile feedback',
   },
 };

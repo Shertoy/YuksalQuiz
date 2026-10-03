@@ -39,7 +39,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="space-y-4 pb-28">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -57,21 +57,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
             triggerHaptic('light');
             onOpenEditProfile?.();
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all active:scale-95 border border-emerald-500/30"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all active:scale-95 border border-emerald-500/30 shadow-xs"
         >
-          <Edit3 className="w-3.5 h-3.5 text-emerald-500" />
-          <span>{t.editBtn || 'Tahrirlash'}</span>
+          <Edit3 className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
+          <span>{t.editProfileBtn || 'Profilni tahrirlash'}</span>
         </button>
       </div>
 
       {/* Main Profile Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
-        <div className="relative inline-block mx-auto mb-3">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 overflow-hidden shadow-md flex items-center justify-center p-1">
+        <div
+          onClick={() => {
+            triggerHaptic('light');
+            onOpenEditProfile?.();
+          }}
+          className="relative inline-block mx-auto mb-3 cursor-pointer group"
+          title={t.editProfileBtn || 'Profilni tahrirlash'}
+        >
+          <div className="w-20 h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 group-hover:border-emerald-500 overflow-hidden shadow-md flex items-center justify-center p-1 transition-all">
             <UserAvatar avatar={profile.avatar} />
           </div>
-          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">
-            <Check className="w-3.5 h-3.5" />
+          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900 group-hover:scale-110 transition-transform">
+            <Edit3 className="w-3.5 h-3.5 text-white" strokeWidth={2} />
           </span>
         </div>
 
@@ -133,6 +140,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
             {t.activeStatus}
           </span>
+        </div>
+
+        {/* Direct Edit Profile Action Button */}
+        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('medium');
+              onOpenEditProfile?.();
+            }}
+            className="w-full py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
+          >
+            <Edit3 className="w-4 h-4" strokeWidth={1.75} />
+            <span>{t.editProfileBtn || 'Profilni tahrirlash'}</span>
+          </button>
         </div>
       </div>
 
@@ -223,7 +245,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
               vibrationEnabled
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
                 : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
             }`}>
               <Vibrate className="w-4 h-4" strokeWidth={1.75} />
@@ -246,7 +268,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
               toggleVibration();
             }}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              vibrationEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+              vibrationEnabled ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
             }`}
           >
             <span

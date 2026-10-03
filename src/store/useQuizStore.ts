@@ -825,7 +825,52 @@ export const useQuizStore = create<QuizState>()(
           voucherBalance: updated.voucherBalance,
         });
 
-        set({ profile: updated });
+        // Recalculate stats & update the current user entry in leaderboard
+        const stats = calculateUserRatingStats(get().testAttempts || []);
+        const fullName = `${updated.firstName || 'Talaba'} ${updated.lastName || ''}`.trim() || 'Talaba';
+        const currentLeaderboard = get().leaderboard || [];
+
+        const existingCurrentUserEntry = currentLeaderboard.find((u) => u.id === updated.id);
+        const updatedCurrentUserEntry: LeaderboardUser = {
+          ...(existingCurrentUserEntry || {
+            coins: updated.coins,
+            testsCompleted: Math.max(updated.completedTestsCount, stats.uniqueBlocksCount),
+            correctAnswersCount: stats.totalCorrectAnswers,
+            scorePoints: stats.scorePoints,
+            totalQuestionsAttempted: stats.totalQuestionsAttempted,
+            accuracyPercentage: stats.accuracyPercentage,
+            bestTime: stats.bestTimeFormatted,
+            bestTimeSeconds: stats.bestTimeSeconds,
+            totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
+            totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
+            weeklyActiveHours: 12.0,
+          }),
+          id: updated.id,
+          name: fullName,
+          region: updated.region,
+          university: updated.university || 'TATU',
+          avatar: updated.avatar || '/avatars/avatar_1.png',
+          academicYear: updated.academicYear,
+          isCurrentUser: true,
+        };
+
+        const otherUsers = currentLeaderboard.filter((u) => u.id !== updated.id);
+        const newLeaderboard = [updatedCurrentUserEntry, ...otherUsers];
+
+        set({
+          profile: updated,
+          leaderboard: newLeaderboard,
+        });
+
+        // Background sync to backend cloud
+        setTimeout(async () => {
+          try {
+            const { syncUserProfileToCloud } = await import('../services/testSyncService');
+            await syncUserProfileToCloud(updated, stats);
+          } catch {
+            // Non-critical background sync
+          }
+        }, 50);
       },
 
       addCustomUniversity: (name: string) => {
