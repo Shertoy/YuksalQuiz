@@ -22,8 +22,9 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
   const activeScope = scope || leaderboardScope;
   const stats = calculateUserRatingStats(testAttempts);
 
+  const cleanProfileId = (profile.id || '').replace(/^lead_/, '');
   const currentUserEntry: LeaderboardUser = {
-    id: profile.id,
+    id: cleanProfileId,
     name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
     region: profile.region,
     university: profile.university || 'TATU',
@@ -45,7 +46,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   // Merge users without duplicate IDs
   const allUsers: LeaderboardUser[] = [
-    ...leaderboard.filter((u) => u.id !== profile.id),
+    ...leaderboard.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfileId),
     currentUserEntry,
   ];
 

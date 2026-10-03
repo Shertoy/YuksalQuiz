@@ -62,8 +62,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   // Compute rating stats and ranking
   const stats = calculateUserRatingStats(testAttempts);
 
+  const cleanProfileId = (profile.id || '').replace(/^lead_/, '');
   const currentUserEntry: LeaderboardUser = {
-    id: profile.id,
+    id: cleanProfileId,
     name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
     region: profile.region,
     university: profile.university || 'TATU',
@@ -84,11 +85,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   const allUsers: LeaderboardUser[] = [
-    ...leaderboard.filter((u) => u.id !== profile.id),
+    ...leaderboard.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfileId),
     currentUserEntry,
   ].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
 
-  const userRank = Math.max(1, allUsers.findIndex((u) => u.id === profile.id) + 1);
+  const userRank = Math.max(1, allUsers.findIndex((u) => u.id === cleanProfileId) + 1);
 
   const bestAttemptScore = (testAttempts || []).length > 0
     ? Math.max(...(testAttempts || []).map((a) => a.score))

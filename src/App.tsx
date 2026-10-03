@@ -103,14 +103,17 @@ export const App: React.FC = () => {
       .then((remoteUsers) => {
         if (remoteUsers && remoteUsers.length > 0) {
           useQuizStore.setState((state) => {
-            const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+            const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
+            const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
             const remoteMap = new Map<string, LeaderboardUser>();
             for (const u of remoteOthers) {
-              remoteMap.set(u.id, u);
+              const cleanId = (u.id || '').replace(/^lead_/, '');
+              remoteMap.set(cleanId, { ...u, id: cleanId });
             }
             for (const u of state.leaderboard) {
-              if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
-                remoteMap.set(u.id, u);
+              const cleanId = (u.id || '').replace(/^lead_/, '');
+              if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
+                remoteMap.set(cleanId, { ...u, id: cleanId });
               }
             }
             return { leaderboard: Array.from(remoteMap.values()) };
@@ -155,14 +158,17 @@ export const App: React.FC = () => {
         .then((remoteUsers) => {
           if (remoteUsers && remoteUsers.length > 0) {
             useQuizStore.setState((state) => {
-              const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+              const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
+              const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
               const remoteMap = new Map<string, LeaderboardUser>();
               for (const u of remoteOthers) {
-                remoteMap.set(u.id, u);
+                const cleanId = (u.id || '').replace(/^lead_/, '');
+                remoteMap.set(cleanId, { ...u, id: cleanId });
               }
               for (const u of state.leaderboard) {
-                if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
-                  remoteMap.set(u.id, u);
+                const cleanId = (u.id || '').replace(/^lead_/, '');
+                if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
+                  remoteMap.set(cleanId, { ...u, id: cleanId });
                 }
               }
               return { leaderboard: Array.from(remoteMap.values()) };

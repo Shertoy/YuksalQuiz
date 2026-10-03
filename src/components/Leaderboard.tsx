@@ -59,14 +59,17 @@ export const Leaderboard: React.FC = () => {
       const remoteUsers = fetchRes.status === 'fulfilled' ? fetchRes.value : [];
       if (remoteUsers && remoteUsers.length > 0) {
         useQuizStore.setState((state) => {
-          const remoteOthers = remoteUsers.filter((u) => u.id !== state.profile.id);
+          const cleanProfId = (state.profile.id || '').replace(/^lead_/, '');
+          const remoteOthers = remoteUsers.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfId);
           const remoteMap = new Map<string, LeaderboardUser>();
           for (const u of remoteOthers) {
-            remoteMap.set(u.id, u);
+            const cleanId = (u.id || '').replace(/^lead_/, '');
+            remoteMap.set(cleanId, { ...u, id: cleanId });
           }
           for (const u of state.leaderboard) {
-            if (u.id !== state.profile.id && !remoteMap.has(u.id)) {
-              remoteMap.set(u.id, u);
+            const cleanId = (u.id || '').replace(/^lead_/, '');
+            if (cleanId !== cleanProfId && !remoteMap.has(cleanId)) {
+              remoteMap.set(cleanId, { ...u, id: cleanId });
             }
           }
           return { leaderboard: Array.from(remoteMap.values()) };
@@ -85,8 +88,9 @@ export const Leaderboard: React.FC = () => {
     syncLeaderboard();
   }, []);
 
+  const cleanProfileId = (profile.id || '').replace(/^lead_/, '');
   const currentUserEntry: LeaderboardUser = {
-    id: profile.id,
+    id: cleanProfileId,
     name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
     region: profile.region,
     university: profile.university || 'TATU',
@@ -108,7 +112,7 @@ export const Leaderboard: React.FC = () => {
 
   // Merge users without duplicate IDs (Strictly real users only)
   const allUsers: LeaderboardUser[] = [
-    ...leaderboard.filter((u) => u.id !== profile.id),
+    ...leaderboard.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfileId),
     currentUserEntry,
   ];
 

@@ -1493,8 +1493,9 @@ export const useQuizStore = create<QuizState>()(
         }
 
         if (state) {
-          // Strictly clear any preloaded mock leaderboard
+          // Strictly clear any preloaded mock leaderboard and default to nationwide scope
           state.leaderboard = [];
+          state.leaderboardScope = 'uzbekistan';
           if (!state.testPackages) {
             state.testPackages = [];
           } else if (Array.isArray(state.testPackages)) {

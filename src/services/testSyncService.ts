@@ -647,24 +647,39 @@ export function setupRealtimeTestSubscription(
  * Maps DB row / sync object to LeaderboardUser
  */
 function mapRowToLeaderboardUser(row: any): LeaderboardUser {
+  if (!row) return {} as LeaderboardUser;
+  const cleanId = String(row.id || '').replace(/^lead_/, '');
+  const score = Number(
+    row.score_points ??
+    row.scorePoints ??
+    (row.total_questions !== undefined ? row.total_questions : undefined) ??
+    (row.correct_answers_count ? row.correct_answers_count * 4 : 0)
+  ) || 0;
+
+  const corrects = Number(
+    row.correct_answers_count ??
+    row.correctAnswersCount ??
+    (score > 0 ? Math.floor(score / 4) : 0)
+  ) || 0;
+
   return {
-    id: row.id,
-    name: decodeHtmlEntities(row.name || 'Talaba'),
-    region: row.region || 'Toshkent shahri',
+    id: cleanId,
+    name: decodeHtmlEntities(row.name || row.title || 'Talaba'),
+    region: row.region || row.department || 'Toshkent shahri',
     university: decodeHtmlEntities(row.university || ''),
     avatar: row.avatar || '/avatars/avatar_1.png',
-    academicYear: (Math.min(Math.max(Number(row.academic_year) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
+    academicYear: (Math.min(Math.max(Number(row.academic_year ?? row.academicYear) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
     coins: Number(row.coins) || 0,
-    testsCompleted: Number(row.tests_completed) || 0,
-    correctAnswersCount: Number(row.correct_answers_count) || 0,
-    scorePoints: Number(row.score_points) || 0,
-    totalQuestionsAttempted: Number(row.total_questions_attempted) || 0,
-    accuracyPercentage: Number(row.accuracy_percentage) || 80,
-    bestTime: row.best_time || '02:45',
-    bestTimeSeconds: Number(row.best_time_seconds) || 165,
+    testsCompleted: Number(row.tests_completed ?? row.testsCompleted) || (score > 0 ? Math.max(1, Math.ceil(score / 100)) : 0),
+    correctAnswersCount: corrects,
+    scorePoints: score,
+    totalQuestionsAttempted: Number(row.total_questions_attempted ?? row.totalQuestionsAttempted) || Math.max(corrects, 25),
+    accuracyPercentage: Number(row.accuracy_percentage ?? row.accuracyPercentage) || 85,
+    bestTime: row.best_time || row.bestTime || '02:45',
+    bestTimeSeconds: Number(row.best_time_seconds ?? row.bestTimeSeconds) || 165,
     totalTimeSpentSeconds:
-      Number(row.total_time_spent_seconds) || Number(row.best_time_seconds) || 165,
-    totalTimeSpentFormatted: row.total_time_spent_formatted || row.best_time || '02:45',
+      Number(row.total_time_spent_seconds ?? row.totalTimeSpentSeconds) || Number(row.best_time_seconds ?? row.bestTimeSeconds) || 165,
+    totalTimeSpentFormatted: row.total_time_spent_formatted || row.totalTimeSpentFormatted || row.best_time || row.bestTime || '02:45',
     weeklyActiveHours: 12.0,
     isCurrentUser: false,
   };
@@ -820,18 +835,32 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
 
     if (!leadErr && leadRows && Array.isArray(leadRows)) {
       for (const row of leadRows) {
-        const blockUser = Array.isArray(row.blocks) && row.blocks[0] ? row.blocks[0] : null;
+        let rawBlocks = row.blocks;
+        if (typeof rawBlocks === 'string') {
+          try {
+            rawBlocks = JSON.parse(rawBlocks);
+          } catch {}
+        }
+        const blockUser = Array.isArray(rawBlocks) && rawBlocks[0]
+          ? rawBlocks[0]
+          : rawBlocks && typeof rawBlocks === 'object' && !Array.isArray(rawBlocks)
+          ? rawBlocks
+          : null;
+
         const mapped = mapRowToLeaderboardUser(blockUser || {
-          id: row.author_id || row.id.replace('lead_', ''),
+          id: row.author_id || row.id.replace(/^lead_/, ''),
           name: row.title,
           university: row.university,
           region: row.department,
           score_points: row.total_questions,
         });
+
         if (mapped && mapped.id) {
-          const existing = userMap.get(mapped.id);
+          const cleanId = mapped.id.replace(/^lead_/, '');
+          mapped.id = cleanId;
+          const existing = userMap.get(cleanId);
           if (!existing || (mapped.scorePoints || 0) >= (existing.scorePoints || 0)) {
-            userMap.set(mapped.id, mapped);
+            userMap.set(cleanId, mapped);
           }
         }
       }
@@ -848,11 +877,23 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
       .eq('id', '__system_leaderboard_sync__')
       .maybeSingle();
 
-    if (sysPkg && Array.isArray(sysPkg.blocks) && sysPkg.blocks.length > 0) {
-      for (const row of sysPkg.blocks) {
-        const mapped = mapRowToLeaderboardUser(row);
-        if (mapped && mapped.id && !userMap.has(mapped.id)) {
-          userMap.set(mapped.id, mapped);
+    if (sysPkg) {
+      let sysBlocks = sysPkg.blocks;
+      if (typeof sysBlocks === 'string') {
+        try {
+          sysBlocks = JSON.parse(sysBlocks);
+        } catch {}
+      }
+      if (Array.isArray(sysBlocks) && sysBlocks.length > 0) {
+        for (const row of sysBlocks) {
+          const mapped = mapRowToLeaderboardUser(row);
+          if (mapped && mapped.id) {
+            const cleanId = mapped.id.replace(/^lead_/, '');
+            mapped.id = cleanId;
+            if (!userMap.has(cleanId)) {
+              userMap.set(cleanId, mapped);
+            }
+          }
         }
       }
     }
