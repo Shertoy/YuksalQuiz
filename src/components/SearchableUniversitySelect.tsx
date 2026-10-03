@@ -167,12 +167,12 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
           disabled
             ? 'opacity-60 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 cursor-not-allowed'
             : error
-            ? 'bg-rose-50/50 dark:bg-rose-950/30 border-rose-400 text-slate-900 dark:text-white ring-1 ring-rose-400'
+            ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400'
             : 'bg-slate-50 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white active:scale-[0.99] focus:ring-2 focus:ring-emerald-500'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <School className="w-4 h-4 text-emerald-500 shrink-0" />
+          <School className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
           <span
             className={`truncate ${
               !value && !isCustomSelected
@@ -183,11 +183,11 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
             {displayValue}
           </span>
         </div>
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 transition-transform" />
+        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 transition-transform" strokeWidth={1.75} />
       </button>
 
       {error && (
-        <p className="text-[11px] text-rose-500 font-semibold mt-1">
+        <p className="text-[11px] text-orange-500 font-semibold mt-1">
           {error}
         </p>
       )}

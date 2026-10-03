@@ -90,9 +90,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Compute Rank title
   const getRankInfo = (completed: number) => {
-    if (completed >= 30) return { title: t.rankMaster, Icon: Crown, color: 'text-amber-300' };
-    if (completed >= 15) return { title: t.rankScholar, Icon: Award, color: 'text-indigo-300' };
-    if (completed >= 5) return { title: t.rankActive, Icon: Medal, color: 'text-sky-300' };
+    if (completed >= 30) return { title: t.rankMaster, Icon: Crown, color: 'text-orange-400' };
+    if (completed >= 15) return { title: t.rankScholar, Icon: Award, color: 'text-emerald-400' };
+    if (completed >= 5) return { title: t.rankActive, Icon: Medal, color: 'text-amber-400' };
     return { title: t.rankBeginner, Icon: Award, color: 'text-emerald-300' };
   };
 
@@ -139,8 +139,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     <div className="space-y-4 pb-4">
       {/* Floating Animated Coin Particle */}
       {isCoinFlying && (
-        <div className="fixed bottom-40 right-10 z-50 pointer-events-none animate-coin-fly flex items-center gap-1 bg-amber-400 text-slate-950 font-black px-2 py-1 rounded-full shadow-2xl border border-white">
-          <Coins className="w-5 h-5 fill-slate-950" />
+        <div className="fixed bottom-40 right-10 z-50 pointer-events-none animate-coin-fly flex items-center gap-1 bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-full shadow-2xl border border-white">
+          <Coins className="w-4 h-4 text-slate-950" strokeWidth={1.75} />
           <span className="text-xs">+1 Coin</span>
         </div>
       )}
@@ -214,7 +214,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* 1. Coinlar balansi */}
           <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 transition-all ${coinGlow ? 'ring-2 ring-orange-400 scale-105 shadow-lg' : ''}`}>
             <div className="flex items-center justify-center gap-1 text-orange-300 font-black text-base sm:text-lg">
-              <Coins className={`w-4 h-4 fill-orange-300 ${coinGlow ? 'animate-bounce' : ''}`} />
+              <Coins className={`w-4 h-4 text-orange-300 ${coinGlow ? 'animate-bounce' : ''}`} strokeWidth={1.75} />
               <span>{profile.coins}</span>
             </div>
             <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5">
@@ -225,7 +225,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* 2. To'g'ri yechilgan testlar / savollar soni */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
             <div className="flex items-center justify-center gap-1 text-emerald-200 font-black text-base sm:text-lg">
-              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" strokeWidth={1.75} />
               <span>{stats.totalCorrectAnswers > 0 ? stats.totalCorrectAnswers : profile.completedTestsCount}</span>
             </div>
             <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
@@ -236,7 +236,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* 3. Eng yaxshi natija */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
             <div className="flex items-center justify-center gap-1 text-amber-300 font-black text-base sm:text-lg">
-              <Zap className="w-4 h-4 text-amber-300 fill-amber-300/30" />
+              <Zap className="w-4 h-4 text-amber-300" strokeWidth={1.75} />
               <span>{bestAttemptScore > 0 ? `${bestAttemptScore}/25` : `${stats.scorePoints} ball`}</span>
             </div>
             <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
@@ -257,7 +257,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/30 shrink-0">
-              <Flame className="w-5 h-5 fill-white" />
+              <Flame className="w-5 h-5 text-white" strokeWidth={1.75} />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -301,7 +301,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <UserRankProgressCard />
 
       {/* 100% Free Access Platform Banner */}
-      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-500/15 dark:to-indigo-500/15 border border-emerald-500/25 dark:border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between transition-all">
+      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 dark:from-emerald-500/15 dark:to-emerald-500/10 border border-emerald-500/25 dark:border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between transition-all">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
@@ -377,22 +377,22 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {mistakes.length > 0 && (
         <div
           onClick={() => setActiveTab('results')}
-          className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between cursor-pointer hover:border-rose-300 transition-colors"
+          className="p-3.5 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 flex items-center justify-between cursor-pointer hover:border-orange-300 transition-colors"
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div>
-              <h4 className="font-bold text-xs text-rose-900 dark:text-rose-200">
+              <h4 className="font-bold text-xs text-orange-950 dark:text-orange-200">
                 {t.mistakesTitle} ({mistakes.length})
               </h4>
-              <p className="text-[11px] text-rose-700 dark:text-rose-300">
+              <p className="text-[11px] text-orange-700/80 dark:text-orange-300">
                 {t.mistakesDesc}
               </p>
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+          <ArrowRight className="w-4 h-4 text-orange-600 dark:text-orange-400" strokeWidth={1.75} />
         </div>
       )}
 

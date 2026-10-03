@@ -199,7 +199,7 @@ export const ResultsAndMistakes: React.FC = () => {
       {/* Header */}
       <div>
         <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-indigo-500" />
+          <TrendingUp className="w-5 h-5 text-emerald-500" strokeWidth={1.75} />
           <span>{t.myProgress}</span>
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -211,8 +211,8 @@ export const ResultsAndMistakes: React.FC = () => {
       <div className="grid grid-cols-2 gap-2.5">
         {/* Badge 1: Jami urinish */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3.5 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <Target className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Target className="w-5 h-5" strokeWidth={1.75} />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
@@ -226,14 +226,14 @@ export const ResultsAndMistakes: React.FC = () => {
 
         {/* Badge 2: Reyting bali */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3.5 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" strokeWidth={1.75} />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
               Reyting bali
             </span>
-            <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+            <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
               {stats.scorePoints.toLocaleString('uz-UZ')} ball
             </span>
             <span className="text-[10px] text-slate-400 block font-medium">
@@ -245,7 +245,7 @@ export const ResultsAndMistakes: React.FC = () => {
         {/* Badge 3: Eng yaxshi natija */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3.5 shadow-sm flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Trophy className="w-5 h-5" />
+            <Trophy className="w-5 h-5" strokeWidth={1.75} />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
@@ -259,8 +259,8 @@ export const ResultsAndMistakes: React.FC = () => {
 
         {/* Badge 4: Eng yaxshi vaqt */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3.5 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-orange-50 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" strokeWidth={1.75} />
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
@@ -282,10 +282,10 @@ export const ResultsAndMistakes: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-emerald-100 text-[11px] font-bold">
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
               <span className="line-clamp-1">{profile.region}</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-0.5 transition-transform" strokeWidth={1.75} />
           </div>
 
           <div>
@@ -299,7 +299,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
           <div className="mt-3 pt-2 border-t border-emerald-500/40 flex items-center justify-between text-[10px] font-bold text-emerald-100">
             <span>Viloyat reytingi</span>
-            <ArrowRight className="w-3 h-3" />
+            <ArrowRight className="w-3 h-3" strokeWidth={1.75} />
           </div>
         </div>
 
@@ -310,10 +310,10 @@ export const ResultsAndMistakes: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-amber-100 text-[11px] font-bold">
-              <Trophy className="w-3.5 h-3.5" />
+              <Trophy className="w-3.5 h-3.5" strokeWidth={1.75} />
               <span>O'zbekiston</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-amber-200 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-4 h-4 text-amber-200 group-hover:translate-x-0.5 transition-transform" strokeWidth={1.75} />
           </div>
 
           <div>
@@ -327,7 +327,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
           <div className="mt-3 pt-2 border-t border-amber-400/40 flex items-center justify-between text-[10px] font-bold text-amber-100">
             <span>Respublika reytingi</span>
-            <ArrowRight className="w-3 h-3" />
+            <ArrowRight className="w-3 h-3" strokeWidth={1.75} />
           </div>
         </div>
       </div>
@@ -341,14 +341,14 @@ export const ResultsAndMistakes: React.FC = () => {
           }}
           className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'mistakes'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
               : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
           }`}
         >
-          <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+          <AlertTriangle className="w-3.5 h-3.5 text-orange-500" strokeWidth={1.75} />
           <span>Mening Xatolarim</span>
           {mistakes.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
+            <span className="px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px]">
               {mistakes.length}
             </span>
           )}
@@ -361,11 +361,11 @@ export const ResultsAndMistakes: React.FC = () => {
           }}
           className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'history'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
               : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
           }`}
         >
-          <CheckSquare className="w-3.5 h-3.5 text-indigo-500" />
+          <CheckSquare className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
           <span>Natijalar Tarixi</span>
           <span className="text-[10px] text-slate-400">({testAttempts.length})</span>
         </button>
@@ -379,8 +379,8 @@ export const ResultsAndMistakes: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-xs">
-                      <Zap className="w-4 h-4 fill-rose-500" />
+                    <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs">
+                      <Zap className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
                     </span>
                     <div>
                       <h3 className="font-extrabold text-xs text-slate-900 dark:text-white">
@@ -403,7 +403,7 @@ export const ResultsAndMistakes: React.FC = () => {
                 {/* Progress bar */}
                 <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 overflow-hidden">
                   <div
-                    className="h-full bg-rose-500 transition-all duration-200"
+                    className="h-full bg-orange-500 transition-all duration-200"
                     style={{
                       width: `${((practiceSession.currentIndex + 1) / practiceSession.questions.length) * 100}%`,
                     }}
@@ -430,11 +430,11 @@ export const ResultsAndMistakes: React.FC = () => {
                           'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold';
                       } else if (isSelected && !isCorrect) {
                         optStyle =
-                          'bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-900 dark:text-rose-200 font-bold';
+                          'bg-orange-50 dark:bg-orange-950/80 border-orange-500 text-orange-900 dark:text-orange-200 font-bold';
                       }
                     } else if (isSelected) {
                       optStyle =
-                        'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-600 text-indigo-900 dark:text-white font-bold';
+                        'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-600 text-emerald-900 dark:text-white font-bold';
                     }
 
                     return (
@@ -460,17 +460,17 @@ export const ResultsAndMistakes: React.FC = () => {
                   <button
                     disabled={practiceSession.selectedAnswer === null}
                     onClick={handlePracticeCheck}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs disabled:opacity-40"
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-40"
                   >
                     Tekshirish
                   </button>
                 ) : (
                   <button
                     onClick={handlePracticeNext}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
                   >
                     <span>Keyingi savol</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
                   </button>
                 )}
               </div>
@@ -478,7 +478,7 @@ export const ResultsAndMistakes: React.FC = () => {
               /* Completed Session */
               <div className="text-center py-4">
                 <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-                  <Sparkles className="w-7 h-7" />
+                  <Sparkles className="w-7 h-7" strokeWidth={1.75} />
                 </div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-1">
                   Mashq yakunlandi!
@@ -489,7 +489,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
                 <button
                   onClick={() => setPracticeSession(null)}
-                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
                 >
                   Tugash
                 </button>
@@ -505,7 +505,7 @@ export const ResultsAndMistakes: React.FC = () => {
           {mistakes.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
               <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mb-3">
-                <Sparkles className="w-6 h-6" />
+                <Sparkles className="w-6 h-6" strokeWidth={1.75} />
               </div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 Xatolar mavjud emas!
@@ -522,9 +522,9 @@ export const ResultsAndMistakes: React.FC = () => {
                 </span>
                 <button
                   onClick={startMistakesPractice}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                  className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-orange-600/20 active:scale-95 transition-all"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
                   <span>Xatolar ustida ishlash</span>
                 </button>
               </div>
@@ -539,7 +539,7 @@ export const ResultsAndMistakes: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-400">
                         {decodeHtmlEntities(m.testPackageTitle)} • {decodeHtmlEntities(m.blockTitle)}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-[10px] font-bold">
                         {m.failCount} marta xato
                       </span>
                     </div>
@@ -565,8 +565,8 @@ export const ResultsAndMistakes: React.FC = () => {
         <div className="space-y-2.5">
           {testAttempts.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                <BarChart2 className="w-7 h-7" />
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                <BarChart2 className="w-7 h-7" strokeWidth={1.75} />
               </div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 Hali testlar topshirilmadi
@@ -592,7 +592,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                       +{att.score * 4} ball
                     </span>
                     <span className="block text-[10px] text-slate-400 font-medium">
@@ -607,7 +607,7 @@ export const ResultsAndMistakes: React.FC = () => {
                         : 'bg-amber-100 dark:bg-amber-950 text-amber-600'
                     }`}
                   >
-                    {att.isPassed ? <Check className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                    {att.isPassed ? <Check className="w-3.5 h-3.5" strokeWidth={1.75} /> : <AlertTriangle className="w-3.5 h-3.5" strokeWidth={1.75} />}
                   </span>
                 </div>
               </div>

@@ -277,7 +277,7 @@ export const Leaderboard: React.FC = () => {
             <span>{acc}%</span>
           </span>
           <span className="text-[10px] text-slate-400 font-semibold flex items-center justify-center gap-0.5">
-            <Clock className="w-2.5 h-2.5 text-indigo-400" />
+            <Clock className="w-2.5 h-2.5 text-emerald-500" strokeWidth={1.75} />
             <span>{time}</span>
           </span>
         </div>
@@ -575,9 +575,9 @@ export const Leaderboard: React.FC = () => {
                 {uniFirst && (
                   <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                     <div className="relative mb-2">
-                      <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-amber-300 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-400/20">
-                        <School className="w-7 h-7 text-slate-950" />
+                      <Crown className="w-5 h-5 text-amber-500 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" strokeWidth={1.75} />
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-400 border-2 border-amber-300 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-400/20">
+                        <School className="w-7 h-7 text-slate-950" strokeWidth={1.75} />
                       </div>
                       <span className="absolute -bottom-2 -right-1 w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
                         1
@@ -718,7 +718,7 @@ export const Leaderboard: React.FC = () => {
                   {/* 1st Place (Gold, Tallest + Crown) */}
                   <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                     <div className="relative mb-2">
-                      <Crown className="w-5 h-5 text-amber-500 fill-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" />
+                      <Crown className="w-5 h-5 text-amber-500 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" strokeWidth={1.75} />
                       <UserAvatar
                         avatar={first.avatar}
                         alt={first.name}

@@ -471,13 +471,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         {/* Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>YuksalQuiz Admin Paneli</span>
-                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   v1.0
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
@@ -494,7 +494,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" strokeWidth={1.75} />
           </button>
         </div>
 
@@ -514,11 +514,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'universities'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
+            <Building2 className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>OTMlar</span>
           </button>
 
@@ -529,11 +529,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
               activeTab === 'pending'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Takliflar</span>
             {pendingUniversities.length > 0 && (
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -547,14 +547,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
               activeTab === 'news'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Bell className="w-3.5 h-3.5" />
+            <Bell className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Xabarlar</span>
             {(announcementReplies || []).some((r) => !r.adminReply) && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
             )}
           </button>
 
@@ -565,11 +565,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'pricing'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Tag className="w-3.5 h-3.5" />
+            <Tag className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Obuna Narxlari</span>
           </button>
 
@@ -580,11 +580,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'payments'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <CreditCard className="w-3.5 h-3.5" />
+            <CreditCard className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>To'lov Usullari</span>
           </button>
 
@@ -595,11 +595,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'promocodes'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <KeyRound className="w-3.5 h-3.5" />
+            <KeyRound className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Promokodlar</span>
           </button>
 
@@ -610,11 +610,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'tests'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
+            <BookOpen className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Testlar ({testPackages.length})</span>
           </button>
 
@@ -625,11 +625,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'supabase'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Cloud className="w-3.5 h-3.5 text-sky-500" />
+            <Cloud className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
             <span>Supabase Baza</span>
             {getSupabaseConfig().isConfigured ? (
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
@@ -645,11 +645,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             }}
             className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
               activeTab === 'security'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Database className="w-3.5 h-3.5" />
+            <Database className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Xavfsizlik</span>
           </button>
         </div>
@@ -669,13 +669,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     value={newUniName}
                     onChange={(e) => setNewUniName(e.target.value)}
                     placeholder="Masalan: Toshkent Davlat Yuridik Universiteti"
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                   <button
                     type="submit"
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/20 active:scale-95 transition-all shrink-0"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4" strokeWidth={1.75} />
                     <span>Qo'shish</span>
                   </button>
                 </div>
@@ -683,24 +683,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
               {/* Search Box */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" strokeWidth={1.75} />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="OTM nomi bo'yicha qidirish..."
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
               </div>
 
               {/* Delete Confirmation Alert */}
               {deletingUni && (
-                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 space-y-2 animate-in fade-in">
-                  <div className="flex items-center gap-2 text-rose-800 dark:text-rose-200 text-xs font-bold">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <div className="p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-900/60 space-y-2 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200 text-xs font-bold">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-orange-500" strokeWidth={1.75} />
                     <span>Haqiqatan ham bu OTMni o'chirmoqchimisiz?</span>
                   </div>
-                  <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium line-clamp-1">
+                  <p className="text-[11px] text-orange-700 dark:text-orange-300 font-medium line-clamp-1">
                     "{deletingUni}"
                   </p>
                   <div className="flex items-center gap-2 justify-end pt-1">
@@ -714,7 +714,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <button
                       type="button"
                       onClick={() => handleDeleteUni(deletingUni)}
-                      className="px-3 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold"
+                      className="px-3 py-1 rounded-lg bg-orange-600 text-white text-xs font-bold"
                     >
                       O'chirish
                     </button>
@@ -737,7 +737,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   filteredUniversities.map((uni, idx) => (
                     <div
                       key={uni}
-                      className="p-2.5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shadow-xs transition-colors hover:border-indigo-300"
+                      className="p-2.5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shadow-xs transition-colors hover:border-emerald-300"
                     >
                       {editingUni?.originalName === uni ? (
                         <div className="flex items-center gap-2 flex-1">
@@ -747,7 +747,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             onChange={(e) =>
                               setEditingUni({ originalName: uni, currentName: e.target.value })
                             }
-                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-500 text-xs text-slate-900 dark:text-white font-medium focus:outline-none"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-500 text-xs text-slate-900 dark:text-white font-medium focus:outline-none"
                             autoFocus
                           />
                           <button
@@ -755,14 +755,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             onClick={() => handleSaveEdit(uni)}
                             className="p-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
                           >
-                            <Check className="w-3.5 h-3.5" />
+                            <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingUni(null)}
                             className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" strokeWidth={1.75} />
                           </button>
                         </div>
                       ) : (
@@ -780,18 +780,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             <button
                               type="button"
                               onClick={() => setEditingUni({ originalName: uni, currentName: uni })}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 transition-colors"
                               title="Tahrirlash"
                             >
-                              <Edit2 className="w-3.5 h-3.5" />
+                              <Edit2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeletingUni(uni)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-700 transition-colors"
                               title="O'chirish"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             </button>
                           </div>
                         </>
@@ -812,7 +812,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
               {pendingUniversities.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-xs">
-                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
                   <p className="font-bold">Hozircha yangi takliflar yo'q</p>
                 </div>
               ) : (
@@ -837,15 +837,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           onClick={() => handleApprove(name)}
                           className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                           <span>Tasdiqlash</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReject(name)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 text-slate-600 hover:text-rose-600 font-bold text-xs flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-orange-100 text-slate-600 hover:text-orange-600 font-bold text-xs flex items-center gap-1"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-3.5 h-3.5" strokeWidth={1.75} />
                           <span>Rad</span>
                         </button>
                       </div>
@@ -868,11 +868,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   }}
                   className={`flex-1 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
                     newsSubTab === 'send'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
                   <span>Xabar Yuborish</span>
                 </button>
 
@@ -884,17 +884,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   }}
                   className={`flex-1 py-1.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 relative ${
                     newsSubTab === 'inquiries'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
+                  <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
                   <span>Foydalanuvchilar Javoblari</span>
-                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                     {announcementReplies.length}
                   </span>
                   {(announcementReplies || []).some((r) => !r.adminReply) && (
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse ml-0.5" />
+                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse ml-0.5" />
                   )}
                 </button>
               </div>
@@ -904,7 +904,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 <div className="space-y-4 animate-in fade-in">
                   <form onSubmit={handleSendNews} className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Send className="w-3.5 h-3.5 text-indigo-500" />
+                      <Send className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                       <span>Foydalanuvchilarga yangilik yoki xabar yuborish:</span>
                     </h4>
 
@@ -916,7 +916,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         value={newsTitle}
                         onChange={(e) => setNewsTitle(e.target.value)}
                         placeholder="Sarlavha (masalan: Yangi fan testlari qo'shildi)..."
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
 
@@ -928,7 +928,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         value={newsMessage}
                         onChange={(e) => setNewsMessage(e.target.value)}
                         placeholder="Xabar matni... Foydalanuvchilar bildirishnoma sifatida qabul qilishadi va javob qaytara olishadi."
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 resize-none"
                       />
                     </div>
 
@@ -957,11 +957,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               }}
                               className={`p-2 rounded-xl border flex items-center justify-center gap-1 font-bold transition-all ${
                                 isSelected
-                                  ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-xs'
                                   : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                               }`}
                             >
-                              <Icon className="w-3.5 h-3.5" />
+                              <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
                               <span>{target.label}</span>
                             </button>
                           );
@@ -1031,9 +1031,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-1.5 active:scale-95"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95 transition-all"
                       >
-                        <Send className="w-3.5 h-3.5" />
+                        <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
                         <span>Xabarni Yuborish</span>
                       </button>
                     </div>
@@ -1051,7 +1051,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 uppercase">
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 uppercase">
                               {ann.tag || 'yangilik'}
                             </span>
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -1065,7 +1065,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             {ann.message}
                           </p>
                           <span className="text-[9px] text-slate-400 font-semibold flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
+                            <Clock className="w-2.5 h-2.5" strokeWidth={1.75} />
                             <span>{formatDateTime(ann.date, ann.time)}</span>
                           </span>
                         </div>
@@ -1076,10 +1076,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             deleteAnnouncement(ann.id);
                             showNotification("Bildirishnoma o'chirildi");
                           }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors shrink-0"
+                          className="p-1 rounded-lg text-slate-400 hover:text-orange-500 transition-colors shrink-0"
                           title="O'chirish"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                         </button>
                       </div>
                     ))}
@@ -1098,7 +1098,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                   {(!announcementReplies || announcementReplies.length === 0) ? (
                     <div className="text-center py-12 text-slate-400 text-xs">
-                      <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
                       <p className="font-bold">Hozircha foydalanuvchilardan xabar yoki savollar yo'q</p>
                       <p className="text-[11px] mt-0.5 text-slate-400">
                         Talabalar bildirishnomaga javob yozganda shu yerda paydo bo'ladi.
@@ -1130,15 +1130,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-indigo-500 font-bold mt-0.5 flex items-center gap-1">
-                                <Pin className="w-3 h-3 text-indigo-500 shrink-0" />
+                              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 flex items-center gap-1">
+                                <Pin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
                                 <span>{reply.announcementTitle}</span>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                                <Clock className="w-2.5 h-2.5" />
+                                <Clock className="w-2.5 h-2.5" strokeWidth={1.75} />
                                 <span>{formatDateTime(reply.date, reply.time)}</span>
                               </span>
                               <button
@@ -1147,10 +1147,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                   deleteAnnouncementReply(reply.id);
                                   showNotification("Murojaat o'chirildi");
                                 }}
-                                className="p-1 text-slate-400 hover:text-rose-500 rounded-md transition-colors"
+                                className="p-1 text-slate-400 hover:text-orange-500 rounded-md transition-colors"
                                 title="O'chirish"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                               </button>
                             </div>
                           </div>
@@ -1165,7 +1165,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs">
                               <div className="flex items-center justify-between text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mb-1">
                                 <span className="flex items-center gap-1">
-                                  <Check className="w-3 h-3" />
+                                  <Check className="w-3 h-3" strokeWidth={1.75} />
                                   <span>Sizning javobingiz:</span>
                                 </span>
                                 <span>{formatDateTime(reply.adminReply!.date, reply.adminReply!.time)}</span>
@@ -1189,15 +1189,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                   }))
                                 }
                                 placeholder={hasReplied ? "Javobni tahrirlash..." : "Foydalanuvchiga javob yozish..."}
-                                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                               />
                               <button
                                 type="button"
                                 onClick={() => handleSendAdminReply(reply.id)}
                                 disabled={!replyText.trim()}
-                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1 shadow-sm shrink-0 active:scale-95 transition-all"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1 shadow-sm shrink-0 active:scale-95 transition-all"
                               >
-                                <Send className="w-3 h-3" />
+                                <Send className="w-3 h-3" strokeWidth={1.75} />
                                 <span>{hasReplied ? "Yangilash" : "Javob qaytarish"}</span>
                               </button>
                             </div>
@@ -1214,17 +1214,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           {/* Tab 4: Subscription Pricing Management */}
           {activeTab === 'pricing' && (
             <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between">
+              <div className="p-4 rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
                 <div>
-                  <h4 className="font-extrabold text-xs text-indigo-950 dark:text-indigo-100 flex items-center gap-1.5">
-                    <Tag className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <h4 className="font-extrabold text-xs text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <span>Obuna Narxlari Boshqaruvi</span>
                   </h4>
-                  <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300 mt-0.5">
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300 mt-0.5">
                     Talabalar uchun 3 xil muddatdagi Premium obuna tariflarini belgilang va yangilang
                   </p>
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
                   3 xil tarif
                 </span>
               </div>
@@ -1235,7 +1235,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-slate-900 dark:text-white">3 Oylik Obuna</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400">90 kun</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400">90 kun</span>
                     </div>
                     <label className="text-[11px] text-slate-500 dark:text-slate-400 block">Narxi (so'mda):</label>
                     <input
@@ -1244,16 +1244,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       min="0"
                       value={priceForm3M}
                       onChange={(e) => setPriceForm3M(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                     <p className="text-[10px] text-slate-400">Oraliq nazoratlar uchun tezkor reja</p>
                   </div>
 
                   {/* 6 Months */}
-                  <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                  <div className="p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-indigo-950 dark:text-indigo-200">6 Oylik Obuna</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">Talabalar tanlovi</span>
+                      <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">6 Oylik Obuna</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">Talabalar tanlovi</span>
                     </div>
                     <label className="text-[11px] text-slate-500 dark:text-slate-400 block">Asl narxi (so'mda):</label>
                     <input
@@ -1262,7 +1262,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       min="0"
                       value={priceForm6M}
                       onChange={(e) => setPriceForm6M(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                       20 000 vaucherli narxi: {Math.max(0, priceForm6M - 20000).toLocaleString('uz-UZ')} so'm
@@ -1282,7 +1282,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       min="0"
                       value={priceForm1Y}
                       onChange={(e) => setPriceForm1Y(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-sm text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                     <p className="text-[10px] text-slate-400">Cheksiz yillik to'liq kafolat</p>
                   </div>
@@ -1291,9 +1291,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5"
                   >
-                    <Check className="w-4 h-4" />
+                    <Check className="w-4 h-4" strokeWidth={1.75} />
                     <span>Narxlarni saqlash va yangilash</span>
                   </button>
                 </div>
@@ -1307,7 +1307,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               <div className="p-4 rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
                 <div>
                   <h4 className="font-extrabold text-xs text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <span>To'lov Usullari va Rekvizitlar</span>
                   </h4>
                   <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300 mt-0.5">
@@ -1322,7 +1322,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               {/* Add Payment Method Form */}
               <form onSubmit={handleAddPaymentMethod} className="p-4 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-emerald-500" />
+                  <Plus className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
                   <span>Yangi to'lov usulini qo'shish:</span>
                 </h4>
 
@@ -1367,7 +1367,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     disabled={!newPayDetails.trim()}
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>To'lov usulini qo'shish</span>
                   </button>
                 </div>
@@ -1402,7 +1402,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             {pm.isActive ? 'Faol' : 'Nofaol'}
                           </span>
                         </div>
-                        <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 truncate select-all">
+                        <p className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate select-all">
                           {pm.details}
                         </p>
                         {pm.instructions && (
@@ -1428,10 +1428,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             deletePaymentMethod(pm.id);
                             showNotification("To'lov usuli o'chirildi");
                           }}
-                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-orange-500 transition-colors"
                           title="O'chirish"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                         </button>
                       </div>
                     </div>
@@ -1444,17 +1444,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           {/* Tab 6: Promocodes Management */}
           {activeTab === 'promocodes' && (
             <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-3xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 flex items-center justify-between">
+              <div className="p-4 rounded-3xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 flex items-center justify-between">
                 <div>
-                  <h4 className="font-extrabold text-xs text-purple-950 dark:text-purple-100 flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <h4 className="font-extrabold text-xs text-orange-950 dark:text-orange-100 flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-orange-600 dark:text-orange-400" strokeWidth={1.75} />
                     <span>Promokodlar Boshqaruvi</span>
                   </h4>
-                  <p className="text-[11px] text-purple-700/80 dark:text-purple-300 mt-0.5">
+                  <p className="text-[11px] text-orange-700/80 dark:text-orange-300 mt-0.5">
                     To'lov chekini botga yuborgan talabalar uchun maxsus faollashtirish promokodlarini yarating va taqdim eting
                   </p>
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500 text-white">
                   {(promocodes || []).length} ta promokod
                 </span>
               </div>
@@ -1462,7 +1462,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               {/* Generate Promocode Form */}
               <form onSubmit={handleCreatePromo} className="p-4 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                  <Sparkles className="w-3.5 h-3.5 text-orange-500" strokeWidth={1.75} />
                   <span>Yangi Promokod Yaratish:</span>
                 </h4>
 
@@ -1478,7 +1478,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       value={promoAmountInput}
                       onChange={(e) => setPromoAmountInput(Number(e.target.value))}
                       placeholder="30000"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                     />
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {[15000, 30000, 50000, 70000, 90000].map((amt) => (
@@ -1488,7 +1488,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           onClick={() => setPromoAmountInput(amt)}
                           className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border transition-all ${
                             promoAmountInput === amt
-                              ? 'bg-purple-600 text-white border-purple-600'
+                              ? 'bg-orange-500 text-white border-orange-500'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                           }`}
                         >
@@ -1503,7 +1503,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <select
                       value={promoPlanSelect}
                       onChange={(e) => setPromoPlanSelect(e.target.value as SubscriptionPlanType)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="3_months">3 Oylik (15 000 so'm vaucher bilan)</option>
                       <option value="6_months">6 Oylik (30 000 so'm vaucher bilan)</option>
@@ -1519,7 +1519,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         value={promoCodeInput}
                         onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
                         placeholder="Masalan: YUK-30K-7193"
-                        className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                       />
                       <button
                         type="button"
@@ -1536,9 +1536,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <button
                     type="submit"
                     disabled={!promoCodeInput.trim()}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-purple-600/20 active:scale-95 transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-1.5"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>Promokodni Saqlash (+{(promoAmountInput || 30000).toLocaleString('uz-UZ')} so'm)</span>
                   </button>
                 </div>
@@ -1580,7 +1580,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                 +{promoAmount.toLocaleString('uz-UZ')} so'm
                               </span>
                               {promo.plan && (
-                                <span className="text-[9px] font-bold px-1 py-0.2 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                                <span className="text-[9px] font-bold px-1 py-0.2 rounded-md bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
                                   {planBadge}
                                 </span>
                               )}
@@ -1589,7 +1589,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
                               <span>Yaratildi: {promo.createdAt}</span>
                               {promo.isUsed ? (
-                                <span className="text-rose-500 font-bold">
+                                <span className="text-orange-500 font-bold">
                                   Ishlatilgan {promo.usedBy ? `(${promo.usedBy})` : ''}
                                 </span>
                               ) : (
@@ -1602,16 +1602,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             <button
                               type="button"
                               onClick={() => handleCopyPromo(promo.code)}
-                              className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 hover:bg-purple-100 text-xs font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1 transition-all active:scale-95"
+                              className="px-2.5 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 hover:bg-orange-100 text-xs font-bold border border-orange-200 dark:border-orange-800 flex items-center gap-1 transition-all active:scale-95"
                             >
                               {copiedCode === promo.code ? (
                                 <>
-                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  <Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
                                   <span className="text-[10px] text-emerald-600">Nusxalandi</span>
                                 </>
                               ) : (
                                 <>
-                                  <Copy className="w-3.5 h-3.5" />
+                                  <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
                                   <span className="text-[10px]">Nusxa</span>
                                 </>
                               )}
@@ -1623,10 +1623,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                 deletePromocode(promo.code);
                                 showNotification(`"${promo.code}" promokodi o'chirildi`);
                               }}
-                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 transition-colors"
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-orange-500 transition-colors"
                               title="O'chirish"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             </button>
                           </div>
                         </div>
@@ -1642,7 +1642,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             <div className="space-y-4">
               <form onSubmit={handleCreateRecommendedTest} className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                   <span>Tavsiya etilgan rasmiy test qo'shish:</span>
                 </h4>
 
@@ -1656,7 +1656,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     value={testTitle}
                     onChange={(e) => setTestTitle(e.target.value)}
                     placeholder="Masalan: Ma'lumotlar tuzilmasi va algoritmlar..."
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -1691,9 +1691,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4" strokeWidth={1.75} />
                   <span>Tavsiya etilgan test sifatida chiqarish</span>
                 </button>
               </form>
@@ -1702,7 +1702,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               <div className="space-y-3 pt-3 border-t border-slate-200/80 dark:border-slate-800/80">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-indigo-500" />
+                    <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <span>Tizimdagi barcha testlar ({testPackages.length} ta)</span>
                   </h4>
                   {testPackages.length > 0 && (
@@ -1712,10 +1712,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         triggerHaptic('warning');
                         setShowClearAllConfirm(true);
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold text-[11px] border border-rose-200 dark:border-rose-900/60 active:scale-95 transition-all flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 font-bold text-[11px] border border-orange-200 dark:border-orange-900/60 active:scale-95 transition-all flex items-center gap-1"
                       title="Barcha testlarni bitta bosishda tozalash"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3" strokeWidth={1.75} />
                       <span>Barchasini tozalash</span>
                     </button>
                   )}
@@ -1724,13 +1724,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 {/* Search & Category Filter */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" strokeWidth={1.75} />
                     <input
                       type="text"
                       value={adminTestSearch}
                       onChange={(e) => setAdminTestSearch(e.target.value)}
                       placeholder="Nomi, OTM yoki muallif bo'yicha qidirish..."
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
 
@@ -1767,7 +1767,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
                               {pkg.category || "Oliy Ta'lim (HEMIS)"}
                             </span>
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -1783,7 +1783,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               </span>
                             )}
                             {pkg.isCommunityCreated && (
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                                 Foydalanuvchi testi
                               </span>
                             )}
@@ -1808,10 +1808,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           <button
                             type="button"
                             onClick={() => handleDeleteTestByAdmin(pkg)}
-                            className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs transition-colors flex items-center gap-1 active:scale-95 border border-rose-200 dark:border-rose-800/60"
+                            className="px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/50 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 font-bold text-xs transition-colors flex items-center gap-1 active:scale-95 border border-orange-200 dark:border-orange-800/60"
                             title="Admin sifatida testni o'chirish"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             <span className="text-[11px]">O'chirish</span>
                           </button>
                         </div>
@@ -1827,10 +1827,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           {activeTab === 'supabase' && (
             <div className="space-y-4 animate-in fade-in">
               {/* Header Card */}
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-sky-900/40 via-indigo-900/30 to-slate-900 border border-sky-500/30 flex items-start justify-between gap-3">
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/30 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0 mt-0.5">
-                    <Cloud className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0 mt-0.5">
+                    <Cloud className="w-5 h-5 text-white" strokeWidth={1.75} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -1860,13 +1860,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   className={`p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-in fade-in ${
                     supabaseStatusResult.success
                       ? 'bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                      : 'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                      : 'bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200'
                   }`}
                 >
                   {supabaseStatusResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" strokeWidth={1.75} />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" strokeWidth={1.75} />
                   )}
                   <div className="flex-1">
                     <span>{supabaseStatusResult.message}</span>
@@ -1886,7 +1886,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     </p>
                   </div>
                   {getSupabaseConfig().source === 'env' && (
-                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold border border-indigo-200/50">
+                    <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold border border-emerald-200/50">
                       .env orqali yuklangan
                     </span>
                   )}
@@ -1898,7 +1898,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Project URL:
                       </label>
-                      <span className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                         https:// bilan boshlanishi kerak
                       </span>
                     </div>
@@ -1915,7 +1915,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           setSupabaseKeyInput(raw.trim());
                         }
                       }}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">
                       Supabase boshqaruv panelida: <b>Project Settings &gt; API &gt; Project URL</b> (masalan: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://xyz.supabase.co</code>)
@@ -1936,7 +1936,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                       value={supabaseKeyInput}
                       onChange={(e) => setSupabaseKeyInput(e.target.value.trim())}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-sky-500 outline-none font-mono"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">
                       Supabase boshqaruv panelida: <b>Project Settings &gt; API &gt; Project API Keys &gt; anon public</b>
@@ -1953,7 +1953,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       triggerHaptic('success');
                       showNotification("Supabase sozlamalari muvaffaqiyatli saqlandi!");
                     }}
-                    className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+                    className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
                   >
                     Saqlash
                   </button>
@@ -1970,9 +1970,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       setSupabaseStatusResult(res);
                       triggerHaptic(res.success ? 'success' : 'error');
                     }}
-                    className="py-2.5 px-4 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingSupabase ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingSupabase ? 'animate-spin' : ''}`} strokeWidth={1.75} />
                     <span>{isTestingSupabase ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}</span>
                   </button>
 
@@ -1989,7 +1989,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     }}
                     className="py-2.5 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50 ml-auto"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSupabase ? 'animate-spin' : ''}`} strokeWidth={1.75} />
                     <span>{isSyncingSupabase ? 'Sinxronlanmoqda...' : 'Hamma testlarni sinxronlash'}</span>
                   </button>
                 </div>
@@ -1999,7 +1999,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Code className="w-4 h-4 text-sky-500" />
+                    <Code className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
                       Supabase SQL Jadval Skripti (Bir martalik o'rnatish)
                     </h5>
@@ -2008,7 +2008,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <button
                     type="button"
                     onClick={() => {
-                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\\n  id TEXT PRIMARY KEY,\\n  title TEXT NOT NULL,\\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\\n  university TEXT NOT NULL,\\n  is_custom_university BOOLEAN DEFAULT false,\\n  is_pending_review BOOLEAN DEFAULT false,\\n  department TEXT NOT NULL,\\n  is_public BOOLEAN DEFAULT true,\\n  password TEXT,\\n  total_questions INTEGER DEFAULT 0,\\n  blocks JSONB NOT NULL,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\\n  author_id TEXT,\\n  author_name TEXT,\\n  is_community_created BOOLEAN DEFAULT true,\\n  author_wallet_balance NUMERIC DEFAULT 0\\n);\\n\\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\\nDO $$ BEGIN\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN\\n    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN\\n    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public update access') THEN\\n    CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public delete access') THEN\\n    CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\\n  END IF;\\nEND $$;\\n\\n-- OTMlar umumiy sinxronizatsiya jadvali\\nCREATE TABLE IF NOT EXISTS public.universities (\\n  name TEXT PRIMARY KEY,\\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\\n);\\n\\nALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;\\nDO $$ BEGIN\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN\\n    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN\\n    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public update universities') THEN\\n    CREATE POLICY "Allow public update universities" ON public.universities FOR UPDATE TO anon, authenticated USING (true);\\n  END IF;\\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public delete universities') THEN\\n    CREATE POLICY "Allow public delete universities" ON public.universities FOR DELETE TO anon, authenticated USING (true);\\n  END IF;\\nEND $$;`;
+                      const sqlContent = `CREATE TABLE IF NOT EXISTS public.test_packages (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  category TEXT NOT NULL DEFAULT 'Oliy Ta''lim (HEMIS)',\n  university TEXT NOT NULL,\n  is_custom_university BOOLEAN DEFAULT false,\n  is_pending_review BOOLEAN DEFAULT false,\n  department TEXT NOT NULL,\n  is_public BOOLEAN DEFAULT true,\n  password TEXT,\n  total_questions INTEGER DEFAULT 0,\n  blocks JSONB NOT NULL,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,\n  author_id TEXT,\n  author_name TEXT,\n  is_community_created BOOLEAN DEFAULT true,\n  author_wallet_balance NUMERIC DEFAULT 0\n);\n\nALTER TABLE public.test_packages ENABLE ROW LEVEL SECURITY;\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public read access') THEN\n    CREATE POLICY "Allow public read access" ON public.test_packages FOR SELECT TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public insert access') THEN\n    CREATE POLICY "Allow public insert access" ON public.test_packages FOR INSERT TO anon, authenticated WITH CHECK (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public update access') THEN\n    CREATE POLICY "Allow public update access" ON public.test_packages FOR UPDATE TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'test_packages' AND policyname = 'Allow public delete access') THEN\n    CREATE POLICY "Allow public delete access" ON public.test_packages FOR DELETE TO anon, authenticated USING (true);\n  END IF;\nEND $$;\n\n-- OTMlar umumiy sinxronizatsiya jadvali\nCREATE TABLE IF NOT EXISTS public.universities (\n  name TEXT PRIMARY KEY,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\n);\n\nALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public read universities') THEN\n    CREATE POLICY "Allow public read universities" ON public.universities FOR SELECT TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public insert universities') THEN\n    CREATE POLICY "Allow public insert universities" ON public.universities FOR INSERT TO anon, authenticated WITH CHECK (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public update universities') THEN\n    CREATE POLICY "Allow public update universities" ON public.universities FOR UPDATE TO anon, authenticated USING (true);\n  END IF;\n  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'universities' AND policyname = 'Allow public delete universities') THEN\n    CREATE POLICY "Allow public delete universities" ON public.universities FOR DELETE TO anon, authenticated USING (true);\n  END IF;\nEND $$;`;
                       navigator.clipboard.writeText(sqlContent);
                       triggerHaptic('success');
                       setCopiedSql(true);
@@ -2018,12 +2018,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   >
                     {copiedSql ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
                         <span className="text-emerald-600 font-bold">Nusxalandi!</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5" />
+                        <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
                         <span>SQL Kodini Nusxalash</span>
                       </>
                     )}
@@ -2078,9 +2078,9 @@ DO $$ BEGIN
 END $$;`}</pre>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 space-y-1">
+                <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs text-emerald-950 dark:text-emerald-200 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-sky-500" />
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
                     <span>Qanday ulanadi (2 daqiqalik qo'llanma):</span>
                   </div>
                   <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
@@ -2097,10 +2097,10 @@ END $$;`}</pre>
           {/* Security & Backup Management Tab */}
           {activeTab === 'security' && (
             <div className="space-y-4 animate-in fade-in">
-              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5" strokeWidth={1.75} />
                   </div>
                   <div>
                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
@@ -2120,7 +2120,7 @@ END $$;`}</pre>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>SHA-256 Anti-Tamper</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
@@ -2130,7 +2130,7 @@ END $$;`}</pre>
 
                 <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>Brute-Force Rate Limiter</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
@@ -2140,7 +2140,7 @@ END $$;`}</pre>
 
                 <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>XSS & Script Sanitizer</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
@@ -2150,7 +2150,7 @@ END $$;`}</pre>
 
                 <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>Anti-Cheat Engine</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
@@ -2163,7 +2163,7 @@ END $$;`}</pre>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
                 <div>
                   <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Database className="w-4 h-4 text-indigo-500" />
+                    <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <span>Ma'lumotlar Zaxirasi (Disaster Recovery)</span>
                   </h4>
                   <p className="text-[10px] text-slate-400 mt-0.5">
@@ -2175,14 +2175,14 @@ END $$;`}</pre>
                   <button
                     type="button"
                     onClick={handleExportBackup}
-                    className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 font-bold text-xs flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center"
+                    className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 font-bold text-xs flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center"
                   >
-                    <Download className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                     <span>Zaxirani yuklab olish (JSON)</span>
                   </button>
 
                   <label className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center cursor-pointer">
-                    <Upload className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    <Upload className="w-4 h-4 text-slate-600 dark:text-slate-300" strokeWidth={1.75} />
                     <span>Zaxirani tiklash (Yuklash)</span>
                     <input
                       type="file"
@@ -2195,12 +2195,12 @@ END $$;`}</pre>
               </div>
 
               {/* Emergency Danger Zone */}
-              <div className="p-4 rounded-3xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 space-y-2">
-                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-extrabold text-xs">
-                  <ShieldAlert className="w-4 h-4" />
+              <div className="p-4 rounded-3xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 space-y-2">
+                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-extrabold text-xs">
+                  <ShieldAlert className="w-4 h-4" strokeWidth={1.75} />
                   <span>Favqulodda Holat (Testlarni tozalash)</span>
                 </div>
-                <p className="text-[10px] text-rose-600/80 dark:text-rose-400">
+                <p className="text-[10px] text-orange-600/80 dark:text-orange-400">
                   Foydalanuvchilar o'zlari test tuzishlari uchun tizimdagi barcha testlarni bitta bosishda tozalash.
                 </p>
                 <button
@@ -2209,7 +2209,7 @@ END $$;`}</pre>
                     triggerHaptic('warning');
                     setShowClearAllConfirm(true);
                   }}
-                  className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                  className="px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all"
                 >
                   Barcha testlarni tozalash
                 </button>
@@ -2233,8 +2233,8 @@ END $$;`}</pre>
         {showClearAllConfirm && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
-                <ShieldAlert className="w-7 h-7" />
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
+                <ShieldAlert className="w-7 h-7" strokeWidth={1.75} />
               </div>
 
               <h3 className="font-extrabold text-base text-slate-900 dark:white mb-2">
@@ -2242,7 +2242,7 @@ END $$;`}</pre>
               </h3>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-                Rostdan ham tizimdagi va bulutli bazadagi <b className="text-rose-600 dark:text-rose-400">BARCHA testlarni</b> butunlay tozalashni tasdiqlaysizmi? Bu amal qaytarib bo'lmaydi!
+                Rostdan ham tizimdagi va bulutli bazadagi <b className="text-orange-600 dark:text-orange-400">BARCHA testlarni</b> butunlay tozalashni tasdiqlaysizmi? Bu amal qaytarib bo'lmaydi!
               </p>
 
               <div className="flex items-center gap-3">
@@ -2256,9 +2256,9 @@ END $$;`}</pre>
                 <button
                   type="button"
                   onClick={handleClearAllTestsByAdmin}
-                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                   <span>Ha, barchasini tozalash</span>
                 </button>
               </div>
@@ -2270,8 +2270,8 @@ END $$;`}</pre>
         {deletingTestPkg && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
-                <Trash2 className="w-7 h-7" />
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
+                <Trash2 className="w-7 h-7" strokeWidth={1.75} />
               </div>
 
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
@@ -2308,13 +2308,13 @@ END $$;`}</pre>
                   type="button"
                   disabled={isDeletingTest}
                   onClick={handleConfirmDeleteTestByAdmin}
-                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   {isDeletingTest ? (
                     <span>O'chirilmoqda...</span>
                   ) : (
                     <>
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                       <span>Ha, o'chirish</span>
                     </>
                   )}

@@ -75,13 +75,13 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-xl ${
           isPassed
             ? 'bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 shadow-emerald-600/20'
-            : 'bg-gradient-to-br from-indigo-700 via-slate-800 to-slate-900 shadow-indigo-700/20'
+            : 'bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-slate-900/30'
         }`}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30'}`}>
-              {isPassed ? <Award className="w-5 h-5 text-emerald-300" /> : <BookOpen className="w-5 h-5 text-indigo-300" />}
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-orange-500/20 text-orange-300 border border-orange-400/30'}`}>
+              {isPassed ? <Award className="w-5 h-5 text-emerald-300" strokeWidth={1.75} /> : <BookOpen className="w-5 h-5 text-orange-300" strokeWidth={1.75} />}
             </div>
             <div>
               <span className="text-xs uppercase tracking-wider font-semibold opacity-80">
@@ -97,7 +97,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               isPassed ? 'bg-emerald-400 text-slate-950' : 'bg-amber-400 text-slate-950'
             }`}
           >
-            {isPassed ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+            {isPassed ? <Unlock className="w-3.5 h-3.5" strokeWidth={1.75} /> : <Lock className="w-3.5 h-3.5" strokeWidth={1.75} />}
             <span>{isPassed ? 'O\'tdi' : 'Yetarli emas'}</span>
           </div>
         </div>
@@ -117,14 +117,14 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             <p className="text-[10px] text-white/70 font-semibold uppercase">To'g'ri</p>
           </div>
           <div>
-            <div className="text-2xl font-black text-sky-300">
+            <div className="text-2xl font-black text-orange-300">
               {attempt.percentage}%
             </div>
             <p className="text-[10px] text-white/70 font-semibold uppercase">Foiz</p>
           </div>
           <div>
             <div className="text-2xl font-black text-emerald-300 flex items-center justify-center gap-1">
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4" strokeWidth={1.75} />
               <span>{Math.round(attempt.timeSpentSeconds / 60)}d</span>
             </div>
             <p className="text-[10px] text-white/70 font-semibold uppercase">Vaqt</p>
@@ -134,7 +134,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         {/* Coin Rewards notice */}
         {(isPerfect || isBonusPart) && (
           <div className="bg-amber-400/20 border border-amber-300/30 rounded-2xl p-2.5 flex items-center gap-2 mb-3 text-amber-200 text-xs font-bold">
-            <Coins className="w-5 h-5 text-amber-400 animate-bounce" />
+            <Coins className="w-5 h-5 text-amber-400 animate-bounce" strokeWidth={1.75} />
             <div>
               {isPerfect && <div>+1 Tanga (Mukammal 100% natija)!</div>}
               {isBonusPart && <div>+5 Bonus Tangalar (4-6 qism g'olibligi)!</div>}
@@ -188,7 +188,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all flex items-center gap-1 text-xs font-bold"
             title="Oldingi savol"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
             <span className="hidden sm:inline">Oldingi</span>
           </button>
 
@@ -198,15 +198,15 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs border ${
                 currentAnswer.isCorrect
                   ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  : 'bg-orange-50 dark:bg-orange-950/80 border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-300'
               }`}
             >
-              <Circle className="w-3.5 h-3.5 fill-current" />
+              <Circle className="w-3.5 h-3.5" strokeWidth={1.75} />
               <span>#{reviewIndex + 1}</span>
               {currentAnswer.isCorrect ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
               ) : (
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
               )}
             </div>
           </div>
@@ -222,7 +222,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             title="Keyingi savol"
           >
             <span className="hidden sm:inline">Keyingi</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
           </button>
         </div>
 
@@ -241,7 +241,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               if (isCorrectAnswer) {
                 style = 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold';
               } else if (isUserSelection && !currentAnswer.isCorrect) {
-                style = 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-900 dark:text-rose-200 font-bold';
+                style = 'bg-orange-50 dark:bg-orange-950/80 border-orange-500 text-orange-900 dark:text-orange-200 font-bold';
               }
 
               return (
@@ -263,7 +263,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                       </span>
                     )}
                     {isUserSelection && !currentAnswer.isCorrect && (
-                      <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-[10px] bg-orange-600 text-white px-2 py-0.5 rounded-full font-bold">
                         Siz tanlagan
                       </span>
                     )}
@@ -275,7 +275,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
 
           {/* Explanation if available */}
           {currentAnswer.explanation && (
-            <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
               <span className="font-bold block mb-1">Izoh va tushuntirish:</span>
               <span>{decodeHtmlEntities(currentAnswer.explanation)}</span>
             </div>
@@ -298,7 +298,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
           >
             <span>'{decodeHtmlEntities(nextBlock.title)}' ni boshlash</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
           </button>
         )}
 
@@ -310,7 +310,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             }}
             className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4" strokeWidth={1.75} />
             <span>Qayta topshirish</span>
           </button>
 
@@ -319,7 +319,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               triggerHaptic('medium');
               onDone();
             }}
-            className="flex-1 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all active:scale-95"
+            className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all active:scale-95"
           >
             <span>Testlar ro'yxatiga qaytish</span>
           </button>

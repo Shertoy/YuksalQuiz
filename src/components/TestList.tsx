@@ -496,7 +496,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                     )}
 
                     {pkg.isCommunityCreated && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
                         {t.communityTestBadge}
                       </span>
                     )}
@@ -543,10 +543,10 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                           e.stopPropagation();
                           handleDeleteTest(pkg);
                         }}
-                        className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50"
+                        className="p-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900 text-orange-600 dark:text-orange-400 transition-all active:scale-95 border border-orange-200/50 dark:border-orange-900/50"
                         title={t.deleteBtn}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                       </button>
                     </div>
                   )}
@@ -683,7 +683,7 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
             </p>
 
             {passwordError && (
-              <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold mb-3">
+              <div className="p-2.5 rounded-xl bg-orange-100 dark:bg-orange-950 border border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-300 text-xs font-semibold mb-3">
                 {passwordError}
               </div>
             )}
@@ -727,8 +727,8 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
       {deletingPkg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
-              <Trash2 className="w-7 h-7" />
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
+              <Trash2 className="w-7 h-7" strokeWidth={1.75} />
             </div>
 
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
@@ -752,13 +752,13 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 {isDeleting ? (
                   <span>{t.deletingStatus}</span>
                 ) : (
                   <>
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>{t.deleteConfirmBtn}</span>
                   </>
                 )}

@@ -411,8 +411,8 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <Layers className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Layers className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
@@ -433,7 +433,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
             }}
             className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" strokeWidth={1.75} />
           </button>
         </div>
 
@@ -447,7 +447,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as MainCategory)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
             >
               {MAIN_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -472,13 +472,13 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
               placeholder="Masalan: Raqamli iqtisodiyot va Big Data"
               className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
                 errors.title
-                  ? 'border-rose-500 focus:ring-rose-500'
-                  : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                  ? 'border-orange-500 focus:ring-orange-500'
+                  : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
               }`}
             />
             {errors.title && (
-              <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3 shrink-0" />
+              <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                 <span>{t.fieldRequired}</span>
               </p>
             )}
@@ -517,18 +517,18 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                   placeholder={t.customUniPlaceholder}
                   className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border font-medium text-slate-900 dark:text-white ${
                     errors.customUni
-                      ? 'border-rose-500 focus:ring-rose-500'
-                      : 'border-indigo-400 focus:ring-indigo-500'
+                      ? 'border-orange-500 focus:ring-orange-500'
+                      : 'border-emerald-400 focus:ring-emerald-500'
                   }`}
                 />
                 {errors.customUni && (
-                  <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
+                  <p className="text-[11px] text-orange-500 font-semibold mt-0.5 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                     <span>{t.fieldRequired}</span>
                   </p>
                 )}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 text-[11px] font-semibold border border-purple-200 dark:border-purple-800">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 text-[11px] font-semibold border border-orange-200 dark:border-orange-800">
+                  <ShieldCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" strokeWidth={1.75} />
                   <span>Admin paneli tekshiruviga yuboriladi</span>
                 </div>
               </div>
@@ -568,7 +568,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent'
                   }`}
                 >
-                  <Unlock className="w-3 h-3" />
+                  <Unlock className="w-3 h-3" strokeWidth={1.75} />
                   <span>{t.publicAccess}</span>
                 </button>
                 <button
@@ -580,7 +580,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent'
                   }`}
                 >
-                  <Lock className="w-3 h-3" />
+                  <Lock className="w-3 h-3" strokeWidth={1.75} />
                   <span>{t.privateAccess}</span>
                 </button>
               </div>
@@ -603,13 +603,13 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                 placeholder={t.testPasswordPlaceholder}
                 className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white font-medium ${
                   errors.password
-                    ? 'border-rose-500 focus:ring-rose-500'
+                    ? 'border-orange-500 focus:ring-orange-500'
                     : 'border-amber-400 focus:ring-amber-500'
                 }`}
               />
               {errors.password && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 shrink-0" />
+                <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                   <span>{t.fieldRequired}</span>
                 </p>
               )}
@@ -617,16 +617,16 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
           )}
 
           {/* Clean Auto-Split & Author Reward Card */}
-          <div className="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl p-3 flex items-center justify-between gap-3">
+          <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/80 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                <Coins className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/80 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4" strokeWidth={1.75} />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200 leading-tight">
+                <p className="text-[11px] font-bold text-emerald-950 dark:text-emerald-200 leading-tight">
                   {t.authorRewardNotice}
                 </p>
-                <p className="text-[10px] text-indigo-700 dark:text-indigo-400 mt-0.5">
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">
                   Jami: <strong className="text-slate-900 dark:text-white">{questions.length}</strong> ta savol ({liveBlocks.length} ta blok)
                 </p>
               </div>
@@ -644,7 +644,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                 onClick={() => setInputMode('manual')}
                 className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
                   inputMode === 'manual'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
@@ -655,7 +655,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                 onClick={() => setInputMode('bulk')}
                 className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
                   inputMode === 'bulk'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
@@ -669,7 +669,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 <span>{t.pasteLabel}</span>
-                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                   Format: #to'g'ri, ====, ++++
                 </span>
               </div>
@@ -682,26 +682,26 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                   setBulkSuccessMsg('');
                 }}
                 placeholder={t.bulkPlaceholder}
-                className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
               />
               {bulkError && (
-                <p className="text-rose-500 text-[11px] font-semibold flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <p className="text-orange-500 text-[11px] font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                   <span>{bulkError}</span>
                 </p>
               )}
               {bulkSuccessMsg && (
                 <p className="text-emerald-500 text-[11px] font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                   <span>{bulkSuccessMsg}</span>
                 </p>
               )}
               <button
                 type="button"
                 onClick={handleParseBulkText}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
               >
-                <FileText className="w-3.5 h-3.5" />
+                <FileText className="w-3.5 h-3.5" strokeWidth={1.75} />
                 <span>{t.parseBtn}</span>
               </button>
             </div>
@@ -717,16 +717,16 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                     className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 transition-all"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
                         {t.questionNumber} #{qIdx + 1}
                       </span>
                       {questions.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveQuestion(qIdx)}
-                          className="text-rose-500 hover:text-rose-700 p-1 rounded-lg"
+                          className="text-orange-500 hover:text-orange-600 p-1 rounded-lg"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                         </button>
                       )}
                     </div>
@@ -739,13 +739,13 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                         placeholder="Savol matnini kiriting..."
                         className={`w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:ring-2 ${
                           qHasError
-                            ? 'border-rose-500 focus:ring-rose-500'
-                            : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                            ? 'border-orange-500 focus:ring-orange-500'
+                            : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500'
                         }`}
                       />
                       {qHasError && (
-                        <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
+                        <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                           <span>{t.fieldRequired}</span>
                         </p>
                       )}
@@ -788,14 +788,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveOption(qIdx, oIdx)}
-                                    className="p-1 text-slate-400 hover:text-rose-500"
+                                    className="p-1 text-slate-400 hover:text-orange-500"
                                   >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-3 h-3" strokeWidth={1.75} />
                                   </button>
                                 )}
                               </div>
                               {optHasError && (
-                                <p className="text-[9px] text-rose-500 font-semibold pl-1">
+                                <p className="text-[9px] text-orange-500 font-semibold pl-1">
                                   {t.fieldRequired}
                                 </p>
                               )}
@@ -808,9 +808,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                         <button
                           type="button"
                           onClick={() => handleAddOption(qIdx)}
-                          className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 pt-0.5 hover:underline"
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 pt-0.5 hover:underline"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-3 h-3" strokeWidth={1.75} />
                           <span>Variant qo'shish</span>
                         </button>
                       )}
@@ -830,9 +830,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
               <button
                 type="button"
                 onClick={handleAddQuestion}
-                className="w-full py-2.5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500 hover:text-indigo-500 transition-colors"
+                className="w-full py-2.5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center gap-1.5 hover:border-emerald-500 hover:text-emerald-500 transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4" strokeWidth={1.75} />
                 <span>{t.addQuestionBtn}</span>
               </button>
             </div>
@@ -842,9 +842,9 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
           <div className="pt-2 space-y-2.5">
             <button
               type="submit"
-              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
+              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4" strokeWidth={1.75} />
               <span>
                 {isEditMode
                   ? `O'zgarishlarni saqlash (${liveBlocks.length} ta blok)`
@@ -861,14 +861,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                       triggerHaptic('warning');
                       setShowDeleteConfirm(true);
                     }}
-                    className="w-full py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-200 dark:border-rose-800/60 flex items-center justify-center gap-1.5 transition-colors active:scale-98"
+                    className="w-full py-2.5 rounded-2xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 font-bold text-xs border border-orange-200 dark:border-orange-800/60 flex items-center justify-center gap-1.5 transition-colors active:scale-98"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                     <span>Testni butunlay o'chirish</span>
                   </button>
                 ) : (
-                  <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 space-y-2 animate-in fade-in">
-                    <p className="text-[11px] font-bold text-rose-700 dark:text-rose-300 text-center">
+                  <div className="p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 space-y-2 animate-in fade-in">
+                    <p className="text-[11px] font-bold text-orange-700 dark:text-orange-300 text-center">
                       Ushbu testni butunlay o'chirishni tasdiqlaysizmi?
                     </p>
                     <div className="flex items-center gap-2">
@@ -895,13 +895,13 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                             console.warn('Cloud delete error:', err);
                           }
                         }}
-                        className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 flex items-center justify-center gap-1"
+                        className="flex-1 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1"
                       >
                         {isDeleting ? (
                           <span>O'chirilmoqda...</span>
                         ) : (
                           <>
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             <span>Ha, o'chirish</span>
                           </>
                         )}

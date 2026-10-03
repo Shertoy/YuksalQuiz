@@ -198,11 +198,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                   triggerHaptic('light');
                   onOpenAdminLogin();
                 }}
-                className="hidden sm:flex p-2 rounded-xl text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors"
+                className="hidden sm:flex p-2 rounded-xl text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700/80 transition-colors"
                 title="Admin Paneli (Veb orqali)"
                 aria-label="Admin Login"
               >
-                <Lock className="w-4 h-4 text-slate-500 hover:text-indigo-500" />
+                <Lock className="w-4 h-4 text-slate-500 hover:text-emerald-500" strokeWidth={1.75} />
               </button>
             )}
           </div>

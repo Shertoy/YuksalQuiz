@@ -173,7 +173,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
         >
           {/* Quote Icon Bubble */}
           <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-            <Quote className="w-5 h-5 fill-emerald-500/20" />
+            <Quote className="w-5 h-5" strokeWidth={1.75} />
           </div>
 
           {/* Quote Text */}

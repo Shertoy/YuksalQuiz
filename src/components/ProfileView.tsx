@@ -81,7 +81,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
         <div className="grid grid-cols-3 gap-2.5 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-left">
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
             <div className="flex items-center gap-1.5 text-amber-500 font-black text-sm">
-              <Coins className="w-4 h-4 fill-amber-500" />
+              <Coins className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
               <span>{profile.coins}</span>
             </div>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.coins}</p>
@@ -89,7 +89,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenAdminLogin, onOp
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
             <div className="flex items-center gap-1.5 text-orange-500 font-black text-sm">
-              <Flame className="w-4 h-4 fill-orange-500" />
+              <Flame className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
               <span>{profile.streak} {t.daysUnit || 'kun'}</span>
             </div>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.streak}</p>

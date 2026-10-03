@@ -122,12 +122,12 @@ export const OnboardingModal: React.FC = () => {
           {step === 'welcome' ? (
             /* Welcome & Gratitude Screen */
             <div className="text-center py-4">
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-4xl shadow-xl shadow-indigo-500/30 mb-5 animate-soft-pulse">
-                <Sparkles className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-4xl shadow-xl shadow-emerald-500/30 mb-5 animate-soft-pulse">
+                <Sparkles className="w-10 h-10 text-white" strokeWidth={1.75} />
               </div>
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-3">
-                <HeartHandshake className="w-3.5 h-3.5" />
+                <HeartHandshake className="w-3.5 h-3.5 text-emerald-600" strokeWidth={1.75} />
                 <span>YuksalQuiz Platformasi</span>
               </div>
 
@@ -139,13 +139,13 @@ export const OnboardingModal: React.FC = () => {
                 {t.onboardingDesc}
               </p>
 
-              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 rounded-2xl p-4 text-left mb-6 space-y-2.5">
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-2xl p-4 text-left mb-6 space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
                   <span>Barcha testlar va fanlar 100% bepul taqdim etiladi!</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                  <ShieldCheck className="w-4 h-4 text-indigo-500 shrink-0" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
                   <span>Rasmiy Ommaviy oferta va shifrlangan xotira</span>
                 </div>
               </div>
@@ -156,7 +156,7 @@ export const OnboardingModal: React.FC = () => {
                   triggerHaptic('medium');
                   setStep('form');
                 }}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all transform active:scale-95"
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all transform active:scale-95"
               >
                 <span>{t.onboardingTitle}</span>
                 <span>&rarr;</span>
@@ -174,7 +174,7 @@ export const OnboardingModal: React.FC = () => {
                     {t.onboardingSubtitle}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900 overflow-hidden shadow-sm flex items-center justify-center p-0.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900 overflow-hidden shadow-sm flex items-center justify-center p-0.5">
                   <UserAvatar avatar={avatar} />
                 </div>
               </div>
@@ -186,7 +186,7 @@ export const OnboardingModal: React.FC = () => {
                     <label className="block font-semibold text-slate-700 dark:text-slate-300">
                       {t.selectAvatar}:
                     </label>
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                       {t.customAvatarsCount}
                     </span>
                   </div>
@@ -203,7 +203,7 @@ export const OnboardingModal: React.FC = () => {
                           }}
                           className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
                             isSelected
-                              ? 'ring-4 ring-blue-500 border-blue-500 scale-105 shadow-md shadow-blue-500/25 z-10'
+                              ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md shadow-emerald-500/25 z-10'
                               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
                           }`}
                           title={av.alt}
@@ -215,7 +215,7 @@ export const OnboardingModal: React.FC = () => {
                             loading="lazy"
                           />
                           {isSelected && (
-                            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow">
+                            <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow">
                               <Check className="w-2.5 h-2.5" />
                             </span>
                           )}
@@ -243,13 +243,13 @@ export const OnboardingModal: React.FC = () => {
                       placeholder={language === 'ru' ? 'Иван' : language === 'en' ? 'John' : 'Ali'}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
                         fieldErrors.firstName
-                          ? 'border-rose-500 focus:ring-rose-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                          ? 'border-orange-500 focus:ring-orange-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
                       }`}
                     />
                     {fieldErrors.firstName && (
-                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.firstName}</span>
                       </p>
                     )}
@@ -270,13 +270,13 @@ export const OnboardingModal: React.FC = () => {
                       placeholder={language === 'ru' ? 'Иванов' : language === 'en' ? 'Doe' : 'Valiyev'}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
                         fieldErrors.lastName
-                          ? 'border-rose-500 focus:ring-rose-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                          ? 'border-orange-500 focus:ring-orange-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
                       }`}
                     />
                     {fieldErrors.lastName && (
-                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.lastName}</span>
                       </p>
                     )}
@@ -291,7 +291,7 @@ export const OnboardingModal: React.FC = () => {
                   <select
                     value={region}
                     onChange={(e) => setRegion(e.target.value as Region)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   >
                     {UZBEKISTAN_REGIONS.map((reg) => (
                       <option key={reg} value={reg}>
@@ -316,13 +316,13 @@ export const OnboardingModal: React.FC = () => {
                       }}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
                         fieldErrors.birthDate
-                          ? 'border-rose-500 focus:ring-rose-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-indigo-500'
+                          ? 'border-orange-500 focus:ring-orange-500'
+                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
                       }`}
                     />
                     {fieldErrors.birthDate && (
-                      <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.birthDate}</span>
                       </p>
                     )}
@@ -340,7 +340,7 @@ export const OnboardingModal: React.FC = () => {
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
                           gender === 'male'
-                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
                             : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                         }`}
                       >
@@ -354,7 +354,7 @@ export const OnboardingModal: React.FC = () => {
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
                           gender === 'female'
-                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
                             : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                         }`}
                       >
@@ -373,7 +373,7 @@ export const OnboardingModal: React.FC = () => {
                     <select
                       value={studyType}
                       onChange={(e) => handleStudyTypeChange(e.target.value as StudyType)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                     >
                       <option value="Kunduzgi">{t.studyKunduzgi}</option>
                       <option value="Sirtqi">{t.studySirtqi} (5 yil)</option>
@@ -388,7 +388,7 @@ export const OnboardingModal: React.FC = () => {
                     <select
                       value={academicYear}
                       onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                     >
                       {availableYears.map((yr) => (
                         <option key={yr} value={yr}>
@@ -403,8 +403,8 @@ export const OnboardingModal: React.FC = () => {
                 <div className="pt-2 pb-1">
                   <div className={`p-3 rounded-2xl border transition-colors ${
                     fieldErrors.oferta
-                      ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
-                      : 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200/70 dark:border-indigo-800/60'
+                      ? 'bg-orange-50/70 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800'
+                      : 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60'
                   } flex items-start gap-2.5`}>
                     <input
                       type="checkbox"
@@ -415,7 +415,7 @@ export const OnboardingModal: React.FC = () => {
                         setAcceptedOferta(e.target.checked);
                         if (fieldErrors.oferta) setFieldErrors({ ...fieldErrors, oferta: undefined });
                       }}
-                      className="mt-0.5 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
+                      className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
                     />
                     <label
                       htmlFor="ofertaCheckbox"
@@ -428,7 +428,7 @@ export const OnboardingModal: React.FC = () => {
                           triggerHaptic('light');
                           setShowOfertaModal(true);
                         }}
-                        className="text-indigo-600 dark:text-indigo-400 font-bold underline hover:text-indigo-700 inline"
+                        className="text-emerald-600 dark:text-emerald-400 font-bold underline hover:text-emerald-700 inline"
                       >
                         Ommaviy oferta
                       </button>{' '}
@@ -436,8 +436,8 @@ export const OnboardingModal: React.FC = () => {
                     </label>
                   </div>
                   {fieldErrors.oferta && (
-                    <p className="text-[10px] text-rose-500 font-semibold mt-1 px-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
+                    <p className="text-[10px] text-orange-500 font-semibold mt-1 px-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                       <span>{fieldErrors.oferta}</span>
                     </p>
                   )}

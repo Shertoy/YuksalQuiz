@@ -80,10 +80,10 @@ export const OfflineStatusBanner: React.FC = () => {
         >
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
             </span>
-            <WifiOff className="w-3.5 h-3.5" />
+            <WifiOff className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span className="text-[11px] font-extrabold tracking-wide">
               Internet aloqasi uzildi — Oflayn rejim faol
             </span>
@@ -98,7 +98,7 @@ export const OfflineStatusBanner: React.FC = () => {
       {/* Online Reconnected Floating Toast */}
       {showToast && isOnline && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-300">
-          <Wifi className="w-4 h-4 text-emerald-200" />
+          <Wifi className="w-4 h-4 text-emerald-200" strokeWidth={1.75} />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -111,11 +111,11 @@ export const OfflineStatusBanner: React.FC = () => {
               onClick={() => setShowDetailsModal(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" strokeWidth={1.75} />
             </button>
 
             <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4 mx-auto">
-              <WifiOff className="w-7 h-7" />
+              <WifiOff className="w-7 h-7" strokeWidth={1.75} />
             </div>
 
             <h3 className="text-center font-black text-base text-slate-900 dark:text-white mb-1.5">
@@ -126,7 +126,7 @@ export const OfflineStatusBanner: React.FC = () => {
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 text-left mb-4 flex items-center gap-2.5">
-              <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+              <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" strokeWidth={1.75} />
               <div className="text-[11px] text-slate-600 dark:text-slate-300">
                 <span className="font-bold block">Ma'lumotlar yo'qolmaydi</span>
                 Barcha natijalar qurilma xotirasida (Local Storage) saqlanmoqda.
@@ -138,9 +138,9 @@ export const OfflineStatusBanner: React.FC = () => {
                 type="button"
                 onClick={handleManualCheck}
                 disabled={isChecking}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} strokeWidth={1.75} />
                 <span>{isChecking ? "Tekshirilmoqda..." : "Aloqani qayta tekshirish"}</span>
               </button>
 

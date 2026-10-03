@@ -168,7 +168,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
               onClick={() => setShowConfirmCancel(true)}
               className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" strokeWidth={1.75} />
             </button>
             <div>
               <h3 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">
@@ -184,13 +184,13 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           <div
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold transition-colors ${
               secondsRemaining < 30
-                ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 animate-pulse'
+                ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400 animate-pulse'
                 : secondsRemaining < 60
                 ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
                 : 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>{formatTimer(secondsRemaining)}</span>
           </div>
         </div>
@@ -245,8 +245,8 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                   badgeStyle = 'bg-emerald-600 text-white border-emerald-600';
                 } else if (isSelected && !isCorrectAnswer) {
                   // User selected wrong answer
-                  cardStyle = 'bg-rose-100 dark:bg-rose-950 border-rose-500 text-rose-950 dark:text-rose-100 font-bold';
-                  badgeStyle = 'bg-rose-600 text-white border-rose-600';
+                  cardStyle = 'bg-orange-100 dark:bg-orange-950 border-orange-500 text-orange-950 dark:text-orange-100 font-bold';
+                  badgeStyle = 'bg-orange-500 text-white border-orange-500';
                 } else if (!isSelected && isCorrectAnswer) {
                   // Reveal correct answer when user was wrong
                   cardStyle = 'bg-emerald-50 dark:bg-emerald-950/90 border-emerald-400 text-emerald-900 dark:text-emerald-200 border-dashed';
@@ -304,8 +304,8 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       {showConfirmCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
-              <X className="w-6 h-6" />
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-orange-50 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-3">
+              <X className="w-6 h-6" strokeWidth={1.75} />
             </div>
 
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-1">
@@ -325,7 +325,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
               </button>
               <button
                 onClick={onCancel}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20"
+                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20"
               >
                 {t.exitBtn}
               </button>
