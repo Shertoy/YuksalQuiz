@@ -17,7 +17,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { TestPackage, TestAttempt } from './types';
-import { initTelegramApp, getTelegramWebApp, syncTelegramTheme } from './utils/telegram';
+import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic } from './utils/telegram';
 import {
   fetchCloudTests,
   fetchCloudUniversities,
@@ -31,9 +31,15 @@ import { AppLoader } from './components/AppLoader';
 import { EditProfileModal } from './components/EditProfileModal';
 import { ReceiptVerifyModal } from './components/ReceiptVerifyModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
+import { PaywallModal } from './components/PaywallModal';
+import {
+  canUserStartTest,
+  recordTestStartAttempt,
+  isPaidUser,
+} from './services/paywallService';
 
 export const App: React.FC = () => {
-  const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile } = useQuizStore();
+  const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile, testAttempts } = useQuizStore();
 
   // App loading state with smooth quote-rotation loader
   const [isAppLoading, setIsAppLoading] = useState(true);
@@ -74,6 +80,15 @@ export const App: React.FC = () => {
   const [pendingTestStart, setPendingTestStart] = useState<{
     pkg: TestPackage;
     blockId: string;
+  } | null>(null);
+
+  // Paywall Limit Exceeded Modal State
+  const [isPaywallModalOpen, setIsPaywallModalOpen] = useState(false);
+  const [paywallTargetTest, setPaywallTargetTest] = useState<{
+    pkg: TestPackage;
+    blockId: string;
+    title: string;
+    blockTitle?: string;
   } | null>(null);
 
   // Initialize Telegram WebApp and Theme Synchronization
@@ -188,21 +203,34 @@ export const App: React.FC = () => {
 
   // Handlers for test flow
   const handleStartTest = (pkg: TestPackage, blockId: string) => {
-    // Check if user has active paid subscription
-    const hasActiveSubscription =
-      Boolean(profile.has_paid) ||
-      Boolean(
-        profile.subscriptionPlan &&
-        profile.subscriptionPlan !== 'none' &&
-        (!profile.subscriptionExpiry || new Date(profile.subscriptionExpiry) > new Date())
-      );
-
-    if (!hasActiveSubscription) {
-      setPendingTestStart({ pkg, blockId });
-      setIsSubscriptionModalOpen(true);
+    // 1. Agar foydalanuvchi to'lov qilgan bo'lsa (user.has_paid === true yoki obuna faol) -> cheklovsiz testga kiritsin
+    if (isPaidUser(profile)) {
+      setReviewState(null);
+      setActiveTestPkg(pkg);
+      setActiveBlockId(blockId);
       return;
     }
 
+    // 2. Bepul foydalanuvchi: bugungi kunda ushbu test necha marta topshirilganini hisoblang
+    const check = canUserStartTest(profile, pkg.id, blockId, testAttempts);
+
+    // Agar foydalanuvchi 3-marta boshlamoqchi bo'lsa (bugun 2 martadan kam bo'lmasa) -> test ochilmasin va ogohlantirish modali chiqsin
+    if (!check.allowed) {
+      triggerHaptic('warning');
+      const block = pkg.blocks.find((b) => b.id === blockId) || pkg.blocks[0];
+      setPaywallTargetTest({
+        pkg,
+        blockId,
+        title: pkg.title,
+        blockTitle: block?.title,
+      });
+      setIsPaywallModalOpen(true);
+      return;
+    }
+
+    // Agar ushbu test bugun 2 martadan kam ishlangan bo'lsa -> testga ruxsat berilsin va urinish soni oshirilsin
+    triggerHaptic('light');
+    recordTestStartAttempt(pkg.id, blockId, testAttempts);
     setReviewState(null);
     setActiveTestPkg(pkg);
     setActiveBlockId(blockId);
@@ -227,9 +255,7 @@ export const App: React.FC = () => {
   const handleRetakeTest = () => {
     if (!reviewState) return;
     const { pkg, attempt } = reviewState;
-    setReviewState(null);
-    setActiveTestPkg(pkg);
-    setActiveBlockId(attempt.blockId);
+    handleStartTest(pkg, attempt.blockId);
   };
 
   const handleDoneReview = () => {
@@ -329,7 +355,12 @@ export const App: React.FC = () => {
         }}
         onSuccessAndStart={() => {
           setIsSubscriptionModalOpen(false);
-          if (pendingTestStart) {
+          if (paywallTargetTest) {
+            setReviewState(null);
+            setActiveTestPkg(paywallTargetTest.pkg);
+            setActiveBlockId(paywallTargetTest.blockId);
+            setPaywallTargetTest(null);
+          } else if (pendingTestStart) {
             setReviewState(null);
             setActiveTestPkg(pendingTestStart.pkg);
             setActiveBlockId(pendingTestStart.blockId);
@@ -341,6 +372,25 @@ export const App: React.FC = () => {
           setDepositSuggestedAmount(deficit);
           setIsReceiptModalOpen(true);
         }}
+      />
+
+      {/* Daily Free Limit Paywall Modal */}
+      <PaywallModal
+        isOpen={isPaywallModalOpen}
+        onClose={() => {
+          setIsPaywallModalOpen(false);
+          setPaywallTargetTest(null);
+        }}
+        onTopUp={() => {
+          setIsPaywallModalOpen(false);
+          setIsReceiptModalOpen(true);
+        }}
+        onOpenSubscription={() => {
+          setIsPaywallModalOpen(false);
+          setIsSubscriptionModalOpen(true);
+        }}
+        testTitle={paywallTargetTest?.title}
+        blockTitle={paywallTargetTest?.blockTitle}
       />
 
       {/* P2P Receipt AI Verification Modal (Hisobni to'ldirish) */}
@@ -394,7 +444,7 @@ export const App: React.FC = () => {
       />
 
       {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
-      {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isSubscriptionModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
+      {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isSubscriptionModalOpen && !isPaywallModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (
         <BottomNav onTabSelect={() => setReviewState(null)} />
       )}
 

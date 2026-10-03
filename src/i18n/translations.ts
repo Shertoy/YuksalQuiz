@@ -301,6 +301,10 @@ export interface Translations {
   filterByAcademicYear: string;
   semesterSelectPlaceholder: string;
   academicYearSelectPlaceholder: string;
+  paywallLimitReachedTitle: string;
+  paywallLimitReachedDesc: string;
+  paywallTopUpBtn: string;
+  paywallBackBtn: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -595,6 +599,10 @@ export const translations: Record<Language, Translations> = {
     filterByAcademicYear: "O'quv yili bo'yicha",
     semesterSelectPlaceholder: 'Semestrni tanlang',
     academicYearSelectPlaceholder: "O'quv yilini tanlang",
+    paywallLimitReachedTitle: 'Kunlik bepul limit tugadi',
+    paywallLimitReachedDesc: "Siz ushbu testni bugun 2 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.",
+    paywallTopUpBtn: "💳 Hisobni to'ldirish",
+    paywallBackBtn: 'Orqaga qaytish',
   },
 
   ru: {
@@ -888,6 +896,10 @@ export const translations: Record<Language, Translations> = {
     filterByAcademicYear: 'По учебным годам',
     semesterSelectPlaceholder: 'Выберите семестр',
     academicYearSelectPlaceholder: 'Выберите учебный год',
+    paywallLimitReachedTitle: 'Дневной бесплатный лимит исчерпан',
+    paywallLimitReachedDesc: 'Вы прошли этот тест сегодня 2 раза бесплатно. Пополните баланс для безлимитного доступа ко всем тестам без ограничений.',
+    paywallTopUpBtn: '💳 Пополнить баланс',
+    paywallBackBtn: 'Вернуться назад',
   },
 
   en: {
@@ -1181,5 +1193,9 @@ export const translations: Record<Language, Translations> = {
     filterByAcademicYear: 'By academic year',
     semesterSelectPlaceholder: 'Select semester',
     academicYearSelectPlaceholder: 'Select academic year',
+    paywallLimitReachedTitle: 'Daily Free Limit Reached',
+    paywallLimitReachedDesc: 'You have taken this test 2 times for free today. Top up your balance to get unlimited access to all tests without daily limits.',
+    paywallTopUpBtn: '💳 Top Up Balance',
+    paywallBackBtn: 'Go Back',
   },
 };

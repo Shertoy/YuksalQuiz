@@ -38,6 +38,7 @@ import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
 import { isBlockUnlocked } from '../utils/progressUtils';
+import { isPaidUser, getTodayAttemptsCount } from '../services/paywallService';
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -759,6 +760,10 @@ export const TestList: React.FC<TestListProps> = ({
                       blockAttempts.some((a) => a.isPassed || a.score >= passing)
                     );
 
+                    const isPaid = isPaidUser(profile);
+                    const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
+                    const isLimitReached = !isPaid && todayAttempts >= 2;
+
                     return (
                       <button
                         key={block.id}
@@ -766,6 +771,8 @@ export const TestList: React.FC<TestListProps> = ({
                         className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
                           isLocked
                             ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
+                            : isLimitReached
+                            ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/80 dark:border-orange-900/50 text-slate-800 dark:text-slate-200 hover:border-orange-400'
                             : isPassed
                             ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100 hover:border-emerald-500'
                             : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/50 text-slate-800 dark:text-slate-100 hover:border-emerald-400'
@@ -778,6 +785,10 @@ export const TestList: React.FC<TestListProps> = ({
                           </span>
                           {isLocked ? (
                             <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          ) : isLimitReached ? (
+                            <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5">
+                              <Lock className="w-2.5 h-2.5" /> 2/2
+                            </span>
                           ) : isPassed ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                           ) : (
@@ -792,6 +803,10 @@ export const TestList: React.FC<TestListProps> = ({
                           <span>
                             {isLocked ? (
                               t.lockedStatus
+                            ) : isLimitReached ? (
+                              <span className="text-orange-600 dark:text-orange-400 font-bold">
+                                Limit tugagan
+                              </span>
                             ) : maxScore > 0 ? (
                               <span className="font-bold">
                                 {t.bestScoreLabel}: {maxScore}/{block.questions.length} ({maxScore * 4} {t.pointsLabel})
