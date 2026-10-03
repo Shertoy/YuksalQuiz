@@ -790,6 +790,7 @@ export async function syncUserProfileToCloud(
     total_time: stats.totalTimeSpentSeconds,
     total_time_spent_seconds: stats.totalTimeSpentSeconds,
     accuracy_percentage: stats.accuracyPercentage,
+    language: useQuizStore.getState().language || 'uz',
     updated_at: new Date().toISOString(),
   };
 

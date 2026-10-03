@@ -641,6 +641,21 @@ export const useQuizStore = create<QuizState>()(
       setLanguage: (language: Language) => {
         triggerHaptic('light');
         set({ language });
+        const { profile } = get();
+        if (profile?.id) {
+          import('../services/supabase')
+            .then(async ({ getSupabase }) => {
+              const supabase = getSupabase();
+              if (supabase) {
+                try {
+                  await supabase
+                    .from('users')
+                    .upsert({ id: profile.id, language, updated_at: new Date().toISOString() });
+                } catch {}
+              }
+            })
+            .catch(() => {});
+        }
       },
 
       setActiveTab: (activeTab) => {
