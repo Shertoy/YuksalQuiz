@@ -783,6 +783,7 @@ export async function syncUserProfileToCloud(
     has_paid: Boolean(profile.has_paid),
     paid_until: profile.paid_until || null,
     tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
+    total_tests: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
     correct_answers: stats.totalCorrectAnswers,
     correct_answers_count: stats.totalCorrectAnswers,
     total_score: stats.scorePoints,
@@ -914,21 +915,49 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
 
   const userMap = new Map<string, LeaderboardUser>();
 
-  // 1. Primary: Fetch users from public.users table (Zero mock data!)
+  // 1. Primary: Fetch users from public.users table (Faqat kamida 1 ta test ishlagan talabalar)
   try {
-    const { data: usersData, error: usersErr } = await supabase
+    let usersData: any[] | null = null;
+    let usersErr: any = null;
+
+    // Supabase query: faqat kamida 1 ta test ishlagan (total_tests > 0 yoki correct_answers > 0) talabalar TOP 20
+    const res1 = await supabase
       .from('users')
       .select('*')
+      .or('total_tests.gt.0,correct_answers.gt.0,tests_completed.gt.0')
       .order('total_score', { ascending: false })
       .order('correct_answers', { ascending: false })
       .order('total_time', { ascending: true })
-      .limit(50);
+      .limit(20);
+
+    if (!res1.error && res1.data) {
+      usersData = res1.data;
+    } else {
+      // Fallback agar 'total_tests' ustuni eski bazalarda hali qo'shilmagan bo'lsa
+      const res2 = await supabase
+        .from('users')
+        .select('*')
+        .or('correct_answers.gt.0,tests_completed.gt.0')
+        .order('total_score', { ascending: false })
+        .order('correct_answers', { ascending: false })
+        .order('total_time', { ascending: true })
+        .limit(20);
+      usersData = res2.data;
+      usersErr = res2.error;
+    }
 
     if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
       for (const row of usersData) {
-        const u = mapRowToLeaderboardUser(row);
-        if (u && u.id) {
-          userMap.set(u.id, u);
+        const tests = Number(row.total_tests ?? row.tests_completed ?? row.testsCompleted ?? 0);
+        const corrects = Number(row.correct_answers ?? row.correctAnswersCount ?? 0);
+        const score = Number(row.total_score ?? row.score_points ?? row.scorePoints ?? 0);
+
+        // Qat'iy tekshiruv: faqat kamida 1 ta test ishlagan talabalar
+        if (tests > 0 || corrects > 0 || score > 0) {
+          const u = mapRowToLeaderboardUser(row);
+          if (u && u.id) {
+            userMap.set(u.id, u);
+          }
         }
       }
     }
@@ -946,7 +975,11 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
     if (!error && data && Array.isArray(data)) {
       for (const row of data) {
         const u = mapRowToLeaderboardUser(row);
-        if (u && u.id && !userMap.has(u.id)) {
+        const tests = Number(u.testsCompleted || 0);
+        const corrects = Number(u.correctAnswersCount || 0);
+        const score = Number(u.scorePoints || 0);
+
+        if (u && u.id && !userMap.has(u.id) && (tests > 0 || corrects > 0 || score > 0)) {
           userMap.set(u.id, u);
         }
       }

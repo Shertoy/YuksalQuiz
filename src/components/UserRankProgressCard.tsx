@@ -68,16 +68,23 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
   // Sort by score points / correct answers (Tie-breaker: lower time spent ranks higher)
   const sortedUsers = [...scopedUsers].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
 
+  const hasCurrentUserTakenTests =
+    (currentUserEntry.testsCompleted ?? 0) > 0 ||
+    (currentUserEntry.correctAnswersCount ?? 0) > 0 ||
+    (currentUserEntry.scorePoints ?? 0) > 0;
+
   const userRankIndex = sortedUsers.findIndex((u) => u.isCurrentUser);
   const userRank = userRankIndex !== -1 ? userRankIndex + 1 : 1;
 
   // Motivation calculation & progress
-  const isRankOne = userRank === 1;
   let testsRemaining = 1;
   let progressPercent = 100;
   let motivationText = '';
 
-  if (isRankOne) {
+  if (!hasCurrentUserTakenTests) {
+    progressPercent = 0;
+    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching! 🚀";
+  } else if (userRank === 1) {
     progressPercent = 100;
     motivationText = t.youAreLeading || "Siz peshqadamsiz! O'rningizni saqlab qoling 🏆";
   } else {
@@ -147,7 +154,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
               />
             </div>
             <span className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] shadow-md border-2 border-slate-900">
-              #{userRank}
+              {hasCurrentUserTakenTests ? `#${userRank}` : '-'}
             </span>
           </div>
 

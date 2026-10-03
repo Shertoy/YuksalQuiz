@@ -93,13 +93,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const userRank = Math.max(1, allUsers.findIndex((u) => u.id === cleanProfileId) + 1);
 
+  const hasCurrentUserTakenTests =
+    stats.totalCorrectAnswers > 0 ||
+    (profile.completedTestsCount || 0) > 0 ||
+    (stats.scorePoints || 0) > 0;
+
   // Compact motivation calculation: Next rank progress
   const isRankOne = userRank === 1;
   let testsRemaining = 1;
   let progressPercent = 100;
   let motivationText = '';
 
-  if (isRankOne) {
+  if (!hasCurrentUserTakenTests) {
+    progressPercent = 0;
+    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching! 🚀";
+  } else if (isRankOne) {
     progressPercent = 100;
     motivationText = "Siz 1-o'rinda peshqadamsiz! O'rningizni saqlab qoling 🏆";
   } else {
@@ -198,7 +206,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <UserAvatar avatar={profile.avatar} />
               </div>
               <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-md border border-white/50">
-                #{userRank}
+                {hasCurrentUserTakenTests ? `#${userRank}` : '-'}
               </span>
             </div>
 

@@ -104,14 +104,36 @@ export const Leaderboard: React.FC = () => {
     isCurrentUser: true,
   };
 
-  // Merge users without duplicate IDs (Strictly real users only)
-  const allUsers: LeaderboardUser[] = [
-    ...leaderboard.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfileId),
-    currentUserEntry,
-  ];
+  // Faqat kamida 1 ta test ishlagan talabalar reytingda ko'rinishi kerak
+  const isCurrentUserActiveInTests =
+    (currentUserEntry.testsCompleted ?? 0) > 0 ||
+    (currentUserEntry.correctAnswersCount ?? 0) > 0 ||
+    (currentUserEntry.scorePoints ?? 0) > 0;
+
+  // Remote foydalanuvchilar orasidan faqat kamida 1 ta test ishlaganlarini olish
+  const remoteActiveUsers = leaderboard.filter((u) => {
+    const isOther = (u.id || '').replace(/^lead_/, '') !== cleanProfileId;
+    const hasTests =
+      (u.testsCompleted && u.testsCompleted > 0) ||
+      (u.correctAnswersCount && u.correctAnswersCount > 0) ||
+      (u.scorePoints && u.scorePoints > 0);
+    return isOther && hasTests;
+  });
+
+  // Agar joriy talaba hali birorta ham test yechmagan bo'lsa, u OTM yoki Respublika reyting jadvalida ko'rinmasin
+  const allUsers: LeaderboardUser[] = isCurrentUserActiveInTests
+    ? [...remoteActiveUsers, currentUserEntry]
+    : remoteActiveUsers;
 
   // Level 1 Scope Filter: 'otm' | 'region' | 'uzbekistan'
+  // Faqat kamida 1 ta test ishlagan talabalar (test ishlamaganlar OTM yoki Respublika reytingida ko'rinmasin)
   const filteredUsers = allUsers.filter((u) => {
+    const hasActiveTests =
+      (u.testsCompleted && u.testsCompleted > 0) ||
+      (u.correctAnswersCount && u.correctAnswersCount > 0) ||
+      (u.scorePoints && u.scorePoints > 0);
+    if (!hasActiveTests) return false;
+
     if (leaderboardScope === 'region') {
       return (u.region || '').trim().toLowerCase() === (profile.region || '').trim().toLowerCase();
     }
@@ -122,7 +144,7 @@ export const Leaderboard: React.FC = () => {
         u.university.trim().toLowerCase() === profile.university.trim().toLowerCase()
       );
     }
-    return true; // 'uzbekistan' (Respublika - includes everyone unconditionally)
+    return true; // 'uzbekistan' (Respublika - faqat test yechgan talabalar)
   });
 
   // Level 2 Sort for Students:
