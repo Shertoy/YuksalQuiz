@@ -918,7 +918,10 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
     const { data: usersData, error: usersErr } = await supabase
       .from('users')
       .select('*')
-      .limit(100);
+      .order('total_score', { ascending: false })
+      .order('correct_answers', { ascending: false })
+      .order('total_time', { ascending: true })
+      .limit(50);
 
     if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
       for (const row of usersData) {

@@ -385,6 +385,34 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
+      {/* Katta va ko'zga tashlanadigan "🚀 Testni boshlash" Bosh Tugmasi */}
+      <button
+        type="button"
+        onClick={() => {
+          triggerHaptic('medium');
+          setActiveTab('tests');
+        }}
+        className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-between group border border-emerald-400/30 cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-xs group-hover:scale-110 transition-transform shrink-0">
+            🚀
+          </div>
+          <div className="text-left">
+            <div className="text-sm sm:text-base font-black tracking-wide leading-tight">
+              Testni boshlash
+            </div>
+            <div className="text-[11px] text-emerald-100 font-semibold leading-tight mt-0.5">
+              Bilimingizni sinang va reytingda yuqorilang
+            </div>
+          </div>
+        </div>
+
+        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform shrink-0">
+          <ChevronRight className="w-5 h-5 text-white" />
+        </div>
+      </button>
+
       {/* Starting Voucher Card */}
       {profile.voucherBalance > 0 && (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') && (
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/30 text-white rounded-3xl p-4 shadow-xl space-y-3 relative overflow-hidden">
