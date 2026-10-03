@@ -58,6 +58,8 @@ import {
   SubscriptionPlanType,
   LeaderboardUser,
   Gender,
+  AVAILABLE_SEMESTERS,
+  AVAILABLE_ACADEMIC_YEARS,
 } from '../types';
 import {
   exportEncryptedBackup,
@@ -195,6 +197,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [testTitle, setTestTitle] = useState('');
   const [testUni, setTestUni] = useState(universities[0] || 'TATU');
   const [testDept, setTestDept] = useState<DepartmentType>('Axborot Texnologiyalari');
+  const [testSemester, setTestSemester] = useState<number>(1);
+  const [testAcademicYear, setTestAcademicYear] = useState<string>('2025-2026');
 
   // Admin test management state
   const [adminTestSearch, setAdminTestSearch] = useState('');
@@ -516,6 +520,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       category: "Oliy Ta'lim (HEMIS)",
       university: testUni,
       department: testDept,
+      semester: Number(testSemester),
+      academicYear: testAcademicYear,
       totalQuestions: 25,
       isPublic: true,
       isCommunityCreated: false,
@@ -2369,6 +2375,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      O'quv yili:
+                    </label>
+                    <select
+                      value={testAcademicYear}
+                      onChange={(e) => setTestAcademicYear(e.target.value)}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-medium"
+                    >
+                      {AVAILABLE_ACADEMIC_YEARS.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      Semestr:
+                    </label>
+                    <select
+                      value={testSemester}
+                      onChange={(e) => setTestSemester(Number(e.target.value))}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-medium"
+                    >
+                      {AVAILABLE_SEMESTERS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}-semestr ({Math.ceil(s / 2)}-kurs)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
@@ -2465,6 +2507,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             {pkg.isCommunityCreated && (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                                 Foydalanuvchi testi
+                              </span>
+                            )}
+                            {(pkg.semester || pkg.academicYear) && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50">
+                                {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                                {pkg.semester && pkg.academicYear ? ' • ' : ''}
+                                {pkg.academicYear ? `${pkg.academicYear}` : ''}
                               </span>
                             )}
                           </div>

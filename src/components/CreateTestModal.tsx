@@ -9,6 +9,8 @@ import {
   TestPackage,
   MainCategory,
   MAIN_CATEGORIES,
+  AVAILABLE_SEMESTERS,
+  AVAILABLE_ACADEMIC_YEARS,
 } from '../types';
 import { splitQuestionsIntoBlocks } from '../utils/testSplitter';
 import { sanitizeText, decodeHtmlEntities } from '../utils/security';
@@ -24,6 +26,7 @@ import {
   Coins,
   FileText,
   AlertCircle,
+  Calendar,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { publishTestToCloud, deleteTestFromCloud } from '../services/testSyncService';
@@ -81,6 +84,8 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
   const [isCustomUni, setIsCustomUni] = useState(initialIsCustom);
   const [customUniName, setCustomUniName] = useState(initialIsCustom && editPackage ? editPackage.university : '');
   const [department, setDepartment] = useState<DepartmentType>(editPackage?.department || 'Axborot Texnologiyalari');
+  const [academicYear, setAcademicYear] = useState<string>(editPackage?.academicYear || '2025-2026');
+  const [semester, setSemester] = useState<number>(editPackage?.semester || 1);
   const [isPublic, setIsPublic] = useState(editPackage ? editPackage.isPublic : true);
   const [password, setPassword] = useState(editPackage?.password || '');
 
@@ -303,6 +308,14 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
       newErrors.title = true;
     }
 
+    if (!academicYear || !academicYear.trim()) {
+      newErrors.academicYear = true;
+    }
+
+    if (!semester || Number(semester) < 1 || Number(semester) > 8) {
+      newErrors.semester = true;
+    }
+
     if (isCustomUni && !customUniName.trim()) {
       newErrors.customUni = true;
     }
@@ -358,6 +371,8 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
         password: isPublic ? undefined : sanitizeText(password.trim()),
         totalQuestions: validQuestions.length,
         blocks: testBlocks,
+        semester: Number(semester),
+        academicYear: sanitizeText(academicYear.trim()),
       };
 
       updateTestPackage(updatedPackage);
@@ -390,6 +405,8 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
       authorName: sanitizeText(`${profile.firstName} ${profile.lastName}`.trim() || 'Talaba'),
       isCommunityCreated: true,
       authorWalletBalance: 0,
+      semester: Number(semester),
+      academicYear: sanitizeText(academicYear.trim()),
     };
 
     createTestPackage(newPackage);
@@ -584,6 +601,71 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                   <span>{t.privateAccess}</span>
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Academic Year and Semester Selection (Mandatory) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {t.academicYearLabel} <span className="text-orange-500">*</span>
+              </label>
+              <select
+                value={academicYear}
+                onChange={(e) => {
+                  setAcademicYear(e.target.value);
+                  clearFieldError('academicYear');
+                }}
+                className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 ${
+                  errors.academicYear
+                    ? 'border-orange-500 focus:ring-orange-500'
+                    : 'border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <option value="">{t.academicYearSelectPlaceholder}</option>
+                {AVAILABLE_ACADEMIC_YEARS.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr}
+                  </option>
+                ))}
+              </select>
+              {errors.academicYear && (
+                <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
+                  <span>{t.fieldRequired}</span>
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {t.semesterLabel} <span className="text-orange-500">*</span>
+              </label>
+              <select
+                value={semester}
+                onChange={(e) => {
+                  setSemester(Number(e.target.value));
+                  clearFieldError('semester');
+                }}
+                className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 ${
+                  errors.semester
+                    ? 'border-orange-500 focus:ring-orange-500'
+                    : 'border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <option value="">{t.semesterSelectPlaceholder}</option>
+                {AVAILABLE_SEMESTERS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}-semestr ({Math.ceil(s / 2)}-kurs)
+                  </option>
+                ))}
+              </select>
+              {errors.semester && (
+                <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
+                  <span>{t.fieldRequired}</span>
+                </p>
+              )}
             </div>
           </div>
 

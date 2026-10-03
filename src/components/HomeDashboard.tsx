@@ -439,6 +439,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     </h4>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
                       <span>{decodeHtmlEntities(pkg.university || '')}</span>
+                      {(pkg.semester || pkg.academicYear) && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-amber-600 dark:text-amber-400">
+                            {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                            {pkg.semester && pkg.academicYear ? ' • ' : ''}
+                            {pkg.academicYear ? `${pkg.academicYear}` : ''}
+                          </span>
+                        </>
+                      )}
                       <span>•</span>
                       <span>{pkg.blocks.length} {t.blocksCount} ({pkg.totalQuestions} {t.questionsCount})</span>
                     </div>

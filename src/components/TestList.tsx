@@ -20,12 +20,17 @@ import {
   Edit3,
   Trash2,
   User,
+  Calendar,
+  Filter,
+  RotateCcw,
 } from 'lucide-react';
 import {
   MAIN_CATEGORIES,
   MainCategory,
   TestPackage,
   TestBlock,
+  AVAILABLE_SEMESTERS,
+  AVAILABLE_ACADEMIC_YEARS,
 } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
@@ -45,6 +50,8 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
 
   const [activeCategory, setActiveCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
   const [selectedUniFilter, setSelectedUniFilter] = useState<string>('all');
+  const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyTests, setOnlyMyTests] = useState(false);
   const [passwordModalPkg, setPasswordModalPkg] = useState<TestPackage | null>(null);
@@ -129,11 +136,17 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
     const matchesUni =
       selectedUniFilter === 'all' ||
       (pkg.university && pkg.university.toLowerCase() === selectedUniFilter.toLowerCase());
+    const matchesSemester =
+      selectedSemester === 'all' ||
+      Number(pkg.semester) === Number(selectedSemester);
+    const matchesAcademicYear =
+      selectedAcademicYear === 'all' ||
+      pkg.academicYear === selectedAcademicYear;
     const matchesSearch =
       pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pkg.university.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pkg.department.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesUni && matchesSearch;
+    return matchesCategory && matchesUni && matchesSemester && matchesAcademicYear && matchesSearch;
   });
 
   const getCategoryIcon = (cat: MainCategory) => {
@@ -428,6 +441,106 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
         </div>
       )}
 
+      {/* Semester & Academic Year Quick Filters */}
+      <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+        {/* Semester Quick Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
+          <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0 pl-1">
+            {t.semesterLabel}:
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('selection');
+              setSelectedSemester('all');
+            }}
+            className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
+              selectedSemester === 'all'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {t.allSemesters}
+          </button>
+          {AVAILABLE_SEMESTERS.map((s) => {
+            const isSelected = selectedSemester === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setSelectedSemester(s);
+                }}
+                className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
+                  isSelected
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {s}-semestr
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Academic Year Quick Filter Pills & Reset */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
+          <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0 pl-1 flex items-center gap-1">
+            <Calendar className="w-3 h-3 text-amber-500" strokeWidth={1.75} />
+            <span>{t.academicYearLabel}:</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('selection');
+              setSelectedAcademicYear('all');
+            }}
+            className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
+              selectedAcademicYear === 'all'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {t.allAcademicYears}
+          </button>
+          {AVAILABLE_ACADEMIC_YEARS.map((yr) => {
+            const isSelected = selectedAcademicYear === yr;
+            return (
+              <button
+                key={yr}
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setSelectedAcademicYear(yr);
+                }}
+                className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
+                  isSelected
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {yr}
+              </button>
+            );
+          })}
+
+          {(selectedSemester !== 'all' || selectedAcademicYear !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setSelectedSemester('all');
+                setSelectedAcademicYear('all');
+              }}
+              className="ml-auto px-2 py-0.5 rounded-lg font-bold text-[10px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-900/60 hover:bg-orange-100 whitespace-nowrap transition-all"
+            >
+              Tozalash
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tests Grid */}
       <div className="space-y-3">
         {filteredPackages.length === 0 ? (
@@ -443,7 +556,22 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                 ? t.myTestsEmptyDesc
                 : t.emptyCategoryDesc}
             </p>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {(selectedSemester !== 'all' || selectedAcademicYear !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setSelectedSemester('all');
+                    setSelectedAcademicYear('all');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Filtrlarni tozalash</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   triggerHaptic('light');
@@ -504,6 +632,17 @@ export const TestList: React.FC<TestListProps> = ({ onStartTest, onOpenCreateMod
                     {pkg.authorId === profile.id && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
                         {t.myTestBadge}
+                      </span>
+                    )}
+
+                    {(pkg.semester || pkg.academicYear) && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
+                        <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
+                        <span>
+                          {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                          {pkg.semester && pkg.academicYear ? ' • ' : ''}
+                          {pkg.academicYear ? `${pkg.academicYear}` : ''}
+                        </span>
                       </span>
                     )}
                   </div>

@@ -108,6 +108,8 @@ export interface TestBlock {
   isLocked: boolean;
   bestScore?: number;
   isPassed?: boolean;
+  semester?: number;
+  academicYear?: string;
 }
 
 export type DepartmentType =
@@ -280,7 +282,18 @@ export interface TestPackage {
   authorName: string;
   isCommunityCreated?: boolean;
   authorWalletBalance?: number;
+  semester?: number;
+  academicYear?: string;
 }
+
+export const AVAILABLE_SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export const AVAILABLE_ACADEMIC_YEARS = [
+  '2023-2024',
+  '2024-2025',
+  '2025-2026',
+  '2026-2027',
+  '2027-2028',
+] as const;
 
 export interface UserAnswerRecord {
   questionId: string;

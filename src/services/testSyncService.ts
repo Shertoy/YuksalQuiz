@@ -25,8 +25,16 @@ function mapRowToTestPackage(row: any): TestPackage {
       passingScore,
       title: decodeHtmlEntities(b.title || `Test ${idx + 1}`),
       questions,
+      semester: b.semester ? Number(b.semester) : undefined,
+      academicYear: b.academicYear || b.academic_year || undefined,
     };
   });
+
+  const firstBlock = Array.isArray(row.blocks) && row.blocks.length > 0 ? row.blocks[0] : null;
+  const rawSemester = row.semester !== undefined ? row.semester : firstBlock?.semester;
+  const rawAcademicYear = row.academic_year || row.academicYear || firstBlock?.academicYear || firstBlock?.academic_year;
+  const parsedSemester = rawSemester ? Number(rawSemester) : undefined;
+  const parsedAcademicYear = rawAcademicYear ? String(rawAcademicYear) : undefined;
 
   return {
     id: row.id,
@@ -45,6 +53,8 @@ function mapRowToTestPackage(row: any): TestPackage {
     authorName: decodeHtmlEntities(row.author_name || 'Muallif'),
     isCommunityCreated: Boolean(row.is_community_created ?? true),
     authorWalletBalance: Number(row.author_wallet_balance) || 0,
+    semester: parsedSemester && !isNaN(parsedSemester) ? parsedSemester : undefined,
+    academicYear: parsedAcademicYear || undefined,
   };
 }
 
@@ -52,6 +62,12 @@ function mapRowToTestPackage(row: any): TestPackage {
  * Maps application TestPackage model to Supabase DB row
  */
 function mapTestPackageToRow(pkg: TestPackage): Record<string, any> {
+  const blocksWithMeta = (Array.isArray(pkg.blocks) ? pkg.blocks : []).map((b) => ({
+    ...b,
+    semester: pkg.semester,
+    academicYear: pkg.academicYear,
+  }));
+
   return {
     id: pkg.id,
     title: pkg.title,
@@ -63,7 +79,7 @@ function mapTestPackageToRow(pkg: TestPackage): Record<string, any> {
     is_public: Boolean(pkg.isPublic),
     password: pkg.password || null,
     total_questions: Number(pkg.totalQuestions) || 0,
-    blocks: pkg.blocks,
+    blocks: blocksWithMeta,
     author_id: pkg.authorId,
     author_name: pkg.authorName,
     is_community_created: Boolean(pkg.isCommunityCreated ?? true),

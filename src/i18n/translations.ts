@@ -291,6 +291,16 @@ export interface Translations {
   soundEffectsDesc: string;
   vibrationTitle: string;
   vibrationDesc: string;
+
+  // Semester & Academic Year
+  semesterLabel: string;
+  academicYearLabel: string;
+  allSemesters: string;
+  allAcademicYears: string;
+  filterBySemester: string;
+  filterByAcademicYear: string;
+  semesterSelectPlaceholder: string;
+  academicYearSelectPlaceholder: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -576,6 +586,15 @@ export const translations: Record<Language, Translations> = {
     soundEffectsDesc: "To'g'ri va xato javob tovushlari",
     vibrationTitle: "Vibratsiya (Haptic feedback)",
     vibrationDesc: "Telegram WebApp tebranish signallari",
+
+    semesterLabel: 'Semestr',
+    academicYearLabel: "O'quv yili",
+    allSemesters: 'Barcha semestrlar',
+    allAcademicYears: "Barcha o'quv yillari",
+    filterBySemester: "Semestr bo'yicha",
+    filterByAcademicYear: "O'quv yili bo'yicha",
+    semesterSelectPlaceholder: 'Semestrni tanlang',
+    academicYearSelectPlaceholder: "O'quv yilini tanlang",
   },
 
   ru: {
@@ -860,6 +879,15 @@ export const translations: Record<Language, Translations> = {
     soundEffectsDesc: 'Звуки правильных и неверных ответов',
     vibrationTitle: 'Вибрация (Haptic feedback)',
     vibrationDesc: 'Тактильный отклик Telegram WebApp',
+
+    semesterLabel: 'Семестр',
+    academicYearLabel: 'Учебный год',
+    allSemesters: 'Все семестры',
+    allAcademicYears: 'Все учебные годы',
+    filterBySemester: 'По семестрам',
+    filterByAcademicYear: 'По учебным годам',
+    semesterSelectPlaceholder: 'Выберите семестр',
+    academicYearSelectPlaceholder: 'Выберите учебный год',
   },
 
   en: {
@@ -1144,5 +1172,14 @@ export const translations: Record<Language, Translations> = {
     soundEffectsDesc: 'Chimes and buzzers for answers',
     vibrationTitle: 'Vibration (Haptic feedback)',
     vibrationDesc: 'Telegram WebApp tactile feedback',
+
+    semesterLabel: 'Semester',
+    academicYearLabel: 'Academic Year',
+    allSemesters: 'All semesters',
+    allAcademicYears: 'All academic years',
+    filterBySemester: 'By semester',
+    filterByAcademicYear: 'By academic year',
+    semesterSelectPlaceholder: 'Select semester',
+    academicYearSelectPlaceholder: 'Select academic year',
   },
 };
