@@ -50,7 +50,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
 
   // Live Referral count & earnings from store
   const referralCount = profile?.referralCount || 0;
-  const referralEarnings = referralCount * 1500;
+  const referralEarnings = referralCount * 1000;
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/25 text-white p-5 shadow-xl shadow-emerald-950/40 space-y-4">
@@ -71,14 +71,14 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
             <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
               Har bir taklif uchun{' '}
               <span className="font-extrabold text-orange-400 whitespace-nowrap">
-                +1 500 so'm
+                +1 000 so'm
               </span>
             </p>
           </div>
         </div>
 
         <div className="shrink-0 flex items-center px-2 py-0.5 rounded-full bg-orange-500 text-white font-black text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-          <span>+1 500 UZS</span>
+          <span>+1 000 UZS</span>
         </div>
       </div>
 
@@ -150,7 +150,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
           className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95"
         >
           <Share2 className="w-4 h-4 text-white" strokeWidth={1.75} />
-          <span>Do'stlarni taklif qilish (+1 500 so'm)</span>
+          <span>Do'stlarni taklif qilish (+1 000 so'm)</span>
         </button>
       </div>
 

@@ -1585,7 +1585,7 @@ export const useQuizStore = create<QuizState>()(
               id: 'tx-init-ref',
               type: 'referral',
               title: "Do'stlarni taklif qilish bonusi",
-              amount: state.profile.referralCount * 1500,
+              amount: state.profile.referralCount * 1000,
               unit: "so'm",
               isPositive: true,
               date: state.profile.lastLoginDate || new Date().toISOString().split('T')[0],
@@ -1598,7 +1598,7 @@ export const useQuizStore = create<QuizState>()(
           if (state.transactions) {
             state.transactions = state.transactions.filter(
               (tx: any) =>
-                !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1500)) &&
+                !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1000)) &&
                 !(tx.type === 'deposit' && tx.title?.includes("Hisob to'ldirildi"))
             );
           }

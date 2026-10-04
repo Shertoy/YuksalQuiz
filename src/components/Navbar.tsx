@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { ShieldAlert, Sparkles, Globe, Bell, Check, Lock } from 'lucide-react';
+import { ShieldAlert, Globe, Bell, Check, Lock, Volume2, VolumeX } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
@@ -20,6 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
     announcements,
     readAnnouncementIds,
     markAnnouncementsAsRead,
+    soundEnabled,
+    toggleSound,
   } = useQuizStore();
   const { language, setLanguage } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -71,9 +73,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
             }}
             className="flex items-center gap-2.5 text-left focus:outline-none group active:scale-95 transition-transform"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
-              <Sparkles className="w-4 h-4 text-white" strokeWidth={1.75} />
-            </div>
+            <img
+              src="/logo.svg"
+              alt="YuksalQuiz"
+              className="w-8 h-8 rounded-xl shadow-md shadow-emerald-500/25 object-contain"
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-black text-base tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-orange-500 bg-clip-text text-transparent dark:from-emerald-400 dark:via-teal-300 dark:to-orange-400">
@@ -85,6 +89,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
 
           {/* Clean Controls: Language + Notifications + Admin */}
           <div className="flex items-center gap-2">
+          {/* Sound Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                toggleSound();
+              }}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
+              title={soundEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
+              aria-label="Sound toggle"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+              ) : (
+                <VolumeX className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
+              )}
+            </button>
+
             {/* Language Switcher Pill */}
             <div className="relative">
               <button
