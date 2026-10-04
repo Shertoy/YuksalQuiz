@@ -1,15 +1,13 @@
 /**
- * YuksalQuiz Offline PWA Service Worker (v1.0)
- * Protects users from network disconnects, prevents raw browser crash screens,
- * and masks internal server domains/IPs during connection drops.
+ * YuksalQuiz Offline PWA Service Worker (v2.1)
+ * Network-First for HTML documents to guarantee users always receive the latest app updates.
+ * Auto-purges all stale caches upon activation.
  */
 
-const CACHE_NAME = 'yuksalquiz-v1.0-shell';
+const CACHE_NAME = 'yuksalquiz-v2.1-shell';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
   '/offline.html',
   '/manifest.json',
   '/favicon.svg',
@@ -26,18 +24,19 @@ const PRECACHE_ASSETS = [
   '/avatars/avatar_10.png',
 ];
 
-// Install: Pre-cache core shell & offline page
+// Install: Pre-cache static assets and skip waiting immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
         console.warn('SW: Precache asset warning:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate: Remove stale caches and claim clients immediately
+// Activate: Completely purge all older caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -52,7 +51,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Handle requests with offline resilience
+// Fetch: Network-First for HTML documents; cache with revalidation for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -61,24 +60,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Navigation requests (HTML documents)
-  if (request.mode === 'navigate') {
+  // 1. Navigation requests (HTML documents): NEVER cache, ALWAYS fetch from network
+  if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
+      fetch(request, { cache: 'no-cache' })
         .catch(async () => {
-          // If offline / network fails, return cached root or dedicated offline page
+          // If totally offline, show dedicated offline page
           const cache = await caches.open(CACHE_NAME);
-          const cachedIndex = await cache.match('/index.html') || await cache.match('/');
-          if (cachedIndex) {
-            return cachedIndex;
-          }
           const offlineFallback = await cache.match(OFFLINE_URL);
           return offlineFallback || new Response('Internet aloqasi yo\'q', {
             status: 503,
@@ -93,37 +81,23 @@ self.addEventListener('fetch', (event) => {
   // 2. Static Assets (CSS, JS, Fonts, Images)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Stale-while-revalidate for static assets
-        fetch(request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
-            }
-          })
-          .catch(() => {
-            // Keep serving cached silently
-          });
-        return cachedResponse;
-      }
-
-      // Not in cache, fetch from network and cache it
-      return fetch(request)
+      const fetchPromise = fetch(request)
         .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           }
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           return networkResponse;
         })
         .catch(() => {
-          // If image fails, return empty SVG or fail quietly
           if (request.destination === 'image') {
             return caches.match('/favicon.svg');
           }
-          return new Response('', { status: 408, statusText: 'Request Timed Out' });
+          return cachedResponse;
         });
+
+      // Return cached immediately if available, while updating in background
+      return cachedResponse || fetchPromise;
     })
   );
 });
