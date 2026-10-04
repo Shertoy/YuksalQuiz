@@ -304,36 +304,6 @@ export const TestList: React.FC<TestListProps> = ({
         </div>
       </div>
 
-      {/* Quick Gemini AI Verification Banner for non-subscribed students */}
-      {(!profile.has_paid || profile.subscriptionPlan === 'none') && (
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('medium');
-            if (onOpenReceiptModal) {
-              onOpenReceiptModal();
-            }
-          }}
-          className="w-full p-3 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/15 border border-emerald-500/30 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-emerald-500/20 transition-all active:scale-[0.99] shadow-xs"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div className="text-left min-w-0">
-              <span className="block truncate text-slate-900 dark:text-white font-extrabold text-[11px] sm:text-xs">
-                To'lov chekini tekshirish (Gemini AI)
-              </span>
-              <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                Click, Payme, Uzum chekini yuklang va bir zumda kiring
-              </span>
-            </div>
-          </div>
-          <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-emerald-600 text-white shrink-0 ml-2">
-            Chekni tekshirish
-          </span>
-        </button>
-      )}
 
       {/* Network / Cloud Sync Error Banner with Retry */}
       {syncError && (
