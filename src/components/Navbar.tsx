@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Language } from '../i18n/translations';
-import { ShieldAlert, Globe, Bell, Check, Lock, Volume2, VolumeX } from 'lucide-react';
+import { ShieldAlert, Globe, Bell, Check, Lock, Volume2, VolumeX, Moon, Sun } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
@@ -22,6 +22,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
     markAnnouncementsAsRead,
     soundEnabled,
     toggleSound,
+    theme,
+    setTheme,
   } = useQuizStore();
   const { language, setLanguage } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -89,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
 
           {/* Clean Controls: Language + Notifications + Admin */}
           <div className="flex items-center gap-2">
-          {/* Sound Toggle */}
+            {/* Sound Toggle */}
             <button
               type="button"
               onClick={() => {
@@ -104,6 +106,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                 <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
               ) : (
                 <VolumeX className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
+              )}
+            </button>
+
+            {/* Light / Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setTheme(theme === 'dark' ? 'light' : 'dark');
+              }}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
+              title={theme === 'dark' ? "Kunduzgi rejim (Yorug')" : "Tungi rejim (Qorong'i)"}
+              aria-label="Theme toggle"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-700" strokeWidth={1.75} />
               )}
             </button>
 
