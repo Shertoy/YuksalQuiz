@@ -77,12 +77,12 @@ async function answerCallback(queryId: string, text: string, showAlert: boolean 
 }
 
 /**
- * Send message to chat helper
+ * Send message to any chat
  */
-async function sendMessage(chatId: number | string, text: string, parseMode: string = 'HTML') {
-  if (!BOT_TOKEN || !chatId) return;
+async function sendTelegramMessage(chatId: number | string, text: string, parseMode: string = 'HTML') {
+  if (!BOT_TOKEN || !chatId) return false;
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -91,9 +91,24 @@ async function sendMessage(chatId: number | string, text: string, parseMode: str
         parse_mode: parseMode,
       }),
     });
+    const data = await resp.json();
+    return Boolean(data.ok);
   } catch (err) {
-    console.error('sendMessage error:', err);
+    console.error('sendTelegramMessage error:', err);
+    return false;
   }
+}
+
+/**
+ * Extracts clean numeric Telegram chat ID from user ID
+ */
+function extractTelegramChatId(userId: string): string | null {
+  if (!userId) return null;
+  const clean = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+  if (/^\d+$/.test(clean)) {
+    return clean;
+  }
+  return null;
 }
 
 export default async function handler(req: any, res: any) {
@@ -166,13 +181,14 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true, results });
     }
 
-    // 2. Handle Telegram Webhook Callback Queries (Admin moderation buttons)
+    // 2. Handle Telegram Webhook Callback Queries (Admin Moderation Flow)
     if (update.callback_query) {
       const cq = update.callback_query;
       const data = String(cq.data || '');
       const queryId = cq.id;
       const fromId = cq.from?.id ? String(cq.from.id) : '';
       const chatId = cq.message?.chat?.id;
+      const messageId = cq.message?.message_id;
 
       // SECURITY: Faqat ADMIN_TELEGRAM_ID dan kelgan so'rov qabul qilinsin!
       const isAuthorizedAdmin =
@@ -185,13 +201,45 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({ ok: true });
       }
 
-      // Action 1: [⚠️ Balansni 0 qilish] -> callback_data: reset_balance:{user_id}
-      if (data.startsWith('reset_balance:')) {
-        const targetUserId = data.replace('reset_balance:', '').trim();
+      // ---------------------------------------------------------------------
+      // 2.1 [✅ Hammasi to'g'ri] -> callback_data: noop_archive
+      // ---------------------------------------------------------------------
+      if (data === 'noop_archive') {
+        // Faqat adminga tasdiq beradi, talabaga xabar bormaydi
+        await answerCallback(queryId, "✅ Tasdiqlandi (Arxivlandi)", false);
+
+        if (chatId && messageId && BOT_TOKEN) {
+          // Remove buttons or update caption
+          try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '✅ Tasdiqlangan (Arxivda)', callback_data: 'noop_done' }],
+                  ],
+                },
+              }),
+            });
+          } catch {}
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      // ---------------------------------------------------------------------
+      // 2.2 [⚠️️ Ogohlantirish + Balansni 0] -> callback_data: warn_reset:{user_id}:{payment_id}
+      // ---------------------------------------------------------------------
+      if (data.startsWith('warn_reset:') || data.startsWith('reset_balance:')) {
+        const parts = data.split(':');
+        const targetUserId = parts[1]?.trim() || '';
+        const paymentId = parts[2]?.trim() || '';
 
         if (targetUserId) {
           try {
-            // Supabase'da users.balance = 0 va wallet_balance = 0 qilinsin
+            // 1. users.balance = 0 bo'lsin
             await supabase
               .from('users')
               .update({
@@ -208,30 +256,54 @@ export default async function handler(req: any, res: any) {
                 .eq('id', targetUserId);
             } catch {}
 
-            // Adminga javob qaytarish
-            await answerCallback(queryId, "✅ Balans 0 ga tushirildi", true);
+            if (paymentId) {
+              await supabase
+                .from('payments')
+                .update({
+                  status: 'warn_reset',
+                  notes: `Admin ogohlantirdi va balansni 0 qildi (${new Date().toISOString()})`,
+                })
+                .eq('id', paymentId);
+            }
+
+            // 2. Bot orqali ushbu foydalanuvchiga Telegram xabari yuborilsin
+            const userChatId = extractTelegramChatId(targetUserId);
+            if (userChatId) {
+              const warningText =
+                "⚠️ <b>DIQQAT:</b> Siz yuborgan to'lov kvitansiyasida soxtalik yoki qoidabuzarlik aniqlandi. " +
+                "Balansingiz 0 ga tushirildi. Qoidabuzarlik takrorlansa, hisobingiz butunlay bloklanadi!";
+              await sendTelegramMessage(userChatId, warningText);
+            }
+
+            // 3. Adminga xabar qaytsin
+            await answerCallback(
+              queryId,
+              "⚠️ Foydalanuvchiga ogohlantirish yuborildi va balansi 0 qilindi",
+              true
+            );
 
             if (chatId) {
-              await sendMessage(
+              await sendTelegramMessage(
                 chatId,
-                `⚠️ <b>Harakat bajarildi:</b>\nFoydalanuvchi <code>${targetUserId}</code> balansi <b>0 so'm</b>ga tushirildi!`
+                `⚠️ <b>OGOHLANTIRISH BAJARILDI:</b>\nTalaba <code>${targetUserId}</code> balansi <b>0 so'm</b>ga tushirildi va bot orqali qat'iy ogohlantirish yuborildi.`
               );
             }
           } catch (dbErr) {
-            console.error('Error resetting balance:', dbErr);
+            console.error('Error in warn_reset:', dbErr);
             await answerCallback(queryId, "Xatolik yuz berdi", true);
           }
         }
         return res.status(200).json({ ok: true });
       }
 
-      // Action 2: [🚫 Foydalanuvchini bloklash] -> callback_data: ban_user:{user_id}
+      // ---------------------------------------------------------------------
+      // 2.3 [🚫 Bloklash] -> callback_data: ban_user:{user_id}
+      // ---------------------------------------------------------------------
       if (data.startsWith('ban_user:')) {
         const targetUserId = data.replace('ban_user:', '').trim();
 
         if (targetUserId) {
           try {
-            // Supabase'da users.is_blocked = true qilinsin
             await supabase
               .from('users')
               .update({
@@ -247,13 +319,12 @@ export default async function handler(req: any, res: any) {
                 .eq('id', targetUserId);
             } catch {}
 
-            // Adminga "🚫 Foydalanuvchi ilovadan bloklandi" deb javob qaytarish
             await answerCallback(queryId, "🚫 Foydalanuvchi ilovadan bloklandi", true);
 
             if (chatId) {
-              await sendMessage(
+              await sendTelegramMessage(
                 chatId,
-                `🚫 <b>Harakat bajarildi:</b>\nFoydalanuvchi <code>${targetUserId}</code> ilovadan to'liq bloklandi!`
+                `🚫 <b>BLOKLANDI:</b>\nFoydalanuvchi <code>${targetUserId}</code> ilovadan butunlay bloklandi.`
               );
             }
           } catch (dbErr) {
@@ -264,7 +335,138 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({ ok: true });
       }
 
-      // Action 3: Legacy Pending Payment Approve / Reject
+      // ---------------------------------------------------------------------
+      // 2.4 [✅ Tasdiqlash (Balansga qo'shish)] -> callback_data: manual_approve:{user_id}:{payment_id}
+      // ---------------------------------------------------------------------
+      if (data.startsWith('manual_approve:')) {
+        const parts = data.split(':');
+        const targetUserId = parts[1]?.trim() || '';
+        const paymentId = parts[2]?.trim() || '';
+
+        if (targetUserId) {
+          try {
+            let amount = 20000;
+
+            if (paymentId) {
+              const { data: payRow } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('id', paymentId)
+                .maybeSingle();
+
+              if (payRow?.amount) {
+                amount = Number(payRow.amount);
+              }
+
+              // Update payment status
+              await supabase
+                .from('payments')
+                .update({
+                  status: 'manual_approved',
+                  verified_by: 'admin',
+                  notes: `Admin (${fromId}) tomonidan tasdiqlandi: ${new Date().toISOString()}`,
+                })
+                .eq('id', paymentId);
+            }
+
+            // Chekdagi summa users.balance ga qo'shilsin
+            let currentBal = 0;
+            const { data: userRow } = await supabase
+              .from('users')
+              .select('balance, wallet_balance')
+              .eq('id', targetUserId)
+              .maybeSingle();
+
+            if (userRow) {
+              currentBal = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+            }
+            const newBal = currentBal + amount;
+
+            await supabase.from('users').upsert({
+              id: targetUserId,
+              balance: newBal,
+              wallet_balance: newBal,
+              updated_at: new Date().toISOString(),
+            });
+
+            // Talabaga xabar yuborilsin
+            const userChatId = extractTelegramChatId(targetUserId);
+            if (userChatId) {
+              await sendTelegramMessage(
+                userChatId,
+                "✅ <b>Kvitansiyangiz administrator tomonidan tasdiqlandi va hisobingiz to'ldirildi!</b>"
+              );
+            }
+
+            await answerCallback(
+              queryId,
+              `✅ To'lov tasdiqlandi (+${amount.toLocaleString('uz-UZ')} so'm)!`,
+              true
+            );
+
+            if (chatId) {
+              await sendTelegramMessage(
+                chatId,
+                `✅ <b>TASDIQLANDI:</b>\nTalaba <code>${targetUserId}</code> hisobiga <b>+${amount.toLocaleString(
+                  'uz-UZ'
+                )} so'm</b> qo'shildi va talabaga tasdiq xabari yuborildi.`
+              );
+            }
+          } catch (dbErr) {
+            console.error('Error in manual_approve:', dbErr);
+            await answerCallback(queryId, "Xatolik yuz berdi", true);
+          }
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      // ---------------------------------------------------------------------
+      // 2.5 [❌ Soxta / Rad etish] -> callback_data: manual_reject:{user_id}:{payment_id}
+      // ---------------------------------------------------------------------
+      if (data.startsWith('manual_reject:')) {
+        const parts = data.split(':');
+        const targetUserId = parts[1]?.trim() || '';
+        const paymentId = parts[2]?.trim() || '';
+
+        if (targetUserId) {
+          try {
+            if (paymentId) {
+              await supabase
+                .from('payments')
+                .update({
+                  status: 'manual_rejected',
+                  verified_by: 'admin',
+                  notes: `Admin (${fromId}) tomonidan rad etildi: ${new Date().toISOString()}`,
+                })
+                .eq('id', paymentId);
+            }
+
+            // Talabaga xabar yuborilsin
+            const userChatId = extractTelegramChatId(targetUserId);
+            if (userChatId) {
+              await sendTelegramMessage(
+                userChatId,
+                "❌ <b>Siz yuborgan to'lov kvitansiyasi tasdiqlanmadi. Iltimos, haqiqiy to'lov chekini yuklang.</b>"
+              );
+            }
+
+            await answerCallback(queryId, "❌ Kvitansiya rad etildi!", true);
+
+            if (chatId) {
+              await sendTelegramMessage(
+                chatId,
+                `❌ <b>RAD ETILDI:</b>\nTalaba <code>${targetUserId}</code> kvitansiyasi rad etildi va ogohlantirish yuborildi.`
+              );
+            }
+          } catch (dbErr) {
+            console.error('Error in manual_reject:', dbErr);
+            await answerCallback(queryId, "Xatolik yuz berdi", true);
+          }
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      // 2.6 Legacy approve / reject fallback support
       if (data.startsWith('approve_pay_') || data.startsWith('reject_pay_')) {
         const isApprove = data.startsWith('approve_pay_');
         const paymentId = data.replace(isApprove ? 'approve_pay_' : 'reject_pay_', '');
@@ -308,10 +510,10 @@ export default async function handler(req: any, res: any) {
 
             await answerCallback(
               queryId,
-              isApprove ? "✅ To'lov muvaffaqiyatli tasdiqlandi!" : "❌ To'lov rad etildi!"
+              isApprove ? "✅ To'lov tasdiqlandi!" : "❌ To'lov rad etildi!"
             );
           } catch (dbErr) {
-            console.error('Error approving payment:', dbErr);
+            console.error('Error in legacy approve:', dbErr);
           }
         }
         return res.status(200).json({ ok: true });

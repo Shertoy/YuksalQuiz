@@ -20,77 +20,34 @@ const SUPABASE_KEY =
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 interface GeminiReceiptAnalysis {
-  is_receipt: boolean;
-  is_successful: boolean;
+  is_valid: boolean;
+  detected_bank: 'Click' | 'Payme' | 'Uzum' | 'Boshqa bank' | string;
   amount: number | null;
   transaction_id: string | null;
   recipient_card: string | null;
   recipient_name: string | null;
-  transaction_time: string | null;
-  payment_system: string;
-  confidence: 'high' | 'medium' | 'low';
-  rejection_reason: string | null;
+  ai_reason: string;
 }
 
 /**
- * Robust date parser supporting ISO, DD.MM.YYYY, YYYY-MM-DD and Uzbek/Russian timestamps
- */
-function parseReceiptDate(dateStr: string | null): Date | null {
-  if (!dateStr || typeof dateStr !== 'string') return null;
-
-  const trimmed = dateStr.trim();
-  const direct = new Date(trimmed);
-  if (!isNaN(direct.getTime()) && trimmed.includes('-')) {
-    return direct;
-  }
-
-  const dmyMatch = trimmed.match(
-    /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/
-  );
-  if (dmyMatch) {
-    const day = parseInt(dmyMatch[1], 10);
-    const month = parseInt(dmyMatch[2], 10) - 1;
-    const year = parseInt(dmyMatch[3], 10);
-    const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 12;
-    const min = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
-    const sec = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
-
-    const dt = new Date(Date.UTC(year, month, day, hour - 5, min, sec));
-    if (!isNaN(dt.getTime())) {
-      return dt;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Send photo to Telegram Admin using sendPhoto (with multipart or public URL)
- * Fallback to sendMessage if photo upload fails.
+ * Send photo (or fallback message) with action buttons to Telegram Admin
  */
 async function sendPhotoToAdmin({
   receiptImageUrl,
   base64Data,
   detectedMime,
   caption,
-  userId,
+  inlineKeyboard,
 }: {
   receiptImageUrl?: string | null;
   base64Data?: string | null;
   detectedMime?: string;
   caption: string;
-  userId: string;
+  inlineKeyboard: any[][];
 }) {
   if (!BOT_TOKEN) return;
 
   const adminChatId = ADMIN_TELEGRAM_ID;
-  const inline_keyboard = [
-    [
-      { text: '⚠️ Balansni 0 qilish', callback_data: `reset_balance:${userId}` },
-      { text: '🚫 Foydalanuvchini bloklash', callback_data: `ban_user:${userId}` },
-    ],
-  ];
-
   let sent = false;
 
   // 1. Try sendPhoto via public URL if available
@@ -104,7 +61,7 @@ async function sendPhotoToAdmin({
           photo: receiptImageUrl,
           caption,
           parse_mode: 'HTML',
-          reply_markup: { inline_keyboard },
+          reply_markup: { inline_keyboard: inlineKeyboard },
         }),
       });
       const data = await resp.json();
@@ -148,7 +105,7 @@ async function sendPhotoToAdmin({
       parts.push(
         Buffer.from(
           `--${boundary}${crlf}Content-Disposition: form-data; name="reply_markup"${crlf}${crlf}${JSON.stringify({
-            inline_keyboard,
+            inline_keyboard: inlineKeyboard,
           })}${crlf}`
         )
       );
@@ -193,13 +150,72 @@ async function sendPhotoToAdmin({
           chat_id: adminChatId,
           text: caption,
           parse_mode: 'HTML',
-          reply_markup: { inline_keyboard },
+          reply_markup: { inline_keyboard: inlineKeyboard },
         }),
       });
     } catch (err) {
       console.error('sendMessage fallback exception:', err);
     }
   }
+}
+
+/**
+ * Safely insert payment record into Supabase payments table
+ */
+async function insertPaymentRecord(data: {
+  user_id: string;
+  amount: number;
+  transaction_id: string;
+  receipt_image_url: string | null;
+  sender_card?: string | null;
+  status: string;
+  verified_by?: string | null;
+  notes?: string | null;
+}): Promise<string> {
+  // First attempt with exact status ('auto_approved' / 'pending_manual')
+  const { data: row, error } = await supabase
+    .from('payments')
+    .insert({
+      user_id: data.user_id,
+      amount: data.amount,
+      transaction_id: data.transaction_id,
+      receipt_image_url: data.receipt_image_url,
+      sender_card: data.sender_card || null,
+      status: data.status,
+      verified_by: data.verified_by || null,
+      notes: data.notes || null,
+      created_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (row?.id) return row.id;
+
+  // Fallback to standard status if database has legacy check constraint
+  if (error) {
+    console.warn('Payment insert with exact status failed, falling back:', error.message);
+    const standardStatus = data.status.includes('approved') ? 'approved' : 'pending';
+
+    const { data: fallbackRow } = await supabase
+      .from('payments')
+      .insert({
+        user_id: data.user_id,
+        amount: data.amount,
+        transaction_id: data.transaction_id,
+        receipt_image_url: data.receipt_image_url,
+        sender_card: data.sender_card || null,
+        status: standardStatus,
+        verified_by: data.verified_by || null,
+        notes: `[${data.status}] ${data.notes || ''}`.trim(),
+        created_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    return fallbackRow?.id || '';
+  }
+
+  return '';
 }
 
 export default async function handler(req: any, res: any) {
@@ -280,36 +296,47 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  const GEMINI_API_KEY =
-    process.env.GEMINI_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY ||
-    '';
+  const cleanUsername = (userUsername || '').replace(/^@/, '').trim() || 'mavjud_emas';
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 
   let aiData: GeminiReceiptAnalysis | null = null;
   let aiError: string | null = null;
 
-  // 2. Call Google Gemini 1.5 Flash Vision Model
+  // 2. Call Google Gemini Vision Model (Multi-bank Check: Click, Payme, Uzum, etc.)
   if (GEMINI_API_KEY) {
     try {
       const promptText = `
-Siz O'zbekistondagi to'lov tizimlari (Click, Click Up, Payme, Uzum Bank, Apelsin, Zoomrad, Anorbank, Milliy bank, Ipak Yo'li, TBC Bank va boshqa bank ilovalari) orqali amalga oshirilgan to'lov cheklari/kvitansiyalarini sinchkovlik bilan tekshiruvchi professional AI inspektorsiz.
-Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
+Siz O'zbekiston bank va to'lov tizimlari (Click, Click Up, Payme, Uzum Bank, Apelsin/Uzum, Zoomrad, Anorbank, Milliy bank, Ipak Yo'li, TBC Bank va boshqa banklar) orqali yuborilgan to'lov kvitansiyalarini sinchkovlik bilan tekshiruvchi professional AI inspektorsiz.
 
+QIDIRILAYOTGAN RASMIY REKVIZITLAR (Qabul qiluvchi):
+- Karta egasi: "Alijonova Xalimaxon" yoki "ALIJONOVA X." yoki "Xalimaxon" / "Halimaxon"
+- Karta raqami: "9860080382320093" yoki oxirgi 4 raqami "0093"
+
+QAT'IY BAHOLASH MEZONLARI:
+A) is_valid = true (Muvaffaqiyatli):
+   - Rasm haqiqiy to'lov cheki va to'lov muvaffaqiyatli yakunlangan (Bajarildi, O'tkazildi, Успешно, Оплачено).
+   - To'langan aniq summa ko'ringan (musbat butun son, masalan: 20000, 35000, 40000, 50000).
+   - Unikal tranzaksiya raqami / chek kodi / fiskal belgi aniq topilgan.
+   - Qabul qiluvchi karta yoki ism rasmiy rekvizitlarga mos (Alijonova Xalimaxon yoki oxiri 0093).
+
+B) is_valid = false (Noaniq / Rad etish):
+   - Chek xira, kesilgan, noaniq, skrinshot xira yoki qisman olingan.
+   - Qabul qiluvchi ko'rinmagan yoki boshqa shaxs/boshqa karta.
+   - Summa yoki tranzaksiya ID si o'qib bo'lmaydi.
+   - To'lov bekor qilingan yoki rad etilgan.
+
+Faqat va faqat quyidagi toza JSON formatida javob bering:
 {
-  "is_receipt": boolean, // Bu to'lov cheki/kvitansiyasi yoki o'tkazma skrinshotimi
-  "is_successful": boolean, // To'lov muvaffaqiyatli yakunlanganmi (masalan: Muvaffaqiyatli, O'tkazildi, Bajarildi, Успешно, Оплачено, Исполнен)
-  "amount": number | null, // To'langan aniq summa faqat toza butun son ko'rinishida (masalan: 20000, 35000, 40000, 50000). So'm, UZS so'zlari yoki nuqtalarsiz
-  "transaction_id": string | null, // Chek kodi, fiskal belgi yoki tranzaksiya ID si (masalan: 12345678, CLK-123456, TX123456789). Faqat unikal ID. Topilmasa null
-  "recipient_card": string | null, // Pul o'tkazilgan qabul qiluvchi karta raqami yoki oxirgi 4 raqami (masalan: "9860080382320093", "82320093", "0093"). Topilmasa null
-  "recipient_name": string | null, // Qabul qiluvchi ismi/familiyasi ("Alijonova Xalimaxon" yoki shunga yaqin: "Alijonova X.", "Alijonova Halimaxon"). Topilmasa null
-  "transaction_time": string | null, // O'tkazma vaqti va sanasi (masalan: "2026-10-05 21:40:00" yoki "05.10.2026 21:40")
-  "payment_system": string, // "Click" | "Payme" | "Uzum" | "Bank" | "Unknown"
-  "confidence": "high" | "medium" | "low", // Tahlil ishonchliligi
-  "rejection_reason": string | null // Agar soxta, bekor qilingan, summa yo'q yoki noaniq bo'lsa sababi
+  "is_valid": boolean,
+  "detected_bank": "Click" | "Payme" | "Uzum" | "Boshqa bank",
+  "amount": number | null,
+  "transaction_id": string | null,
+  "recipient_card": string | null,
+  "recipient_name": string | null,
+  "ai_reason": string
 }
 `;
 
-      // Priority: Gemini 1.5 Flash (as requested), with fallback to 2.5 Flash
       const modelNames = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-latest'];
       for (const model of modelNames) {
         if (aiData) break;
@@ -350,7 +377,7 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             }
           } else {
             const errText = await geminiResp.text();
-            aiError = `Gemini (${model}) xatosi: ${errText.substring(0, 120)}`;
+            aiError = `Gemini (${model}) javobi: ${errText.substring(0, 100)}`;
           }
         } catch (fetchErr: any) {
           aiError = fetchErr?.message || 'Gemini aloqa xatosi';
@@ -358,220 +385,18 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
       }
     } catch (err: any) {
       aiError = err?.message || 'Gemini tahlilida kutilmagan xatolik';
-      console.warn('Gemini call exception:', err);
     }
   } else {
     aiError = 'Serverda GEMINI_API_KEY o\'rnatilmagan';
   }
 
-  // =========================================================================
-  // 3. STRICT ANTI-CHEAT & REQUISITES VALIDATIONS
-  // =========================================================================
-  const cleanUsername = (userUsername || '').replace(/^@/, '').trim() || 'mavjud_emas';
-  const displayCreatedAt = new Date().toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
-
-  if (aiData) {
-    // 1. To'lov cheki emasligi yoki muvaffaqiyatsiz bo'lsa -> Rad etish
-    if (aiData.is_successful === false || aiData.is_receipt === false) {
-      const rejectReason =
-        aiData.rejection_reason ||
-        "Taqdim etilgan rasm to'lov cheki emas yoki to'lov muvaffaqiyatli yakunlanmagan.";
-
-      try {
-        await supabase.from('payments').insert({
-          user_id: userId,
-          amount: aiData.amount || expectedAmount || 0,
-          receipt_image_url: receiptImageUrl,
-          status: 'rejected',
-          notes: rejectReason,
-          created_at: new Date().toISOString(),
-        });
-      } catch {}
-
-      return res.status(200).json({
-        ok: false,
-        status: 'rejected',
-        reason: rejectReason,
-        message: `To'lov rad etildi: ${rejectReason}`,
-      });
-    }
-
-    // 2. Karta egasi (Alijonova Xalimaxon) va Karta raqami tekshiruvi
-    const cardDigits = String(aiData.recipient_card || '').replace(/\D/g, '');
-    const cardMatches =
-      cardDigits.endsWith(OFFICIAL_CARD_SUFFIX) ||
-      cardDigits === OFFICIAL_CARD_NUMBER ||
-      (OFFICIAL_CARD_NUMBER.length >= 8 && cardDigits.includes(OFFICIAL_CARD_NUMBER.slice(-8)));
-
-    const normName = String(aiData.recipient_name || '').toLowerCase();
-    const nameMatches =
-      normName.includes('alijonov') ||
-      normName.includes('xalima') ||
-      normName.includes('halima');
-
-    if (!cardMatches && !nameMatches && (cardDigits.length >= 4 || normName.length >= 3)) {
-      const wrongRequisitesReason = `Qabul qiluvchi karta yoki ism rasmiy rekvizitlarga (9860 **** **** ${OFFICIAL_CARD_SUFFIX}, ${OFFICIAL_CARD_HOLDER}) to'g'ri kelmadi.`;
-
-      try {
-        await supabase.from('payments').insert({
-          user_id: userId,
-          amount: aiData.amount || expectedAmount || 0,
-          status: 'rejected',
-          notes: wrongRequisitesReason,
-          created_at: new Date().toISOString(),
-        });
-      } catch {}
-
-      return res.status(200).json({
-        ok: false,
-        status: 'rejected',
-        reason: wrongRequisitesReason,
-        message: "Kvitansiyadagi rekvizitlar (karta yoki ism) bizning rasmiy rekvizitlarimizga mos emas!",
-      });
-    }
-
-    // 3. Unikal tranzaksiya raqami tekshiruvi (Anti-tamper / Anti-replay)
-    if (aiData.transaction_id) {
-      const cleanTxId = String(aiData.transaction_id).trim();
-      try {
-        const { data: existingTx } = await supabase
-          .from('payments')
-          .select('id, user_id, status, created_at')
-          .eq('transaction_id', cleanTxId)
-          .maybeSingle();
-
-        if (existingTx) {
-          const duplicateReason = `Bu chek allaqachon ishlatilgan (Tranzaksiya ID: ${cleanTxId}). Bir xil chekdan qayta foydalanish taqiqlanadi!`;
-
-          return res.status(200).json({
-            ok: false,
-            status: 'rejected',
-            reason: duplicateReason,
-            message: "Bu chek allaqachon ishlatilgan!",
-          });
-        }
-      } catch (dbErr) {
-        console.warn('DB check transaction_id error:', dbErr);
-      }
-    }
-
-    // =========================================================================
-    // 4. AVTOMATIK TASDIQLASH (AI TASDIQLADI)
-    // =========================================================================
-    const paidAmount = Number(aiData.amount);
-    const hasValidAmount = Boolean(paidAmount && paidAmount > 0);
-    const txId =
-      aiData.transaction_id ||
-      `TX_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-    if (hasValidAmount && aiData.is_successful) {
-      // 1. Supabase `users` jadvalida foydalanuvchini yangilash
-      try {
-        await supabase.from('users').upsert(
-          {
-            id: userId,
-            first_name: (userName || '').split(' ')[0] || 'Talaba',
-            last_name: (userName || '').split(' ').slice(1).join(' ') || '',
-            name: (userName || 'Talaba').trim(),
-            university: university || 'Kiritilmagan',
-            telegram_username: cleanUsername,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' }
-        );
-      } catch (err) {
-        console.warn('User upsert error:', err);
-      }
-
-      // 2. `payments` jadvaliga yozish
-      try {
-        await supabase.from('payments').insert({
-          user_id: userId,
-          amount: paidAmount,
-          transaction_id: txId,
-          receipt_image_url: receiptImageUrl,
-          sender_card: aiData.recipient_card || null,
-          status: 'approved',
-          verified_by: 'ai',
-          created_at: new Date().toISOString(),
-          notes: `Gemini AI tasdiqladi (${aiData.payment_system}).`,
-        });
-      } catch (err) {
-        console.warn('Payment insert error:', err);
-      }
-
-      // 3. `users.balance` ga summani qo'shish (balance = balance + amount)
-      let currentBalance = 0;
-      try {
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('balance, wallet_balance')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (userRow) {
-          currentBalance = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
-        }
-      } catch {}
-
-      const newBalance = currentBalance + paidAmount;
-
-      try {
-        await supabase.from('users').upsert(
-          {
-            id: userId,
-            balance: newBalance,
-            wallet_balance: newBalance,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' }
-        );
-      } catch (err) {
-        console.warn('Balance update error:', err);
-      }
-
-      // 4. Admin Telegramiga (ADMIN_TELEGRAM_ID) chek rasmi bilan xabar yuborish (sendPhoto)
-      const captionText =
-        `🔔 <b>Yangi to'lov qabul qilindi (AI tasdiqladi)</b>\n\n` +
-        `👤 <b>Talaba:</b> ${userName} (@${cleanUsername})\n` +
-        `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
-        `🏫 <b>OTM:</b> ${university}\n` +
-        `💰 <b>Summa:</b> ${paidAmount.toLocaleString('uz-UZ')} so'm\n` +
-        `🧾 <b>Tranzaksiya ID:</b> <code>${txId}</code>\n` +
-        `⏰ <b>Sana:</b> ${displayCreatedAt}`;
-
-      await sendPhotoToAdmin({
-        receiptImageUrl,
-        base64Data,
-        detectedMime,
-        caption: captionText,
-        userId,
-      });
-
-      return res.status(200).json({
-        ok: true,
-        status: 'approved',
-        transactionId: txId,
-        amount: paidAmount,
-        newBalance,
-        paymentSystem: aiData.payment_system,
-        message: `Kvitansiya muvaffaqiyatli tasdiqlandi! Hisobingizga +${paidAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
-      });
-    }
-  }
-
-  // =========================================================================
-  // 5. FALLBACK: QO'LDA KO'RIB CHIQISH (PENDING REVIEW)
-  // =========================================================================
-  const fallbackTxId =
-    aiData?.transaction_id ||
-    `PENDING_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const finalAmount = aiData?.amount || expectedAmount || 20000;
-
+  // Ensure user exists in users table
   try {
     await supabase.from('users').upsert(
       {
         id: userId,
+        first_name: (userName || '').split(' ')[0] || 'Talaba',
+        last_name: (userName || '').split(' ').slice(1).join(' ') || '',
         name: (userName || 'Talaba').trim(),
         university: university || 'Kiritilmagan',
         telegram_username: cleanUsername,
@@ -579,45 +404,197 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
       },
       { onConflict: 'id' }
     );
-  } catch {}
+  } catch (err) {
+    console.warn('User upsert error:', err);
+  }
 
-  try {
-    await supabase.from('payments').insert({
+  // =========================================================================
+  // MANTIQIY JARAYONLAR (FLOWS):
+  // =========================================================================
+
+  // Check requisites match strictly
+  const cardDigits = String(aiData?.recipient_card || '').replace(/\D/g, '');
+  const cardMatches =
+    cardDigits.endsWith(OFFICIAL_CARD_SUFFIX) ||
+    cardDigits === OFFICIAL_CARD_NUMBER ||
+    (OFFICIAL_CARD_NUMBER.length >= 8 && cardDigits.includes(OFFICIAL_CARD_NUMBER.slice(-8)));
+
+  const normName = String(aiData?.recipient_name || '').toLowerCase();
+  const nameMatches =
+    normName.includes('alijonov') ||
+    normName.includes('xalima') ||
+    normName.includes('halima');
+
+  const hasValidAmount = Boolean(aiData?.amount && Number(aiData.amount) > 0);
+  const isValidOutcome = Boolean(
+    aiData?.is_valid &&
+    hasValidAmount &&
+    (cardMatches || nameMatches || !aiData?.recipient_card)
+  );
+
+  // -------------------------------------------------------------------------
+  // A HOLAT: AGAR AI TASDIQLASA (A) Muvaffaqiyatli (is_valid = true)
+  // -------------------------------------------------------------------------
+  if (aiData && isValidOutcome) {
+    const paidAmount = Number(aiData.amount);
+    const txId =
+      aiData.transaction_id ||
+      `TX_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const detectedBank = aiData.detected_bank || 'Click/Payme';
+
+    // 1. Anti-replay duplicate check
+    if (aiData.transaction_id) {
+      try {
+        const { data: existingTx } = await supabase
+          .from('payments')
+          .select('id, user_id, status')
+          .eq('transaction_id', String(aiData.transaction_id).trim())
+          .maybeSingle();
+
+        if (existingTx) {
+          const duplicateReason = `Ushbu chek allaqachon ishlatilgan (Tranzaksiya ID: ${aiData.transaction_id}).`;
+          return res.status(200).json({
+            ok: false,
+            status: 'rejected',
+            reason: duplicateReason,
+            message: "Bu to'lov cheki allaqachon tizimda ro'yxatdan o'tgan!",
+          });
+        }
+      } catch (e) {}
+    }
+
+    // 2. Pul darhol users.balance ga qo'shilsin
+    let currentBalance = 0;
+    try {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('balance, wallet_balance')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (userRow) {
+        currentBalance = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+      }
+    } catch {}
+
+    const newBalance = currentBalance + paidAmount;
+
+    try {
+      await supabase.from('users').upsert(
+        {
+          id: userId,
+          balance: newBalance,
+          wallet_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    } catch (err) {
+      console.warn('Balance update error:', err);
+    }
+
+    // 3. payments jadvaliga status: 'auto_approved' deb yozilsin
+    const paymentId = await insertPaymentRecord({
       user_id: userId,
-      amount: finalAmount,
-      transaction_id: fallbackTxId,
+      amount: paidAmount,
+      transaction_id: txId,
       receipt_image_url: receiptImageUrl,
-      sender_card: aiData?.recipient_card || null,
-      status: 'pending',
-      verified_by: null,
-      created_at: new Date().toISOString(),
-      notes: aiError || 'Rasm xiraligi sababli tekshirishga yuborildi',
+      sender_card: aiData.recipient_card || null,
+      status: 'auto_approved',
+      verified_by: 'ai',
+      notes: `AI tasdiqladi: ${detectedBank} (${aiData.ai_reason || "To'g'ri"})`,
     });
-  } catch {}
 
-  const pendingCaptionText =
-    `⏳ <b>Yangi to'lov (Ko'rib chiqish kutilmoqda)</b>\n\n` +
+    // 4. Adminga (ADMIN_TELEGRAM_ID) chek rasmi yuborilsin
+    const captionText =
+      `✅ <b>To'lov AI tomonidan tasdiqlandi</b>\n\n` +
+      `👤 <b>Talaba:</b> ${userName} (@${cleanUsername})\n` +
+      `🆔 <b>ID:</b> <code>${userId}</code>\n` +
+      `💰 <b>Summa:</b> ${paidAmount.toLocaleString('uz-UZ')} so'm\n` +
+      `🧾 <b>Tranzaksiya:</b> <code>${txId}</code>\n` +
+      `🏦 <b>Tizim:</b> ${detectedBank}`;
+
+    const inlineKeyboard = [
+      [{ text: "✅ Hammasi to'g'ri", callback_data: 'noop_archive' }],
+      [
+        { text: '⚠️ Ogohlantirish + Balansni 0', callback_data: `warn_reset:${userId}:${paymentId}` },
+        { text: '🚫 Bloklash', callback_data: `ban_user:${userId}` },
+      ],
+    ];
+
+    await sendPhotoToAdmin({
+      receiptImageUrl,
+      base64Data,
+      detectedMime,
+      caption: captionText,
+      inlineKeyboard,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      status: 'approved',
+      transactionId: txId,
+      amount: paidAmount,
+      newBalance,
+      paymentSystem: detectedBank,
+      message: `Kvitansiya muvaffaqiyatli tasdiqlandi! Hisobingizga +${paidAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // B HOLAT: AGAR AI O'QIY OLMASA (B) Noaniq (is_valid = false)
+  // -------------------------------------------------------------------------
+  const finalAmount = aiData?.amount || expectedAmount || 20000;
+  const fallbackTxId =
+    aiData?.transaction_id ||
+    `PENDING_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+  const aiReason =
+    aiData?.ai_reason ||
+    aiError ||
+    "Chek xira, qabul qiluvchi ko'rinmagan yoki boshqa kartaga yuborilgan";
+
+  // payments jadvaliga status: 'pending_manual' deb yoziladi
+  const paymentId = await insertPaymentRecord({
+    user_id: userId,
+    amount: finalAmount,
+    transaction_id: fallbackTxId,
+    receipt_image_url: receiptImageUrl,
+    sender_card: aiData?.recipient_card || null,
+    status: 'pending_manual',
+    verified_by: null,
+    notes: `AI o'qiy olmadi: ${aiReason}`,
+  });
+
+  // Adminga chek rasmi yuboriladi
+  const captionPending =
+    `⚠️ <b>AI chekni to'liq o'qiy olmadi (Qo'lda tekshirish kerak)</b>\n\n` +
     `👤 <b>Talaba:</b> ${userName} (@${cleanUsername})\n` +
-    `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
-    `🏫 <b>OTM:</b> ${university}\n` +
-    `💰 <b>Summa:</b> ${finalAmount.toLocaleString('uz-UZ')} so'm\n` +
-    `🧾 <b>Tranzaksiya ID:</b> <code>${fallbackTxId}</code>\n` +
-    `⏰ <b>Sana:</b> ${displayCreatedAt}\n\n` +
-    `ℹ️ <i>AI chekni to'liq o'qiy olmadi. Iltimos, tekshiring.</i>`;
+    `🆔 <b>ID:</b> <code>${userId}</code>\n` +
+    `❓ <b>AI xulosasi:</b> ${aiReason}`;
+
+  const inlineKeyboardPending = [
+    [
+      { text: "✅ Tasdiqlash (Balansga qo'shish)", callback_data: `manual_approve:${userId}:${paymentId}` },
+      { text: "❌ Soxta / Rad etish", callback_data: `manual_reject:${userId}:${paymentId}` },
+    ],
+  ];
 
   await sendPhotoToAdmin({
     receiptImageUrl,
     base64Data,
     detectedMime,
-    caption: pendingCaptionText,
-    userId,
+    caption: captionPending,
+    inlineKeyboard: inlineKeyboardPending,
   });
 
+  // Talabaning hisobiga pul tushmaydi, ilovada xabar ko'rsatiladi
   return res.status(200).json({
     ok: true,
     status: 'pending',
+    paymentId,
     transactionId: fallbackTxId,
     amount: finalAmount,
-    message: "Kvitansiya qabul qilindi va adminga yuborildi. Tez orada tekshirilib tasdiqlanadi.",
+    message: "Kvitansiya qabul qilindi. Administrator tekshiruvidan so'ng balansingizga qo'shiladi",
   });
 }
