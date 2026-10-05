@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, X, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Lock, X, KeyRound, ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
-import { resetAdminRateLimit, setAdminSessionAuthenticated } from '../utils/security';
+import {
+  checkAdminRateLimit,
+  recordAdminFailedAttempt,
+  resetAdminRateLimit,
+  setAdminSessionAuthenticated,
+} from '../utils/security';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -17,24 +22,55 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [login, setLogin] = useState('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [lockStatus, setLockStatus] = useState<{
+    isLocked: boolean;
+    remainingSeconds: number;
+    attemptsLeft: number;
+  }>({ isLocked: false, remainingSeconds: 0, attemptsLeft: 5 });
 
   useEffect(() => {
     if (isOpen) {
       setError('');
       setLogin('admin');
       setPassword('');
+      setLockStatus(checkAdminRateLimit());
     }
   }, [isOpen]);
+
+  // Live countdown timer if locked out
+  useEffect(() => {
+    if (!lockStatus.isLocked || lockStatus.remainingSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setLockStatus((prev) => {
+        if (prev.remainingSeconds <= 1) {
+          clearInterval(timer);
+          return { isLocked: false, remainingSeconds: 0, attemptsLeft: 5 };
+        }
+        return { ...prev, remainingSeconds: prev.remainingSeconds - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lockStatus.isLocked, lockStatus.remainingSeconds]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Hacker Brute-Force Check: agar bloklangan bo'lsa kirish to'xtatiladi
+    const currentRate = checkAdminRateLimit();
+    if (currentRate.isLocked) {
+      setLockStatus(currentRate);
+      setError(`Xavfsizlik tizimi: Noto'g'ri urinishlar tufayli kirish bloklangan! ${currentRate.remainingSeconds} soniyadan so'ng urinib ko'ring.`);
+      return;
+    }
+
     const cleanLogin = login.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    // Login: admin, Parol: yuksal2026 (yoki admin123)
+    // Ruxsat berilgan Login: admin (yoki admin IDlar), Parol: yuksal2026 (yoki admin123)
     const isLoginValid = cleanLogin === 'admin' || cleanLogin === '117932388' || cleanLogin === '6219808382';
     const isPassValid = cleanPass === 'yuksal2026' || cleanPass === 'admin123' || cleanPass === '117932388';
 
@@ -47,7 +83,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       onSuccess();
     } else {
       triggerHaptic('error');
-      setError("Login yoki parol noto'g'ri! (Login: admin, Parol: yuksal2026)");
+      const updatedRate = recordAdminFailedAttempt();
+      setLockStatus(updatedRate);
+
+      if (updatedRate.isLocked) {
+        setError(`Xavfsizlik: 5 marta noto'g'ri kiritildi! Hacker hujumidan himoya maqsadida kirish 15 daqiqaga bloklandi.`);
+      } else {
+        setError(`Login yoki parol noto'g'ri! Qolgan urinishlar: ${updatedRate.attemptsLeft} ta. (Login: admin, Parol: yuksal2026)`);
+      }
     }
   };
 
@@ -78,7 +121,20 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </button>
         </div>
 
-        {error && (
+        {/* Hacker Attack / Lockout Countdown Banner */}
+        {lockStatus.isLocked && (
+          <div className="p-3 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-xs font-semibold mb-3 text-center animate-pulse">
+            <div className="flex items-center justify-center gap-1.5 font-black">
+              <Clock className="w-4 h-4" strokeWidth={1.75} />
+              <span>Bloklangan: {Math.floor(lockStatus.remainingSeconds / 60)}m {lockStatus.remainingSeconds % 60}s</span>
+            </div>
+            <p className="text-[11px] mt-0.5 opacity-90">
+              Ketma-ket xato urinishlar aniqlandi. Tizim xavfsizlik himoyasida.
+            </p>
+          </div>
+        )}
+
+        {error && !lockStatus.isLocked && (
           <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-300 text-xs font-semibold mb-3 flex items-center gap-2 animate-in fade-in">
             <ShieldAlert className="w-4 h-4 shrink-0" strokeWidth={1.75} />
             <span>{error}</span>
@@ -93,13 +149,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <input
               type="text"
               required
+              disabled={lockStatus.isLocked}
               value={login}
               onChange={(e) => {
                 setLogin(e.target.value);
                 setError('');
               }}
               placeholder="Masalan: admin"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -110,14 +167,15 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <input
               type="password"
               required
-              autoFocus
+              disabled={lockStatus.isLocked}
+              autoFocus={!lockStatus.isLocked}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 setError('');
               }}
               placeholder="Masalan: yuksal2026"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 

@@ -296,6 +296,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     e.target.value = '';
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      loadUsers();
+      refreshAdminWhitelist();
+      fetchCloudAnnouncements().catch(() => {});
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const showNotification = (msg: string) => {
@@ -412,13 +420,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     setAuthorizedAdminIds(getAuthorizedAdminTelegramIds());
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      loadUsers();
-      refreshAdminWhitelist();
-      fetchCloudAnnouncements().catch(() => {});
-    }
-  }, [isOpen]);
 
   const handleSendNews = async (e: React.FormEvent) => {
     e.preventDefault();
