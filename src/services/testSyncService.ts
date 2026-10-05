@@ -256,17 +256,23 @@ export interface QuizQuestionInput {
 export async function saveQuizWithQuestions(params: {
   quizId: string;
   title: string;
-  category: string;
-  visibility: 'public' | 'unlisted';
+  category?: string;
+  visibility?: 'public' | 'unlisted';
+  is_public?: boolean;
   creatorId: string;
   creatorName?: string;
   questions: QuizQuestionInput[];
   university?: string;
+  faculty?: string;
   department?: string;
+  course_year?: number;
   semester?: number;
   academicYear?: string;
 }): Promise<{ success: boolean; quizId: string; message: string }> {
   const supabase = getSupabase();
+  const isPublicFlag = params.is_public !== undefined ? params.is_public : params.visibility !== 'unlisted';
+  const finalCategory = params.category || 'Oliy Ta\'lim (HEMIS)';
+  const finalVisibility = isPublicFlag ? 'public' : 'unlisted';
 
   // 1. Try writing to Supabase `quizzes` and `questions` tables
   if (supabase) {
@@ -275,10 +281,15 @@ export async function saveQuizWithQuestions(params: {
         {
           id: params.quizId,
           title: params.title,
-          category: params.category,
-          visibility: params.visibility,
+          university: params.university || null,
+          faculty: params.faculty || params.department || null,
+          course_year: params.course_year || (params.semester ? Math.ceil(params.semester / 2) : 1),
+          semester: params.semester || 1,
           creator_id: params.creatorId,
           creator_name: params.creatorName || 'Talaba',
+          is_public: isPublicFlag,
+          visibility: finalVisibility,
+          category: finalCategory,
           total_questions: params.questions.length,
           updated_at: new Date().toISOString(),
         },
@@ -332,10 +343,10 @@ export async function saveQuizWithQuestions(params: {
   const testPackage: TestPackage = {
     id: params.quizId,
     title: params.title,
-    category: (params.category as any) || 'Oliy Ta\'lim (HEMIS)',
+    category: finalCategory as any,
     university: params.university || 'Yuksal Quiz',
-    department: (params.department as any) || 'Axborot Texnologiyalari',
-    isPublic: params.visibility === 'public',
+    department: (params.faculty || params.department || 'Axborot Texnologiyalari') as any,
+    isPublic: isPublicFlag,
     totalQuestions: mappedQuestions.length,
     blocks,
     createdAt: new Date().toISOString().split('T')[0],
@@ -344,7 +355,7 @@ export async function saveQuizWithQuestions(params: {
     isCommunityCreated: true,
     authorWalletBalance: 0,
     semester: params.semester || 1,
-    academicYear: params.academicYear || '2025-2026',
+    academicYear: params.course_year ? `${params.course_year}-kurs` : params.academicYear || '2025-2026',
   };
 
   useQuizStore.getState().createTestPackage(testPackage);
@@ -353,7 +364,7 @@ export async function saveQuizWithQuestions(params: {
   return {
     success: true,
     quizId: params.quizId,
-    message: "Test muvaffaqiyatli saqlandi va yuklandi!",
+    message: "Test muvaffaqiyatli saqlandi va e'lon qilindi!",
   };
 }
 

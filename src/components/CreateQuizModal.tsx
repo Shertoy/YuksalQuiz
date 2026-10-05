@@ -1,15 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
+  TOP_UNIVERSITIES,
+  TestPackage,
   MAIN_CATEGORIES,
   MainCategory,
-  TestPackage,
 } from '../types';
 import {
   saveQuizWithQuestions,
   QuizQuestionInput,
 } from '../services/testSyncService';
+import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import {
   X,
   Sparkles,
@@ -17,19 +19,23 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Share2,
   Copy,
   Check,
   Plus,
   Trash2,
   Globe,
   Link as LinkIcon,
-  HelpCircle,
   FileCode,
-  Layers,
   ArrowLeft,
+  ArrowRight,
   Loader2,
   Send,
+  School,
+  GraduationCap,
+  Calendar,
+  Layers,
+  BookOpen,
+  Edit3,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
@@ -38,19 +44,19 @@ interface CreateQuizModalProps {
   editPackage?: TestPackage | null;
 }
 
-type StepType = 'input' | 'loading' | 'preview' | 'success';
-type InputSource = 'file' | 'text';
+type WizardStep = 1 | 2 | 3 | 4; // 1: Metadata, 2: Questions Input, 3: Preview, 4: Success Share
+type QuestionInputMethod = 'ai_file' | 'bulk_text' | 'manual';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editPackage }) => {
-  const { profile } = useQuizStore();
+  const { profile, addCustomUniversity, customUniversities, universities } = useQuizStore();
   const { t } = useTranslation();
 
-  // Initial State from editPackage if provided
   const isEditing = Boolean(editPackage);
 
-  const initialParsedQuestions: QuizQuestionInput[] = React.useMemo(() => {
+  // Initial questions from editPackage if present
+  const initialQuestions: QuizQuestionInput[] = useMemo(() => {
     if (editPackage?.blocks && editPackage.blocks.length > 0) {
       const flattened = editPackage.blocks.flatMap((b) => b.questions);
       if (flattened.length > 0) {
@@ -66,44 +72,108 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   }, [editPackage]);
 
   // Step state
-  const [step, setStep] = useState<StepType>(isEditing ? 'preview' : 'input');
-  const [inputSource, setInputSource] = useState<InputSource>('file');
+  const [currentStep, setCurrentStep] = useState<WizardStep>(isEditing ? 3 : 1);
+  const [inputMethod, setInputMethod] = useState<QuestionInputMethod>('ai_file');
 
-  // Form Fields
+  // --- 1-QADAM: TEST PASPORTI (METADATA) ---
   const [title, setTitle] = useState(editPackage?.title || '');
-  const [category, setCategory] = useState<MainCategory>(editPackage?.category || 'Oliy Ta\'lim (HEMIS)');
-  const [visibility, setVisibility] = useState<'public' | 'unlisted'>(
-    editPackage ? (editPackage.isPublic ? 'public' : 'unlisted') : 'public'
+  const [faculty, setFaculty] = useState((editPackage as any)?.faculty || editPackage?.department || '');
+
+  const allKnownUnis = [...(universities || []), ...TOP_UNIVERSITIES, ...(customUniversities || [])];
+  const initialIsCustomUni = Boolean(
+    editPackage && (editPackage.isCustomUniversity || (editPackage.university && !allKnownUnis.includes(editPackage.university)))
   );
 
-  // File Upload State
+  const [university, setUniversity] = useState(
+    editPackage && !initialIsCustomUni
+      ? editPackage.university
+      : profile.university || universities?.[0] || TOP_UNIVERSITIES[0]
+  );
+  const [isCustomUni, setIsCustomUni] = useState(initialIsCustomUni);
+  const [customUniName, setCustomUniName] = useState(initialIsCustomUni && editPackage ? editPackage.university : '');
+
+  // Kurs tanlash (1, 2, 3, 4-kurs)
+  const initialCourse = editPackage?.semester ? Math.ceil(editPackage.semester / 2) : 1;
+  const [courseYear, setCourseYear] = useState<number>(initialCourse >= 1 && initialCourse <= 4 ? initialCourse : 1);
+
+  // Semestr tanlash (1 dan 8 gacha)
+  const [semester, setSemester] = useState<number>(editPackage?.semester || 1);
+
+  // Ko'rinish darajasi (Ommaviy / Faqat havola)
+  const [isPublic, setIsPublic] = useState<boolean>(editPackage ? editPackage.isPublic : true);
+  const [category, setCategory] = useState<MainCategory>(editPackage?.category || 'Oliy Ta\'lim (HEMIS)');
+
+  // Step 1 Validation Errors
+  const [errors, setErrors] = useState<{
+    title?: boolean;
+    university?: boolean;
+    faculty?: boolean;
+    semester?: boolean;
+  }>({});
+
+  // --- 2-QADAM: SAVOLLARNI KIRITISH ---
+  // USUL A: AI Fayl yuklash
   const [file, setFile] = useState<File | null>(null);
   const [fileBase64, setFileBase64] = useState<string>('');
-  const [manualText, setManualText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiLoadingMsg, setAiLoadingMsg] = useState('Hujjat tahlilga tayyorlanmoqda...');
 
-  // Loading & Progress
-  const [loadingMsg, setLoadingMsg] = useState('Fayl tayyorlanmoqda...');
-  const [errorMessage, setErrorMessage] = useState('');
+  // USUL B: Ommaviy matn (Bulk Parser)
+  const [bulkText, setBulkText] = useState('');
+  const [bulkError, setBulkError] = useState('');
 
-  // Parsed Questions for Preview Screen
-  const [questions, setQuestions] = useState<QuizQuestionInput[]>(initialParsedQuestions);
+  // USUL C: Qo'lda bittalab kiritish (Manual)
+  const [manualQuestions, setManualQuestions] = useState<QuizQuestionInput[]>([
+    {
+      question: '',
+      options: ['', '', '', ''],
+      correct_answer: '',
+    },
+  ]);
 
-  // Created Quiz ID for Sharing
-  const [createdQuizId, setCreatedQuizId] = useState<string>(editPackage?.id || '');
-  const [isCopied, setIsCopied] = useState(false);
+  // --- 3-QADAM: PREVIEW VA TAHRIRLASH ---
+  const [questions, setQuestions] = useState<QuizQuestionInput[]>(initialQuestions);
+  const [globalError, setGlobalError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Validation errors
-  const [titleError, setTitleError] = useState(false);
+  // --- 4-QADAM: SUCCESS SHARE ---
+  const [createdQuizId, setCreatedQuizId] = useState<string>(editPackage?.id || '');
+  const [isCopied, setIsCopied] = useState(false);
 
-  // Handle file select
+  // ==========================================
+  // 1-QADAM VALIDATSIYASI VA KEYINGISIGA O'TISH
+  // ==========================================
+  const handleProceedToStep2 = () => {
+    const newErrors: typeof errors = {};
+    if (!title.trim()) newErrors.title = true;
+    if (isCustomUni && !customUniName.trim()) newErrors.university = true;
+    if (!faculty.trim()) newErrors.faculty = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      triggerHaptic('warning');
+      return;
+    }
+
+    setErrors({});
+    if (isCustomUni && customUniName.trim()) {
+      addCustomUniversity(customUniName.trim());
+    }
+
+    setCurrentStep(2);
+    triggerHaptic('light');
+  };
+
+  // ==========================================
+  // USUL A: FAYL YUKLASH VA GEMINI AI TAHLILI
+  // ==========================================
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
     if (selected.size > MAX_FILE_SIZE) {
-      setErrorMessage("Fayl hajmi 5 MB dan oshmasligi kerak (Maksimal ruxsat: 5 MB).");
+      setGlobalError("Fayl hajmi 5 MB dan oshmasligi kerak (Maksimal ruxsat: 5 MB).");
       triggerHaptic('error');
       return;
     }
@@ -111,116 +181,269 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     const validExtensions = ['.docx', '.pdf', '.txt'];
     const hasValidExt = validExtensions.some((ext) => selected.name.toLowerCase().endsWith(ext));
     if (!hasValidExt) {
-      setErrorMessage("Faqat .docx (Word), .pdf yoki .txt formatidagi fayllar qabul qilinadi.");
+      setGlobalError("Faqat .docx (Word), .pdf yoki .txt formatidagi fayllar qabul qilinadi.");
       triggerHaptic('error');
       return;
     }
 
-    setErrorMessage('');
+    setGlobalError('');
     setFile(selected);
     triggerHaptic('light');
 
-    // Auto-fill title from filename if empty
-    if (!title.trim()) {
-      const cleanName = selected.name.replace(/\.[^/.]+$/, '').replace(/[_\\-]/g, ' ');
-      setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
-    }
-
     const reader = new FileReader();
     reader.onload = () => {
-      const result = reader.result as string;
-      setFileBase64(result);
+      setFileBase64(reader.result as string);
     };
     reader.onerror = () => {
-      setErrorMessage("Faylni o'qishda xatolik yuz berdi.");
+      setGlobalError("Faylni o'qishda xatolik yuz berdi.");
     };
     reader.readAsDataURL(selected);
   };
 
-  const handleRemoveFile = () => {
-    setFile(null);
-    setFileBase64('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // Trigger Gemini AI parsing
-  const handleStartParsing = async () => {
-    if (!title.trim()) {
-      setTitleError(true);
+  const handleStartAiParsing = async () => {
+    if (!fileBase64) {
+      setGlobalError("Iltimos, avval Word (.docx), PDF yoki .txt fayl yuklang.");
       triggerHaptic('warning');
       return;
     }
 
-    if (inputSource === 'file' && !fileBase64) {
-      setErrorMessage("Iltimos, avval .docx, .pdf yoki .txt fayl yuklang.");
-      triggerHaptic('warning');
-      return;
-    }
-
-    if (inputSource === 'text' && !manualText.trim()) {
-      setErrorMessage("Iltimos, test matnini kiriting.");
-      triggerHaptic('warning');
-      return;
-    }
-
-    setErrorMessage('');
-    setStep('loading');
+    setGlobalError('');
+    setIsAiLoading(true);
     triggerHaptic('medium');
 
-    const loadingSteps = [
-      "Hujjat Gemini 1.5 Flash ga yuborilmoqda...",
-      "AI savol matnlari va variantlarni ajratib olmoqda...",
-      "To'g'ri javoblar tekshirilmoqda va belgilanmoqda...",
-      "Natijalar tahrirlash uchun tayyorlanmoqda...",
+    const steps = [
+      "Fayl Gemini 1.5 Flash ga yuborilmoqda...",
+      "AI savol matnlari va javob variantlarini ajratmoqda...",
+      "To'g'ri javoblar tekshirilmoqda...",
+      "Natijalar tayyorlanmoqda...",
     ];
 
     let stepIdx = 0;
     const interval = setInterval(() => {
-      stepIdx = (stepIdx + 1) % loadingSteps.length;
-      setLoadingMsg(loadingSteps[stepIdx]);
+      stepIdx = (stepIdx + 1) % steps.length;
+      setAiLoadingMsg(steps[stepIdx]);
     }, 2800);
 
     try {
-      const payload: any = {};
-      if (inputSource === 'file') {
-        payload.fileBase64 = fileBase64;
-        payload.fileName = file?.name || '';
-        payload.mimeType = file?.type || '';
-      } else {
-        payload.rawText = manualText.trim();
-      }
-
       const response = await fetch('/api/parse-quiz-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          fileBase64,
+          fileName: file?.name || '',
+          mimeType: file?.type || '',
+        }),
       });
 
       clearInterval(interval);
-
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Fayldan testlarni ajratishda xatolik yuz berdi.");
+        throw new Error(data.error || "Faylni tahlil qilishda xatolik yuz berdi.");
       }
 
       if (!Array.isArray(data.questions) || data.questions.length === 0) {
-        throw new Error("Hujjatdan savollar aniqlanmadi. Iltimos, boshqa fayl yoki matn bilan urinib ko'ring.");
+        throw new Error("Hujjatdan test savollari topilmadi. Fayl tarkibini tekshiring.");
       }
 
       setQuestions(data.questions);
-      setStep('preview');
+      setIsAiLoading(false);
+      setCurrentStep(3); // To Preview
       triggerHaptic('success');
     } catch (err: any) {
       clearInterval(interval);
-      console.error('Quiz parsing error:', err);
-      setErrorMessage(err?.message || "AI tahlilida kutilmagan xatolik yuz berdi.");
-      setStep('input');
+      setIsAiLoading(false);
+      console.error('AI parsing error:', err);
+      setGlobalError(err?.message || "AI tahlilida kutilmagan xatolik yuz berdi.");
       triggerHaptic('error');
     }
   };
 
-  // Preview modifications
+  // ==========================================
+  // USUL B: OMMchannel MATN PARSERI (==== VA ++++)
+  // ==========================================
+  const handleParseBulkText = () => {
+    const trimmed = bulkText.trim();
+    if (!trimmed) {
+      setBulkError("Iltimos, test matnini kiriting.");
+      triggerHaptic('warning');
+      return;
+    }
+
+    try {
+      const parsed: QuizQuestionInput[] = [];
+
+      // Format 1: ++++ question delimiter va ==== option delimiter
+      if (trimmed.includes('++++')) {
+        const rawBlocks = trimmed.split(/\+{4,}/).map((b) => b.trim()).filter(Boolean);
+
+        rawBlocks.forEach((blockStr) => {
+          const parts = blockStr.split(/={4,}/).map((p) => p.trim()).filter(Boolean);
+          if (parts.length >= 2) {
+            const qText = parts[0];
+            const rawOptions = parts.slice(1);
+            let correctAns = '';
+            const options: string[] = [];
+
+            rawOptions.forEach((opt) => {
+              let optText = opt;
+              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
+                optText = optText.replace(/^[#+*]+/, '').trim();
+                correctAns = optText;
+              } else if (optText.startsWith('=')) {
+                optText = optText.substring(1).trim();
+              }
+              options.push(optText);
+            });
+
+            while (options.length < 4) {
+              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
+            }
+
+            if (!correctAns) {
+              correctAns = options[0];
+            }
+
+            parsed.push({
+              question: qText,
+              options: options.slice(0, 4),
+              correct_answer: correctAns,
+            });
+          }
+        });
+      } else if (trimmed.includes('====')) {
+        // Format 2: ==== bilan ajratilgan savollar bloki
+        const rawBlocks = trimmed.split(/={4,}/).map((b) => b.trim()).filter(Boolean);
+        // Agar har bir blokda 1 savol va variantlar bo'lsa
+        rawBlocks.forEach((blockStr) => {
+          const lines = blockStr.split('\n').map((l) => l.trim()).filter(Boolean);
+          if (lines.length >= 2) {
+            const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
+            const rawOpts = lines.slice(1);
+            let correctAns = '';
+            const options: string[] = [];
+
+            rawOpts.forEach((opt) => {
+              let optText = opt;
+              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
+                optText = optText.replace(/^[#+*]+/, '').trim();
+                correctAns = optText;
+              } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
+                optText = optText.replace(/^[A-D][\.\)]\s*/i, '').trim();
+              }
+              options.push(optText);
+            });
+
+            while (options.length < 4) {
+              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
+            }
+
+            parsed.push({
+              question: qText,
+              options: options.slice(0, 4),
+              correct_answer: correctAns || options[0],
+            });
+          }
+        });
+      } else {
+        // Fallback: Standart bo'sh satrlar bilan ajratilgan testlar
+        const blocks = trimmed.split(/\n\s*\n/);
+        blocks.forEach((b) => {
+          const lines = b.split('\n').map((l) => l.trim()).filter(Boolean);
+          if (lines.length >= 2) {
+            const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
+            const rawOpts = lines.slice(1);
+            let correctAns = '';
+            const options: string[] = [];
+
+            rawOpts.forEach((opt) => {
+              let optText = opt;
+              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
+                optText = optText.replace(/^[#+*]+/, '').trim();
+                correctAns = optText;
+              } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
+                optText = optText.replace(/^[A-D][\.\)]\s*/i, '').trim();
+              }
+              options.push(optText);
+            });
+
+            while (options.length < 4) {
+              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
+            }
+
+            parsed.push({
+              question: qText,
+              options: options.slice(0, 4),
+              correct_answer: correctAns || options[0],
+            });
+          }
+        });
+      }
+
+      if (parsed.length > 0) {
+        setQuestions(parsed);
+        setBulkError('');
+        setCurrentStep(3); // To Preview
+        triggerHaptic('success');
+      } else {
+        setBulkError("Format aniqlanmadi. Savollar orasiga ==== va to'g'ri javob oldiga # yoki + qo'ying.");
+        triggerHaptic('error');
+      }
+    } catch {
+      setBulkError("Matnni tahlil qilishda xatolik yuz berdi.");
+      triggerHaptic('error');
+    }
+  };
+
+  // ==========================================
+  // USUL C: QO'LDA KIRITISH LOGIKASI
+  // ==========================================
+  const handleAddManualQuestion = () => {
+    triggerHaptic('light');
+    setManualQuestions((prev) => [
+      ...prev,
+      {
+        question: '',
+        options: ['', '', '', ''],
+        correct_answer: '',
+      },
+    ]);
+  };
+
+  const handleRemoveManualQuestion = (idx: number) => {
+    triggerHaptic('light');
+    if (manualQuestions.length <= 1) return;
+    setManualQuestions((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleProceedManualToPreview = () => {
+    const valid = manualQuestions
+      .filter((q) => q.question.trim().length > 0)
+      .map((q) => {
+        const cleanedOpts = q.options.map((opt, i) => opt.trim() || `Variant ${String.fromCharCode(65 + i)}`);
+        const correctAns = q.correct_answer.trim() || cleanedOpts[0];
+        return {
+          question: q.question.trim(),
+          options: cleanedOpts,
+          correct_answer: correctAns,
+        };
+      });
+
+    if (valid.length === 0) {
+      setGlobalError("Kamida 1 ta savol matnini kiriting.");
+      triggerHaptic('warning');
+      return;
+    }
+
+    setQuestions(valid);
+    setGlobalError('');
+    setCurrentStep(3); // To Preview
+    triggerHaptic('light');
+  };
+
+  // ==========================================
+  // 3-QADAM: PREVIEW VA TAHRIRLASH AMALLARI
+  // ==========================================
   const handleUpdateQuestionText = (index: number, newText: string) => {
     setQuestions((prev) => {
       const updated = [...prev];
@@ -238,7 +461,6 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       newOptions[optIdx] = newOptText;
       q.options = newOptions;
 
-      // If this option was the correct answer, update correct_answer text as well
       if (q.correct_answer === oldOpt) {
         q.correct_answer = newOptText;
       }
@@ -256,13 +478,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     });
   };
 
-  const handleRemoveQuestion = (qIdx: number) => {
+  const handleRemovePreviewQuestion = (qIdx: number) => {
     triggerHaptic('light');
     if (questions.length <= 1) return;
     setQuestions((prev) => prev.filter((_, i) => i !== qIdx));
   };
 
-  const handleAddNewQuestion = () => {
+  const handleAddNewPreviewQuestion = () => {
     triggerHaptic('light');
     setQuestions((prev) => [
       ...prev,
@@ -274,17 +496,20 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     ]);
   };
 
-  // Save to Supabase
-  const handleSaveQuiz = async () => {
+  // ==========================================
+  // 3-QADAM: BAZAGA SAQLASH VA E'LON QILISH
+  // ==========================================
+  const handleSaveAndPublishQuiz = async () => {
     if (questions.length === 0) {
-      setErrorMessage("Hech bo'lmaganda 1 ta savol bo'lishi kerak.");
+      setGlobalError("Saqlash uchun kamida 1 ta savol bo'lishi kerak.");
       return;
     }
 
     setIsSaving(true);
-    setErrorMessage('');
+    setGlobalError('');
     triggerHaptic('medium');
 
+    const finalUniversity = isCustomUni ? customUniName.trim() : university;
     const quizId = createdQuizId || `quiz_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const creatorName = `${profile.firstName} ${profile.lastName}`.trim() || 'Talaba';
 
@@ -292,30 +517,35 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       const result = await saveQuizWithQuestions({
         quizId,
         title: title.trim(),
-        category,
-        visibility,
+        university: finalUniversity,
+        faculty: faculty.trim(),
+        course_year: courseYear,
+        semester,
         creatorId: profile.id,
         creatorName,
+        is_public: isPublic,
+        category,
+        visibility: isPublic ? 'public' : 'unlisted',
         questions,
-        university: profile.university || 'Yuksal Quiz',
       });
 
       if (result.success) {
         setCreatedQuizId(quizId);
-        setStep('success');
+        setCurrentStep(4); // Success Share
         triggerHaptic('success');
       } else {
         throw new Error(result.message);
       }
     } catch (saveErr: any) {
       console.error('Quiz save error:', saveErr);
-      setErrorMessage(saveErr?.message || "Testni saqlashda xatolik yuz berdi.");
+      setGlobalError(saveErr?.message || "Testni saqlashda xatolik yuz berdi.");
       triggerHaptic('error');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // Share URL
   const shareUrl = `https://t.me/YuksalQuiz_bot?start=quiz_${createdQuizId}`;
 
   const handleCopyLink = () => {
@@ -326,7 +556,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   };
 
   const handleTelegramShare = () => {
-    const text = encodeURIComponent(`🎯 Men Yuksal Quiz platformasida yangi test yaratdim: "${title}"!\n\nBilimingizni sinab ko'ring:`);
+    const text = encodeURIComponent(
+      `🎯 Yuksal Quiz'da yangi test e'lon qilindi!\n\n` +
+      `📚 Fan: ${title}\n` +
+      `🏫 OTM: ${isCustomUni ? customUniName : university}\n` +
+      `🎓 ${courseYear}-kurs, ${semester}-semestr\n\n` +
+      `Bilimingizni sinab ko'ring:`
+    );
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${text}`;
     window.open(tgUrl, '_blank');
   };
@@ -342,13 +578,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>AI Test Importer</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-extrabold border border-emerald-300 dark:border-emerald-800">
-                  Gemini 1.5
-                </span>
+                <span>{isEditing ? "Testni tahrirlash" : "Yangi Test Yaratish"}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Word (.docx), PDF yoki matnlarni AI orqali testga aylantiring
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Word, PDF, matn yoki qo'lda kiritish orqali mustaqil test tuzing
               </p>
             </div>
           </div>
@@ -364,293 +597,638 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
           </button>
         </div>
 
+        {/* 3-STEP WIZARD PROGRESS BAR */}
+        {currentStep <= 3 && (
+          <div className="mb-5">
+            <div className="grid grid-cols-3 gap-2">
+              {/* Step 1 Indicator */}
+              <div
+                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                  currentStep === 1
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                    : currentStep > 1
+                    ? 'bg-slate-100 dark:bg-slate-800 border-transparent text-emerald-600'
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                    currentStep > 1
+                      ? 'bg-emerald-600 text-white'
+                      : currentStep === 1
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                  }`}
+                >
+                  {currentStep > 1 ? <Check className="w-3 h-3 stroke-[3]" /> : '1'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold truncate">1. Pasport</p>
+                </div>
+              </div>
+
+              {/* Step 2 Indicator */}
+              <div
+                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                  currentStep === 2
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                    : currentStep > 2
+                    ? 'bg-slate-100 dark:bg-slate-800 border-transparent text-emerald-600'
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                    currentStep > 2
+                      ? 'bg-emerald-600 text-white'
+                      : currentStep === 2
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                  }`}
+                >
+                  {currentStep > 2 ? <Check className="w-3 h-3 stroke-[3]" /> : '2'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold truncate">2. Savollar</p>
+                </div>
+              </div>
+
+              {/* Step 3 Indicator */}
+              <div
+                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                  currentStep === 3
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                    currentStep === 3
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                  }`}
+                >
+                  3
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold truncate">3. Preview</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Global Error Banner */}
-        {errorMessage && (
+        {globalError && (
           <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 flex items-center gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-            <span className="flex-1">{errorMessage}</span>
+            <span className="flex-1">{globalError}</span>
             <button
-              onClick={() => setErrorMessage('')}
-              className="text-rose-400 hover:text-rose-600 dark:hover:text-rose-200 text-xs"
+              onClick={() => setGlobalError('')}
+              className="text-rose-400 hover:text-rose-600 text-xs font-bold"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* STEP 1: INPUT & CONFIGURATION */}
-        {step === 'input' && (
-          <div className="space-y-4">
-            {/* Test Details */}
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-              {/* Title Input */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Test nomi <span className="text-rose-500">*</span>
-                </label>
+        {/* ============================================================== */}
+        {/* ▶ 1-QADAM: TEST PASPORTI (METADATA)                           */}
+        {/* ============================================================== */}
+        {currentStep === 1 && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Fan nomi */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Fan nomi <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => {
                     setTitle(e.target.value);
-                    if (titleError) setTitleError(false);
+                    if (errors.title) setErrors((prev) => ({ ...prev, title: false }));
                   }}
-                  placeholder="Masalan: Falsafa 1-kurs yakuniy nazorat"
-                  className={`w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
-                    titleError
+                  placeholder="Masalan: Falsafa, Algoritmlar, Mikroiqtisodiyot..."
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+                    errors.title
                       ? 'border-rose-500 focus:ring-rose-500/20'
                       : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500/20 focus:border-emerald-500'
                   }`}
                 />
-                {titleError && (
-                  <p className="text-[11px] text-rose-500 mt-1 font-semibold">Test nomini kiritish majburiy</p>
-                )}
               </div>
-
-              {/* Category & Visibility */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Category Selection */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Fani / Kategoriya
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as MainCategory)}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    {MAIN_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Visibility Selection */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Ko'rinish darajasi
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => setVisibility('public')}
-                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        visibility === 'public'
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                      }`}
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>Ommaviy</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVisibility('unlisted')}
-                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        visibility === 'unlisted'
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                      }`}
-                    >
-                      <LinkIcon className="w-3.5 h-3.5" />
-                      <span>Faqat havola</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              {errors.title && (
+                <p className="text-[11px] text-rose-500 mt-1 font-semibold">Fan nomini kiritish shart</p>
+              )}
             </div>
 
-            {/* Source Switcher: File Upload vs Textarea */}
+            {/* OTM Tanlash */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Manbani tanlang:
-                </span>
-                <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputSource('file');
-                      triggerHaptic('light');
-                    }}
-                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      inputSource === 'file'
-                        ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Fayl (.docx, .pdf, .txt)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputSource('text');
-                      triggerHaptic('light');
-                    }}
-                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      inputSource === 'text'
-                        ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Matn (Nusxalash)</span>
-                  </button>
-                </div>
-              </div>
+              <SearchableUniversitySelect
+                label="OTM (Universitet / Institut)"
+                value={university}
+                isCustomSelected={isCustomUni}
+                onChange={(uni) => {
+                  if (uni === 'custom') {
+                    setIsCustomUni(true);
+                  } else {
+                    setIsCustomUni(false);
+                    setUniversity(uni);
+                  }
+                  if (errors.university) setErrors((prev) => ({ ...prev, university: false }));
+                }}
+                onCustomSelect={() => setIsCustomUni(true)}
+                allowCustom={true}
+                universities={universities}
+                customUniversities={customUniversities}
+              />
 
-              {/* File Dropzone */}
-              {inputSource === 'file' ? (
-                <div>
+              {/* Qo'lda OTM yozish maydoni */}
+              {isCustomUni && (
+                <div className="mt-2 space-y-1">
                   <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".docx,.pdf,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain"
-                    onChange={handleFileChange}
-                    className="hidden"
+                    type="text"
+                    value={customUniName}
+                    onChange={(e) => {
+                      setCustomUniName(e.target.value);
+                      if (errors.university) setErrors((prev) => ({ ...prev, university: false }));
+                    }}
+                    placeholder="OTM nomini to'liq yozing (masalan: TGFU, TATU...)"
+                    className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs font-semibold text-slate-900 dark:text-white ${
+                      errors.university
+                        ? 'border-rose-500'
+                        : 'border-emerald-400 focus:ring-emerald-500'
+                    }`}
                   />
-
-                  {!file ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30 dark:bg-slate-800/30 group"
-                    >
-                      <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-                        <Upload className="w-6 h-6" />
-                      </div>
-                      <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                        Hujjatni yuklash uchun bosing
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                        Formatlar: Word (.docx), PDF (.pdf), Matn (.txt) &bull; Maks 5 MB
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                          <FileCode className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {file.name}
-                          </p>
-                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB &bull; Tayyor
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleRemoveFile}
-                        className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
-                        title="Faylni o'chirish"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  {errors.university && (
+                    <p className="text-[11px] text-rose-500 font-semibold">OTM nomini kiriting</p>
                   )}
-                </div>
-              ) : (
-                /* Manual Textarea */
-                <div>
-                  <textarea
-                    rows={7}
-                    value={manualText}
-                    onChange={(e) => setManualText(e.target.value)}
-                    placeholder="Savollar matnini shu yerga nusxalab qo'ying (paste)...&#10;&#10;Masalan:&#10;1. O'zbekiston mustaqilligi qachon e'lon qilingan?&#10;A) 1991-yil 1-sentabr&#10;B) 1992-yil 8-dekabr&#10;C) 1990-yil 24-mart&#10;D) 1993-yil 1-oktabr"
-                    className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed"
-                  />
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                    AI savollar va variantlarni avtomatik aniqlaydi. To'g'ri javob belgilanmagan bo'lsa, o'zi topadi.
-                  </p>
                 </div>
               )}
             </div>
 
-            {/* Parse Button */}
-            <button
-              type="button"
-              onClick={handleStartParsing}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>✨ Gemini AI orqali tahlil qilish</span>
-            </button>
-          </div>
-        )}
+            {/* Yo'nalish / Fakultet */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Yo'nalish / Fakultet <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={faculty}
+                onChange={(e) => {
+                  setFaculty(e.target.value);
+                  if (errors.faculty) setErrors((prev) => ({ ...prev, faculty: false }));
+                }}
+                placeholder="Masalan: Dasturiy injiniring, Iqtisodiyot, Davolash ishi..."
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+                  errors.faculty
+                    ? 'border-rose-500'
+                    : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500/20 focus:border-emerald-500'
+                }`}
+              />
+              {errors.faculty && (
+                <p className="text-[11px] text-rose-500 mt-1 font-semibold">Yo'nalish yoki fakultet nomini kiriting</p>
+              )}
+            </div>
 
-        {/* STEP 2: LOADING SKELETON SCREEN */}
-        {step === 'loading' && (
-          <div className="py-8 space-y-6 text-center animate-in fade-in">
-            {/* Glowing AI Spinner */}
-            <div className="relative w-20 h-20 mx-auto">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 animate-spin">
-                <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[22px] flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-emerald-500" />
-                </div>
+            {/* Kurs tanlash (Radio: 1-kurs | 2-kurs | 3-kurs | 4-kurs) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Kurs tanlash
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3, 4].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => {
+                      setCourseYear(k);
+                      // Auto-select corresponding odd semester
+                      setSemester(k * 2 - 1);
+                      triggerHaptic('light');
+                    }}
+                    className={`py-2 px-1 rounded-xl text-xs font-extrabold border transition-all ${
+                      courseYear === k
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
+                    }`}
+                  >
+                    {k}-kurs
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                Gemini 1.5 Flash tahlil qilmoqda
-              </h3>
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-pulse">
-                {loadingMsg}
-              </p>
-            </div>
-
-            {/* Skeleton Cards */}
-            <div className="space-y-3 pt-2 text-left">
-              {[1, 2].map((s) => (
-                <div
-                  key={s}
-                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2.5 animate-pulse"
-                >
-                  <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded-full w-3/4" />
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="h-8 bg-slate-200 dark:bg-slate-700/60 rounded-xl" />
-                    <div className="h-8 bg-slate-200 dark:bg-slate-700/60 rounded-xl" />
-                    <div className="h-8 bg-slate-200 dark:bg-slate-700/60 rounded-xl" />
-                    <div className="h-8 bg-slate-200 dark:bg-slate-700/60 rounded-xl" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: PREVIEW & EDITING SCREEN */}
-        {step === 'preview' && (
-          <div className="space-y-4 animate-in fade-in">
-            {/* Summary Bar */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-black text-slate-900 dark:text-white">
-                  Jami aniqlangan: {questions.length} ta savol
+            {/* Semestr tanlash (Radio / Select: 1 dan 8 gacha) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Semestr tanlash (1 - 8)
+                </label>
+                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {semester}-semestr
                 </span>
               </div>
+              <div className="grid grid-cols-8 gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setSemester(s);
+                      setCourseYear(Math.ceil(s / 2));
+                      triggerHaptic('light');
+                    }}
+                    className={`py-2 rounded-xl text-xs font-black border transition-all ${
+                      semester === s
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ko'rinish darajasi (Ommaviy / Faqat havola orqali) */}
+            <div className="pt-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Ko'rinish darajasi
+              </label>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(true)}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    isPublic
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Ommaviy (Barchaga)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(false)}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    !isPublic
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  <span>Faqat havola orqali</span>
+                </button>
+              </div>
+            </div>
+
+            {/* "Keyingisi ➡" Tugmasi */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleProceedToStep2}
+                className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <span>Keyingisi</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* ▶ 2-QADAM: SAVOLLARNI KIRITISH USULINI TANLASH (TABS)          */}
+        {/* ============================================================== */}
+        {currentStep === 2 && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Usul Tanlash Tablari */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => {
-                  setStep('input');
+                  setInputMethod('ai_file');
                   triggerHaptic('light');
                 }}
-                className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
+                  inputMethod === 'ai_file'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <ArrowLeft className="w-3 h-3" />
-                <span>Qayta yuklash</span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <span>AI Fayl yuklash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setInputMethod('bulk_text');
+                  triggerHaptic('light');
+                }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
+                  inputMethod === 'bulk_text'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Ommaviy matn</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setInputMethod('manual');
+                  triggerHaptic('light');
+                }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
+                  inputMethod === 'manual'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Qo'lda kiritish</span>
               </button>
             </div>
 
-            {/* Questions List */}
+            {/* -------------------------------------------------------- */}
+            {/* USUL A: 📄 AI FAYL YUKLASH (.docx, .pdf, .txt)           */}
+            {/* -------------------------------------------------------- */}
+            {inputMethod === 'ai_file' && (
+              <div className="space-y-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".docx,.pdf,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {!file ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-3xl p-8 text-center cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30 dark:bg-slate-800/30 group"
+                  >
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Upload className="w-7 h-7" />
+                    </div>
+                    <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                      Word (.docx), PDF yoki Matn faylini tanlang
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                      Maksimal hajm: 5 MB &bull; Gemini 1.5 Flash avtomatik savol va javoblarni ajratadi
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <FileCode className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB &bull; Yuklashga tayyor
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFile(null);
+                        setFileBase64('');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
+                      title="O'chirish"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* AI Loading Screen */}
+                {isAiLoading && (
+                  <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 text-center space-y-2.5 animate-pulse">
+                    <Loader2 className="w-7 h-7 mx-auto text-emerald-600 animate-spin" />
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Gemini 1.5 Flash hujjatni o'qimoqda
+                    </p>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      {aiLoadingMsg}
+                    </p>
+                  </div>
+                )}
+
+                {/* AI Tahlil Tugmasi */}
+                <button
+                  type="button"
+                  disabled={!file || isAiLoading}
+                  onClick={handleStartAiParsing}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>✨ Gemini AI orqali tahlil qilish</span>
+                </button>
+              </div>
+            )}
+
+            {/* -------------------------------------------------------- */}
+            {/* USUL B: 📝 OMMAVIY MATN (BULK PARSER)                     */}
+            {/* -------------------------------------------------------- */}
+            {inputMethod === 'bulk_text' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  <span>Test matnini nusxalab qo'ying (paste)</span>
+                  <span className="text-emerald-600 font-bold">Format: #to'g'ri, ====, ++++</span>
+                </div>
+
+                <textarea
+                  rows={9}
+                  value={bulkText}
+                  onChange={(e) => {
+                    setBulkText(e.target.value);
+                    if (bulkError) setBulkError('');
+                  }}
+                  placeholder="Savol matni&#10;====&#10;#To'g'ri javob varianti&#10;====&#10;Noto'g'ri javob 1&#10;====&#10;Noto'g'ri javob 2&#10;====&#10;Noto'g'ri javob 3&#10;++++&#10;&#10;Keyingi savol matni...&#10;===="
+                  className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed"
+                />
+
+                {bulkError && (
+                  <p className="text-[11px] text-rose-500 font-semibold">{bulkError}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleParseBulkText}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Matnni tahlil qilish (Parser qilish) ➡</span>
+                </button>
+              </div>
+            )}
+
+            {/* -------------------------------------------------------- */}
+            {/* USUL C: ✍ QO'LDA BITTALAB KIRITISH (MANUAL)              */}
+            {/* -------------------------------------------------------- */}
+            {inputMethod === 'manual' && (
+              <div className="space-y-3">
+                <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+                  {manualQuestions.map((mq, mIdx) => (
+                    <div
+                      key={mIdx}
+                      className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                          Savol #{mIdx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveManualQuestion(mIdx)}
+                          className="text-slate-400 hover:text-rose-500 p-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={mq.question}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setManualQuestions((prev) => {
+                            const up = [...prev];
+                            up[mIdx].question = val;
+                            return up;
+                          });
+                        }}
+                        placeholder="Savol matnini kiriting..."
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                      />
+
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-bold text-slate-500">
+                          Variantlar (To'g'ri javobni tanlash uchun harfni bosing):
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {mq.options.map((opt, oIdx) => {
+                            const isCorr = mq.correct_answer === opt && opt.length > 0;
+                            const letter = String.fromCharCode(65 + oIdx);
+
+                            return (
+                              <div
+                                key={oIdx}
+                                className={`flex items-center gap-1.5 p-1 rounded-xl border ${
+                                  isCorr
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setManualQuestions((prev) => {
+                                      const up = [...prev];
+                                      up[mIdx].correct_answer = up[mIdx].options[oIdx];
+                                      return up;
+                                    });
+                                  }}
+                                  className={`w-5 h-5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
+                                    isCorr
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'
+                                  }`}
+                                >
+                                  {isCorr ? <Check className="w-3 h-3 stroke-[3]" /> : letter}
+                                </button>
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setManualQuestions((prev) => {
+                                      const up = [...prev];
+                                      const old = up[mIdx].options[oIdx];
+                                      up[mIdx].options[oIdx] = val;
+                                      if (up[mIdx].correct_answer === old) {
+                                        up[mIdx].correct_answer = val;
+                                      }
+                                      return up;
+                                    });
+                                  }}
+                                  placeholder={`Variant ${letter}`}
+                                  className="w-full bg-transparent text-xs font-semibold focus:outline-none"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddManualQuestion}
+                  className="w-full py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Yana savol qo'shish</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleProceedManualToPreview}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2"
+                >
+                  <span>Ko'rib chiqishga o'tish ➡</span>
+                </button>
+              </div>
+            )}
+
+            {/* Ortga qaytish */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>⬅ 1-qadam (Pasport)ga qaytish</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* ▶ 3-QADAM: KO'RIB CHIQISH VA TASDIQLASH (PREVIEW)              */}
+        {/* ============================================================== */}
+        {currentStep === 3 && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Pasport qisqacha ma'lumot */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-extrabold text-slate-900 dark:text-white truncate">{title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  {isCustomUni ? customUniName : university} &bull; {courseYear}-kurs, {semester}-semestr &bull; {faculty}
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-xs shrink-0">
+                {questions.length} ta savol
+              </span>
+            </div>
+
+            {/* Savollar ro'yxati (Kartochkalar) */}
             <div className="max-h-80 sm:max-h-96 overflow-y-auto space-y-3 pr-1">
               {questions.map((q, qIdx) => (
                 <div
@@ -663,7 +1241,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveQuestion(qIdx)}
+                      onClick={() => handleRemovePreviewQuestion(qIdx)}
                       className="text-slate-400 hover:text-rose-500 transition-colors p-1"
                       title="Savolni o'chirish"
                     >
@@ -671,7 +1249,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     </button>
                   </div>
 
-                  {/* Question Textarea */}
+                  {/* Savol matni */}
                   <textarea
                     rows={2}
                     value={q.question}
@@ -680,10 +1258,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     placeholder="Savol matni..."
                   />
 
-                  {/* Options & Correct Answer Selector */}
+                  {/* Variantlar */}
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      Variantlar (To'g'ri javobni tanlash uchun bosing):
+                      Variantlar (To'g'ri javobni tanlash uchun harfni bosing):
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {q.options.map((opt, optIdx) => {
@@ -727,21 +1305,21 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               ))}
             </div>
 
-            {/* Add New Question Button */}
+            {/* Yangi savol qo'shish */}
             <button
               type="button"
-              onClick={handleAddNewQuestion}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+              onClick={handleAddNewPreviewQuestion}
+              className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Yangi savol qo'shish</span>
             </button>
 
-            {/* Save & Upload Button */}
+            {/* "💾 Testni saqlash va e'lon qilish" Tugmasi */}
             <button
               type="button"
               disabled={isSaving}
-              onClick={handleSaveQuiz}
+              onClick={handleSaveAndPublishQuiz}
               className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
             >
               {isSaving ? (
@@ -751,15 +1329,27 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 </>
               ) : (
                 <>
-                  <span>💾 Testni saqlash va yuklash</span>
+                  <span>💾 Testni saqlash va e'lon qilish</span>
                 </>
               )}
+            </button>
+
+            {/* 2-qadamga qaytish */}
+            <button
+              type="button"
+              onClick={() => setCurrentStep(2)}
+              className="w-full py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              <span>Savol kiritish usuliga qaytish</span>
             </button>
           </div>
         )}
 
-        {/* STEP 4: SUCCESS & SHARE SCREEN */}
-        {step === 'success' && (
+        {/* ============================================================== */}
+        {/* ▶ 4-QADAM: MUAFFAQIYATLI SAQLANDI VA ULASHISH (SHARE)          */}
+        {/* ============================================================== */}
+        {currentStep === 4 && (
           <div className="py-6 space-y-6 text-center animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
@@ -767,14 +1357,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                Test muvaffaqiyatli saqlandi!
+                Test muvaffaqiyatli e'lon qilindi!
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                "{title}" testi bazaga yozildi va do'stlaringiz bilan ulashishga tayyor.
+                "{title}" testi bazaga yozildi. Kursdoshlar va talabalar bilan ulashing:
               </p>
             </div>
 
-            {/* Share Link Box */}
+            {/* Ulashish havolasi */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5 text-left">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
                 <span>Telegram orqali ulashish havolasi:</span>
@@ -807,7 +1397,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Tugmalari */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
