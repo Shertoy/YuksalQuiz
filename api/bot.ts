@@ -142,7 +142,7 @@ export default async function handler(req: any, res: any) {
         const paymentId = data.replace(isApprove ? 'approve_pay_' : 'reject_pay_', '');
 
         // Verify Admin permissions
-        const adminIds = ['6219808382', ADMIN_TELEGRAM_ID].filter(Boolean);
+        const adminIds = ['6219808382', '117932388', ADMIN_TELEGRAM_ID].filter(Boolean);
         if (!adminIds.includes(fromId)) {
           if (BOT_TOKEN && queryId) {
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {

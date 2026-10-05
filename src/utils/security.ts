@@ -222,6 +222,7 @@ const ADMIN_SESSION_KEY = 'yuksal_admin_authenticated_session';
 // Default authorized Telegram IDs (Owner, Devs, Administrators)
 export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
   '6219808382', // Alisher Alijonov / Owner
+  '117932388',  // Ali / Admin
   '123456789',  // Dev Test Admin
   '987654321',  // System Admin
 ];
