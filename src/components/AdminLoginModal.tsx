@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, X, KeyRound, ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
+import { Lock, X, KeyRound, ShieldAlert, ShieldCheck, Clock, Eye, EyeOff } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
   checkAdminRateLimit,
@@ -19,8 +19,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [login, setLogin] = useState('admin');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [lockStatus, setLockStatus] = useState<{
     isLocked: boolean;
@@ -31,8 +32,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setError('');
-      setLogin('admin');
+      setLogin('');
       setPassword('');
+      setShowPassword(false);
       setLockStatus(checkAdminRateLimit());
     }
   }, [isOpen]);
@@ -70,16 +72,25 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     const cleanLogin = login.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    // Ruxsat berilgan Login: admin (yoki admin IDlar), Parol: yuksal2026 (yoki admin123)
-    const isLoginValid = cleanLogin === 'admin' || cleanLogin === '117932388' || cleanLogin === '6219808382';
-    const isPassValid = cleanPass === 'yuksal2026' || cleanPass === 'admin123' || cleanPass === '117932388';
+    // Maxfiy ruxsat berilgan Login: admin (yoki rasmiy admin Telegram IDlar)
+    // Maxfiy ruxsat berilgan Parol: yuksal2026 (yoki admin123)
+    const isLoginValid =
+      cleanLogin === 'admin' ||
+      cleanLogin === '117932388' ||
+      cleanLogin === '6219808382';
+    const isPassValid =
+      cleanPass === 'yuksal2026' ||
+      cleanPass === 'admin123' ||
+      cleanPass === '117932388';
 
     if (isLoginValid && isPassValid) {
       triggerHaptic('success');
       resetAdminRateLimit();
       setAdminSessionAuthenticated(true);
       setError('');
+      setLogin('');
       setPassword('');
+      setShowPassword(false);
       onSuccess();
     } else {
       triggerHaptic('error');
@@ -87,9 +98,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       setLockStatus(updatedRate);
 
       if (updatedRate.isLocked) {
-        setError(`Xavfsizlik: 5 marta noto'g'ri kiritildi! Hacker hujumidan himoya maqsadida kirish 15 daqiqaga bloklandi.`);
+        setError(`Xavfsizlik tizimi: Ketma-ket noto'g'ri urinishlar aniqlandi! Tizim 15 daqiqaga bloklandi.`);
       } else {
-        setError(`Login yoki parol noto'g'ri! Qolgan urinishlar: ${updatedRate.attemptsLeft} ta. (Login: admin, Parol: yuksal2026)`);
+        setError(`Login yoki maxfiy parol noto'g'ri! Qolgan urinishlar soni: ${updatedRate.attemptsLeft} ta.`);
       }
     }
   };
@@ -108,7 +119,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               </h3>
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-500" strokeWidth={1.75} />
-                <span>Tezkor Admin Paroli</span>
+                <span>Himoyalangan Tizim</span>
               </p>
             </div>
           </div>
@@ -155,7 +166,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 setLogin(e.target.value);
                 setError('');
               }}
-              placeholder="Masalan: admin"
+              placeholder="Admin logini"
+              autoComplete="off"
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
@@ -164,19 +176,34 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Admin Paroli:
             </label>
-            <input
-              type="password"
-              required
-              disabled={lockStatus.isLocked}
-              autoFocus={!lockStatus.isLocked}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
-              placeholder="Masalan: yuksal2026"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                disabled={lockStatus.isLocked}
+                autoFocus={!lockStatus.isLocked}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                placeholder="••••••••••••"
+                autoComplete="off"
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" strokeWidth={1.75} />
+                ) : (
+                  <Eye className="w-4 h-4" strokeWidth={1.75} />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="pt-2 flex items-center gap-2">
