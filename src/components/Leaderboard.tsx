@@ -19,7 +19,6 @@ import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
-import { UserRankProgressCard } from './UserRankProgressCard';
 
 export const Leaderboard: React.FC = () => {
   const {
@@ -853,11 +852,6 @@ export const Leaderboard: React.FC = () => {
           </div>
         )
       )}
-
-      {/* Pinned/Visible User Rank Progress Card at the bottom */}
-      <div className="pt-2">
-        <UserRankProgressCard scope={leaderboardScope} />
-      </div>
     </div>
   );
 };
