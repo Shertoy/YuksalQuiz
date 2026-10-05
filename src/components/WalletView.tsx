@@ -22,7 +22,7 @@ import {
   Award,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { triggerHaptic, soundFX, generateReferralLink } from '../utils/telegram';
+import { triggerHaptic, soundFX, generateReferralLink, getTelegramWebApp } from '../utils/telegram';
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
@@ -238,6 +238,9 @@ export const WalletView: React.FC = () => {
 
       setVerifyStepText("Gemini AI tahlil qilmoqda...");
 
+      const tg = getTelegramWebApp();
+      const tgUsername = tg?.initDataUnsafe?.user?.username || profile.username || '';
+
       // API call to Vercel Serverless Function
       const response = await fetch('/api/verify-receipt', {
         method: 'POST',
@@ -250,6 +253,8 @@ export const WalletView: React.FC = () => {
           mimeType: 'image/jpeg',
           userId: profile.id,
           userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+          userUsername: tgUsername,
+          university: profile.university || 'Kiritilmagan',
           expectedAmount: 0,
         }),
       });

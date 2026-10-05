@@ -16,6 +16,7 @@ import { AdminPanelModal } from './components/AdminPanelModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
+import { ShieldAlert, Send } from 'lucide-react';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic } from './utils/telegram';
 import {
@@ -24,6 +25,7 @@ import {
   fetchCloudLeaderboard,
   fetchCloudAnnouncements,
   setupRealtimeTestSubscription,
+  checkUserBlockedStatus,
 } from './services/testSyncService';
 import { LeaderboardUser } from './types';
 import { ParticleBackground } from './components/ParticleBackground';
@@ -123,6 +125,11 @@ export const App: React.FC = () => {
       if (isAdminQuery || isAdminHash || isAdminPath) {
         setIsAdminLoginOpen(true);
       }
+    }
+
+    // Check if user is blocked or has updated cloud status
+    if (profile.id) {
+      checkUserBlockedStatus(profile.id).catch(() => {});
     }
 
     // Automatically sync public tests, universities, leaderboard and announcements from Supabase cloud
@@ -262,6 +269,67 @@ export const App: React.FC = () => {
     setReviewState(null);
     setActiveTab('tests');
   };
+
+  // 4. Bloklangan foydalanuvchilar himoyasi
+  if (profile.is_blocked || profile.isBlocked) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center select-none relative overflow-hidden font-sans">
+        {/* Pulsing red background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
+
+        <div className="relative z-10 max-w-sm w-full space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-red-600/20 border-2 border-red-500/50 flex items-center justify-center text-red-500 shadow-2xl shadow-red-600/40 animate-bounce">
+            <ShieldAlert className="w-10 h-10 stroke-[2.5]" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+              Kirish Taqiqlangan
+            </span>
+            <h1 className="text-xl sm:text-2xl font-black text-red-500 tracking-tight leading-snug">
+              Qoidabuzarlik sababli hisobingiz bloklangan
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed pt-1">
+              Platforma xavfsizlik va foydalanish qoidalarini buzganlik (soxta kvitansiya yuklash yoki qoidabuzarlik) aniqlanganligi sababli ushbu hisob ma'muriyat tomonidan bloklandi. Barcha testlar va hamyon xizmatlari to'xtatildi.
+            </p>
+          </div>
+
+          {/* User Details Box */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-red-500/30 text-left text-xs font-mono space-y-1.5 shadow-inner">
+            <div className="flex justify-between text-slate-400">
+              <span>Talaba:</span>
+              <span className="text-white font-bold">{profile.firstName || ''} {profile.lastName || ''}</span>
+            </div>
+            <div className="flex justify-between text-slate-400">
+              <span>Telegram ID:</span>
+              <span className="text-red-400 font-bold">{profile.id}</span>
+            </div>
+            {profile.university && (
+              <div className="flex justify-between text-slate-400">
+                <span>OTM:</span>
+                <span className="text-slate-200 truncate max-w-[180px]">{profile.university}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Contact Admin Telegram Button */}
+          <a
+            href="https://t.me/Alisherasqadali"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-red-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            <span>Administratorga murojaat qilish (@Alisherasqadali)</span>
+          </a>
+
+          <p className="text-[10px] text-slate-500">
+            Agar bu xatolik deb hisoblasangiz, Telegram orqali administrator bilan bog'laning.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full overflow-hidden bg-slate-50/80 dark:bg-[#030712]/90 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative">

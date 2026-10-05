@@ -658,6 +658,25 @@ export function setupRealtimeTestSubscription(
           onUpdate?.();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload: any) => {
+          const currentProfileId = useQuizStore.getState().profile.id;
+          const newRow = payload?.new;
+          if (newRow && newRow.id === currentProfileId) {
+            if (newRow.is_blocked !== undefined) {
+              useQuizStore.getState().setUserBlocked(Boolean(newRow.is_blocked));
+            }
+            if (newRow.balance !== undefined) {
+              const cloudBalance = Number(newRow.balance);
+              useQuizStore.setState((s) => ({
+                profile: { ...s.profile, walletBalance: cloudBalance },
+              }));
+            }
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -667,6 +686,33 @@ export function setupRealtimeTestSubscription(
     console.warn('Realtime subscription error:', err);
     return null;
   }
+}
+
+/**
+ * Checks whether user is blocked or has updated balance in Supabase
+ */
+export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocked: boolean; balance?: number }> {
+  const supabase = getSupabase();
+  if (!supabase || !userId) return { isBlocked: false };
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('is_blocked, balance, wallet_balance')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const isBlocked = Boolean(data.is_blocked);
+      const balance = Number(data.balance ?? data.wallet_balance ?? 0);
+      if (isBlocked) {
+        useQuizStore.getState().setUserBlocked(true);
+      }
+      return { isBlocked, balance };
+    }
+  } catch (err) {
+    console.warn('checkUserBlockedStatus error:', err);
+  }
+  return { isBlocked: false };
 }
 
 /**

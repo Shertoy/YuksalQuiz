@@ -153,6 +153,7 @@ interface QuizState {
   resetTamperWarning: () => void;
   clearAllTests: () => void;
   restoreBackupData: (data: any) => void;
+  setUserBlocked: (blocked: boolean) => void;
 }
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
@@ -241,6 +242,8 @@ const DEFAULT_PROFILE: UserProfile = {
   has_paid: false,
   paid_until: undefined,
   registeredAt: new Date().toISOString().split('T')[0],
+  is_blocked: false,
+  isBlocked: false,
 };
 
 // Initial signature
@@ -433,6 +436,16 @@ export const useQuizStore = create<QuizState>()(
           announcements: data.announcements || get().announcements,
           announcementReplies: data.announcementReplies || get().announcementReplies || [],
         });
+      },
+
+      setUserBlocked: (blocked: boolean) => {
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            is_blocked: blocked,
+            isBlocked: blocked,
+          },
+        }));
       },
 
       addUniversity: (name: string) => {

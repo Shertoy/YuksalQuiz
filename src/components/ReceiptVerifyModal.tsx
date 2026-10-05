@@ -21,7 +21,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { triggerHaptic, soundFX } from '../utils/telegram';
+import { triggerHaptic, soundFX, getTelegramWebApp } from '../utils/telegram';
 import { ReceiptVerificationResult } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
@@ -222,6 +222,9 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
       setVerifyStepText("Gemini AI kvitansiyani tahlil qilmoqda...");
 
+      const tg = getTelegramWebApp();
+      const tgUsername = tg?.initDataUnsafe?.user?.username || profile.username || '';
+
       // API call to serverless function
       const response = await fetch('/api/verify-receipt', {
         method: 'POST',
@@ -234,6 +237,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           mimeType: 'image/jpeg',
           userId: profile.id,
           userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+          userUsername: tgUsername,
+          university: profile.university || 'Kiritilmagan',
           expectedAmount: selectedAmount,
         }),
       });

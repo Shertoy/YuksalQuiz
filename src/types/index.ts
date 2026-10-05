@@ -91,6 +91,9 @@ export interface UserProfile {
   paid_until?: string;
   registeredAt?: string;
   checksum?: string;
+  username?: string;
+  is_blocked?: boolean;
+  isBlocked?: boolean;
 }
 
 export interface Question {
