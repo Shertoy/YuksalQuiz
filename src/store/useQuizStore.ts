@@ -30,6 +30,7 @@ import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 import { Language } from '../i18n/translations';
+import { getSupabase } from '../services/supabase';
 
 export function normalizeUniversityKey(name: string): string {
   return (name || '')
@@ -154,6 +155,7 @@ interface QuizState {
   clearAllTests: () => void;
   restoreBackupData: (data: any) => void;
   setUserBlocked: (blocked: boolean) => void;
+  claimVoucherDirectly: () => Promise<boolean>;
 }
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
@@ -1389,6 +1391,65 @@ export const useQuizStore = create<QuizState>()(
         triggerHaptic('success');
         soundFX.playCoin();
         return { newBalance };
+      },
+
+      // Directly claim 20 000 UZS starting voucher into wallet balance
+      claimVoucherDirectly: async () => {
+        const { profile } = get();
+        if (profile.voucher_claimed || profile.voucherClaimed) return false;
+
+        const bonus = 20000;
+        const newBalance = (profile.walletBalance || 0) + bonus;
+        const updatedProfile: UserProfile = {
+          ...profile,
+          walletBalance: newBalance,
+          voucherBalance: 0,
+          voucher_claimed: true,
+          voucherClaimed: true,
+        };
+
+        updatedProfile.checksum = generateIntegritySignature({
+          userId: updatedProfile.id,
+          coins: updatedProfile.coins,
+          completedTestsCount: updatedProfile.completedTestsCount,
+          streak: updatedProfile.streak,
+          lastLoginDate: updatedProfile.lastLoginDate,
+          walletBalance: updatedProfile.walletBalance,
+          voucherBalance: updatedProfile.voucherBalance,
+        });
+
+        set({ profile: updatedProfile });
+
+        get().addTransaction({
+          type: 'voucher',
+          title: "20 000 so'm boshlang'ich vaucher faollashtirildi",
+          amount: bonus,
+          unit: "so'm",
+          isPositive: true,
+        });
+
+        triggerHaptic('success');
+        soundFX.playCoin();
+
+        const supabase = getSupabase();
+        if (supabase && profile.id) {
+          try {
+            await supabase.from('users').upsert(
+              {
+                id: profile.id,
+                balance: newBalance,
+                wallet_balance: newBalance,
+                voucher_claimed: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'id' }
+            );
+          } catch (err) {
+            console.warn('claimVoucherDirectly supabase sync error:', err);
+          }
+        }
+
+        return true;
       },
 
       // Apply direct P2P Payment approval verified by Gemini AI or Telegram Admin

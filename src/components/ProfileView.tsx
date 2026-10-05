@@ -77,58 +77,61 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </button>
       </div>
 
-      {/* Main Profile Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center">
-        <div
-          onClick={() => {
-            triggerHaptic('light');
-            onOpenEditProfile?.();
-          }}
-          className="relative inline-block mx-auto mb-3 cursor-pointer group"
-          title={t.editProfileBtn || 'Profilni tahrirlash'}
-        >
-          <div className="w-20 h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 group-hover:border-emerald-500 overflow-hidden shadow-md flex items-center justify-center p-1 transition-all">
-            <UserAvatar avatar={profile.avatar} />
+      {/* Main Profile Card (Compact Horizontal Layout) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3.5">
+        <div className="flex items-center gap-3.5">
+          {/* Avatar on the Left (w-16 h-16 rounded-2xl) */}
+          <div
+            onClick={() => {
+              triggerHaptic('light');
+              onOpenEditProfile?.();
+            }}
+            className="relative shrink-0 cursor-pointer group"
+            title={t.editProfileBtn || 'Profilni tahrirlash'}
+          >
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-500/30 group-hover:border-emerald-500 overflow-hidden shadow-sm flex items-center justify-center p-0.5 transition-all">
+              <UserAvatar avatar={profile.avatar} />
+            </div>
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900 group-hover:scale-110 transition-transform">
+              <Edit3 className="w-3 h-3 text-white" strokeWidth={2} />
+            </span>
           </div>
-          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900 group-hover:scale-110 transition-transform">
-            <Edit3 className="w-3.5 h-3.5 text-white" strokeWidth={2} />
-          </span>
-        </div>
 
-        <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-          {profile.firstName || 'Talaba'} {profile.lastName || ''}
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {profile.university ? `${profile.university} • ` : ''}{profile.region} • {profile.academicYear}{t.courseUnit} • {profile.studyType}
-        </p>
-
-        {/* Security Signature Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-[10px] font-bold mt-3">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>{t.securityVerified}</span>
+          {/* User Name, University, Course on the Right (Horizontal) */}
+          <div className="min-w-0 flex-1">
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white truncate leading-snug">
+              {profile.firstName || 'Talaba'} {profile.lastName || ''}
+            </h3>
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
+              {profile.university || 'TATU'}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+              {profile.academicYear}{t.courseUnit} • {profile.studyType} • {profile.region}
+            </p>
+          </div>
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-3 gap-2.5 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-left">
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-1.5 text-amber-500 font-black text-sm">
-              <Coins className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
+            <div className="flex items-center justify-center gap-1 text-amber-500 font-black text-sm">
+              <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.75} />
               <span>{profile.coins}</span>
             </div>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.coins}</p>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-1.5 text-orange-500 font-black text-sm">
-              <Flame className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
+            <div className="flex items-center justify-center gap-1 text-orange-500 font-black text-sm">
+              <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" strokeWidth={1.75} />
               <span>{profile.streak} {t.daysUnit || 'kun'}</span>
             </div>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.streak}</p>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-sm">
-              <BookOpen className="w-4 h-4" />
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
+            <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-sm">
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
               <span>{profile.completedTestsCount}</span>
             </div>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.testsCompleted}</p>
@@ -136,13 +139,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {/* Wallet Balance & Deposit Action Highlight */}
-        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-left flex items-center justify-between gap-2">
+        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Wallet className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold truncate">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 Hisobingiz:
               </div>
               <div className="font-black text-sm text-slate-900 dark:text-white truncate">
@@ -158,10 +161,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 triggerHaptic('light');
                 onOpenReceiptModal?.();
               }}
-              className="py-1.5 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all"
+              className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center leading-none gap-1 shadow-xs transition-all"
             >
-              <PlusCircle className="w-4 h-4 text-white" strokeWidth={1.75} />
-              <span>+ To'ldirish</span>
+              <PlusCircle className="w-3.5 h-3.5 text-white shrink-0" strokeWidth={2} />
+              <span>To'ldirish</span>
             </button>
             <button
               type="button"
@@ -169,27 +172,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 triggerHaptic('light');
                 setActiveTab('wallet');
               }}
-              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center leading-none transition-colors"
               title="Hamyon tarixi"
             >
               <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
             </button>
           </div>
-        </div>
-
-        {/* Direct Edit Profile Action Button */}
-        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('medium');
-              onOpenEditProfile?.();
-            }}
-            className="w-full py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
-          >
-            <Edit3 className="w-5 h-5 text-white" strokeWidth={2} />
-            <span>{t.editProfileBtn || 'Profilni tahrirlash'}</span>
-          </button>
         </div>
       </div>
 

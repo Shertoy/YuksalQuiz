@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -9,36 +9,36 @@ import {
   ChevronRight,
   Plus,
   KeyRound,
-  GraduationCap,
-  Building2,
-  Globe2,
-  UserCheck,
-  BookOpen,
-  RefreshCw,
-  Cloud,
   School,
   Edit3,
   Trash2,
   User,
   Calendar,
-  Filter,
-  RotateCcw,
-  Sparkles,
+  RefreshCw,
+  BookOpen,
 } from 'lucide-react';
-import {
-  MAIN_CATEGORIES,
-  MainCategory,
-  TestPackage,
-  TestBlock,
-  AVAILABLE_SEMESTERS,
-  AVAILABLE_ACADEMIC_YEARS,
-} from '../types';
+import { TestPackage, TestBlock } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
 import { isBlockUnlocked } from '../utils/progressUtils';
 import { isPaidUser, getTodayAttemptsCount } from '../services/paywallService';
+
+const getUniversityMonogram = (name: string): string => {
+  if (!name) return 'OTM';
+  const match = name.match(/\(([^)]+)\)/);
+  if (match && match[1] && match[1].trim().length <= 8) {
+    return match[1].trim().toUpperCase();
+  }
+  const trimmed = name.trim();
+  if (trimmed.length <= 6) {
+    return trimmed;
+  }
+  const words = trimmed.split(/[\s-]+/).filter((w) => w.length > 0 && !/^(va|dagi|nomidagi)$/i.test(w));
+  const initials = words.map((w) => w[0].toUpperCase()).join('');
+  return initials.slice(0, 5) || 'OTM';
+};
 
 interface TestListProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -53,13 +53,10 @@ export const TestList: React.FC<TestListProps> = ({
   onEditTest,
   onOpenReceiptModal,
 }) => {
-  const { testPackages, universities, profile, testAttempts, deleteTestPackage } = useQuizStore();
+  const { testPackages, profile, testAttempts, deleteTestPackage } = useQuizStore();
   const { t } = useTranslation();
 
-  const [activeCategory, setActiveCategory] = useState<MainCategory>('Oliy Ta\'lim (HEMIS)');
-  const [selectedUniFilter, setSelectedUniFilter] = useState<string>('all');
-  const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | 'all'>('all');
+  const [selectedUniversity, setSelectedUniversity] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyTests, setOnlyMyTests] = useState(false);
   const [passwordModalPkg, setPasswordModalPkg] = useState<TestPackage | null>(null);
@@ -120,13 +117,11 @@ export const TestList: React.FC<TestListProps> = ({
     const targetId = deletingPkg.id;
 
     triggerHaptic('medium');
-    // 1. Immediately delete from local store (instant UI update)
     deleteTestPackage(targetId);
     setDeletingPkg(null);
     setIsDeleting(false);
     triggerHaptic('success');
 
-    // 2. Delete from Supabase cloud in background
     try {
       await deleteTestFromCloud(targetId);
     } catch (err) {
@@ -134,60 +129,59 @@ export const TestList: React.FC<TestListProps> = ({
     }
   };
 
-  // Filter test packages by active category, author scope, and search query
-  const filteredPackages = testPackages.filter((pkg) => {
-    if (onlyMyTests && pkg.authorId !== profile.id) {
-      return false;
-    }
-    const pkgCategory = pkg.category || 'Oliy Ta\'lim (HEMIS)';
-    const matchesCategory = onlyMyTests ? true : pkgCategory === activeCategory;
-    const matchesUni =
-      selectedUniFilter === 'all' ||
-      (pkg.university && pkg.university.toLowerCase() === selectedUniFilter.toLowerCase());
-    const matchesSemester =
-      selectedSemester === 'all' ||
-      Number(pkg.semester) === Number(selectedSemester);
-    const matchesAcademicYear =
-      selectedAcademicYear === 'all' ||
-      pkg.academicYear === selectedAcademicYear;
-    const matchesSearch =
-      pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pkg.university.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pkg.department.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesUni && matchesSemester && matchesAcademicYear && matchesSearch;
-  });
+  // Calculate list of universities that actually have tests in the database
+  const universityCatalog = useMemo(() => {
+    const uniMap = new Map<string, TestPackage[]>();
+    testPackages.forEach((pkg) => {
+      if (onlyMyTests && pkg.authorId !== profile.id) return;
+      const uni = (pkg.university || "Boshqa OTM").trim();
+      if (!uniMap.has(uni)) {
+        uniMap.set(uni, []);
+      }
+      uniMap.get(uni)!.push(pkg);
+    });
 
-  const getCategoryIcon = (cat: MainCategory) => {
-    switch (cat) {
-      case 'Oliy Ta\'lim (HEMIS)':
-        return <GraduationCap className="w-4 h-4 shrink-0" />;
-      case 'O\'quv Markazi':
-        return <Building2 className="w-4 h-4 shrink-0" />;
-      case 'Xalqaro Sertifikatlar (IELTS, TOPIK, SAT, TOEFL)':
-        return <Globe2 className="w-4 h-4 shrink-0" />;
-      case 'Abituriyent':
-        return <UserCheck className="w-4 h-4 shrink-0" />;
-      case 'Maktab':
-        return <BookOpen className="w-4 h-4 shrink-0" />;
-    }
-  };
+    const list = Array.from(uniMap.entries()).map(([uniName, pkgs]) => ({
+      name: uniName,
+      monogram: getUniversityMonogram(uniName),
+      packages: pkgs,
+      testCount: pkgs.length,
+    }));
 
-  const getCategoryTitle = (cat: MainCategory) => {
-    switch (cat) {
-      case 'Oliy Ta\'lim (HEMIS)':
-        return t.catHemis;
-      case 'O\'quv Markazi':
-        return t.catCenter;
-      case 'Xalqaro Sertifikatlar (IELTS, TOPIK, SAT, TOEFL)':
-        return t.catCert;
-      case 'Abituriyent':
-        return t.catApplicant;
-      case 'Maktab':
-        return t.catSchool;
-      default:
-        return cat;
+    list.sort((a, b) => b.testCount - a.testCount || a.name.localeCompare(b.name, 'uz'));
+
+    if (!searchQuery.trim()) {
+      return list;
     }
-  };
+
+    const q = searchQuery.toLowerCase();
+    return list.filter((item) =>
+      item.name.toLowerCase().includes(q) ||
+      item.monogram.toLowerCase().includes(q) ||
+      item.packages.some((p) =>
+        p.title.toLowerCase().includes(q) ||
+        (p.department && p.department.toLowerCase().includes(q))
+      )
+    );
+  }, [testPackages, onlyMyTests, profile.id, searchQuery]);
+
+  // Tests for currently selected university
+  const testsForSelectedUni = useMemo(() => {
+    if (!selectedUniversity) return [];
+    return testPackages.filter((pkg) => {
+      if (onlyMyTests && pkg.authorId !== profile.id) return false;
+      const uni = (pkg.university || "Boshqa OTM").trim().toLowerCase();
+      if (uni !== selectedUniversity.trim().toLowerCase()) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          pkg.title.toLowerCase().includes(q) ||
+          (pkg.department && pkg.department.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [testPackages, selectedUniversity, onlyMyTests, profile.id, searchQuery]);
 
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
     const blockIndex = pkg.blocks.findIndex((b) => b.id === block.id);
@@ -269,10 +263,10 @@ export const TestList: React.FC<TestListProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-black text-slate-900 dark:text-white">
-            {t.navTests}
+            {selectedUniversity ? decodeHtmlEntities(selectedUniversity) : t.navTests}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {getCategoryTitle(activeCategory)}
+            {selectedUniversity ? 'Fanlar va test bloklari' : 'OTMlar katalogi'}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -284,7 +278,7 @@ export const TestList: React.FC<TestListProps> = ({
               await handleSyncTests();
               triggerHaptic('success');
             }}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 transition-colors active:scale-95"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 transition-colors active:scale-95 flex items-center justify-center leading-none"
             title="Bulutdan testlarni yangilash"
             aria-label="Refresh tests from cloud"
           >
@@ -296,14 +290,13 @@ export const TestList: React.FC<TestListProps> = ({
               triggerHaptic('light');
               onOpenCreateModal();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+            className="flex items-center justify-center leading-none gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t.createTestBtn}</span>
           </button>
         </div>
       </div>
-
 
       {/* Network / Cloud Sync Error Banner with Retry */}
       {syncError && (
@@ -319,9 +312,9 @@ export const TestList: React.FC<TestListProps> = ({
               triggerHaptic('light');
               handleSyncTests();
             }}
-            className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 transition-colors active:scale-95 flex items-center gap-1.5 shadow-sm"
+            className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shrink-0 transition-colors active:scale-95 flex items-center justify-center leading-none gap-1.5 shadow-sm"
           >
-            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>{t.retryBtn}</span>
           </button>
         </div>
@@ -335,7 +328,7 @@ export const TestList: React.FC<TestListProps> = ({
             triggerHaptic('selection');
             setOnlyMyTests(false);
           }}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center leading-none ${
             !onlyMyTests
               ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -349,7 +342,7 @@ export const TestList: React.FC<TestListProps> = ({
             triggerHaptic('selection');
             setOnlyMyTests(true);
           }}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center leading-none gap-1.5 ${
             onlyMyTests
               ? 'bg-emerald-600 text-white shadow-xs'
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -360,441 +353,327 @@ export const TestList: React.FC<TestListProps> = ({
         </button>
       </div>
 
-      {/* Multi-Track Category Tab Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {MAIN_CATEGORIES.map((cat) => {
-          const isActive = activeCategory === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => {
-                triggerHaptic('selection');
-                setActiveCategory(cat);
-              }}
-              className={`shrink-0 px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-[1.02]'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              {getCategoryIcon(cat)}
-              <span>{getCategoryTitle(cat)}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search Input for Category */}
+      {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t.searchPlaceholder}
+          placeholder={selectedUniversity ? "Fan nomi yoki yo'nalishni qidirish..." : "OTM yoki test nomini qidirish..."}
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm font-medium"
         />
       </div>
 
-      {/* University (OTM) Quick Filter Bar */}
-      {activeCategory === "Oliy Ta'lim (HEMIS)" && universities && universities.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setSelectedUniFilter('all');
-            }}
-            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
-              selectedUniFilter === 'all'
-                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.allUnis}
-          </button>
-          {profile.university && (
-            <button
-              onClick={() => {
-                triggerHaptic('selection');
-                setSelectedUniFilter(profile.university!);
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
-                selectedUniFilter.toLowerCase() === profile.university.toLowerCase()
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-              }`}
-            >
-              <School className="w-3 h-3" />
-              <span>{t.myUni}</span>
-            </button>
+      {!selectedUniversity ? (
+        /* OTM Katalogi View */
+        <div className="space-y-3">
+          {universityCatalog.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                <School className="w-7 h-7" />
+              </div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                {onlyMyTests ? t.myTestsEmptyTitle : "Hozircha testlar mavjud emas"}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
+                {onlyMyTests
+                  ? t.myTestsEmptyDesc
+                  : "Yangi test qo'shish orqali boshlang yoki boshqa qidiruv so'zini kiriting."}
+              </p>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    onOpenCreateModal();
+                  }}
+                  className="flex items-center justify-center leading-none gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t.createTestBtn}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2.5">
+              {universityCatalog.map((item) => (
+                <div
+                  key={item.name}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setSelectedUniversity(item.name);
+                  }}
+                  className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-all shadow-xs"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center justify-center font-black text-xs shrink-0 shadow-sm tracking-wider">
+                      {item.monogram}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
+                        {decodeHtmlEntities(item.name)}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                        {item.testCount} ta test
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                </div>
+              ))}
+            </div>
           )}
-          {[...universities]
-            .filter((u) => u !== profile.university)
-            .sort((a, b) => a.localeCompare(b, 'uz', { sensitivity: 'base' }))
-            .map((u) => (
-              <button
-                key={u}
-                onClick={() => {
-                  triggerHaptic('selection');
-                  setSelectedUniFilter(u);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
-                  selectedUniFilter.toLowerCase() === u.toLowerCase()
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {u.length > 25 ? u.substring(0, 22) + '...' : u}
-              </button>
-            ))}
         </div>
-      )}
-
-      {/* Semester & Academic Year Quick Filters */}
-      <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
-        {/* Semester Quick Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
-          <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0 pl-1">
-            {t.semesterLabel}:
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('selection');
-              setSelectedSemester('all');
-            }}
-            className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
-              selectedSemester === 'all'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.allSemesters}
-          </button>
-          {AVAILABLE_SEMESTERS.map((s) => {
-            const isSelected = selectedSemester === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  triggerHaptic('selection');
-                  setSelectedSemester(s);
-                }}
-                className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
-                  isSelected
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {s}-semestr
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Academic Year Quick Filter Pills & Reset */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
-          <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0 pl-1 flex items-center gap-1">
-            <Calendar className="w-3 h-3 text-amber-500" strokeWidth={1.75} />
-            <span>{t.academicYearLabel}:</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('selection');
-              setSelectedAcademicYear('all');
-            }}
-            className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
-              selectedAcademicYear === 'all'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.allAcademicYears}
-          </button>
-          {AVAILABLE_ACADEMIC_YEARS.map((yr) => {
-            const isSelected = selectedAcademicYear === yr;
-            return (
-              <button
-                key={yr}
-                type="button"
-                onClick={() => {
-                  triggerHaptic('selection');
-                  setSelectedAcademicYear(yr);
-                }}
-                className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all ${
-                  isSelected
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {yr}
-              </button>
-            );
-          })}
-
-          {(selectedSemester !== 'all' || selectedAcademicYear !== 'all') && (
+      ) : (
+        /* Selected University Tests View */
+        <div className="space-y-3">
+          {/* Back Button & Test Count */}
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic('light');
-                setSelectedSemester('all');
-                setSelectedAcademicYear('all');
+                setSelectedUniversity(null);
               }}
-              className="ml-auto px-2 py-0.5 rounded-lg font-bold text-[10px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-900/60 hover:bg-orange-100 whitespace-nowrap transition-all"
+              className="px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all active:scale-95 shadow-xs"
             >
-              Tozalash
+              <span>⬅</span>
+              <span>Barcha OTMlar</span>
             </button>
-          )}
-        </div>
-      </div>
+            <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400">
+              {testsForSelectedUni.length} ta test
+            </span>
+          </div>
 
-      {/* Tests Grid */}
-      <div className="space-y-3">
-        {filteredPackages.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-              <Search className="w-7 h-7" />
+          {/* OTM Banner */}
+          <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center justify-center font-black text-xs shrink-0 tracking-wider shadow-sm">
+              {getUniversityMonogram(selectedUniversity)}
             </div>
-            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              {onlyMyTests ? t.myTestsEmptyTitle : t.emptyCategoryTitle}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
-              {onlyMyTests
-                ? t.myTestsEmptyDesc
-                : t.emptyCategoryDesc}
-            </p>
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              {(selectedSemester !== 'all' || selectedAcademicYear !== 'all') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic('light');
-                    setSelectedSemester('all');
-                    setSelectedAcademicYear('all');
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Filtrlarni tozalash</span>
-                </button>
-              )}
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
+                {decodeHtmlEntities(selectedUniversity)}
+              </h3>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                Fanlar va test bloklari
+              </p>
+            </div>
+          </div>
 
+          {testsForSelectedUni.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                Bu OTMda testlar topilmadi
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
+                Qidiruv so'zini o'zgartiring yoki ushbu OTM uchun yangi test qo'shing.
+              </p>
               <button
                 onClick={() => {
                   triggerHaptic('light');
                   onOpenCreateModal();
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                className="flex items-center justify-center leading-none gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all mx-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>{t.createTestBtn}</span>
               </button>
-
-              <button
-                type="button"
-                disabled={isSyncing}
-                onClick={() => {
-                  triggerHaptic('light');
-                  handleSyncTests();
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:scale-95 transition-all"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-500' : ''}`} />
-                <span>{t.retryBtn}</span>
-              </button>
             </div>
-          </div>
-        ) : (
-          filteredPackages.map((pkg) => (
-            <div
-              key={pkg.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm transition-all"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
-                      {decodeHtmlEntities(pkg.department)}
-                    </span>
-
-                    {!pkg.isPublic ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
-                        <Lock className="w-3 h-3" />
-                        <span>{t.privateAccess}</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                        <Unlock className="w-3 h-3" />
-                        <span>{t.publicAccess}</span>
-                      </span>
-                    )}
-
-                    {pkg.isCommunityCreated && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
-                        {t.communityTestBadge}
-                      </span>
-                    )}
-
-                    {pkg.authorId === profile.id && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
-                        {t.myTestBadge}
-                      </span>
-                    )}
-
-                    {(pkg.semester || pkg.academicYear) && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
-                        <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
-                        <span>
-                          {pkg.semester ? `${pkg.semester}-semestr` : ''}
-                          {pkg.semester && pkg.academicYear ? ' • ' : ''}
-                          {pkg.academicYear ? `${pkg.academicYear}` : ''}
+          ) : (
+            testsForSelectedUni.map((pkg) => (
+              <div
+                key={pkg.id}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm transition-all"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                      {pkg.department && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                          {decodeHtmlEntities(pkg.department)}
                         </span>
-                      </span>
-                    )}
+                      )}
+
+                      {(pkg.course_year || pkg.semester) && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
+                          <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
+                          <span>
+                            {pkg.course_year ? `${pkg.course_year}-kurs` : ''}
+                            {pkg.course_year && pkg.semester ? ' • ' : ''}
+                            {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                          </span>
+                        </span>
+                      )}
+
+                      {!pkg.isPublic ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
+                          <Lock className="w-3 h-3" />
+                          <span>{t.privateAccess}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                          <Unlock className="w-3 h-3" />
+                          <span>{t.publicAccess}</span>
+                        </span>
+                      )}
+
+                      {pkg.isCommunityCreated && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                          {t.communityTestBadge}
+                        </span>
+                      )}
+
+                      {pkg.authorId === profile.id && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
+                          {t.myTestBadge}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {decodeHtmlEntities(pkg.title)}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {decodeHtmlEntities(pkg.university || '')} • {t.authorLabel}: {decodeHtmlEntities(pkg.authorName || '')}
+                    </p>
                   </div>
 
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    {decodeHtmlEntities(pkg.title)}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {decodeHtmlEntities(pkg.university || '')} • {t.authorLabel}: {decodeHtmlEntities(pkg.authorName || '')}
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {pkg.totalQuestions} {t.questionsCount}
+                    </span>
+
+                    {pkg.authorId === profile.id && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic('light');
+                            onEditTest?.(pkg);
+                          }}
+                          className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] transition-all active:scale-95 border border-emerald-200/50 dark:border-emerald-800/50"
+                          title={t.editBtn}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>{t.editBtn}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTest(pkg);
+                          }}
+                          className="p-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900 text-orange-600 dark:text-orange-400 transition-all active:scale-95 border border-orange-200/50 dark:border-orange-900/50 flex items-center justify-center leading-none"
+                          title={t.deleteBtn}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sequential Test Blocks Selection */}
+                <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
+                  <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
+                    {t.testBlocksLabel}:
                   </p>
-                </div>
 
-                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-400">
-                    {pkg.totalQuestions} {t.questionsCount}
-                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {pkg.blocks.map((block, idx) => {
+                      const unlocked = isBlockUnlocked(pkg, idx, testAttempts);
+                      const isLocked = !unlocked;
 
-                  {pkg.authorId === profile.id && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerHaptic('light');
-                          onEditTest?.(pkg);
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] transition-all active:scale-95 border border-emerald-200/50 dark:border-emerald-800/50"
-                        title={t.editBtn}
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>{t.editBtn}</span>
-                      </button>
+                      const blockAttempts = (testAttempts || []).filter(
+                        (a) =>
+                          a.testPackageId === pkg.id &&
+                          (a.blockId === block.id || a.blockTitle === block.title)
+                      );
+                      const passing =
+                        block.passingScore ||
+                        Math.max(1, Math.ceil((block.questions?.length || 25) * 0.7));
+                      const maxScore =
+                        blockAttempts.length > 0
+                          ? Math.max(...blockAttempts.map((a) => a.score))
+                          : block.bestScore || 0;
+                      const isPassed = Boolean(
+                        block.isPassed ||
+                        maxScore >= passing ||
+                        blockAttempts.some((a) => a.isPassed || a.score >= passing)
+                      );
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTest(pkg);
-                        }}
-                        className="p-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900 text-orange-600 dark:text-orange-400 transition-all active:scale-95 border border-orange-200/50 dark:border-orange-900/50"
-                        title={t.deleteBtn}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      const isPaid = isPaidUser(profile);
+                      const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
+                      const isLimitReached = !isPaid && todayAttempts >= 2;
 
-              {/* Sequential Test Blocks Selection */}
-              <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
-                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                  {t.testBlocksLabel}:
-                </p>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {pkg.blocks.map((block, idx) => {
-                    const unlocked = isBlockUnlocked(pkg, idx, testAttempts);
-                    const isLocked = !unlocked;
-
-                    const blockAttempts = (testAttempts || []).filter(
-                      (a) =>
-                        a.testPackageId === pkg.id &&
-                        (a.blockId === block.id || a.blockTitle === block.title)
-                    );
-                    const passing =
-                      block.passingScore ||
-                      Math.max(1, Math.ceil((block.questions?.length || 25) * 0.7));
-                    const maxScore =
-                      blockAttempts.length > 0
-                        ? Math.max(...blockAttempts.map((a) => a.score))
-                        : block.bestScore || 0;
-                    const isPassed = Boolean(
-                      block.isPassed ||
-                      maxScore >= passing ||
-                      blockAttempts.some((a) => a.isPassed || a.score >= passing)
-                    );
-
-                    const isPaid = isPaidUser(profile);
-                    const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
-                    const isLimitReached = !isPaid && todayAttempts >= 2;
-
-                    return (
-                      <button
-                        key={block.id}
-                        onClick={() => handleTestClick(pkg, block)}
-                        className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
-                          isLocked
-                            ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
-                            : isLimitReached
-                            ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/80 dark:border-orange-900/50 text-slate-800 dark:text-slate-200 hover:border-orange-400'
-                            : isPassed
-                            ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100 hover:border-emerald-500'
-                            : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/50 text-slate-800 dark:text-slate-100 hover:border-emerald-400'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-xs flex items-center gap-1">
-                            {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
-                            <span>{decodeHtmlEntities(block.title)}</span>
-                          </span>
-                          {isLocked ? (
-                            <Lock className="w-3.5 h-3.5 text-slate-400" />
-                          ) : isLimitReached ? (
-                            <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5">
-                              <Lock className="w-2.5 h-2.5" /> 2/2
+                      return (
+                        <button
+                          key={block.id}
+                          onClick={() => handleTestClick(pkg, block)}
+                          className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
+                            isLocked
+                              ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
+                              : isLimitReached
+                              ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/80 dark:border-orange-900/50 text-slate-800 dark:text-slate-200 hover:border-orange-400'
+                              : isPassed
+                              ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100 hover:border-emerald-500'
+                              : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/50 text-slate-800 dark:text-slate-100 hover:border-emerald-400'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-xs flex items-center gap-1">
+                              {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+                              <span>{decodeHtmlEntities(block.title)}</span>
                             </span>
-                          ) : isPassed ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <ChevronRight className="w-3.5 h-3.5 text-orange-500" />
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="opacity-80">
-                            {block.questions.length} {t.questionsCount}
-                          </span>
-                          <span>
                             {isLocked ? (
-                              t.lockedStatus
+                              <Lock className="w-3.5 h-3.5 text-slate-400" />
                             ) : isLimitReached ? (
-                              <span className="text-orange-600 dark:text-orange-400 font-bold">
-                                Limit tugagan
+                              <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5">
+                                <Lock className="w-2.5 h-2.5" /> 2/2
                               </span>
-                            ) : maxScore > 0 ? (
-                              <span className="font-bold">
-                                {t.bestScoreLabel}: {maxScore}/{block.questions.length} ({maxScore * 4} {t.pointsLabel})
-                              </span>
+                            ) : isPassed ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                             ) : (
-                              t.start
+                              <ChevronRight className="w-3.5 h-3.5 text-orange-500" />
                             )}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="opacity-80">
+                              {block.questions.length} {t.questionsCount}
+                            </span>
+                            <span>
+                              {isLocked ? (
+                                t.lockedStatus
+                              ) : isLimitReached ? (
+                                <span className="text-orange-600 dark:text-orange-400 font-bold">
+                                  Limit tugagan
+                                </span>
+                              ) : maxScore > 0 ? (
+                                <span className="font-bold">
+                                  {t.bestScoreLabel}: {maxScore}/{block.questions.length} ({maxScore * 4} {t.pointsLabel})
+                                </span>
+                              ) : (
+                                t.start
+                              )}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Lock Explanation Modal */}
       {lockExplanation && (

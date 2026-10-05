@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Zap,
   Wallet,
+  Gift,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
@@ -52,6 +53,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     checkDailyStreak,
     testAttempts,
     leaderboard,
+    claimVoucherDirectly,
   } = useQuizStore();
   const { t } = useTranslation();
 
@@ -181,6 +183,24 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         setDailyClaimedMessage(null);
       }, 3500);
     }, 700);
+  };
+
+  // Handle direct claiming of 20 000 UZS starting voucher
+  const [isVoucherClaiming, setIsVoucherClaiming] = useState(false);
+  const handleClaimVoucher = async () => {
+    if (isVoucherClaiming || profile.voucher_claimed || profile.voucherClaimed) return;
+    setIsVoucherClaiming(true);
+    triggerHaptic('medium');
+    try {
+      const confetti = (await import('canvas-confetti')).default;
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    } catch {}
+    await claimVoucherDirectly();
+    setIsVoucherClaiming(false);
   };
 
   return (
@@ -316,10 +336,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             triggerHaptic('light');
             onOpenReceiptModal?.();
           }}
-          className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all shrink-0"
+          className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center leading-none gap-1.5 transition-all shrink-0"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>+ To'ldirish</span>
+          <PlusCircle className="w-4 h-4 shrink-0" />
+          <span>To'ldirish</span>
         </button>
       </div>
 
@@ -395,27 +415,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
 
 
-      {/* Starting Voucher Card */}
-      {profile.voucherBalance > 0 && (!profile.subscriptionPlan || profile.subscriptionPlan === 'none') && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/30 text-white rounded-3xl p-4 shadow-xl space-y-3 relative overflow-hidden">
+      {/* 20 000 UZS Starting Voucher Card - Disappears permanently once claimed */}
+      {!profile.voucher_claimed && !profile.voucherClaimed && (
+        <div
+          onClick={handleClaimVoucher}
+          className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/40 text-white rounded-3xl p-4 shadow-xl space-y-3 relative overflow-hidden cursor-pointer hover:border-emerald-400 active:scale-[0.99] transition-all group"
+        >
           <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
 
           <div className="flex items-start justify-between relative z-10">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
                 <Ticket className="w-5 h-5 text-slate-950" strokeWidth={1.75} />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-extrabold text-white">
-                    {profile.voucherBalance.toLocaleString('uz-UZ')} so'm boshlang'ich vaucheringiz faol!
+                    20 000 so'm boshlang'ich vaucheringiz faol!
                   </h3>
                   <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
-                    Faol
+                    Sovg'a
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-100 leading-relaxed font-medium">
-                  Istalgan Premium obuna rejasini tanlang (3 oy, 6 oy yoki 1 yil) va {profile.voucherBalance.toLocaleString('uz-UZ')} so'm chegirmadan foydalaning.
+                  Ushbu vaucherni bosing va to'g'ridan-to'g'ri balansingizga +20 000 so'm qabul qilib oling!
                 </p>
               </div>
             </div>
@@ -424,14 +447,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="pt-1 relative z-10">
             <button
               type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                setActiveTab('wallet');
-              }}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all active:scale-[0.98]"
+              disabled={isVoucherClaiming}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center leading-none gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
             >
-              <span>Tariflarni ko'rish</span>
-              <ChevronRight className="w-4 h-4 text-slate-950" strokeWidth={2} />
+              <Gift className="w-4 h-4 text-slate-950 shrink-0" />
+              <span>{isVoucherClaiming ? "Qo'shilmoqda..." : "Balansga +20 000 so'm qabul qilish"}</span>
             </button>
           </div>
         </div>
@@ -510,7 +530,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </h3>
             <button
               onClick={() => setActiveTab('tests')}
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline flex items-center justify-center leading-none"
             >
               {t.all} &rarr;
             </button>
@@ -521,37 +541,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <div
                 key={pkg.id}
                 onClick={() => onStartTest(pkg, pkg.blocks[0]?.id || '')}
-                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 transition-all active:scale-[0.99] shadow-xs"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/70 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                      {decodeHtmlEntities(pkg.title)}
-                    </h4>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
-                      <span>{decodeHtmlEntities(pkg.university || '')}</span>
-                      {(pkg.semester || pkg.academicYear) && (
-                        <>
-                          <span>•</span>
-                          <span className="font-semibold text-amber-600 dark:text-amber-400">
-                            {pkg.semester ? `${pkg.semester}-semestr` : ''}
-                            {pkg.semester && pkg.academicYear ? ' • ' : ''}
-                            {pkg.academicYear ? `${pkg.academicYear}` : ''}
-                          </span>
-                        </>
-                      )}
-                      <span>•</span>
-                      <span>{pkg.blocks.length} {t.blocksCount} ({pkg.totalQuestions} {t.questionsCount})</span>
-                    </div>
-                  </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/70 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-
-                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                  <span>{t.start}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug">
+                    {decodeHtmlEntities(pkg.title)}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{decodeHtmlEntities(pkg.university || '')}</span>
+                    {(pkg.semester || pkg.academicYear) && (
+                      <>
+                        <span>•</span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">
+                          {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                          {pkg.semester && pkg.academicYear ? ' • ' : ''}
+                          {pkg.academicYear ? `${pkg.academicYear}` : ''}
+                        </span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <span>{pkg.blocks.length} {t.blocksCount} ({pkg.totalQuestions} {t.questionsCount})</span>
+                  </div>
                 </div>
               </div>
             ))}

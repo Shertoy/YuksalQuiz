@@ -8,13 +8,12 @@ import {
   CheckCircle2,
   MapPin,
   School,
-  Building2,
   Percent,
   Zap,
   Users,
   RefreshCw,
 } from 'lucide-react';
-import { LeaderboardUser, UniversityLeaderboardEntry } from '../types';
+import { LeaderboardUser } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
@@ -30,9 +29,6 @@ export const Leaderboard: React.FC = () => {
     universities,
   } = useQuizStore();
   const { t } = useTranslation();
-
-  // Mode: 'students' (Talabalar reytingi) | 'universities' (OTMlar reytingi)
-  const [viewMode, setViewMode] = useState<'students' | 'universities'>('students');
 
   // Metric filter: 'correct' (Reyting ballari) | 'percentage' (Aniqlik foizi & Tezlik) | 'weekly' (Haftalik faollar)
   const [metric, setMetric] = useState<'correct' | 'percentage' | 'weekly'>('correct');
@@ -160,94 +156,6 @@ export const Leaderboard: React.FC = () => {
   const third = top20Users[2];
   const listUsers = top20Users.slice(3, 20);
 
-  // University Leaderboard dynamically computed from registered universities and active students
-  const sortedUniversities: UniversityLeaderboardEntry[] = useMemo(() => {
-    const list = universities && universities.length > 0 ? universities : [];
-
-    return list
-      .map((uni, idx) => {
-        const uniUsers = allUsers.filter(
-          (u) => u.university && u.university.trim().toLowerCase() === uni.trim().toLowerCase()
-        );
-        const activeStudentsCount = uniUsers.length;
-        const totalCorrectAnswers = uniUsers.reduce(
-          (sum, u) => sum + (u.correctAnswersCount ?? u.testsCompleted * 22),
-          0
-        );
-        const totalScorePoints = uniUsers.reduce(
-          (sum, u) =>
-            sum +
-            (u.scorePoints ??
-              (u.correctAnswersCount !== undefined
-                ? u.correctAnswersCount * 4
-                : u.testsCompleted * 22 * 4)),
-          0
-        );
-        const averageAccuracy =
-          uniUsers.length > 0
-            ? Math.round(
-                uniUsers.reduce((sum, u) => sum + (u.accuracyPercentage || 80), 0) /
-                  uniUsers.length
-              )
-            : 0;
-        const averageTimeSeconds =
-          uniUsers.length > 0
-            ? Math.round(
-                uniUsers.reduce((sum, u) => sum + (u.bestTimeSeconds || 180), 0) /
-                  uniUsers.length
-              )
-            : 180;
-        const testsCompletedCount = uniUsers.reduce(
-          (sum, u) => sum + (u.testsCompleted || 0),
-          0
-        );
-        const shortName = uni.length > 30 ? uni.substring(0, 27) + '...' : uni;
-        const mins = Math.floor(averageTimeSeconds / 60);
-        const secs = averageTimeSeconds % 60;
-        const averageTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-        return {
-          id: `uni-${idx}-${uni}`,
-          name: uni,
-          shortName,
-          type: 'otm' as const,
-          region: uniUsers[0]?.region || "O'zbekiston",
-          activeStudentsCount,
-          totalCorrectAnswers,
-          totalScorePoints,
-          averageAccuracy,
-          averageTime,
-          averageTimeSeconds,
-        };
-      })
-      .sort((a, b) => {
-        if (b.activeStudentsCount > 0 && a.activeStudentsCount === 0) return 1;
-        if (a.activeStudentsCount > 0 && b.activeStudentsCount === 0) return -1;
-
-        if (metric === 'percentage') {
-          if (b.averageAccuracy !== a.averageAccuracy) {
-            return b.averageAccuracy - a.averageAccuracy;
-          }
-          return a.averageTimeSeconds - b.averageTimeSeconds;
-        }
-        if (metric === 'weekly') {
-          return b.activeStudentsCount - a.activeStudentsCount;
-        }
-        if (b.totalScorePoints !== a.totalScorePoints) {
-          return (b.totalScorePoints || 0) - (a.totalScorePoints || 0);
-        }
-        if (b.totalCorrectAnswers !== a.totalCorrectAnswers) {
-          return b.totalCorrectAnswers - a.totalCorrectAnswers;
-        }
-        return b.activeStudentsCount - a.activeStudentsCount;
-      });
-  }, [universities, allUsers, metric]);
-
-  const uniFirst = sortedUniversities[0];
-  const uniSecond = sortedUniversities[1];
-  const uniThird = sortedUniversities[2];
-  const uniList = sortedUniversities.slice(3, 20); // Top 20 universities
-
   // Format student metric value (points and correct answers count)
   const formatMetricValue = (u: LeaderboardUser, isPodium: boolean = false) => {
     const points =
@@ -291,41 +199,6 @@ export const Leaderboard: React.FC = () => {
         <span className="text-[10px] text-slate-400 font-medium">
           {count.toLocaleString('uz-UZ')} {t.correctAnswersShort}
         </span>
-      </div>
-    );
-  };
-
-  // Format university metric value
-  const formatUniMetricValue = (uni: UniversityLeaderboardEntry, isPodium: boolean = false) => {
-    if (metric === 'percentage') {
-      return (
-        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
-          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-            {uni.averageAccuracy}% {t.accuracyLabel}
-          </span>
-          <span className="text-[10px] text-slate-400 flex items-center justify-end gap-1">
-            <Clock className="w-3 h-3 text-slate-400 inline" />
-            <span>{uni.averageTime}</span>
-          </span>
-        </div>
-      );
-    }
-    if (metric === 'weekly') {
-      return (
-        <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
-          <span className="font-black text-xs text-orange-600 dark:text-orange-400">
-            {uni.activeStudentsCount.toLocaleString('uz-UZ')}
-          </span>
-          <span className="text-[10px] text-slate-400">{t.activeParticipants}</span>
-        </div>
-      );
-    }
-    return (
-      <div className={`flex flex-col ${isPodium ? 'items-center text-center' : 'items-end text-right'}`}>
-        <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-          {(uni.totalScorePoints ?? uni.totalCorrectAnswers * 4).toLocaleString('uz-UZ')} {t.pointsLabel}
-        </span>
-        <span className="text-[10px] text-slate-400">{uni.activeStudentsCount} {t.fromStudentsCount}</span>
       </div>
     );
   };
@@ -386,44 +259,8 @@ export const Leaderboard: React.FC = () => {
         </div>
       )}
 
-      {/* View Mode Switcher: Talabalar reytingi | OTMlar reytingi */}
-      <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold border border-slate-200 dark:border-slate-800">
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('selection');
-            setViewMode('students');
-          }}
-          className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            viewMode === 'students'
-              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>{t.studentsRatingTab || 'Talabalar reytingi'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('selection');
-            setViewMode('universities');
-          }}
-          className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            viewMode === 'universities'
-              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <School className="w-3.5 h-3.5" />
-          <span>{t.universitiesRatingTab || 'OTMlar reytingi'}</span>
-        </button>
-      </div>
-
-      {/* Filters (Respublika, Viloyat, OTM) & Metric Tabs */}
-      {viewMode === 'students' && (
-        <div className="space-y-2">
+      {/* Scope Filters: Respublika | Viloyat | OTM & Metric Tabs */}
+      <div className="space-y-2">
           {/* Scope Filters: Respublika | Viloyat | OTM */}
           <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold border border-slate-200 dark:border-slate-800">
             {/* 1. Respublika */}
@@ -531,148 +368,9 @@ export const Leaderboard: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
 
-      {/* Main Content Area */}
-      {viewMode === 'universities' ? (
-        /* OTM & Educational Center Leaderboard View */
-        sortedUniversities.length === 0 ? (
-          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <School className="w-7 h-7" />
-            </div>
-            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              {t.emptyUnisTitle}
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-              {t.emptyUnisDesc}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Universities Olympic Podium (Top 3) */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div className="flex items-end justify-center gap-1.5 pt-6 pb-2">
-                {/* 2nd Place (Silver) */}
-                {uniSecond && (
-                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 text-xs shadow-sm mb-2 relative">
-                      <Building2 className="w-5 h-5 text-slate-500" />
-                      <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-black text-[10px] flex items-center justify-center shadow-md">
-                        2
-                      </span>
-                    </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
-                      {uniSecond.shortName}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
-                      {uniSecond.region}
-                    </p>
-                    <div className="h-16 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                      <span className="text-[10px] font-bold text-slate-500">2{t.rankPlace}</span>
-                      {formatUniMetricValue(uniSecond, true)}
-                    </div>
-                  </div>
-                )}
-
-                {/* 1st Place (Gold, Tallest + Crown) */}
-                {uniFirst && (
-                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
-                    <div className="relative mb-2">
-                      <Crown className="w-5 h-5 text-amber-500 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce" strokeWidth={1.75} />
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-400 border-2 border-amber-300 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-400/20">
-                        <School className="w-7 h-7 text-slate-950" strokeWidth={1.75} />
-                      </div>
-                      <span className="absolute -bottom-2 -right-1 w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
-                        1
-                      </span>
-                    </div>
-                    <h4 className="font-black text-xs text-slate-900 dark:text-white truncate w-full text-center">
-                      {uniFirst.shortName}
-                    </h4>
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate w-full text-center mb-1">
-                      {uniFirst.region}
-                    </p>
-                    <div className="h-20 w-full bg-gradient-to-t from-amber-500/20 via-amber-400/10 to-transparent dark:from-amber-950/60 dark:to-slate-800/40 rounded-2xl flex flex-col items-center justify-center border border-amber-300 dark:border-amber-700/70 p-1 shadow-sm">
-                      <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">1{t.rankPlace}</span>
-                      {formatUniMetricValue(uniFirst, true)}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3rd Place (Bronze) */}
-                {uniThird && (
-                  <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-amber-700/50 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 text-xs shadow-sm mb-2 relative">
-                      <Building2 className="w-5 h-5 text-amber-700" />
-                      <span className="absolute -bottom-2 -right-1 w-5 h-5 rounded-full bg-amber-700 text-white font-black text-[10px] flex items-center justify-center shadow-md">
-                        3
-                      </span>
-                    </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate w-full text-center">
-                      {uniThird.shortName}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 truncate w-full text-center mb-1">
-                      {uniThird.region}
-                    </p>
-                    <div className="h-14 w-full bg-slate-100 dark:bg-slate-800/60 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700/60 p-1">
-                      <span className="text-[10px] font-bold text-slate-500">3{t.rankPlace}</span>
-                      {formatUniMetricValue(uniThird, true)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Universities List (4th - 20th) */}
-            {uniList.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
-                  {t.allUnisListTitle.replace('{count}', String(Math.min(20, sortedUniversities.length)))}
-                </h3>
-
-                <div className="space-y-2">
-                  {uniList.map((uni, idx) => {
-                    const rank = idx + 4;
-                    return (
-                      <div
-                        key={uni.id}
-                        className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-slate-700 flex items-center justify-between gap-3 transition-colors shadow-xs"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-black text-xs shrink-0">
-                            {rank}
-                          </div>
-
-                          <div className="min-w-0">
-                            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                              {uni.name}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                              <span>{uni.region}</span>
-                              <span>•</span>
-                              <span className="flex items-center gap-0.5">
-                                <Users className="w-3 h-3" />
-                                {uni.activeStudentsCount} {t.activeStudentsLabel}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          {formatUniMetricValue(uni)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      ) : (
-        /* Students Leaderboard View (TOP 20 with Respublika, Viloyat, OTM filters) */
-        top20Users.length === 0 ||
+      {/* Main Content Area: Students Leaderboard View (TOP 20 with Respublika, Viloyat, OTM filters) */}
+      {top20Users.length === 0 ||
         (!top20Users.some((u) => (u.scorePoints || 0) > 0 || (u.testsCompleted || 0) > 0) &&
           testAttempts.length === 0) ? (
           <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
@@ -850,8 +548,7 @@ export const Leaderboard: React.FC = () => {
               </div>
             )}
           </div>
-        )
-      )}
+        )}
     </div>
   );
 };

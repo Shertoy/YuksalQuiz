@@ -94,6 +94,8 @@ export interface UserProfile {
   username?: string;
   is_blocked?: boolean;
   isBlocked?: boolean;
+  voucher_claimed?: boolean;
+  voucherClaimed?: boolean;
 }
 
 export interface Question {
@@ -288,6 +290,9 @@ export interface TestPackage {
   isCommunityCreated?: boolean;
   authorWalletBalance?: number;
   semester?: number;
+  course_year?: number;
+  courseYear?: number;
+  faculty?: string;
   academicYear?: string;
 }
 
