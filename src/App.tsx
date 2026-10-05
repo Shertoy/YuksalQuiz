@@ -9,7 +9,7 @@ import { TestRunner } from './components/TestRunner';
 import { PostTestReview } from './components/PostTestReview';
 import { ResultsAndMistakes } from './components/ResultsAndMistakes';
 import { Leaderboard } from './components/Leaderboard';
-import { CreateTestModal } from './components/CreateTestModal';
+import { CreateQuizModal } from './components/CreateQuizModal';
 import { ProfileView } from './components/ProfileView';
 import { WalletView } from './components/WalletView';
 import { AdminPanelModal } from './components/AdminPanelModal';
@@ -41,7 +41,7 @@ import {
 } from './services/paywallService';
 
 export const App: React.FC = () => {
-  const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile, testAttempts } = useQuizStore();
+  const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile, testAttempts, testPackages } = useQuizStore();
 
   // App loading state with smooth quote-rotation loader
   const [isAppLoading, setIsAppLoading] = useState(true);
@@ -180,6 +180,22 @@ export const App: React.FC = () => {
     }
     syncTelegramTheme(theme);
   }, [theme]);
+
+  // Deep Link handler: auto-open test when start=quiz_{quiz_id} or ?quiz_id=... is present
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const rawQuizId =
+      urlParams.get('quiz_id') ||
+      (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param?.replace('quiz_', '');
+
+    if (rawQuizId && testPackages && testPackages.length > 0 && !activeTestPkg) {
+      const targetPkg = testPackages.find((p) => p.id === rawQuizId);
+      if (targetPkg && targetPkg.blocks && targetPkg.blocks.length > 0) {
+        handleStartTest(targetPkg, targetPkg.blocks[0].id);
+      }
+    }
+  }, [testPackages, activeTestPkg]);
 
   // Sync cloud tests and leaderboard whenever user navigates tabs
   useEffect(() => {
@@ -478,9 +494,9 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* Create / Edit Test Modal */}
+      {/* Create / Edit Test Modal (AI Test Importer) */}
       {(isCreateModalOpen || Boolean(editingTestPkg)) && (
-        <CreateTestModal
+        <CreateQuizModal
           editPackage={editingTestPkg}
           onClose={() => {
             setIsCreateModalOpen(false);

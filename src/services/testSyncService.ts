@@ -1,5 +1,5 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
-import { TestPackage, LeaderboardUser, UserProfile, Announcement } from '../types';
+import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
@@ -240,6 +240,121 @@ export async function publishTestToCloud(pkg: TestPackage): Promise<{
       message: err?.message || "Bulutga yuklashda kutilmagan xatolik yuz berdi.",
     };
   }
+}
+
+export interface QuizQuestionInput {
+  question: string;
+  options: string[];
+  correct_answer: string;
+  explanation?: string;
+}
+
+/**
+ * Saves quiz to Supabase `quizzes` table and its questions to `questions` table,
+ * and also saves to `test_packages` table and local Zustand store.
+ */
+export async function saveQuizWithQuestions(params: {
+  quizId: string;
+  title: string;
+  category: string;
+  visibility: 'public' | 'unlisted';
+  creatorId: string;
+  creatorName?: string;
+  questions: QuizQuestionInput[];
+  university?: string;
+  department?: string;
+  semester?: number;
+  academicYear?: string;
+}): Promise<{ success: boolean; quizId: string; message: string }> {
+  const supabase = getSupabase();
+
+  // 1. Try writing to Supabase `quizzes` and `questions` tables
+  if (supabase) {
+    try {
+      const { error: quizErr } = await supabase.from('quizzes').upsert(
+        {
+          id: params.quizId,
+          title: params.title,
+          category: params.category,
+          visibility: params.visibility,
+          creator_id: params.creatorId,
+          creator_name: params.creatorName || 'Talaba',
+          total_questions: params.questions.length,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+
+      if (!quizErr) {
+        // Delete existing questions if overwriting
+        await supabase.from('questions').delete().eq('quiz_id', params.quizId);
+
+        const questionRows = params.questions.map((q, idx) => ({
+          quiz_id: params.quizId,
+          question: q.question,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || null,
+          order_index: idx,
+          created_at: new Date().toISOString(),
+        }));
+
+        const { error: qErr } = await supabase.from('questions').insert(questionRows);
+        if (qErr) {
+          console.warn('Questions table insert warning:', qErr.message);
+        }
+      } else {
+        console.warn('Quizzes table upsert warning:', quizErr.message);
+      }
+    } catch (dbErr) {
+      console.warn('Direct quizzes/questions DB exception:', dbErr);
+    }
+  }
+
+  // 2. Also map to standard TestPackage and save to `test_packages` & store
+  const { splitQuestionsIntoBlocks } = await import('../utils/testSplitter');
+  const mappedQuestions: Question[] = params.questions.map((q, idx) => {
+    const correctIdx = Math.max(
+      0,
+      q.options.findIndex((opt) => opt.trim().toLowerCase() === q.correct_answer.trim().toLowerCase())
+    );
+    return {
+      id: `q-${idx + 1}-${Math.random().toString(36).substring(2, 7)}`,
+      text: q.question,
+      options: q.options,
+      correctOptionIndex: correctIdx,
+      explanation: q.explanation,
+    };
+  });
+
+  const blocks = splitQuestionsIntoBlocks(mappedQuestions);
+
+  const testPackage: TestPackage = {
+    id: params.quizId,
+    title: params.title,
+    category: (params.category as any) || 'Oliy Ta\'lim (HEMIS)',
+    university: params.university || 'Yuksal Quiz',
+    department: (params.department as any) || 'Axborot Texnologiyalari',
+    isPublic: params.visibility === 'public',
+    totalQuestions: mappedQuestions.length,
+    blocks,
+    createdAt: new Date().toISOString().split('T')[0],
+    authorId: params.creatorId,
+    authorName: params.creatorName || 'Muallif',
+    isCommunityCreated: true,
+    authorWalletBalance: 0,
+    semester: params.semester || 1,
+    academicYear: params.academicYear || '2025-2026',
+  };
+
+  useQuizStore.getState().createTestPackage(testPackage);
+  await publishTestToCloud(testPackage);
+
+  return {
+    success: true,
+    quizId: params.quizId,
+    message: "Test muvaffaqiyatli saqlandi va yuklandi!",
+  };
 }
 
 /**

@@ -552,17 +552,35 @@ export default async function handler(req: any, res: any) {
           }
         }
 
+        const parts = text.split(/\s+/);
+        const startParam = parts[1] || '';
+        let quizDeepId = '';
+        if (startParam.startsWith('quiz_')) {
+          quizDeepId = startParam.replace('quiz_', '').trim();
+        }
+
         const content = MESSAGES[userLang] || MESSAGES.uz;
+        let welcomeText = content.welcome;
+        let targetWebAppUrl = WEBAPP_URL;
+
+        if (quizDeepId) {
+          targetWebAppUrl = `${WEBAPP_URL}?quiz_id=${encodeURIComponent(quizDeepId)}`;
+          welcomeText =
+            userLang === 'ru'
+              ? `📚 <b>Вам отправлен тест!</b>\n\nНажмите кнопку ниже, чтобы открыть и пройти тест:`
+              : `📚 <b>Sizga maxsus test ulashildi!</b>\n\nTestni boshlash va bilimingizni sinash uchun quyidagi tugmani bosing:`;
+        }
 
         const payload = {
           chat_id: chatId,
-          text: content.welcome,
+          text: welcomeText,
+          parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [
                 {
-                  text: content.button,
-                  web_app: { url: WEBAPP_URL },
+                  text: quizDeepId ? (userLang === 'ru' ? '🎯 Тестни бошлаш' : '🎯 Testni boshlash') : content.button,
+                  web_app: { url: targetWebAppUrl },
                 },
               ],
             ],
