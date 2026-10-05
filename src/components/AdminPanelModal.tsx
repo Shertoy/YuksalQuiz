@@ -45,6 +45,11 @@ import {
   ChevronRight,
   UserPlus,
   ShieldBan,
+  Receipt,
+  Eye,
+  Coins,
+  Wallet,
+  CircleDollarSign,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -94,6 +99,13 @@ import {
 } from '../services/testSyncService';
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
+import {
+  PaymentRecord,
+  fetchAllPayments,
+  approveReceiptPayment,
+  rejectReceiptPayment,
+  adminManualCredit,
+} from '../services/receiptService';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -133,13 +145,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   } = useQuizStore();
 
   const [activeTab, setActiveTab] = useState<
-    'users' | 'news' | 'universities' | 'pending' | 'tests' | 'supabase' | 'pricing' | 'payments' | 'promocodes' | 'security'
+    'users' | 'receipts' | 'news' | 'universities' | 'pending' | 'tests' | 'supabase' | 'pricing' | 'payments' | 'promocodes' | 'security'
   >('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
   const [deletingUni, setDeletingUni] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Payments / Receipts state
+  const [paymentsList, setPaymentsList] = useState<PaymentRecord[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
+  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
+  const [showManualTopUp, setShowManualTopUp] = useState(false);
+
+  // Manual Top-up form state
+  const [manualUserId, setManualUserId] = useState('');
+  const [manualFullName, setManualFullName] = useState('');
+  const [manualAmount, setManualAmount] = useState('35000');
+  const [manualPlan, setManualPlan] = useState<'none' | '3_months' | '6_months' | '1_year'>('none');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
   // Users statistics & filter state
   const [usersList, setUsersList] = useState<LeaderboardUser[]>([]);
@@ -299,6 +327,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (isOpen) {
       loadUsers();
+      loadPayments();
       refreshAdminWhitelist();
       fetchCloudAnnouncements().catch(() => {});
     }
@@ -309,6 +338,117 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const showNotification = (msg: string) => {
     setFeedback(msg);
     setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const loadPayments = async () => {
+    setIsLoadingPayments(true);
+    try {
+      const data = await fetchAllPayments();
+      setPaymentsList(data);
+    } catch (err) {
+      console.warn('Load payments error:', err);
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  };
+
+  const handleApprovePayment = async (
+    payment: PaymentRecord,
+    plan?: '3_months' | '6_months' | '1_year' | null
+  ) => {
+    setProcessingPaymentId(payment.id);
+    triggerHaptic('medium');
+    try {
+      const res = await approveReceiptPayment(
+        payment.id,
+        payment.user_id,
+        payment.amount,
+        plan
+      );
+      if (res.success) {
+        triggerHaptic('success');
+        showNotification(res.message);
+        await loadPayments();
+        await loadUsers();
+      } else {
+        triggerHaptic('error');
+        showNotification(res.message || 'Xatolik yuz berdi');
+      }
+    } catch (err: any) {
+      triggerHaptic('error');
+      showNotification(err?.message || 'Xatolik yuz berdi');
+    } finally {
+      setProcessingPaymentId(null);
+    }
+  };
+
+  const handleRejectPayment = async (paymentId: string) => {
+    if (!confirm("Haqiqatan ham bu to'lov arizasini rad etmoqchimisiz?")) return;
+    setProcessingPaymentId(paymentId);
+    triggerHaptic('warning');
+    try {
+      const ok = await rejectReceiptPayment(paymentId);
+      if (ok) {
+        showNotification("To'lov arizasi rad etildi.");
+        await loadPayments();
+      } else {
+        showNotification("Xatolik yuz berdi");
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Xatolik');
+    } finally {
+      setProcessingPaymentId(null);
+    }
+  };
+
+  const handleManualCreditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualUserId.trim()) {
+      showNotification("Iltimos, talabaning Telegram ID sini kiriting.");
+      return;
+    }
+    const amt = Number(manualAmount);
+    if (!amt || amt <= 0) {
+      showNotification("Iltimos, to'g'ri summa kiriting.");
+      return;
+    }
+    setIsSubmittingManual(true);
+    triggerHaptic('medium');
+    try {
+      const plan = manualPlan !== 'none' ? manualPlan : null;
+      const res = await adminManualCredit(
+        manualUserId.trim(),
+        amt,
+        manualFullName.trim() || undefined,
+        plan
+      );
+      if (res.success) {
+        triggerHaptic('success');
+        showNotification(res.message);
+        setManualUserId('');
+        setManualFullName('');
+        setManualAmount('35000');
+        setManualPlan('none');
+        setShowManualTopUp(false);
+        await loadPayments();
+        await loadUsers();
+      } else {
+        triggerHaptic('error');
+        showNotification(res.message);
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Xatolik');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  const openManualTopUpForUser = (user: LeaderboardUser) => {
+    setManualUserId(user.id);
+    setManualFullName(user.name);
+    setShowManualTopUp(true);
+    setActiveTab('receipts');
+    triggerHaptic('selection');
   };
 
   const handleAddUni = (e: React.FormEvent) => {
@@ -682,6 +822,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             {usersList.length > 0 && (
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-extrabold">
                 {usersList.length}
+              </span>
+            )}
+          </button>
+
+          {/* Receipts & Payments Tab */}
+          <button
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveTab('receipts');
+              loadPayments();
+            }}
+            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
+              activeTab === 'receipts'
+                ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200/50 dark:border-amber-800/50'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.75} />
+            <span>Kvitansiyalar & To'lovlar</span>
+            {paymentsList.filter((p) => p.status === 'pending').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-white animate-pulse">
+                {paymentsList.filter((p) => p.status === 'pending').length}
               </span>
             )}
           </button>
@@ -1236,15 +1398,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               </td>
 
                               <td className="py-3 px-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDirectMessageUser(student)}
-                                  className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                  title="Ushbu talabaga shaxsiy xabar yuborish"
-                                >
-                                  <Send className="w-3 h-3" strokeWidth={1.75} />
-                                  <span>Xabar</span>
-                                </button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => openManualTopUpForUser(student)}
+                                    className="px-2 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-200 dark:border-amber-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Ushbu talabaga to'lov/balans qo'shish"
+                                  >
+                                    <Wallet className="w-3 h-3" strokeWidth={1.75} />
+                                    <span>+Balans</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDirectMessageUser(student)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Ushbu talabaga shaxsiy xabar yuborish"
+                                  >
+                                    <Send className="w-3 h-3" strokeWidth={1.75} />
+                                    <span>Xabar</span>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1254,6 +1427,629 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Tab: Receipts & Payment Verification */}
+          {activeTab === 'receipts' && (
+            <div className="space-y-4 animate-in fade-in">
+              {/* Top Banner */}
+              <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+                    <Receipt className="w-5 h-5" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>To'lov Kvitansiyalari va Cheklar</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        {paymentsList.filter((p) => p.status === 'pending').length} ta kutilmoqda
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Talabalar yuborgan to'lov cheklarini tekshirish, tasdiqlash va hisobiga qo'shish
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualTopUp(!showManualTopUp)}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    <span>Qo'lda to'ldirish</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      loadPayments();
+                    }}
+                    disabled={isLoadingPayments}
+                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isLoadingPayments ? 'animate-spin text-amber-500' : ''}`} strokeWidth={1.75} />
+                    <span>{isLoadingPayments ? 'Yuklanmoqda...' : 'Yangilash'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Summary Metric Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Kutilmoqda</span>
+                    <Clock className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+                    {paymentsList.filter((p) => p.status === 'pending').length}
+                  </div>
+                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                    Admin ko'rigi zarur
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Tasdiqlangan</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                    {paymentsList.filter((p) => p.status === 'approved').length}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    Hisobga o'tkazilgan
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Jami Tushum</span>
+                    <Coins className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
+                    {paymentsList
+                      .filter((p) => p.status === 'approved')
+                      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+                      .toLocaleString('uz-UZ')}{' '}
+                    <span className="text-xs font-bold text-slate-400">so'm</span>
+                  </div>
+                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                    Muvaffaqiyatli to'lovlar
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Rad etilgan</span>
+                    <AlertCircle className="w-4 h-4 text-rose-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-rose-600 dark:text-rose-400">
+                    {paymentsList.filter((p) => p.status === 'rejected').length}
+                  </div>
+                  <div className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
+                    Soxta / xato cheklar
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Manual Top-up Collapsible Form */}
+              {showManualTopUp && (
+                <form
+                  onSubmit={handleManualCreditSubmit}
+                  className="p-4 rounded-3xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-3.5 animate-in slide-in-from-top-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+                      <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                        Talaba Hisobiga Qo'lda To'lov / Balans Qo'shish
+                      </h5>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualTopUp(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Talaba Telegram ID (Majburiy):
+                      </label>
+                      <input
+                        type="text"
+                        value={manualUserId}
+                        onChange={(e) => setManualUserId(e.target.value)}
+                        placeholder="Masalan: 117932388 yoki 6219808382"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Talaba Ism-Familiyasi (Ixtiyoriy):
+                      </label>
+                      <input
+                        type="text"
+                        value={manualFullName}
+                        onChange={(e) => setManualFullName(e.target.value)}
+                        placeholder="Masalan: Jamshid Aliyev"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Summa (so'm):
+                      </label>
+                      <div className="space-y-1.5">
+                        <input
+                          type="number"
+                          value={manualAmount}
+                          onChange={(e) => setManualAmount(e.target.value)}
+                          placeholder="35000"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          required
+                        />
+                        <div className="flex gap-1.5">
+                          {[35000, 60000, 100000].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => {
+                                setManualAmount(amt.toString());
+                                if (amt === 35000) setManualPlan('3_months');
+                                if (amt === 60000) setManualPlan('6_months');
+                                if (amt === 100000) setManualPlan('1_year');
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold hover:bg-amber-50 text-slate-700 dark:text-slate-300"
+                            >
+                              {amt.toLocaleString('uz-UZ')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                        Tarif / Obuna yoqish:
+                      </label>
+                      <select
+                        value={manualPlan}
+                        onChange={(e) => setManualPlan(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="none">Faqat hamyon balansiga qo'shish (Obunasiz)</option>
+                        <option value="3_months">3 oylik VIP Obuna (35 000 so'm)</option>
+                        <option value="6_months">6 oylik VIP Obuna (60 000 so'm)</option>
+                        <option value="1_year">1 yillik VIP Obuna (100 000 so'm)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Obuna tanlansa, talaba hisobida VIP obuna belgilangan muddatga avtomatik faollashadi.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={isSubmittingManual}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isSubmittingManual ? 'animate-spin' : ''}`} strokeWidth={1.75} />
+                      <span>{isSubmittingManual ? 'Bajarilmoqda...' : "Hisobga Qo'shish"}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Filter & Search Bar */}
+              <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  {/* Status Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                    {(
+                      [
+                        { id: 'pending', label: 'Kutilmoqda', count: paymentsList.filter((p) => p.status === 'pending').length },
+                        { id: 'all', label: 'Barchasi', count: paymentsList.length },
+                        { id: 'approved', label: 'Tasdiqlangan', count: paymentsList.filter((p) => p.status === 'approved').length },
+                        { id: 'rejected', label: 'Rad etilgan', count: paymentsList.filter((p) => p.status === 'rejected').length },
+                      ] as const
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('selection');
+                          setPaymentFilter(f.id);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                          paymentFilter === f.id
+                            ? f.id === 'pending'
+                              ? 'bg-amber-500 text-white shadow-sm'
+                              : 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <span>{f.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                            paymentFilter === f.id
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                          }`}
+                        >
+                          {f.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="relative min-w-[220px]">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={1.75} />
+                    <input
+                      type="text"
+                      value={paymentSearch}
+                      onChange={(e) => setPaymentSearch(e.target.value)}
+                      placeholder="Talaba ismi yoki Telegram ID..."
+                      className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    {paymentSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3 h-3" strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payments List */}
+              <div className="space-y-3">
+                {isLoadingPayments ? (
+                  <div className="py-16 text-center text-slate-400 text-xs space-y-2">
+                    <RotateCcw className="w-7 h-7 mx-auto animate-spin text-amber-500" strokeWidth={1.75} />
+                    <p className="font-bold">Kvitansiyalar yuklanmoqda...</p>
+                  </div>
+                ) : paymentsList.filter((p) => {
+                    if (paymentFilter !== 'all' && p.status !== paymentFilter) return false;
+                    if (paymentSearch.trim()) {
+                      const q = paymentSearch.trim().toLowerCase();
+                      const mId = (p.user_id || '').toLowerCase().includes(q);
+                      const mName = (p.users?.full_name || '').toLowerCase().includes(q);
+                      const mTx = (p.transaction_id || '').toLowerCase().includes(q);
+                      if (!mId && !mName && !mTx) return false;
+                    }
+                    return true;
+                  }).length === 0 ? (
+                  <div className="py-16 text-center text-slate-400 text-xs space-y-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+                    <Receipt className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
+                    <p className="font-bold text-slate-600 dark:text-slate-300 text-sm">
+                      To'lov kvitansiyalari topilmadi
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      {paymentFilter === 'pending'
+                        ? "Ayni vaqtda yangi kutilayotgan to'lov cheki yo'q."
+                        : "Ushbu parametr bo'yicha hech qanday to'lov mavjud emas."}
+                    </p>
+                  </div>
+                ) : (
+                  paymentsList
+                    .filter((p) => {
+                      if (paymentFilter !== 'all' && p.status !== paymentFilter) return false;
+                      if (paymentSearch.trim()) {
+                        const q = paymentSearch.trim().toLowerCase();
+                        const mId = (p.user_id || '').toLowerCase().includes(q);
+                        const mName = (p.users?.full_name || '').toLowerCase().includes(q);
+                        const mTx = (p.transaction_id || '').toLowerCase().includes(q);
+                        if (!mId && !mName && !mTx) return false;
+                      }
+                      return true;
+                    })
+                    .map((payment) => {
+                      const isPending = payment.status === 'pending';
+                      const isApproved = payment.status === 'approved';
+                      const isRejected = payment.status === 'rejected';
+                      const isProcessing = processingPaymentId === payment.id;
+
+                      return (
+                        <div
+                          key={payment.id}
+                          className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3.5 transition-all hover:border-slate-300 dark:hover:border-slate-700"
+                        >
+                          {/* Card Top Row: Student info & status badge */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                                {(payment.users?.full_name || 'Talaba').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                                  <span>{payment.users?.full_name || 'Talaba'}</span>
+                                  {payment.users?.has_paid && (
+                                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      VIP
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                                  <span>ID: {payment.user_id}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(payment.user_id);
+                                      showNotification("Talaba ID nusxalandi!");
+                                    }}
+                                    className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                    title="ID ni nusxalash"
+                                  >
+                                    <Copy className="w-3 h-3" strokeWidth={1.75} />
+                                  </button>
+                                  {payment.users?.university && (
+                                    <span className="text-slate-500 dark:text-slate-400 font-sans truncate max-w-[160px]">
+                                      • {payment.users.university}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                              {isPending && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                  <Clock className="w-3 h-3" strokeWidth={1.75} />
+                                  <span>Kutilmoqda</span>
+                                </span>
+                              )}
+                              {isApproved && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                  <CheckCircle2 className="w-3 h-3" strokeWidth={1.75} />
+                                  <span>Tasdiqlangan</span>
+                                </span>
+                              )}
+                              {isRejected && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                  <AlertCircle className="w-3 h-3" strokeWidth={1.75} />
+                                  <span>Rad etilgan</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card Middle: Image and Details */}
+                          <div className="flex flex-col sm:flex-row gap-4 items-start">
+                            {/* Receipt Image Thumbnail */}
+                            {payment.receipt_image_url ? (
+                              <div
+                                onClick={() => setSelectedReceiptImage(payment.receipt_image_url)}
+                                className="relative group w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 cursor-zoom-in shrink-0 shadow-2xs"
+                              >
+                                <img
+                                  src={payment.receipt_image_url}
+                                  alt="Kvitansiya"
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <Eye className="w-5 h-5" strokeWidth={1.75} />
+                                </div>
+                                <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 text-[9px] text-white font-bold backdrop-blur-xs">
+                                  Ko'rish
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-center p-2 shrink-0">
+                                <Receipt className="w-6 h-6 mb-1 text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
+                                <span className="text-[10px] font-bold">Rasm yo'q</span>
+                                <span className="text-[9px] text-slate-400">(Qo'lda)</span>
+                              </div>
+                            )}
+
+                            {/* Details Grid */}
+                            <div className="flex-1 space-y-2 text-xs w-full">
+                              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <div>
+                                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">
+                                    To'lov Summasi:
+                                  </span>
+                                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                                    +{(Number(payment.amount) || 0).toLocaleString('uz-UZ')}{' '}
+                                    <span className="text-xs font-bold text-slate-500">so'm</span>
+                                  </span>
+                                </div>
+
+                                <div className="text-right">
+                                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">
+                                    Talaba Hozirgi Balansi:
+                                  </span>
+                                  <span className="text-sm font-extrabold text-slate-700 dark:text-slate-300">
+                                    {(Number(payment.users?.balance) || 0).toLocaleString('uz-UZ')} so'm
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                                <div>
+                                  <span className="text-slate-400">Tranzaksiya: </span>
+                                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                    {payment.transaction_id || 'Mavjud emas'}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-slate-400">Vaqti: </span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {payment.created_at
+                                      ? new Date(payment.created_at).toLocaleString('uz-UZ', {
+                                          timeZone: 'Asia/Tashkent',
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : 'Noma\'lum'}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-slate-400">Tasdiqlash manbasi: </span>
+                                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                                    {payment.verified_by === 'ai'
+                                      ? '🤖 Gemini AI'
+                                      : payment.verified_by === 'admin'
+                                      ? '👤 Admin'
+                                      : '⏳ Kutilmoqda'}
+                                  </span>
+                                </div>
+
+                                {payment.sender_card && (
+                                  <div>
+                                    <span className="text-slate-400">Karta: </span>
+                                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                                      {payment.sender_card}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Bottom Row: Action Buttons */}
+                          {isPending && (
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprovePayment(payment)}
+                                  disabled={isProcessing}
+                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-sm disabled:opacity-50 transition-all"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                  <span>Tasdiqlash (+{(Number(payment.amount) || 0).toLocaleString('uz-UZ')} so'm)</span>
+                                </button>
+
+                                {/* Quick Subscription Activations */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprovePayment(payment, '3_months')}
+                                  disabled={isProcessing}
+                                  className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800 transition-all"
+                                  title="3 oylik VIP obuna yoqish"
+                                >
+                                  <span>🌟 3 Oylik VIP</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprovePayment(payment, '6_months')}
+                                  disabled={isProcessing}
+                                  className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800 transition-all"
+                                  title="6 oylik VIP obuna yoqish"
+                                >
+                                  <span>🌟 6 Oylik VIP</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprovePayment(payment, '1_year')}
+                                  disabled={isProcessing}
+                                  className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800 transition-all"
+                                  title="1 yillik VIP obuna yoqish"
+                                >
+                                  <span>🌟 1 Yillik VIP</span>
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRejectPayment(payment.id)}
+                                disabled={isProcessing}
+                                className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-200 dark:border-rose-900 transition-all"
+                              >
+                                <X className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                <span>Rad etish</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {isApproved && (
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                              <span className="flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                <span>To'lov tasdiqlangan va talaba hisobiga qo'shilgan</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => openManualTopUpForUser({ id: payment.user_id, name: payment.users?.full_name || 'Talaba' } as any)}
+                                className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline font-semibold"
+                              >
+                                Yana balans qo'shish
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+
+              {/* Receipt Image Zoom Modal */}
+              {selectedReceiptImage && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+                  onClick={() => setSelectedReceiptImage(null)}
+                >
+                  <div
+                    className="relative max-w-2xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl p-2 border border-slate-800 flex flex-col items-center animate-in zoom-in-95"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-full flex items-center justify-between p-2 pb-3 text-white">
+                      <span className="text-xs font-bold flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+                        <span>Kvitansiya Tasviri</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={selectedReceiptImage}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" strokeWidth={1.75} />
+                          <span>Yangi oynada</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReceiptImage(null)}
+                          className="p-1 rounded-xl text-slate-400 hover:text-white bg-slate-800"
+                        >
+                          <X className="w-4 h-4" strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    </div>
+                    <img
+                      src={selectedReceiptImage}
+                      alt="Chek rasmi"
+                      className="max-h-[78vh] w-auto object-contain rounded-2xl"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -25,7 +25,7 @@ import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX, generateReferralLink } from '../utils/telegram';
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
-import { uploadReceiptToStorage } from '../services/receiptService';
+import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
 
 export const WalletView: React.FC = () => {
   const {
@@ -222,7 +222,21 @@ export const WalletView: React.FC = () => {
         }
       }
 
-      setVerifyStepText("Gemini 1.5 Flash Vision tahlil qilmoqda...");
+      // Kvitansiyani darhol Supabase 'payments' jadvaliga yozib qo'yish (Admin panelda darhol ko'rinishi uchun)
+      try {
+        await recordReceiptPayment({
+          userId: profile.id,
+          fullName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+          username: profile.id,
+          university: profile.university,
+          amount: 0,
+          receiptImageUrl: receiptStorageUrl || null,
+        });
+      } catch (saveErr) {
+        console.warn('Initial receipt save warning:', saveErr);
+      }
+
+      setVerifyStepText("Gemini AI tahlil qilmoqda...");
 
       // API call to Vercel Serverless Function
       const response = await fetch('/api/verify-receipt', {

@@ -457,7 +457,18 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
 
     // Agar to'lov muvaffaqiyatli va summa aniqlangan bo'lsa -> darhol avtomatik tasdiqlash
     if (hasValidAmount && aiData.is_successful) {
-      // 1. payments jadvaliga status: 'approved' qilib yozish
+      // 1. Foydalanuvchi users jadvalida mavjudligini ta'minlash (Foreign key xatosi bo'lmasligi uchun)
+      try {
+        await supabase.from('users').upsert({
+          id: userId,
+          full_name: (userName || 'Talaba').trim(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('User upsert error:', err);
+      }
+
+      // 2. payments jadvaliga status: 'approved' qilib yozish
       let paymentRecordId = '';
       try {
         const { data: payRow } = await supabase
@@ -467,8 +478,9 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
             amount: paidAmount,
             transaction_id: txId,
             receipt_image_url: receiptImageUrl,
+            sender_card: aiData.recipient_card || null,
             status: 'approved',
-            notes: `Gemini AI tasdiqladi (${aiData.payment_system || 'P2P'}, Karta: ${aiData.recipient_card || '0093'}, Ism: ${aiData.recipient_name || 'Alijonova X.'})`,
+            verified_by: 'ai',
             created_at: new Date().toISOString(),
           })
           .select('id')
@@ -479,17 +491,17 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         console.warn('Payment insert error:', err);
       }
 
-      // 2. Foydalanuvchining users.balance hisobiga o'sha summani darhol qo'shish (balance = balance + amount)
+      // 3. Foydalanuvchining users.balance hisobiga o'sha summani darhol qo'shish (balance = balance + amount)
       let currentBalance = 0;
       try {
         const { data: userRow } = await supabase
           .from('users')
-          .select('balance, wallet_balance')
+          .select('balance')
           .eq('id', userId)
           .maybeSingle();
 
         if (userRow) {
-          currentBalance = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+          currentBalance = Number(userRow.balance ?? 0);
         }
       } catch {}
 
@@ -498,19 +510,13 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
       try {
         await supabase.from('users').upsert({
           id: userId,
+          full_name: (userName || 'Talaba').trim(),
           balance: newBalance,
-          wallet_balance: newBalance,
           updated_at: new Date().toISOString(),
-        });
-      } catch {}
-
-      try {
-        await supabase.from('user_profiles').upsert({
-          id: userId,
-          balance: newBalance,
-          wallet_balance: newBalance,
-        });
-      } catch {}
+        }, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('Balance update error:', err);
+      }
 
       // Telegram Admin xabarnomasi
       await notifyAdmin({
@@ -547,7 +553,16 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     `PENDING_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   const finalAmount = aiData?.amount || expectedAmount || 20000;
-  let pendingPaymentId = '';
+  // 1. Foydalanuvchi users jadvalida mavjudligini ta'minlash
+  try {
+    await supabase.from('users').upsert({
+      id: userId,
+      full_name: (userName || 'Talaba').trim(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('User upsert error:', err);
+  }
 
   try {
     const { data: pendingRow } = await supabase
@@ -557,8 +572,9 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         amount: finalAmount,
         transaction_id: fallbackTxId,
         receipt_image_url: receiptImageUrl,
+        sender_card: aiData?.recipient_card || null,
         status: 'pending',
-        notes: aiError || aiData?.rejection_reason || 'AI rasm xiraligi sababli aniqlay olmadi, admin tekshiruviga yuborildi',
+        verified_by: null,
         created_at: new Date().toISOString(),
       })
       .select('id')

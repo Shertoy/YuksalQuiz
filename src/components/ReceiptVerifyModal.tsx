@@ -24,7 +24,7 @@ import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { ReceiptVerificationResult } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
-import { uploadReceiptToStorage } from '../services/receiptService';
+import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
 
 interface ReceiptVerifyModalProps {
   isOpen: boolean;
@@ -206,7 +206,21 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
         }
       }
 
-      setVerifyStepText("Gemini 1.5 Flash Vision kvitansiyani tahlil qilmoqda...");
+      // Kvitansiyani darhol Supabase 'payments' jadvaliga yozib qo'yish (Admin panelda darhol ko'rinadi)
+      try {
+        await recordReceiptPayment({
+          userId: profile.id,
+          fullName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+          username: profile.id,
+          university: profile.university,
+          amount: selectedAmount,
+          receiptImageUrl: finalReceiptUrl || null,
+        });
+      } catch (saveErr) {
+        console.warn('Initial receipt save warning:', saveErr);
+      }
+
+      setVerifyStepText("Gemini AI kvitansiyani tahlil qilmoqda...");
 
       // API call to serverless function
       const response = await fetch('/api/verify-receipt', {
