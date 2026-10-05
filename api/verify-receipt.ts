@@ -250,43 +250,52 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
 }
 `;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const geminiResp = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: promptText },
+      // Try Gemini 2.5 Flash, then fallback to 1.5 Flash
+      const modelNames = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+      for (const model of modelNames) {
+        if (aiData) break;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        try {
+          const geminiResp = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
                 {
-                  inline_data: {
-                    mime_type: detectedMime,
-                    data: base64Data,
-                  },
+                  role: 'user',
+                  parts: [
+                    { text: promptText },
+                    {
+                      inline_data: {
+                        mime_type: detectedMime,
+                        data: base64Data,
+                      },
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            response_mime_type: 'application/json',
-          },
-        }),
-      });
+              generationConfig: {
+                temperature: 0.1,
+                response_mime_type: 'application/json',
+              },
+            }),
+          });
 
-      if (geminiResp.ok) {
-        const geminiJson = await geminiResp.json();
-        const candidate = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidate) {
-          const cleanText = candidate.replace(/```json/g, '').replace(/```/g, '').trim();
-          aiData = JSON.parse(cleanText) as GeminiReceiptAnalysis;
+          if (geminiResp.ok) {
+            const geminiJson = await geminiResp.json();
+            const candidate = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidate) {
+              const cleanText = candidate.replace(/```json/g, '').replace(/```/g, '').trim();
+              aiData = JSON.parse(cleanText) as GeminiReceiptAnalysis;
+              break;
+            }
+          } else {
+            const errText = await geminiResp.text();
+            aiError = `Gemini (${model}) xatosi: ${errText.substring(0, 120)}`;
+          }
+        } catch (fetchErr: any) {
+          aiError = fetchErr?.message || 'Gemini aloqa xatosi';
         }
-      } else {
-        const errText = await geminiResp.text();
-        aiError = `Gemini API xatosi (${geminiResp.status}): ${errText.substring(0, 150)}`;
-        console.warn('Gemini API call failed:', aiError);
       }
     } catch (err: any) {
       aiError = err?.message || 'Gemini tahlilida kutilmagan xatolik';
@@ -415,8 +424,9 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
         const diffMs = nowMs - parsedDate.getTime();
         const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
-        if (diffMinutes > 30) {
-          const expiredReason = `Kvitansiya vaqti 30 daqiqadan eski (${diffMinutes} daqiqa oldin: ${aiData.transaction_time}). Iltimos, yangi to'lov chekini yuklang.`;
+        // Chek vaqti 24 soat (1440 daqiqa) ichida yuklangan bo'lishi kifoya
+        if (diffMinutes > 1440) {
+          const expiredReason = `Kvitansiya vaqti 24 soatdan eski (${Math.floor(diffMinutes / 60)} soat oldin: ${aiData.transaction_time}). Iltimos, yangi to'lov chekini yuklang.`;
 
           try {
             await supabase.from('payments').insert({
@@ -441,13 +451,12 @@ Ushbu rasmdagi chekni tahlil qiling va qat'iy JSON formatida qaytaring:
     // =========================================================================
     // AVTOMATIK TASDIQLASH (AI AUTOMATIC APPROVAL)
     // =========================================================================
-    const hasValidTxId = Boolean(aiData.transaction_id && aiData.transaction_id.length >= 3);
     const paidAmount = Number(aiData.amount);
     const hasValidAmount = Boolean(paidAmount && paidAmount > 0);
+    const txId = aiData.transaction_id || `TX_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    if (aiData.confidence !== 'low' && hasValidTxId && hasValidAmount) {
-      const txId = aiData.transaction_id!;
-
+    // Agar to'lov muvaffaqiyatli va summa aniqlangan bo'lsa -> darhol avtomatik tasdiqlash
+    if (hasValidAmount && aiData.is_successful) {
       // 1. payments jadvaliga status: 'approved' qilib yozish
       let paymentRecordId = '';
       try {

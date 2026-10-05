@@ -14,12 +14,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const [login, setLogin] = useState('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setError('');
+      setLogin('admin');
       setPassword('');
     }
   }, [isOpen]);
@@ -29,8 +31,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const p = password.trim();
-    if (p === 'yuksal2026' || p === 'admin123' || p === '117932388' || p === '6219808382') {
+    const cleanLogin = login.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    // Login: admin, Parol: yuksal2026 (yoki admin123)
+    const isLoginValid = cleanLogin === 'admin' || cleanLogin === '117932388' || cleanLogin === '6219808382';
+    const isPassValid = cleanPass === 'yuksal2026' || cleanPass === 'admin123' || cleanPass === '117932388';
+
+    if (isLoginValid && isPassValid) {
       triggerHaptic('success');
       resetAdminRateLimit();
       setAdminSessionAuthenticated(true);
@@ -39,7 +47,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       onSuccess();
     } else {
       triggerHaptic('error');
-      setError("Admin paroli noto'g'ri! Iltimos, qaytadan urinib ko'ring.");
+      setError("Login yoki parol noto'g'ri! (Login: admin, Parol: yuksal2026)");
     }
   };
 
@@ -77,10 +85,27 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Admin Maxsus Paroli:
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Admin Login:
+            </label>
+            <input
+              type="text"
+              required
+              value={login}
+              onChange={(e) => {
+                setLogin(e.target.value);
+                setError('');
+              }}
+              placeholder="Masalan: admin"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Admin Paroli:
             </label>
             <input
               type="password"
@@ -91,12 +116,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 setPassword(e.target.value);
                 setError('');
               }}
-              placeholder="Admin parolini kiriting..."
+              placeholder="Masalan: yuksal2026"
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
             />
-            <p className="text-[11px] text-slate-400 mt-1.5">
-              Parolni kiritib, to'g'ridan-to'g'ri boshqaruv paneliga kiring.
-            </p>
           </div>
 
           <div className="pt-2 flex items-center gap-2">
