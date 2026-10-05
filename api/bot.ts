@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
-const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '6219808382';
+const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '7847500525';
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
@@ -193,6 +193,7 @@ export default async function handler(req: any, res: any) {
       // SECURITY: Faqat ADMIN_TELEGRAM_ID dan kelgan so'rov qabul qilinsin!
       const isAuthorizedAdmin =
         fromId === ADMIN_TELEGRAM_ID ||
+        fromId === '7847500525' ||
         fromId === '6219808382' ||
         fromId === '117932388';
 
@@ -518,6 +519,35 @@ export default async function handler(req: any, res: any) {
         }
         return res.status(200).json({ ok: true });
       }
+
+      // ---------------------------------------------------------------------
+      // 2.7 [💬 Javob yozish] -> callback_data: reply_support:{user_id}
+      // ---------------------------------------------------------------------
+      if (data.startsWith('reply_support:')) {
+        const targetUserId = data.replace('reply_support:', '').trim();
+        await answerCallback(queryId, "Talabaga javob yozish ochildi", false);
+
+        if (chatId && BOT_TOKEN) {
+          try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `✏️ <b>Talabaga javob yozish</b>\n\nTalaba Telegram ID: <code>${targetUserId}</code>\n\nIltimos, ushbu xabarga <b>Reply</b> (javob) qilib yoki <code>/reply ${targetUserId} &lt;matn&gt;</code> ko'rinishida yuboring:`,
+                parse_mode: 'HTML',
+                reply_markup: {
+                  force_reply: true,
+                  selective: true,
+                },
+              }),
+            });
+          } catch (replyPromptErr) {
+            console.error('Error sending force_reply prompt:', replyPromptErr);
+          }
+        }
+        return res.status(200).json({ ok: true });
+      }
     }
 
     // 3. Handle /start and User Text Messages
@@ -526,6 +556,75 @@ export default async function handler(req: any, res: any) {
       const text = (msg.text || '').trim();
       const chatId = msg.chat?.id;
       const fromId = msg.from?.id ? String(msg.from.id) : '';
+
+      // 3.0 Check if Authorized Admin is sending a support reply
+      const isAdminSender =
+        fromId === ADMIN_TELEGRAM_ID ||
+        fromId === '7847500525' ||
+        fromId === '6219808382' ||
+        fromId === '117932388';
+
+      if (isAdminSender && text) {
+        let targetUserId = '';
+        let replyBody = '';
+
+        if (text.startsWith('/reply ')) {
+          const parts = text.split(/\s+/);
+          targetUserId = parts[1]?.trim() || '';
+          replyBody = text.substring(text.indexOf(targetUserId) + targetUserId.length).trim();
+        } else if (msg.reply_to_message) {
+          const replyToText = msg.reply_to_message.text || msg.reply_to_message.caption || '';
+          const idMatch = replyToText.match(/(?:Telegram\s+ID|ID):\s*(?:<code>|`|)?([a-zA-Z0-9_\-]+)(?:<\/code>|`|)?/i);
+          if (idMatch && idMatch[1]) {
+            targetUserId = idMatch[1].trim();
+            replyBody = text.trim();
+          }
+        }
+
+        if (targetUserId && replyBody) {
+          try {
+            await supabase.from('support_messages').insert({
+              user_id: targetUserId,
+              user_name: 'Administrator',
+              message: 'Admin bevosita javobi',
+              reply: replyBody,
+              sender: 'admin',
+              status: 'replied_by_admin',
+              created_at: new Date().toISOString(),
+            });
+
+            await supabase
+              .from('support_messages')
+              .update({
+                reply: replyBody,
+                status: 'replied_by_admin',
+              })
+              .eq('user_id', targetUserId)
+              .eq('status', 'forwarded_to_admin');
+          } catch (dbErr) {
+            console.error('Error saving admin reply to support_messages:', dbErr);
+          }
+
+          const userChatId = extractTelegramChatId(targetUserId);
+          let sentToStudent = false;
+          if (userChatId) {
+            sentToStudent = await sendTelegramMessage(
+              userChatId,
+              `👨‍💻 <b>Administrator javobi:</b>\n\n${replyBody}`
+            );
+          }
+
+          if (chatId) {
+            await sendTelegramMessage(
+              chatId,
+              sentToStudent
+                ? `✅ <b>Javobingiz talabaga (ID: <code>${targetUserId}</code>) yetkazildi.</b>`
+                : `✅ <b>Javobingiz bazaga saqlandi.</b> (Talaba botni bloklagan yoki chat topilmadi)`
+            );
+          }
+          return res.status(200).json({ ok: true });
+        }
+      }
 
       if (
         text.startsWith('/start') ||

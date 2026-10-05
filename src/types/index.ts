@@ -405,6 +405,18 @@ export interface AnnouncementReply {
   };
 }
 
+export interface SupportMessage {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  user_username?: string;
+  message: string;
+  reply?: string;
+  sender: 'user' | 'ai' | 'admin';
+  status: 'resolved_by_ai' | 'forwarded_to_admin' | 'replied_by_admin';
+  created_at: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;
