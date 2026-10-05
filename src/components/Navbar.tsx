@@ -188,7 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
               </button>
             )}
 
-            {/* Desktop Web Admin Access Button */}
+            {/* Admin Access Button (Available on both Mobile & Desktop) */}
             {onOpenAdminLogin && (
               <button
                 type="button"
@@ -196,8 +196,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
                   triggerHaptic('light');
                   onOpenAdminLogin();
                 }}
-                className="hidden sm:flex p-2 rounded-xl text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700/80 transition-colors"
-                title="Admin Paneli (Veb orqali)"
+                className="flex p-2 rounded-xl text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700/80 transition-colors"
+                title="Admin Paneli"
                 aria-label="Admin Login"
               >
                 <Lock className="w-4 h-4 text-slate-400 hover:text-emerald-500" strokeWidth={1.75} />
