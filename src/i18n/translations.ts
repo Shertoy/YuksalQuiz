@@ -305,6 +305,42 @@ export interface Translations {
   paywallLimitReachedDesc: string;
   paywallTopUpBtn: string;
   paywallBackBtn: string;
+
+  // Settings & Language & Theme
+  languageTitle: string;
+  languageDesc: string;
+  langUz: string;
+  langRu: string;
+  langEn: string;
+  themeTitle: string;
+  themeDesc: string;
+  themeLight: string;
+  themeDark: string;
+
+  // Onboarding Benefits
+  onboardingVoucherBenefit: string;
+  onboardingPracticeBenefit: string;
+  onboardingSecurityBenefit: string;
+
+  // Wallet
+  walletBalanceTitle: string;
+  walletHistoryTitle: string;
+  walletVoucherActiveBanner: string;
+  walletVoucherDesc: string;
+  walletTariffsTitle: string;
+  walletTariffsDesc: string;
+  walletP2PTitle: string;
+  walletP2PDesc: string;
+  walletCardNumberLabel: string;
+  walletCardHolderLabel: string;
+  walletZeroCommission: string;
+  walletCopyCardBtn: string;
+  walletCardCopied: string;
+  walletUploadReceiptTitle: string;
+  walletUploadReceiptDesc: string;
+  walletSendReceiptBtn: string;
+  walletChooseReceiptFile: string;
+  walletReceiptFileSelected: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -387,7 +423,7 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Parol noto\'g\'ri! Qayta urinib ko\'ring.',
 
     walletTitle: 'Talaba Hamyoni',
-    walletSubtitle: 'Hamyon balansi, vaucherlar va ta\'limiy obunalar',
+    walletSubtitle: "Balans, tariflar va tezkor to'lov",
     internalBalance: 'Hamyon balansi',
     voucherBalance: 'Vaucher balansi',
     authorEarnings: 'Mualliflik daromadi',
@@ -603,6 +639,42 @@ export const translations: Record<Language, Translations> = {
     paywallLimitReachedDesc: "Siz ushbu testni bugun 2 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.",
     paywallTopUpBtn: "Hisobni to'ldirish",
     paywallBackBtn: 'Orqaga qaytish',
+
+    // Settings & Language & Theme
+    languageTitle: 'Ilova tili',
+    languageDesc: 'Interfeys va testlar uchun tilni tanlang',
+    langUz: "O'zbekcha",
+    langRu: 'Русский',
+    langEn: 'English',
+    themeTitle: 'Mavzu rejimi',
+    themeDesc: "Kunduzgi yoki tungi ko'rinish",
+    themeLight: "Yorug' (Kunduzgi)",
+    themeDark: "Qorong'i (Tungi)",
+
+    // Onboarding Benefits
+    onboardingVoucherBenefit: "20 000 so'mlik boshlang'ich obuna vaucheri taqdim etiladi!",
+    onboardingPracticeBenefit: 'Barcha testlar va fanlar bo\'yicha mashq qilish imkoniyati',
+    onboardingSecurityBenefit: 'Rasmiy Ommaviy oferta va shifrlangan xotira',
+
+    // Wallet
+    walletBalanceTitle: 'Hamyon balansi',
+    walletHistoryTitle: 'Tarix',
+    walletVoucherActiveBanner: "20 000 so'm boshlang'ich vaucheringiz faol!",
+    walletVoucherDesc: "Istalgan Premium obunani tanlang (3 oy, 6 oy yoki 1 yil) va 20 000 so'm chegirmadan foydalaning.",
+    walletTariffsTitle: 'Tariflar va VIP Obuna',
+    walletTariffsDesc: 'Barcha imkoniyatlar va testlar to\'liq ochiladi',
+    walletP2PTitle: "Hisobni to'ldirish (P2P o'tkazma)",
+    walletP2PDesc: "Rasmiy kartaga to'lov qiling va chekni yuklang. AI darhol tekshiradi.",
+    walletCardNumberLabel: "To'lov uchun karta:",
+    walletCardHolderLabel: 'Karta egasi:',
+    walletZeroCommission: '0% Komissiya',
+    walletCopyCardBtn: 'Karta raqamini nusxalash',
+    walletCardCopied: 'Nusxalandi!',
+    walletUploadReceiptTitle: "To'lov chekini yuklash",
+    walletUploadReceiptDesc: "Click, Payme yoki bank ilovasidan olingan to'lov cheki rasmini tanlang",
+    walletSendReceiptBtn: 'Kvitansiyani yuborish',
+    walletChooseReceiptFile: 'Chek rasmini tanlash',
+    walletReceiptFileSelected: 'Chek tanlandi',
   },
 
   ru: {
@@ -684,7 +756,7 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Неверный пароль! Попробуйте снова.',
 
     walletTitle: 'Кошелек студента',
-    walletSubtitle: 'Баланс кошелька, ваучеры и образовательные подписки',
+    walletSubtitle: 'Баланс, тарифы и быстрая оплата',
     internalBalance: 'Баланс кошелька',
     voucherBalance: 'Баланс ваучера',
     authorEarnings: 'Доход автора',
@@ -900,6 +972,42 @@ export const translations: Record<Language, Translations> = {
     paywallLimitReachedDesc: 'Вы прошли этот тест сегодня 2 раза бесплатно. Пополните баланс для безлимитного доступа ко всем тестам без ограничений.',
     paywallTopUpBtn: 'Пополнить баланс',
     paywallBackBtn: 'Вернуться назад',
+
+    // Settings & Language & Theme
+    languageTitle: 'Язык приложения',
+    languageDesc: 'Выберите язык интерфейса и тестов',
+    langUz: "O'zbekcha",
+    langRu: 'Русский',
+    langEn: 'English',
+    themeTitle: 'Тема оформления',
+    themeDesc: 'Светлый или темный режим',
+    themeLight: 'Светлая (Дневная)',
+    themeDark: 'Темная (Ночная)',
+
+    // Onboarding Benefits
+    onboardingVoucherBenefit: 'Стартовый ваучер на 20 000 сум на любую подписку!',
+    onboardingPracticeBenefit: 'Возможность практиковаться по всем тестам и предметам',
+    onboardingSecurityBenefit: 'Официальная Публичная оферта и защищенное хранилище',
+
+    // Wallet
+    walletBalanceTitle: 'Баланс кошелька',
+    walletHistoryTitle: 'История',
+    walletVoucherActiveBanner: 'Ваш стартовый ваучер на 20 000 сум активен!',
+    walletVoucherDesc: 'Выберите любой Премиум тариф (3 месяца, 6 месяцев или 1 год) и получите скидку 20 000 сум.',
+    walletTariffsTitle: 'Тарифы и VIP-подписка',
+    walletTariffsDesc: 'Полный доступ ко всем тестам и расширенным возможностям',
+    walletP2PTitle: 'Пополнение счета (P2P перевод)',
+    walletP2PDesc: 'Оплатите на карту и прикрепите чек. AI проверит его автоматически.',
+    walletCardNumberLabel: 'Карта для оплаты:',
+    walletCardHolderLabel: 'Получатель:',
+    walletZeroCommission: '0% Комиссия',
+    walletCopyCardBtn: 'Скопировать номер карты',
+    walletCardCopied: 'Скопировано!',
+    walletUploadReceiptTitle: 'Загрузка чека об оплате',
+    walletUploadReceiptDesc: 'Прикрепите скриншот или фото чека из Click, Payme или банка',
+    walletSendReceiptBtn: 'Отправить квитанцию',
+    walletChooseReceiptFile: 'Выбрать фото чека',
+    walletReceiptFileSelected: 'Чек выбран',
   },
 
   en: {
@@ -981,7 +1089,7 @@ export const translations: Record<Language, Translations> = {
     wrongPassword: 'Incorrect password! Please try again.',
 
     walletTitle: 'Student Wallet',
-    walletSubtitle: 'Wallet balance, vouchers, and educational plans',
+    walletSubtitle: 'Balance, plans and quick payment',
     internalBalance: 'Wallet Balance',
     voucherBalance: 'Voucher Balance',
     authorEarnings: 'Author Earnings',
@@ -1197,5 +1305,41 @@ export const translations: Record<Language, Translations> = {
     paywallLimitReachedDesc: 'You have taken this test 2 times for free today. Top up your balance to get unlimited access to all tests without daily limits.',
     paywallTopUpBtn: 'Top Up Balance',
     paywallBackBtn: 'Go Back',
+
+    // Settings & Language & Theme
+    languageTitle: 'App Language',
+    languageDesc: 'Select interface and quiz language',
+    langUz: "O'zbekcha",
+    langRu: 'Русский',
+    langEn: 'English',
+    themeTitle: 'Theme Mode',
+    themeDesc: 'Light or dark appearance',
+    themeLight: 'Light (Day)',
+    themeDark: 'Dark (Night)',
+
+    // Onboarding Benefits
+    onboardingVoucherBenefit: '20,000 UZS starter voucher granted for any subscription!',
+    onboardingPracticeBenefit: 'Unlimited practice across all tests and subjects',
+    onboardingSecurityBenefit: 'Official Public Offer and encrypted storage',
+
+    // Wallet
+    walletBalanceTitle: 'Wallet balance',
+    walletHistoryTitle: 'History',
+    walletVoucherActiveBanner: 'Your 20,000 UZS starter voucher is active!',
+    walletVoucherDesc: 'Choose any Premium plan (3 months, 6 months or 1 year) and apply your 20,000 UZS discount.',
+    walletTariffsTitle: 'Plans & VIP Subscription',
+    walletTariffsDesc: 'Unlock all tests and premium features',
+    walletP2PTitle: 'Top Up Balance (P2P Transfer)',
+    walletP2PDesc: 'Transfer to official card and upload receipt. AI verifies automatically.',
+    walletCardNumberLabel: 'Card for payment:',
+    walletCardHolderLabel: 'Account holder:',
+    walletZeroCommission: '0% Fee',
+    walletCopyCardBtn: 'Copy card number',
+    walletCardCopied: 'Copied!',
+    walletUploadReceiptTitle: 'Upload payment receipt',
+    walletUploadReceiptDesc: 'Attach receipt screenshot from Click, Payme or bank app',
+    walletSendReceiptBtn: 'Submit receipt',
+    walletChooseReceiptFile: 'Choose receipt image',
+    walletReceiptFileSelected: 'Receipt selected',
   },
 };

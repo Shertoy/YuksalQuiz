@@ -20,6 +20,7 @@ import {
   PlusCircle,
   Moon,
   Sun,
+  Globe,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { PublicOfferModal } from './PublicOfferModal';
@@ -47,7 +48,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     theme,
     setTheme,
   } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
   return (
@@ -234,6 +235,52 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </h4>
         </div>
 
+        {/* App Language Selector Row */}
+        <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Globe className="w-4 h-4" strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
+                {t.languageTitle}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t.languageDesc}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            {(
+              [
+                { code: 'uz', label: t.langUz },
+                { code: 'ru', label: t.langRu },
+                { code: 'en', label: t.langEn },
+              ] as const
+            ).map((langItem) => {
+              const isSelected = language === langItem.code;
+              return (
+                <button
+                  key={langItem.code}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setLanguage(langItem.code);
+                  }}
+                  className={`py-2 px-1 text-center rounded-xl font-bold text-xs transition-all ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  {langItem.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Sound FX Toggle Row */}
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -332,10 +379,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
             <div>
               <div className="font-bold text-xs text-slate-900 dark:text-white">
-                {theme === 'dark' ? "Tungi rejim (Qorong'i)" : "Kunduzgi rejim (Yorug')"}
+                {theme === 'dark' ? t.themeDark : t.themeLight}
               </div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Ilova mavzusi (Light / Dark)
+                {t.themeDesc}
               </div>
             </div>
           </div>

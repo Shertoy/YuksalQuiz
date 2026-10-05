@@ -3,7 +3,7 @@ import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { UZBEKISTAN_REGIONS, Region, StudyType, AcademicYear, Gender, getAvailableAcademicYears } from '../types';
 import { getTelegramWebApp, triggerHaptic } from '../utils/telegram';
-import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle } from 'lucide-react';
+import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle, Globe } from 'lucide-react';
 import { PublicOfferModal } from './PublicOfferModal';
 import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
@@ -11,7 +11,7 @@ import { validateAndSanitizeName } from '../utils/security';
 
 export const OnboardingModal: React.FC = () => {
   const { profile, registerUser } = useQuizStore();
-  const { t, language } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -122,6 +122,37 @@ export const OnboardingModal: React.FC = () => {
           {step === 'welcome' ? (
             /* Welcome & Gratitude Screen */
             <div className="text-center py-4">
+              {/* Quick Language Selector */}
+              <div className="flex items-center justify-center gap-1.5 mb-5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-fit mx-auto border border-slate-200 dark:border-slate-700">
+                <Globe className="w-3.5 h-3.5 text-slate-400 ml-1.5 mr-0.5" strokeWidth={2} />
+                {(
+                  [
+                    { code: 'uz', label: "O'zbek" },
+                    { code: 'ru', label: 'Русский' },
+                    { code: 'en', label: 'English' },
+                  ] as const
+                ).map((langItem) => {
+                  const isSelected = language === langItem.code;
+                  return (
+                    <button
+                      key={langItem.code}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        setLanguage(langItem.code);
+                      }}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {langItem.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-4xl shadow-xl shadow-emerald-500/30 mb-5 animate-soft-pulse">
                 <Sparkles className="w-10 h-10 text-white" strokeWidth={1.75} />
               </div>
@@ -142,15 +173,15 @@ export const OnboardingModal: React.FC = () => {
               <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-2xl p-4 text-left mb-6 space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
                   <Ticket className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={1.75} />
-                  <span>20 000 so'mlik boshlang'ich obuna vaucheri taqdim etiladi!</span>
+                  <span>{t.onboardingVoucherBenefit}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
-                  <span>Barcha testlar va fanlar bo'yicha mashq qilish imkoniyati</span>
+                  <span>{t.onboardingPracticeBenefit}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
                   <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
-                  <span>Rasmiy Ommaviy oferta va shifrlangan xotira</span>
+                  <span>{t.onboardingSecurityBenefit}</span>
                 </div>
               </div>
 

@@ -310,7 +310,7 @@ export const WalletView: React.FC = () => {
             <span>{t.walletTitle || 'Hamyon'}</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Balans, tariflar va tezkor to'lov
+            {t.walletSubtitle}
           </p>
         </div>
 
@@ -323,7 +323,7 @@ export const WalletView: React.FC = () => {
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 active:scale-95 transition-all shrink-0"
         >
           <History className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
-          <span>Tarix</span>
+          <span>{t.walletHistoryTitle}</span>
         </button>
       </div>
 
@@ -357,7 +357,7 @@ export const WalletView: React.FC = () => {
         <div className="relative z-10 flex items-start justify-between">
           <div>
             <span className="text-emerald-300 text-xs font-bold uppercase tracking-wider block mb-1">
-              Hamyon balansi
+              {t.walletBalanceTitle}
             </span>
             <div className="text-2xl sm:text-3xl font-black tracking-tight text-white font-mono">
               {currentBalance.toLocaleString('uz-UZ')} so'm
@@ -397,14 +397,14 @@ export const WalletView: React.FC = () => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-black text-white">
-                  20 000 so'm boshlang'ich vaucheringiz faol!
+                  {t.walletVoucherActiveBanner}
                 </span>
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
                   Faol
                 </span>
               </div>
               <p className="text-[11px] text-emerald-100 mt-0.5 leading-snug">
-                Istalgan Premium obunada 20 000 so'm chegirma sifatida avtomatik qo'llanadi.
+                {t.walletVoucherDesc}
               </p>
             </div>
           </div>
@@ -617,7 +617,7 @@ export const WalletView: React.FC = () => {
         <div className="flex items-center gap-2 px-1">
           <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
           <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
-            To'lov Rekvizitlari va Chek Yuklash
+            {t.walletP2PTitle}
           </h3>
         </div>
 
@@ -626,10 +626,10 @@ export const WalletView: React.FC = () => {
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-500 dark:text-slate-400 font-medium">
-                Karta egasi: <b className="text-slate-900 dark:text-white">{CARD_HOLDER}</b>
+                {t.walletCardHolderLabel} <b className="text-slate-900 dark:text-white">{CARD_HOLDER}</b>
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                Humo • 0% Komissiya
+                Humo • {t.walletZeroCommission}
               </span>
             </div>
 
@@ -645,19 +645,19 @@ export const WalletView: React.FC = () => {
                 {copiedCard ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
-                    <span className="text-[11px] text-emerald-600 font-bold">Nusxalandi</span>
+                    <span className="text-[11px] text-emerald-600 font-bold">{t.walletCardCopied}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    <span className="text-[11px]">Nusxa olish</span>
+                    <span className="text-[11px]">{t.walletCopyCardBtn}</span>
                   </>
                 )}
               </button>
             </div>
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Payme, Click, Uzum yoki istalgan bank ilovangiz orqali kartaga pul o'tkazing va to'lov chekini pastga yuklang.
+              {t.walletP2PDesc}
             </p>
           </div>
 
@@ -684,10 +684,10 @@ export const WalletView: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  Kvitansiya rasmini yuklash (skrinshot yoki foto)
+                  {t.walletUploadReceiptTitle}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Faylni tanlash uchun bosing • Maksimal 300 KB gacha avtomatik siqiladi
+                  {t.walletUploadReceiptDesc}
                 </p>
               </div>
             </div>
@@ -757,7 +757,7 @@ export const WalletView: React.FC = () => {
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-emerald-200" strokeWidth={2} />
-                <span>Kvitansiyani yuborish (Gemini AI)</span>
+                <span>{t.walletSendReceiptBtn}</span>
               </>
             )}
           </button>
