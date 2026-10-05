@@ -24,6 +24,7 @@ import {
   decodeHtmlEntities,
   validateAndSanitizeName,
   validateTestAttempt,
+  isUserAdmin,
 } from '../utils/security';
 import { soundFX, triggerHaptic, setVibrationEnabled, getInitialUserId } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
@@ -31,6 +32,13 @@ import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 import { Language } from '../i18n/translations';
 import { getSupabase } from '../services/supabase';
+
+export { isUserAdmin };
+
+export function useIsAdmin(): boolean {
+  const profileId = useQuizStore((state) => state.profile?.id);
+  return isUserAdmin(profileId);
+}
 
 export function normalizeUniversityKey(name: string): string {
   return (name || '')

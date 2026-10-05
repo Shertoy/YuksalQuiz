@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, useIsAdmin } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
+import { AdminEditQuizModal } from './AdminEditQuizModal';
 import {
   Search,
   Lock,
@@ -55,10 +56,12 @@ export const TestList: React.FC<TestListProps> = ({
 }) => {
   const { testPackages, profile, testAttempts, deleteTestPackage } = useQuizStore();
   const { t } = useTranslation();
+  const isAdmin = useIsAdmin();
 
   const [selectedUniversity, setSelectedUniversity] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyTests, setOnlyMyTests] = useState(false);
+  const [adminEditingQuiz, setAdminEditingQuiz] = useState<TestPackage | null>(null);
   const [passwordModalPkg, setPasswordModalPkg] = useState<TestPackage | null>(null);
   const [targetBlockId, setTargetBlockId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -547,20 +550,20 @@ export const TestList: React.FC<TestListProps> = ({
                       {pkg.totalQuestions} {t.questionsCount}
                     </span>
 
-                    {pkg.authorId === profile.id && (
+                    {isAdmin && (
                       <div className="flex items-center gap-1 mt-0.5">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             triggerHaptic('light');
-                            onEditTest?.(pkg);
+                            setAdminEditingQuiz(pkg);
                           }}
-                          className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] transition-all active:scale-95 border border-emerald-200/50 dark:border-emerald-800/50"
-                          title={t.editBtn}
+                          className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-400 font-bold text-[11px] transition-all active:scale-95 border border-amber-200/50 dark:border-amber-800/50"
+                          title="Tahrirlash"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>{t.editBtn}</span>
+                          <span>Tahrirlash</span>
                         </button>
 
                         <button
@@ -569,8 +572,8 @@ export const TestList: React.FC<TestListProps> = ({
                             e.stopPropagation();
                             handleDeleteTest(pkg);
                           }}
-                          className="p-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900 text-orange-600 dark:text-orange-400 transition-all active:scale-95 border border-orange-200/50 dark:border-orange-900/50 flex items-center justify-center leading-none"
-                          title={t.deleteBtn}
+                          className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50 flex items-center justify-center leading-none"
+                          title="O'chirish"
                         >
                           <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                         </button>
@@ -807,6 +810,18 @@ export const TestList: React.FC<TestListProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Admin Quiz Edit Modal (Faqat Administrator uchun) */}
+      {adminEditingQuiz && (
+        <AdminEditQuizModal
+          quiz={adminEditingQuiz}
+          isOpen={Boolean(adminEditingQuiz)}
+          onClose={() => setAdminEditingQuiz(null)}
+          onSaved={() => {
+            handleSyncTests();
+          }}
+        />
       )}
     </div>
   );

@@ -221,6 +221,7 @@ const ADMIN_SESSION_KEY = 'yuksal_admin_authenticated_session';
 
 // Default authorized Telegram IDs (Owner, Devs, Administrators)
 export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
+  '7847500525', // Alisher Asqadali / Admin
   '6219808382', // Alisher Alijonov / Owner
   '117932388',  // Ali / Admin
   '123456789',  // Dev Test Admin
@@ -244,8 +245,13 @@ export function getAuthorizedAdminTelegramIds(): string[] {
     if (cleaned) idsSet.add(cleaned);
   }
 
-  // 2. Vite Environment variable (e.g. VITE_ADMIN_TELEGRAM_IDS="6219808382,123456789")
+  // 2. Vite Environment variable (e.g. VITE_ADMIN_TELEGRAM_ID or VITE_ADMIN_TELEGRAM_IDS="7847500525,6219808382")
   try {
+    const singleEnvId = (import.meta.env?.VITE_ADMIN_TELEGRAM_ID as string) || '';
+    if (singleEnvId) {
+      const cleaned = cleanTelegramId(singleEnvId);
+      if (cleaned) idsSet.add(cleaned);
+    }
     const envIds = (import.meta.env?.VITE_ADMIN_TELEGRAM_IDS as string) || '';
     if (envIds) {
       envIds.split(',').forEach((item) => {
@@ -282,6 +288,15 @@ export function isTelegramIdAuthorizedAdmin(rawId?: string | number | null): boo
 
   const authorized = getAuthorizedAdminTelegramIds();
   return authorized.includes(target);
+}
+
+/**
+ * Helper to determine if a user or user ID has Admin privileges.
+ */
+export function isUserAdmin(rawIdOrProfile?: string | number | null | { id?: string }): boolean {
+  if (!rawIdOrProfile) return false;
+  const idStr = typeof rawIdOrProfile === 'object' && rawIdOrProfile !== null ? rawIdOrProfile.id : rawIdOrProfile;
+  return isTelegramIdAuthorizedAdmin(idStr);
 }
 
 /**

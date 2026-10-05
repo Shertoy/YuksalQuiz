@@ -381,6 +381,9 @@ export async function deleteTestFromCloud(id: string): Promise<{
   }
 
   try {
+    // Delete from questions and quizzes tables first if present
+    await supabase.from('questions').delete().eq('quiz_id', id);
+    await supabase.from('quizzes').delete().eq('id', id);
     const { error } = await supabase.from('test_packages').delete().eq('id', id);
     if (error) {
       return { success: false, message: error.message };
@@ -389,6 +392,201 @@ export async function deleteTestFromCloud(id: string): Promise<{
   } catch (err: any) {
     return { success: false, message: err?.message || 'Xatolik' };
   }
+}
+
+export interface QuizPassportData {
+  title: string;
+  university?: string;
+  faculty?: string;
+  course_year?: number;
+  semester?: number;
+  is_public?: boolean;
+  category?: string;
+}
+
+export interface EditableQuestionItem {
+  id?: string;
+  question: string;
+  options: string[];
+  correct_answer: string;
+  explanation?: string;
+}
+
+/**
+ * Fetches questions for a given quiz from Supabase `questions` table,
+ * falling back to memory store if necessary.
+ */
+export async function fetchQuizQuestionsForEdit(quizId: string): Promise<EditableQuestionItem[]> {
+  const supabase = getSupabase();
+  if (supabase && quizId) {
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .order('order_index', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map((row: any) => {
+          let opts: string[] = [];
+          if (Array.isArray(row.options)) {
+            opts = row.options.map(String);
+          } else if (typeof row.options === 'string') {
+            try {
+              opts = JSON.parse(row.options);
+            } catch {
+              opts = [];
+            }
+          }
+          return {
+            id: row.id,
+            question: decodeHtmlEntities(row.question || ''),
+            options: opts.map(decodeHtmlEntities),
+            correct_answer: decodeHtmlEntities(row.correct_answer || opts[0] || ''),
+            explanation: row.explanation ? decodeHtmlEntities(row.explanation) : undefined,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Error fetching questions from questions table:', e);
+    }
+  }
+
+  // Fallback to local store blocks
+  const pkg = useQuizStore.getState().testPackages.find((p) => p.id === quizId);
+  if (pkg?.blocks && pkg.blocks.length > 0) {
+    const flattened = pkg.blocks.flatMap((b) => b.questions || []);
+    return flattened.map((q) => ({
+      id: q.id,
+      question: q.text,
+      options: q.options,
+      correct_answer: q.options[q.correctOptionIndex] || q.options[0] || '',
+      explanation: q.explanation,
+    }));
+  }
+
+  return [];
+}
+
+/**
+ * Updates an existing quiz passport and its questions in Supabase (quizzes, questions, test_packages)
+ * and synchronously updates local Zustand store.
+ */
+export async function updateQuizWithQuestions(
+  quizId: string,
+  quizData: QuizPassportData,
+  questions: EditableQuestionItem[]
+): Promise<{ success: boolean; message: string }> {
+  const supabase = getSupabase();
+  const title = (quizData.title || '').trim();
+  const university = (quizData.university || '').trim();
+  const faculty = (quizData.faculty || '').trim();
+  const courseYear = Number(quizData.course_year) || 1;
+  const semester = Number(quizData.semester) || 1;
+  const isPublic = quizData.is_public ?? true;
+  const category = quizData.category || "Oliy Ta'lim (HEMIS)";
+
+  if (!quizId) {
+    return { success: false, message: "Test ID ko'rsatilmadi." };
+  }
+  if (!title) {
+    return { success: false, message: "Fan nomi kiritilishi shart." };
+  }
+  if (!questions || questions.length === 0) {
+    return { success: false, message: "Kamida 1 ta savol bo'lishi kerak." };
+  }
+
+  // 1. Update in Supabase `quizzes` and `questions` tables
+  if (supabase) {
+    try {
+      const { error: quizErr } = await supabase.from('quizzes').upsert(
+        {
+          id: quizId,
+          title,
+          university: university || null,
+          faculty: faculty || null,
+          course_year: courseYear,
+          semester,
+          is_public: isPublic,
+          visibility: isPublic ? 'public' : 'unlisted',
+          category,
+          total_questions: questions.length,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+
+      if (quizErr) {
+        console.warn('Quizzes table update warning:', quizErr.message);
+      }
+
+      // Re-sync questions: delete existing questions and insert updated set
+      await supabase.from('questions').delete().eq('quiz_id', quizId);
+
+      const questionRows = questions.map((q, idx) => ({
+        id: q.id || `q_${quizId}_${idx + 1}_${Math.random().toString(36).substring(2, 7)}`,
+        quiz_id: quizId,
+        question: q.question.trim(),
+        options: q.options.map((opt) => opt.trim()),
+        correct_answer: q.correct_answer.trim(),
+        explanation: q.explanation?.trim() || null,
+        order_index: idx,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: qErr } = await supabase.from('questions').insert(questionRows);
+      if (qErr) {
+        console.warn('Questions table insert warning:', qErr.message);
+      }
+    } catch (dbErr) {
+      console.warn('Supabase DB error during updateQuizWithQuestions:', dbErr);
+    }
+  }
+
+  // 2. Map to TestPackage format and update Zustand store + test_packages table
+  const { splitQuestionsIntoBlocks } = await import('../utils/testSplitter');
+  const mappedQuestions: Question[] = questions.map((q, idx) => {
+    const correctIdx = Math.max(
+      0,
+      q.options.findIndex((opt) => opt.trim().toLowerCase() === q.correct_answer.trim().toLowerCase())
+    );
+    return {
+      id: q.id || `q-${idx + 1}-${Math.random().toString(36).substring(2, 7)}`,
+      text: q.question.trim(),
+      options: q.options.map((opt) => opt.trim()),
+      correctOptionIndex: correctIdx,
+      explanation: q.explanation?.trim(),
+    };
+  });
+
+  const blocks = splitQuestionsIntoBlocks(mappedQuestions);
+
+  const existingPkg = useQuizStore.getState().testPackages.find((p) => p.id === quizId);
+  const updatedPkg: TestPackage = {
+    id: quizId,
+    title,
+    category: (category || existingPkg?.category || "Oliy Ta'lim (HEMIS)") as any,
+    university: university || existingPkg?.university || 'Yuksal Quiz',
+    department: (faculty || existingPkg?.department || 'Axborot Texnologiyalari') as any,
+    isPublic,
+    totalQuestions: mappedQuestions.length,
+    blocks,
+    createdAt: existingPkg?.createdAt || new Date().toISOString().split('T')[0],
+    authorId: existingPkg?.authorId || 'admin',
+    authorName: existingPkg?.authorName || 'Administrator',
+    isCommunityCreated: existingPkg?.isCommunityCreated ?? true,
+    authorWalletBalance: existingPkg?.authorWalletBalance || 0,
+    semester,
+    academicYear: `${courseYear}-kurs`,
+  };
+
+  useQuizStore.getState().updateTestPackage(updatedPkg);
+  await publishTestToCloud(updatedPkg);
+
+  return {
+    success: true,
+    message: '✅ Test muvaffaqiyatli yangilandi!',
+  };
 }
 
 /**
