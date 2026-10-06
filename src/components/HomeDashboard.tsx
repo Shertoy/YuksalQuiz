@@ -187,6 +187,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Handle direct claiming of 20 000 UZS starting voucher
   const [isVoucherClaiming, setIsVoucherClaiming] = useState(false);
+  const [showVoucherCongratsModal, setShowVoucherCongratsModal] = useState(false);
+
   const handleClaimVoucher = async () => {
     if (isVoucherClaiming || profile.voucher_claimed || profile.voucherClaimed) return;
     setIsVoucherClaiming(true);
@@ -194,13 +196,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     try {
       const confetti = (await import('canvas-confetti')).default;
       confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
+        particleCount: 90,
+        spread: 75,
+        origin: { y: 0.5 },
       });
     } catch {}
     await claimVoucherDirectly();
     setIsVoucherClaiming(false);
+    setShowVoucherCongratsModal(true);
   };
 
   return (
@@ -568,6 +571,42 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🎉 Voucher Congratulations Modal */}
+      {showVoucherCongratsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 text-center p-6 space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-orange-500/30">
+              <Gift className="w-8 h-8 text-slate-950" strokeWidth={2} />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                🎉 Tabriklaymiz!
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                Sizga <span className="font-bold text-emerald-600 dark:text-emerald-400">20 000 so'mlik</span> boshlang'ich vaucher taqdim etildi. Mablag' hamyoningizga o'tkazildi!
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Joriy hisobingiz: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setShowVoucherCongratsModal(false);
+              }}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/25 active:scale-95 transition-all flex items-center justify-center leading-none"
+            >
+              Tushundim
+            </button>
           </div>
         </div>
       )}

@@ -292,6 +292,8 @@ export interface TestPackage {
   authorName: string;
   isCommunityCreated?: boolean;
   authorWalletBalance?: number;
+  creator_id?: string | number;
+  creatorId?: string | number;
   semester?: number;
   course_year?: number;
   courseYear?: number;

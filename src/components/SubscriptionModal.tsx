@@ -335,8 +335,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <PlusCircle className="w-5 h-5 text-white" strokeWidth={2} />
                   <span>Hisobni to'ldirish (+{deficit.toLocaleString('uz-UZ')} so'm kerak)</span>
                 </button>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center font-medium">
-                  Balansingizda {currentBalance.toLocaleString('uz-UZ')} so'm bor. Obunani faollashtirish uchun {deficit.toLocaleString('uz-UZ')} so'm to'ldiring.
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 text-center font-medium">
+                  Hisobingizda {currentBalance.toLocaleString('uz-UZ')} so'm bor. Ushbu obunani olish uchun yana {deficit.toLocaleString('uz-UZ')} so'm to'ldiring.
                 </p>
               </div>
             )}

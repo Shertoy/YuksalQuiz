@@ -1439,6 +1439,30 @@ export const useQuizStore = create<QuizState>()(
           });
         }
 
+        // Direct sync with Supabase users table
+        const supabase = getSupabase();
+        if (supabase && profile.id) {
+          const cleanTgId = String(profile.id).replace(/^tg_/, '').replace(/^user_/, '').trim();
+          (async () => {
+            try {
+              await supabase.from('users').upsert(
+                {
+                  id: profile.id,
+                  telegram_id: profile.telegram_id || profile.telegramId || cleanTgId,
+                  balance: newWalletBalance,
+                  wallet_balance: newWalletBalance,
+                  has_paid: true,
+                  paid_until: expiryDate.toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'id' }
+              );
+            } catch (err) {
+              console.warn('applySubscription supabase sync error:', err);
+            }
+          })();
+        }
+
         return {
           success: true,
           message: voucherUsed > 0
@@ -1522,9 +1546,11 @@ export const useQuizStore = create<QuizState>()(
         const supabase = getSupabase();
         if (supabase && profile.id) {
           try {
+            const cleanTgId = String(profile.id).replace(/^tg_/, '').replace(/^user_/, '').trim();
             await supabase.from('users').upsert(
               {
                 id: profile.id,
+                telegram_id: profile.telegram_id || profile.telegramId || cleanTgId,
                 balance: newBalance,
                 wallet_balance: newBalance,
                 voucher_claimed: true,

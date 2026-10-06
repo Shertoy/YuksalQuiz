@@ -396,13 +396,14 @@ export async function fetchLatestUserBalance(userId: string): Promise<number | n
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('id, telegram_id, balance, wallet_balance')
+      .select('id, telegram_id, balance, wallet_balance, voucher_claimed')
       .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
       .limit(1)
       .maybeSingle();
 
     if (!error && data) {
       const bal = Number(data.balance ?? data.wallet_balance ?? 0);
+      const voucherClaimed = Boolean(data.voucher_claimed);
       try {
         const { useQuizStore } = await import('../store/useQuizStore');
         useQuizStore.setState((s) => ({
@@ -411,6 +412,8 @@ export async function fetchLatestUserBalance(userId: string): Promise<number | n
             walletBalance: bal,
             balance: bal,
             telegram_id: data.telegram_id || cleanId,
+            voucher_claimed: voucherClaimed || s.profile.voucher_claimed,
+            voucherClaimed: voucherClaimed || s.profile.voucherClaimed,
           },
         }));
       } catch {}

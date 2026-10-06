@@ -49,12 +49,16 @@ function mapRowToTestPackage(row: any): TestPackage {
     totalQuestions: Number(row.total_questions) || 0,
     blocks,
     createdAt: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    authorId: row.author_id || 'community',
-    authorName: decodeHtmlEntities(row.author_name || 'Muallif'),
+    authorId: row.author_id || row.creator_id || 'community',
+    authorName: decodeHtmlEntities(row.author_name || row.creator_name || 'Muallif'),
+    creator_id: row.creator_id || row.author_id,
+    creatorId: row.creator_id || row.author_id,
     isCommunityCreated: Boolean(row.is_community_created ?? true),
     authorWalletBalance: Number(row.author_wallet_balance) || 0,
     semester: parsedSemester && !isNaN(parsedSemester) ? parsedSemester : undefined,
     academicYear: parsedAcademicYear || undefined,
+    course_year: row.course_year ? Number(row.course_year) : undefined,
+    faculty: row.faculty || row.department,
   };
 }
 
@@ -1010,13 +1014,14 @@ export function setupRealtimeTestSubscription(
               useQuizStore.getState().setUserBlocked(Boolean(newRow.is_blocked));
             }
             const rawBal = newRow.balance !== undefined ? newRow.balance : newRow.wallet_balance;
-            if (rawBal !== undefined && rawBal !== null) {
-              const cloudBalance = Number(rawBal);
+            const voucherClaimed = newRow.voucher_claimed !== undefined ? Boolean(newRow.voucher_claimed) : undefined;
+            if ((rawBal !== undefined && rawBal !== null) || voucherClaimed !== undefined) {
+              const cloudBalance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : undefined;
               useQuizStore.setState((s) => ({
                 profile: {
                   ...s.profile,
-                  walletBalance: cloudBalance,
-                  balance: cloudBalance,
+                  ...(cloudBalance !== undefined ? { walletBalance: cloudBalance, balance: cloudBalance } : {}),
+                  ...(voucherClaimed !== undefined ? { voucher_claimed: voucherClaimed, voucherClaimed } : {}),
                   telegram_id: rowTgId || cleanProfId,
                 },
               }));
@@ -1038,23 +1043,37 @@ export function setupRealtimeTestSubscription(
 /**
  * Checks whether user is blocked or has updated balance in Supabase
  */
-export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocked: boolean; balance?: number }> {
+export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocked: boolean; balance?: number; voucherClaimed?: boolean }> {
   const supabase = getSupabase();
   if (!supabase || !userId) return { isBlocked: false };
+  const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+  const rawId = String(userId).trim();
+  const tgId = `tg_${cleanId}`;
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('is_blocked, balance, wallet_balance')
-      .eq('id', userId)
+      .select('is_blocked, balance, wallet_balance, voucher_claimed')
+      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
+      .limit(1)
       .maybeSingle();
 
     if (!error && data) {
       const isBlocked = Boolean(data.is_blocked);
       const balance = Number(data.balance ?? data.wallet_balance ?? 0);
+      const voucherClaimed = Boolean(data.voucher_claimed);
       if (isBlocked) {
         useQuizStore.getState().setUserBlocked(true);
       }
-      return { isBlocked, balance };
+      if (voucherClaimed) {
+        useQuizStore.setState((s) => ({
+          profile: {
+            ...s.profile,
+            voucher_claimed: true,
+            voucherClaimed: true,
+          },
+        }));
+      }
+      return { isBlocked, balance, voucherClaimed };
     }
   } catch (err) {
     console.warn('checkUserBlockedStatus error:', err);
@@ -1171,8 +1190,10 @@ export async function syncUserProfileToCloud(
     gender: profile.gender || 'male',
     academic_year: profile.academicYear || 1,
     coins: profile.coins || 0,
-    balance: profile.walletBalance || 0,
-    wallet_balance: profile.walletBalance || 0,
+    telegram_id: profile.telegram_id || profile.telegramId || String(profile.id).replace(/^tg_/, '').replace(/^user_/, ''),
+    balance: Math.max(profile.walletBalance || 0, profile.balance || 0),
+    wallet_balance: Math.max(profile.walletBalance || 0, profile.balance || 0),
+    voucher_claimed: Boolean(profile.voucher_claimed || profile.voucherClaimed),
     has_paid: Boolean(profile.has_paid),
     paid_until: profile.paid_until || null,
     tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),

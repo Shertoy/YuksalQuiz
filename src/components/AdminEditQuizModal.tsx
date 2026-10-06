@@ -318,7 +318,7 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
                   Testni Tahrirlash
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  Admin
+                  Muallif & Admin
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">

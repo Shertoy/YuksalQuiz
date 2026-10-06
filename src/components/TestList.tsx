@@ -108,7 +108,19 @@ export const TestList: React.FC<TestListProps> = ({
   const [deletingPkg, setDeletingPkg] = useState<TestPackage | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const myTestsCount = testPackages.filter((p) => p.authorId === profile.id).length;
+  const cleanUserId = String(profile.id || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
+  const rawUserId = String(profile.id || '').trim();
+
+  const isUserAuthor = (pkg: TestPackage) => {
+    const pkgAuthor = String(pkg.authorId || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const pkgCreator = String(pkg.creator_id || pkg.creatorId || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
+    return (
+      (pkgAuthor && (pkgAuthor === cleanUserId || pkgAuthor === rawUserId || String(pkg.authorId) === rawUserId)) ||
+      (pkgCreator && (pkgCreator === cleanUserId || pkgCreator === rawUserId || String(pkg.creator_id) === rawUserId))
+    );
+  };
+
+  const myTestsCount = testPackages.filter((p) => isUserAuthor(p)).length;
 
   const handleDeleteTest = (pkg: TestPackage) => {
     triggerHaptic('warning');
@@ -136,7 +148,7 @@ export const TestList: React.FC<TestListProps> = ({
   const universityCatalog = useMemo(() => {
     const uniMap = new Map<string, TestPackage[]>();
     testPackages.forEach((pkg) => {
-      if (onlyMyTests && pkg.authorId !== profile.id) return;
+      if (onlyMyTests && !isUserAuthor(pkg)) return;
       const uni = (pkg.university || "Boshqa OTM").trim();
       if (!uniMap.has(uni)) {
         uniMap.set(uni, []);
@@ -172,7 +184,7 @@ export const TestList: React.FC<TestListProps> = ({
   const testsForSelectedUni = useMemo(() => {
     if (!selectedUniversity) return [];
     return testPackages.filter((pkg) => {
-      if (onlyMyTests && pkg.authorId !== profile.id) return false;
+      if (onlyMyTests && !isUserAuthor(pkg)) return false;
       const uni = (pkg.university || "Boshqa OTM").trim().toLowerCase();
       if (uni !== selectedUniversity.trim().toLowerCase()) return false;
       if (searchQuery.trim()) {
@@ -530,7 +542,7 @@ export const TestList: React.FC<TestListProps> = ({
                         </span>
                       )}
 
-                      {pkg.authorId === profile.id && (
+                      {isUserAuthor(pkg) && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
                           {t.myTestBadge}
                         </span>
@@ -550,7 +562,7 @@ export const TestList: React.FC<TestListProps> = ({
                       {pkg.totalQuestions} {t.questionsCount}
                     </span>
 
-                    {isAdmin && (
+                    {(isAdmin || isUserAuthor(pkg)) && (
                       <div className="flex items-center gap-1 mt-0.5">
                         <button
                           type="button"
