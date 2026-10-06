@@ -20,9 +20,11 @@ import {
   Coins,
   Share2,
   Award,
+  Star,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX, generateReferralLink, getTelegramWebApp } from '../utils/telegram';
+import { isPaidUser } from '../services/paywallService';
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import {
@@ -55,10 +57,11 @@ export const WalletView: React.FC = () => {
   const [successPopupMessage, setSuccessPopupMessage] = useState<string | null>(null);
   const initialBalanceRef = useRef(profile.walletBalance || profile.balance || 0);
 
-  // 1. Hamyon sahifasi ochilganda Supabase'dan joriy balansni majburiy darhol yangilash
+  // 1. Hamyon sahifasi ochilganda Supabase'dan joriy balans va obunani majburiy darhol yangilash
   useEffect(() => {
     initialBalanceRef.current = profile.walletBalance || profile.balance || 0;
     refreshBalance();
+    useQuizStore.getState().syncUserWithDatabase();
     if (profile.id) {
       fetchLatestUserBalance(profile.id);
       fetchUserLatestPendingPayment(profile.id).then((pending) => {
@@ -149,7 +152,7 @@ export const WalletView: React.FC = () => {
   const CARD_FORMATTED = '9860 0803 8232 0093';
   const CARD_HOLDER = 'Alijonova Xalimaxon';
 
-  const currentBalance = profile.walletBalance || 0;
+  const currentBalance = profile.walletBalance ?? profile.balance ?? 0;
   const currentVoucher = profile.voucherBalance || 0;
   const voucherDiscount = Math.min(currentVoucher, 20000);
   const hasVoucher = voucherDiscount > 0;
@@ -480,16 +483,16 @@ export const WalletView: React.FC = () => {
         </div>
 
         {/* Active Subscription Status (if user is currently subscribed) */}
-        {profile.subscriptionPlan && profile.subscriptionPlan !== 'none' && (
-          <div className="relative z-10 p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between gap-2">
+        {isPaidUser(profile) && (
+          <div className="relative z-10 p-3 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Crown className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={2} />
               <div className="min-w-0">
                 <p className="text-xs font-extrabold text-white truncate">
-                  Premium obuna: {profile.subscriptionPlan === '3_months' ? '3 oylik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '1 yillik'}
+                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                 </p>
-                <p className="text-[10px] text-emerald-200">
-                  Amal qilish muddati: {profile.subscriptionExpiry || '2027'} yilgacha
+                <p className="text-[10px] text-amber-200">
+                  Amal qilish muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")} gacha
                 </p>
               </div>
             </div>
@@ -555,7 +558,33 @@ export const WalletView: React.FC = () => {
       {/* =========================================================================
           2. TARIFLAR BLOKI (3 TA KARTA)
          ========================================================================= */}
-      <div className="space-y-3 pt-1">
+      {isPaidUser(profile) ? (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/80 border-2 border-amber-500/60 rounded-3xl p-5 text-white shadow-xl space-y-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/30 shrink-0">
+              <Star className="w-6 h-6 fill-slate-950 text-slate-950" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-extrabold text-sm sm:text-base text-white">
+                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                </h4>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase tracking-wider">
+                  Faol
+                </span>
+              </div>
+              <p className="text-xs text-amber-200/90 mt-1">
+                Amal qilish muddati: <b className="text-white">{profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}</b> gacha
+              </p>
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs text-slate-200 flex items-center justify-between">
+            <span>Barcha HEMIS va fan testlariga to'liq cheksiz kirish yoqilgan</span>
+            <span className="font-mono font-bold text-emerald-300">VIP</span>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3 pt-1">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
@@ -720,6 +749,7 @@ export const WalletView: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* =========================================================================
           3. REKVIZITLAR VA KVITANSIYANI DARHOL YUKLASH BLOKI

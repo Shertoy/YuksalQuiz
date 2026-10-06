@@ -181,6 +181,7 @@ interface QuizState {
   subscribeToUserBalanceRealtime: () => (() => void) | null;
   syncUser: () => Promise<number | null>;
   refreshBalance: () => Promise<number | null>;
+  syncUserWithDatabase: () => Promise<number | null>;
 }
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
@@ -540,29 +541,81 @@ export const useQuizStore = create<QuizState>()(
         };
       },
 
-      // Directly sync latest user data (balance, is_blocked, voucher_claimed) from Supabase users table
+      // Directly sync latest user data (balance, is_blocked, voucher_claimed, subscription) from Supabase
       syncUser: async () => {
         const supabase = getSupabase();
+        if (!supabase) return null;
+
+        // 1. Telegram WebApp dan foydalanuvchi ID sini aniq olish
+        const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+        const currentTelegramId = tgUser?.id ? String(tgUser.id) : null;
+
         const currentProfile = get().profile;
         const rawId = String(currentProfile?.id || '').trim();
         const cleanId = cleanTelegramId(rawId);
-        if (!supabase || (!rawId && !cleanId)) return null;
+        const resolvedId = currentTelegramId || cleanId || rawId;
 
-        const tgPrefixed = `tg_${cleanId}`;
+        if (!resolvedId) return null;
+
+        console.log('🔍 Foydalanuvchi qidirilmoqda, Telegram ID:', currentTelegramId || resolvedId);
+
+        const tgPrefixed = `tg_${resolvedId}`;
 
         try {
+          // 2. Supabase users jadvalidan universal qidiruv
           const { data: dbUser, error } = await supabase
             .from('users')
-            .select('balance, wallet_balance, is_blocked, voucher_claimed, telegram_id, has_paid, paid_until')
-            .or(`telegram_id.eq.${cleanId},telegram_id.eq.${rawId},id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed}`)
+            .select('*')
+            .or(`telegram_id.eq.${resolvedId},id.eq.${resolvedId},id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,id.eq.${rawId},telegram_id.eq.${rawId}` : ''}`)
             .limit(1)
             .maybeSingle();
 
-          if (!error && dbUser) {
-            const numBalance = Number(dbUser.balance ?? dbUser.wallet_balance ?? 0);
-            const isBlocked = Boolean(dbUser.is_blocked);
-            const voucherClaimed = Boolean(dbUser.voucher_claimed);
-            const hasPaid = dbUser.has_paid !== undefined ? Boolean(dbUser.has_paid) : currentProfile.has_paid;
+          console.log("📦 Supabase qaytargan foydalanuvchi ma'lumoti:", dbUser, 'Xato:', error);
+
+          // 3. subscriptions jadvalidan faol obunani parallel tekshirish
+          let subData: any = null;
+          try {
+            const { data: foundSub, error: subErr } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .or(`user_id.eq.${resolvedId},user_id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,user_id.eq.${rawId}` : ''}`)
+              .eq('status', 'active')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!subErr && foundSub) {
+              subData = foundSub;
+              console.log('💎 subscriptions jadvalidagi faol obuna:', subData);
+            }
+          } catch (subQueryErr) {
+            console.debug('subscriptions table check notice:', subQueryErr);
+          }
+
+          if (dbUser || subData) {
+            const numBalance = Number(dbUser?.balance ?? dbUser?.wallet_balance ?? currentProfile.walletBalance ?? 0);
+            const isBlocked = Boolean(dbUser?.is_blocked);
+            const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
+
+            // Obuna holatini hisoblash:
+            // a) dbUser.subscription_end muddati o'tmagan
+            // b) dbUser.paid_until muddati o'tmagan
+            // c) dbUser.has_paid === true
+            // d) subData (subscriptions jadvalidagi faol obuna)
+            const rawSubEnd = dbUser?.subscription_end || dbUser?.paid_until || subData?.expires_at;
+            const isDateActive = rawSubEnd ? new Date(rawSubEnd) > new Date() : false;
+            const hasPaidFlag = Boolean(dbUser?.has_paid);
+            const isSubscribed = Boolean(isDateActive || hasPaidFlag || subData);
+
+            const activeTier: any =
+              dbUser?.subscription_tier ||
+              dbUser?.subscription_plan ||
+              subData?.plan ||
+              (isSubscribed ? currentProfile.subscriptionPlan || '3_months' : 'none');
+
+            const activeEnd = rawSubEnd || currentProfile.subscriptionExpiry || currentProfile.paid_until;
+
+            console.log('⚡ Yangilangan state: Balans =', numBalance, 'Obuna =', isSubscribed, activeTier, activeEnd);
 
             set((state) => ({
               profile: {
@@ -571,18 +624,23 @@ export const useQuizStore = create<QuizState>()(
                 walletBalance: numBalance,
                 is_blocked: isBlocked,
                 isBlocked: isBlocked,
-                voucher_claimed: voucherClaimed || state.profile.voucher_claimed,
-                voucherClaimed: voucherClaimed || state.profile.voucherClaimed,
-                has_paid: hasPaid,
-                paid_until: dbUser.paid_until || state.profile.paid_until,
-                telegram_id: dbUser.telegram_id || cleanId || state.profile.telegram_id,
+                voucher_claimed: voucherClaimed,
+                voucherClaimed: voucherClaimed,
+                isSubscribed: isSubscribed,
+                has_paid: isSubscribed,
+                subscriptionPlan: isSubscribed ? activeTier : 'none',
+                subscriptionTier: isSubscribed ? activeTier : 'none',
+                subscriptionExpiry: activeEnd ? String(activeEnd).split('T')[0] : undefined,
+                subscriptionEnd: activeEnd ? String(activeEnd) : undefined,
+                paid_until: activeEnd ? String(activeEnd) : undefined,
+                telegram_id: dbUser?.telegram_id || currentTelegramId || cleanId || state.profile.telegram_id,
               },
             }));
 
             return numBalance;
           }
         } catch (err) {
-          console.warn('syncUser error:', err);
+          console.error('syncUser exception:', err);
         }
 
         return null;
@@ -590,6 +648,11 @@ export const useQuizStore = create<QuizState>()(
 
       // Alias for syncUser to immediately refresh user balance
       refreshBalance: async () => {
+        return await get().syncUser();
+      },
+
+      // Official method to force sync with database
+      syncUserWithDatabase: async () => {
         return await get().syncUser();
       },
 

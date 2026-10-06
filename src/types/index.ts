@@ -90,6 +90,9 @@ export interface UserProfile {
   referralCount: number;
   subscriptionPlan?: 'none' | '3_months' | '6_months' | '1_year';
   subscriptionExpiry?: string;
+  subscriptionTier?: 'none' | '3_months' | '6_months' | '1_year' | string;
+  subscriptionEnd?: string;
+  isSubscribed?: boolean;
   has_paid?: boolean;
   paid_until?: string;
   registeredAt?: string;

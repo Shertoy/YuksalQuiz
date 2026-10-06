@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -24,9 +24,11 @@ import {
   Zap,
   Wallet,
   Gift,
+  Star,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
+import { isPaidUser } from '../services/paywallService';
 import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
@@ -54,8 +56,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     testAttempts,
     leaderboard,
     claimVoucherDirectly,
+    syncUserWithDatabase,
   } = useQuizStore();
   const { t } = useTranslation();
+
+  // Majburiy ravishda sahifa ochilganda keshga qaramasdan bazadan eng so'nggi ma'lumotlarni olish
+  useEffect(() => {
+    syncUserWithDatabase();
+  }, [syncUserWithDatabase]);
 
   const [dailyClaimedMessage, setDailyClaimedMessage] = useState<string | null>(null);
   const [isCoinFlying, setIsCoinFlying] = useState(false);
@@ -317,6 +325,33 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
+      {/* Active Subscription Badge if user has active plan */}
+      {isPaidUser(profile) && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/20 border-2 border-amber-500/50 flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black shadow-md shadow-orange-500/30 shrink-0">
+              <Star className="w-5 h-5 fill-amber-100 text-amber-100" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-black text-slate-900 dark:text-white">
+                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                </span>
+                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase tracking-wider">
+                  Faol
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                Muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl bg-amber-500/10 shrink-0">
+            VIP Kirish
+          </span>
+        </div>
+      )}
+
       {/* Wallet Balance & Quick Deposit Card */}
       <div className="rounded-2xl p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -328,7 +363,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               Hisobingiz:
             </span>
             <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
-              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+              {(profile.walletBalance ?? profile.balance ?? 0).toLocaleString('uz-UZ')} so'm
             </div>
           </div>
         </div>
