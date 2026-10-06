@@ -441,11 +441,12 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ ok: true });
           }
 
-          // 5. payments jadvalidagi statusni 'approved' ga o'zgartirish
+          // 5. payments jadvalidagi statusni 'approved' ga o'zgartirish va user_id aniq Telegram ID bo'lishini ta'minlash
           if (paymentId) {
             const { error: payUpdateErr } = await supabase
               .from('payments')
               .update({
+                user_id: cleanId,
                 status: 'approved',
                 verified_by: 'admin',
                 notes: `Admin (${fromId}) tomonidan tasdiqlandi: ${new Date().toISOString()}`,
@@ -457,12 +458,12 @@ export default async function handler(req: any, res: any) {
             }
           }
 
-          // 6. Talabaga xabar yuborilsin
+          // 6. Talabaning shaxsiy Telegramiga xabar yuborilsin
           const userChatId = extractTelegramChatId(targetUserId) || cleanId;
           if (userChatId) {
             await sendTelegramMessage(
               userChatId,
-              `✅ <b>Kvitansiyangiz administrator tomonidan tasdiqlandi va hisobingizga +${amount.toLocaleString('uz-UZ')} so'm qo'shildi!</b>`
+              `✅ To'lovingiz tasdiqlandi! Hisobingizga ${amount.toLocaleString('uz-UZ')} so'm muvaffaqiyatli o'tkazildi.`
             );
           }
 

@@ -128,9 +128,10 @@ export const App: React.FC = () => {
       }
     }
 
-    // Check if user is blocked or has updated cloud status
+    // Check if user is blocked or has updated cloud status and latest balance
     if (profile.id) {
       checkUserBlockedStatus(profile.id).catch(() => {});
+      useQuizStore.getState().syncUser().catch(() => {});
     }
 
     // Automatically sync public tests, universities, leaderboard and announcements from Supabase cloud

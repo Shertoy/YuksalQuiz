@@ -40,6 +40,7 @@ export const WalletView: React.FC = () => {
     depositBalance,
     subscriptionPrices,
     transactions,
+    refreshBalance,
   } = useQuizStore();
   const { t } = useTranslation();
 
@@ -52,12 +53,13 @@ export const WalletView: React.FC = () => {
   // Realtime Polling & Balance Sync State
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const [successPopupMessage, setSuccessPopupMessage] = useState<string | null>(null);
-  const initialBalanceRef = useRef(profile.walletBalance || 0);
+  const initialBalanceRef = useRef(profile.walletBalance || profile.balance || 0);
 
-  // 1. Hamyon ochilganda Supabase'dan joriy balansni majburiy qayta yuklash
+  // 1. Hamyon sahifasi ochilganda Supabase'dan joriy balansni majburiy darhol yangilash
   useEffect(() => {
+    initialBalanceRef.current = profile.walletBalance || profile.balance || 0;
+    refreshBalance();
     if (profile.id) {
-      initialBalanceRef.current = profile.walletBalance || 0;
       fetchLatestUserBalance(profile.id);
       fetchUserLatestPendingPayment(profile.id).then((pending) => {
         if (pending?.id) {
@@ -65,16 +67,17 @@ export const WalletView: React.FC = () => {
         }
       });
     }
-  }, [profile.id]);
+  }, [profile.id, refreshBalance]);
 
-  // 2. Agar to'lov kutilayotgan holatda (pending) bo'lsa, har 4 soniyada bir marta polling ishga tushsin
+  // 2. Agar to'lov kutilayotgan holatda bo'lsa yoki hozirgina chek yuborilgan bo'lsa:
+  // har 3 soniyada payments va users.balance tekshirilsin (Realtime/polling)
   useEffect(() => {
     if (!pendingPaymentId) return;
 
     let isMounted = true;
     const interval = setInterval(async () => {
-      // 1. Supabase'dan yangi balansni tekshirish
-      const freshBal = await fetchLatestUserBalance(profile.id);
+      // 1. Supabase'dan eng so'nggi balansni to'g'ridan-to'g'ri yangilash
+      const freshBal = await refreshBalance();
 
       // 2. To'lov ID orqali holatni tekshirish
       if (pendingPaymentId !== 'latest') {
@@ -86,6 +89,7 @@ export const WalletView: React.FC = () => {
         ) {
           if (!isMounted) return;
           setPendingPaymentId(null);
+          await refreshBalance();
           triggerHaptic('success');
           soundFX.playSuccess();
           confetti({
@@ -102,7 +106,7 @@ export const WalletView: React.FC = () => {
         }
       }
 
-      // 3. Agar balans oshgan bo'lsa
+      // 3. Agar balans boshlang'ichdan oshgan bo'lsa, bir zumda tasdiqlash
       if (freshBal !== null && freshBal > initialBalanceRef.current) {
         if (!isMounted) return;
         setPendingPaymentId(null);
@@ -119,13 +123,13 @@ export const WalletView: React.FC = () => {
           message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
         });
       }
-    }, 4000);
+    }, 3000);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [pendingPaymentId, profile.id]);
+  }, [pendingPaymentId, refreshBalance]);
 
   // Receipt Upload State (Section C)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

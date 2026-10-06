@@ -179,6 +179,8 @@ interface QuizState {
   setUserBlocked: (blocked: boolean) => void;
   claimVoucherDirectly: () => Promise<boolean>;
   subscribeToUserBalanceRealtime: () => (() => void) | null;
+  syncUser: () => Promise<number | null>;
+  refreshBalance: () => Promise<number | null>;
 }
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
@@ -536,6 +538,59 @@ export const useQuizStore = create<QuizState>()(
         return () => {
           supabase.removeChannel(channel);
         };
+      },
+
+      // Directly sync latest user data (balance, is_blocked, voucher_claimed) from Supabase users table
+      syncUser: async () => {
+        const supabase = getSupabase();
+        const currentProfile = get().profile;
+        const rawId = String(currentProfile?.id || '').trim();
+        const cleanId = cleanTelegramId(rawId);
+        if (!supabase || (!rawId && !cleanId)) return null;
+
+        const tgPrefixed = `tg_${cleanId}`;
+
+        try {
+          const { data: dbUser, error } = await supabase
+            .from('users')
+            .select('balance, wallet_balance, is_blocked, voucher_claimed, telegram_id, has_paid, paid_until')
+            .or(`telegram_id.eq.${cleanId},telegram_id.eq.${rawId},id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (!error && dbUser) {
+            const numBalance = Number(dbUser.balance ?? dbUser.wallet_balance ?? 0);
+            const isBlocked = Boolean(dbUser.is_blocked);
+            const voucherClaimed = Boolean(dbUser.voucher_claimed);
+            const hasPaid = dbUser.has_paid !== undefined ? Boolean(dbUser.has_paid) : currentProfile.has_paid;
+
+            set((state) => ({
+              profile: {
+                ...state.profile,
+                balance: numBalance,
+                walletBalance: numBalance,
+                is_blocked: isBlocked,
+                isBlocked: isBlocked,
+                voucher_claimed: voucherClaimed || state.profile.voucher_claimed,
+                voucherClaimed: voucherClaimed || state.profile.voucherClaimed,
+                has_paid: hasPaid,
+                paid_until: dbUser.paid_until || state.profile.paid_until,
+                telegram_id: dbUser.telegram_id || cleanId || state.profile.telegram_id,
+              },
+            }));
+
+            return numBalance;
+          }
+        } catch (err) {
+          console.warn('syncUser error:', err);
+        }
+
+        return null;
+      },
+
+      // Alias for syncUser to immediately refresh user balance
+      refreshBalance: async () => {
+        return await get().syncUser();
       },
 
       addUniversity: (name: string) => {
