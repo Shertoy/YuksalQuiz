@@ -75,7 +75,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'approve') {
-      const paymentId = String(req.body?.paymentId || '');
+      const paymentId = String(req.body?.paymentId || '');\
       const plan = req.body?.plan || null;
       const { data, error } = await db.rpc('approve_payment', {
         p_payment_id: paymentId,
@@ -87,13 +87,20 @@ export default async function handler(req: any, res: any) {
 
       let subEnd: string | null = null;
       if (plan) {
-        const r = await db.rpc('admin_credit', { p_user: data.user_id, p_amount: 0, p_actor: actor, p_plan: plan });
-        subEnd = (r.data as any)?.subscription_end || null;
+        // tg_ prefiksli va oddiy ID bilan sinab ko'ramiz
+        const tryIds = [data.user_id, `tg_${data.user_id}`, cleanId(data.user_id)];
+        for (const pid of tryIds) {
+          const r = await db.rpc('admin_credit', { p_user: pid, p_amount: 0, p_actor: actor, p_plan: plan });
+          if (!r.error && r.data?.ok) {
+            subEnd = (r.data as any)?.subscription_end || null;
+            break;
+          }
+        }
       }
-      await tgSend(
-        data.user_id,
-        `To'lovingiz tasdiqlandi. Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm qo'shildi.`
-      );
+
+      const msgParts = [`Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm qo'shildi`];
+      if (plan) msgParts.push('obunangiz faollashtirildi');
+      await tgSend(data.user_id, `To'lovingiz tasdiqlandi. ${msgParts.join(' va ')}.`);
       return res.status(200).json({ ...data, subscription_end: subEnd });
     }
 
@@ -128,13 +135,32 @@ export default async function handler(req: any, res: any) {
       const plan = req.body?.plan || null;
       if (!userId) return res.status(400).json({ ok: false, error: 'userId kerak' });
       if (!amount && !plan) return res.status(400).json({ ok: false, error: 'Summa yoki tarif kerak' });
-      const { data, error } = await db.rpc('admin_credit', {
-        p_user: `tg_${userId}`,
-        p_amount: amount,
-        p_actor: actor,
-        p_plan: plan,
-      });
-      if (error) throw error;
+
+      // tg_ prefiksli ID bilan sinab ko'ramiz, keyin oddiy ID bilan
+      let data: any = null;
+      let error: any = null;
+
+      const tryIds = [`tg_${userId}`, userId];
+      for (const pid of tryIds) {
+        const r = await db.rpc('admin_credit', {
+          p_user: pid,
+          p_amount: amount,
+          p_actor: actor,
+          p_plan: plan,
+        });
+        if (!r.error && r.data?.ok) {
+          data = r.data;
+          break;
+        }
+        error = r.error || r.data;
+      }
+
+      if (!data?.ok) {
+        console.error('admin_credit error:', error);
+        const errMsg = typeof error === 'string' ? error : error?.message || JSON.stringify(error) || 'RPC xatosi';
+        return res.status(500).json({ ok: false, error: errMsg });
+      }
+
       const parts: string[] = [];
       if (amount) parts.push(`hisobingizga ${amount.toLocaleString('uz-UZ')} so'm qo'shildi`);
       if (plan) parts.push('obunangiz faollashtirildi');
