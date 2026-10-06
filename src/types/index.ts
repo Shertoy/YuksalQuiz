@@ -82,6 +82,9 @@ export interface UserProfile {
   isRegistered: boolean;
   acceptedOferta: boolean;
   walletBalance: number; // Internal UZS balance (author credits, referral bonuses)
+  balance?: number; // Alias for walletBalance
+  telegram_id?: string;
+  telegramId?: string;
   voucherBalance: number; // 20 000 UZS starting voucher for any subscription
   authorEarnings: number; // Total UZS earned from created tests (+100 UZS per completion)
   referralCount: number;

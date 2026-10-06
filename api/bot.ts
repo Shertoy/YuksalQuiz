@@ -344,80 +344,149 @@ export default async function handler(req: any, res: any) {
         const targetUserId = parts[1]?.trim() || '';
         const paymentId = parts[2]?.trim() || '';
 
-        if (targetUserId) {
-          try {
-            let amount = 20000;
+        try {
+          let amount = 20000;
+          let paymentUserId = targetUserId;
 
-            if (paymentId) {
-              const { data: payRow } = await supabase
-                .from('payments')
-                .select('*')
-                .eq('id', paymentId)
-                .maybeSingle();
-
-              if (payRow?.amount) {
-                amount = Number(payRow.amount);
-              }
-
-              // Update payment status
-              await supabase
-                .from('payments')
-                .update({
-                  status: 'manual_approved',
-                  verified_by: 'admin',
-                  notes: `Admin (${fromId}) tomonidan tasdiqlandi: ${new Date().toISOString()}`,
-                })
-                .eq('id', paymentId);
-            }
-
-            // Chekdagi summa users.balance ga qo'shilsin
-            let currentBal = 0;
-            const { data: userRow } = await supabase
-              .from('users')
-              .select('balance, wallet_balance')
-              .eq('id', targetUserId)
+          // 1. To'lov yozuvidan user_id (telegram_id) va amount ni aniq raqam (Number) ko'rinishida oling
+          if (paymentId) {
+            const { data: payRow, error: payErr } = await supabase
+              .from('payments')
+              .select('id, user_id, amount, status')
+              .eq('id', paymentId)
               .maybeSingle();
 
-            if (userRow) {
-              currentBal = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
-            }
-            const newBal = currentBal + amount;
-
-            await supabase.from('users').upsert({
-              id: targetUserId,
-              balance: newBal,
-              wallet_balance: newBal,
-              updated_at: new Date().toISOString(),
-            });
-
-            // Talabaga xabar yuborilsin
-            const userChatId = extractTelegramChatId(targetUserId);
-            if (userChatId) {
-              await sendTelegramMessage(
-                userChatId,
-                "✅ <b>Kvitansiyangiz administrator tomonidan tasdiqlandi va hisobingiz to'ldirildi!</b>"
-              );
+            if (payErr) {
+              console.warn('[manual_approve] Error fetching payment:', payErr.message);
             }
 
-            await answerCallback(
-              queryId,
-              `✅ To'lov tasdiqlandi (+${amount.toLocaleString('uz-UZ')} so'm)!`,
-              true
-            );
+            if (payRow) {
+              if (payRow.amount !== undefined && payRow.amount !== null) {
+                amount = Number(payRow.amount) || 20000;
+              }
+              if (payRow.user_id) {
+                paymentUserId = String(payRow.user_id).trim();
+              }
+            }
+          }
 
+          const cleanId = String(paymentUserId || targetUserId)
+            .replace(/^tg_/, '')
+            .replace(/^user_/, '')
+            .trim();
+          const rawId = String(paymentUserId || targetUserId).trim();
+          const tgPrefixedId = `tg_${cleanId}`;
+
+          // 2. Foydalanuvchini users jadvalida telegram_id = $user_id OR id = $user_id sharti bilan topish
+          let { data: foundUsers, error: userFetchErr } = await supabase
+            .from('users')
+            .select('id, telegram_id, balance, wallet_balance, full_name, name')
+            .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixedId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`);
+
+          if (userFetchErr) {
+            console.warn('[manual_approve] Error searching users with OR clause:', userFetchErr.message);
+          }
+
+          if (!foundUsers || foundUsers.length === 0) {
+            const { data: directById } = await supabase
+              .from('users')
+              .select('id, telegram_id, balance, wallet_balance, full_name, name')
+              .eq('id', rawId);
+            if (directById && directById.length > 0) {
+              foundUsers = directById;
+            }
+          }
+
+          // 3. Agar yangilangan qatorlar soni 0 bo'lsa (foydalanuvchi topilmasa)
+          if (!foundUsers || foundUsers.length === 0) {
+            console.error(`[manual_approve] Xatolik: Foydalanuvchi bazadan topilmadi! user_id: ${targetUserId}, paymentId: ${paymentId}`);
+            await answerCallback(queryId, "⚠️ Foydalanuvchi bazadan topilmadi", true);
             if (chatId) {
               await sendTelegramMessage(
                 chatId,
-                `✅ <b>TASDIQLANDI:</b>\nTalaba <code>${targetUserId}</code> hisobiga <b>+${amount.toLocaleString(
-                  'uz-UZ'
-                )} so'm</b> qo'shildi va talabaga tasdiq xabari yuborildi.`
+                `⚠️ <b>XATOLIK:</b> Foydalanuvchi bazadan topilmadi!\n` +
+                `🆔 Telegram ID: <code>${targetUserId}</code>\n` +
+                `🧾 To'lov ID: <code>${paymentId}</code>`
               );
             }
-          } catch (dbErr) {
-            console.error('Error in manual_approve:', dbErr);
-            await answerCallback(queryId, "Xatolik yuz berdi", true);
+            return res.status(200).json({ ok: true });
           }
+
+          // 4. Balansni yangilash: SET balance = COALESCE(balance, 0) + $amount
+          let updatedCount = 0;
+          for (const userRow of foundUsers) {
+            const curBal = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
+            const newBal = curBal + amount;
+
+            const { error: updateErr } = await supabase
+              .from('users')
+              .update({
+                balance: newBal,
+                wallet_balance: newBal,
+                telegram_id: userRow.telegram_id || cleanId,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', userRow.id);
+
+            if (updateErr) {
+              console.error(`[manual_approve] User update error for id ${userRow.id}:`, updateErr.message);
+            } else {
+              updatedCount++;
+            }
+          }
+
+          if (updatedCount === 0) {
+            console.error(`[manual_approve] Qatorlar soni 0: Yangilash amalga oshmadi (${targetUserId})`);
+            await answerCallback(queryId, "⚠️ Foydalanuvchi balansi yangilanmadi", true);
+            return res.status(200).json({ ok: true });
+          }
+
+          // 5. payments jadvalidagi statusni 'approved' ga o'zgartirish
+          if (paymentId) {
+            const { error: payUpdateErr } = await supabase
+              .from('payments')
+              .update({
+                status: 'approved',
+                verified_by: 'admin',
+                notes: `Admin (${fromId}) tomonidan tasdiqlandi: ${new Date().toISOString()}`,
+              })
+              .eq('id', paymentId);
+
+            if (payUpdateErr) {
+              console.warn('[manual_approve] Payment status update warning:', payUpdateErr.message);
+            }
+          }
+
+          // 6. Talabaga xabar yuborilsin
+          const userChatId = extractTelegramChatId(targetUserId) || cleanId;
+          if (userChatId) {
+            await sendTelegramMessage(
+              userChatId,
+              `✅ <b>Kvitansiyangiz administrator tomonidan tasdiqlandi va hisobingizga +${amount.toLocaleString('uz-UZ')} so'm qo'shildi!</b>`
+            );
+          }
+
+          // 7. Adminga tasdiq
+          await answerCallback(
+            queryId,
+            `✅ To'lov tasdiqlandi (+${amount.toLocaleString('uz-UZ')} so'm)!`,
+            true
+          );
+
+          if (chatId) {
+            await sendTelegramMessage(
+              chatId,
+              `✅ <b>TASDIQLANDI:</b>\nTalaba <code>${cleanId}</code> hisobiga <b>+${amount.toLocaleString(
+                'uz-UZ'
+              )} so'm</b> qo'shildi va to'lov statusi 'approved' ga o'tkazildi.`
+            );
+          }
+
+        } catch (dbErr) {
+          console.error('Error in manual_approve:', dbErr);
+          await answerCallback(queryId, "Xatolik yuz berdi", true);
         }
+
         return res.status(200).json({ ok: true });
       }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuizStore } from './store/useQuizStore';
+import { useQuizStore, useUserBalanceRealtime } from './store/useQuizStore';
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
 import { OnboardingModal } from './components/OnboardingModal';
@@ -41,6 +41,7 @@ import {
 } from './services/paywallService';
 
 export const App: React.FC = () => {
+  useUserBalanceRealtime();
   const { theme, setTheme, activeTab, setActiveTab, checkDailyStreak, profile, testAttempts, testPackages } = useQuizStore();
 
   // App loading state with smooth quote-rotation loader

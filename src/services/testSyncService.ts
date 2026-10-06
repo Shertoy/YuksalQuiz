@@ -1,7 +1,7 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
 import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
-import { decodeHtmlEntities } from '../utils/security';
+import { decodeHtmlEntities, cleanTelegramId } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { UserRatingStats } from '../utils/ratingUtils';
 
@@ -986,16 +986,39 @@ export function setupRealtimeTestSubscription(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'users' },
         (payload: any) => {
-          const currentProfileId = useQuizStore.getState().profile.id;
+          const currentProfile = useQuizStore.getState().profile;
+          const currentProfileId = currentProfile?.id || '';
+          const cleanProfId = cleanTelegramId(currentProfileId);
           const newRow = payload?.new;
-          if (newRow && newRow.id === currentProfileId) {
+          if (!newRow) return;
+
+          const rowId = String(newRow.id || '');
+          const rowTgId = String(newRow.telegram_id || '');
+          const cleanRowId = cleanTelegramId(rowId);
+
+          const isMatchingUser =
+            rowId === currentProfileId ||
+            (cleanProfId && (
+              cleanRowId === cleanProfId ||
+              rowTgId === cleanProfId ||
+              rowId === cleanProfId ||
+              rowId === `tg_${cleanProfId}`
+            ));
+
+          if (isMatchingUser) {
             if (newRow.is_blocked !== undefined) {
               useQuizStore.getState().setUserBlocked(Boolean(newRow.is_blocked));
             }
-            if (newRow.balance !== undefined) {
-              const cloudBalance = Number(newRow.balance);
+            const rawBal = newRow.balance !== undefined ? newRow.balance : newRow.wallet_balance;
+            if (rawBal !== undefined && rawBal !== null) {
+              const cloudBalance = Number(rawBal);
               useQuizStore.setState((s) => ({
-                profile: { ...s.profile, walletBalance: cloudBalance },
+                profile: {
+                  ...s.profile,
+                  walletBalance: cloudBalance,
+                  balance: cloudBalance,
+                  telegram_id: rowTgId || cleanProfId,
+                },
               }));
             }
           }

@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
@@ -25,6 +26,7 @@ import {
   validateAndSanitizeName,
   validateTestAttempt,
   isUserAdmin,
+  cleanTelegramId,
 } from '../utils/security';
 import { soundFX, triggerHaptic, setVibrationEnabled, getInitialUserId } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
@@ -38,6 +40,18 @@ export { isUserAdmin };
 export function useIsAdmin(): boolean {
   const profileId = useQuizStore((state) => state.profile?.id);
   return isUserAdmin(profileId);
+}
+
+export function useUserBalanceRealtime(): void {
+  const subscribe = useQuizStore((state) => state.subscribeToUserBalanceRealtime);
+  const profileId = useQuizStore((state) => state.profile?.id);
+
+  useEffect(() => {
+    const unsub = subscribe();
+    return () => {
+      unsub?.();
+    };
+  }, [subscribe, profileId]);
 }
 
 export function normalizeUniversityKey(name: string): string {
@@ -164,6 +178,7 @@ interface QuizState {
   restoreBackupData: (data: any) => void;
   setUserBlocked: (blocked: boolean) => void;
   claimVoucherDirectly: () => Promise<boolean>;
+  subscribeToUserBalanceRealtime: () => (() => void) | null;
 }
 
 export const DEFAULT_SUBSCRIPTION_PRICES: SubscriptionPrices = {
@@ -456,6 +471,71 @@ export const useQuizStore = create<QuizState>()(
             isBlocked: blocked,
           },
         }));
+      },
+
+      subscribeToUserBalanceRealtime: () => {
+        const supabase = getSupabase();
+        if (!supabase) return null;
+        const currentProfile = get().profile;
+        const rawId = currentProfile?.id || '';
+        const cleanId = cleanTelegramId(rawId);
+        if (!cleanId && !rawId) return null;
+
+        const targetTgId = currentProfile.telegram_id || cleanId;
+
+        const channel = supabase
+          .channel(`user-balance-${targetTgId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'users',
+              filter: `telegram_id=eq.${targetTgId}`,
+            },
+            (payload: any) => {
+              const newBal = payload.new?.balance ?? payload.new?.wallet_balance;
+              if (typeof newBal !== 'undefined' && newBal !== null) {
+                const numBal = Number(newBal);
+                set((state) => ({
+                  profile: {
+                    ...state.profile,
+                    balance: numBal,
+                    walletBalance: numBal,
+                    telegram_id: targetTgId,
+                  },
+                }));
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'users',
+              filter: `id=eq.${rawId}`,
+            },
+            (payload: any) => {
+              const newBal = payload.new?.balance ?? payload.new?.wallet_balance;
+              if (typeof newBal !== 'undefined' && newBal !== null) {
+                const numBal = Number(newBal);
+                set((state) => ({
+                  profile: {
+                    ...state.profile,
+                    balance: numBal,
+                    walletBalance: numBal,
+                    telegram_id: targetTgId,
+                  },
+                }));
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       },
 
       addUniversity: (name: string) => {

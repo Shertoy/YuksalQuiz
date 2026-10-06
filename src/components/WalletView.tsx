@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import {
@@ -25,7 +25,13 @@ import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX, generateReferralLink, getTelegramWebApp } from '../utils/telegram';
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
-import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
+import {
+  uploadReceiptToStorage,
+  recordReceiptPayment,
+  fetchLatestUserBalance,
+  fetchUserLatestPendingPayment,
+  checkPaymentStatus,
+} from '../services/receiptService';
 
 export const WalletView: React.FC = () => {
   const {
@@ -42,6 +48,84 @@ export const WalletView: React.FC = () => {
   const [copiedRef, setCopiedRef] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | TransactionType>('all');
+
+  // Realtime Polling & Balance Sync State
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
+  const [successPopupMessage, setSuccessPopupMessage] = useState<string | null>(null);
+  const initialBalanceRef = useRef(profile.walletBalance || 0);
+
+  // 1. Hamyon ochilganda Supabase'dan joriy balansni majburiy qayta yuklash
+  useEffect(() => {
+    if (profile.id) {
+      initialBalanceRef.current = profile.walletBalance || 0;
+      fetchLatestUserBalance(profile.id);
+      fetchUserLatestPendingPayment(profile.id).then((pending) => {
+        if (pending?.id) {
+          setPendingPaymentId(pending.id);
+        }
+      });
+    }
+  }, [profile.id]);
+
+  // 2. Agar to'lov kutilayotgan holatda (pending) bo'lsa, har 4 soniyada bir marta polling ishga tushsin
+  useEffect(() => {
+    if (!pendingPaymentId) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      // 1. Supabase'dan yangi balansni tekshirish
+      const freshBal = await fetchLatestUserBalance(profile.id);
+
+      // 2. To'lov ID orqali holatni tekshirish
+      if (pendingPaymentId !== 'latest') {
+        const payRes = await checkPaymentStatus(pendingPaymentId);
+        if (
+          payRes?.status === 'approved' ||
+          payRes?.status === 'auto_approved' ||
+          payRes?.status === 'manual_approved'
+        ) {
+          if (!isMounted) return;
+          setPendingPaymentId(null);
+          triggerHaptic('success');
+          soundFX.playSuccess();
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+          });
+          setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
+          setFeedback({
+            type: 'success',
+            message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
+          });
+          return;
+        }
+      }
+
+      // 3. Agar balans oshgan bo'lsa
+      if (freshBal !== null && freshBal > initialBalanceRef.current) {
+        if (!isMounted) return;
+        setPendingPaymentId(null);
+        triggerHaptic('success');
+        soundFX.playSuccess();
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+        setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
+        setFeedback({
+          type: 'success',
+          message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
+        });
+      }
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [pendingPaymentId, profile.id]);
 
   // Receipt Upload State (Section C)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -268,6 +352,7 @@ export const WalletView: React.FC = () => {
 
         // Deposit balance directly in local store
         depositBalance(creditedAmount, txId);
+        fetchLatestUserBalance(profile.id);
 
         triggerHaptic('success');
         soundFX.playSuccess();
@@ -277,6 +362,7 @@ export const WalletView: React.FC = () => {
           origin: { y: 0.6 },
         });
 
+        setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
         setFeedback({
           type: 'success',
           message: `To'lov muvaffaqiyatli tasdiqlandi! Balansingizga +${creditedAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
@@ -284,6 +370,8 @@ export const WalletView: React.FC = () => {
 
         handleClearSelectedFile();
       } else if (data.status === 'pending') {
+        initialBalanceRef.current = profile.walletBalance || 0;
+        setPendingPaymentId(data.paymentId || 'latest');
         triggerHaptic('warning');
         setFeedback({
           type: 'success',
@@ -349,6 +437,20 @@ export const WalletView: React.FC = () => {
           <div className="flex-1 leading-relaxed">
             {feedback.message}
           </div>
+        </div>
+      )}
+
+      {/* Pending verification status banner */}
+      {pendingPaymentId && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/40 flex items-center justify-between gap-3 text-amber-850 dark:text-amber-200 text-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 animate-ping" />
+            <div className="min-w-0">
+              <p className="font-extrabold truncate">Kvitansiya tekshirilmoqda...</p>
+              <p className="text-[11px] opacity-80 truncate">Administrator tasdiqlashi kutilmoqda (har 4 soniyada tekshirilmoqda)</p>
+            </div>
+          </div>
+          <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-amber-500" />
         </div>
       )}
 
@@ -934,6 +1036,38 @@ export const WalletView: React.FC = () => {
                 Yopish
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up: Hisob muvaffaqiyatli to'ldirildi */}
+      {successPopupMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-md animate-bounce">
+              <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                {successPopupMessage}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                To'lovingiz administrator tomonidan tasdiqlandi. Hamyon balansingiz yangilandi!
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300">
+              Joriy balans: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setSuccessPopupMessage(null);
+              }}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95"
+            >
+              Ajoyib, tushunarli!
+            </button>
           </div>
         </div>
       )}
