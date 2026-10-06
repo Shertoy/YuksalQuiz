@@ -199,8 +199,9 @@ export const TestList: React.FC<TestListProps> = ({
   }, [testPackages, selectedUniversity, onlyMyTests, profile.id, searchQuery]);
 
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
+    const isPaid = isPaidUser(profile);
     const blockIndex = pkg.blocks.findIndex((b) => b.id === block.id);
-    const unlocked = isBlockUnlocked(pkg, blockIndex, testAttempts);
+    const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, blockIndex, testAttempts);
 
     // 1. If sequential block is locked
     if (!unlocked) {
@@ -602,7 +603,8 @@ export const TestList: React.FC<TestListProps> = ({
 
                   <div className="grid grid-cols-2 gap-2">
                     {pkg.blocks.map((block, idx) => {
-                      const unlocked = isBlockUnlocked(pkg, idx, testAttempts);
+                      const isPaid = isPaidUser(profile);
+                      const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, idx, testAttempts);
                       const isLocked = !unlocked;
 
                       const blockAttempts = (testAttempts || []).filter(
@@ -622,8 +624,6 @@ export const TestList: React.FC<TestListProps> = ({
                         maxScore >= passing ||
                         blockAttempts.some((a) => a.isPassed || a.score >= passing)
                       );
-
-                      const isPaid = isPaidUser(profile);
                       const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
                       const isLimitReached = !isPaid && todayAttempts >= 2;
 

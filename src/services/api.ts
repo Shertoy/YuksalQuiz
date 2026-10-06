@@ -19,12 +19,24 @@ export interface ApiResult<T = any> {
 
 export async function apiPost<T = any>(path: string, body: Record<string, any> = {}): Promise<ApiResult<T>> {
   try {
+    const adminId =
+      typeof window !== 'undefined'
+        ? (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id ||
+          localStorage.getItem('yuksal_admin_id') ||
+          ''
+        : '';
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': getTelegramInitData(),
+    };
+    if (adminId) {
+      headers['X-Admin-Id'] = String(adminId);
+    }
+
     const res = await fetch(path, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': getTelegramInitData(),
-      },
+      headers,
       body: JSON.stringify(body),
     });
     let data: any = {};

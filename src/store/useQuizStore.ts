@@ -621,20 +621,28 @@ export const useQuizStore = create<QuizState>()(
             const isBlocked = Boolean(dbUser?.is_blocked);
             const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
 
-            // Obuna faqat muddat bo'yicha hisoblanadi. Muddat o'tgan bo'lsa obuna tugagan.
-            // (Avval has_paid belgisi hech qachon o'chmagani uchun obuna cheksiz ishlab qolardi.)
+            // Obuna tekshiruvi: muddat, is_subscribed bayrog'i, has_paid yoki subscription_tier bo'yicha
             const rawSubEnd = dbUser?.subscription_end || dbUser?.paid_until || subData?.expires_at;
-            const isSubscribed = rawSubEnd
-              ? new Date(rawSubEnd) > new Date()
-              : Boolean(dbUser?.has_paid && !dbUser?.paid_until && !dbUser?.subscription_end);
+            const isSubscribed = Boolean(
+              (rawSubEnd && new Date(rawSubEnd) > new Date()) ||
+              dbUser?.is_subscribed === true ||
+              dbUser?.has_paid === true ||
+              (dbUser?.subscription_tier && dbUser?.subscription_tier !== 'none') ||
+              (dbUser?.subscription_plan && dbUser?.subscription_plan !== 'none') ||
+              subData?.status === 'active'
+            );
 
             const activeTier: any =
               dbUser?.subscription_tier ||
               dbUser?.subscription_plan ||
               subData?.plan ||
-              (isSubscribed ? currentProfile.subscriptionPlan || '3_months' : 'none');
+              (isSubscribed ? (currentProfile.subscriptionPlan && currentProfile.subscriptionPlan !== 'none' ? currentProfile.subscriptionPlan : '3_months') : 'none');
 
-            const activeEnd = rawSubEnd || currentProfile.subscriptionExpiry || currentProfile.paid_until;
+            const activeEnd =
+              rawSubEnd ||
+              currentProfile.subscriptionExpiry ||
+              currentProfile.paid_until ||
+              (isSubscribed ? new Date(Date.now() + 90 * 86400000).toISOString() : undefined);
 
             console.log('⚡ Yangilangan state: Balans =', numBalance, 'Obuna =', isSubscribed, activeTier, activeEnd);
 

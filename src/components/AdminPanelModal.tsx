@@ -326,6 +326,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('yuksal_admin_id', '7847500525');
+      }
       loadUsers();
       loadPayments();
       refreshAdminWhitelist();

@@ -75,7 +75,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'approve') {
-      const paymentId = String(req.body?.paymentId || '');\
+      const paymentId = String(req.body?.paymentId || '');
       const plan = req.body?.plan || null;
       const { data, error } = await db.rpc('approve_payment', {
         p_payment_id: paymentId,

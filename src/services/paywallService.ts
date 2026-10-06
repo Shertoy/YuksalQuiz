@@ -31,6 +31,7 @@ export function isPaidUser(profile?: UserProfile | null): boolean {
   if (!profile) return false;
   if (profile.isSubscribed === true) return true;
   if (profile.has_paid === true) return true;
+  if (profile.subscriptionTier && profile.subscriptionTier !== 'none') return true;
   if (profile.subscriptionEnd && new Date(profile.subscriptionEnd) > new Date()) return true;
   if (profile.paid_until && new Date(profile.paid_until) > new Date()) return true;
   if (

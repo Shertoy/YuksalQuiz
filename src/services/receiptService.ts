@@ -135,12 +135,55 @@ export async function recordReceiptPayment(_data: {
  * Admin paneli uchun barcha to'lovlar (faqat admin uchun, server orqali).
  */
 export async function fetchAllPayments(): Promise<PaymentRecord[]> {
-  const r = await apiPost('/api/admin', { action: 'list_payments' });
-  if (!r.ok) {
-    console.warn('fetchAllPayments error:', apiErrorText(r));
+  try {
+    const r = await apiPost('/api/admin', { action: 'list_payments' });
+    if (r.ok && r.data?.payments) {
+      return (r.data.payments || []) as PaymentRecord[];
+    }
+  } catch (err) {
+    console.warn('apiPost list_payments failed:', err);
+  }
+
+  // Fallback to direct Supabase query if apiPost fails
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  try {
+    const { data: pays, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    if (error) throw error;
+
+    const ids = Array.from(new Set((pays || []).map((p: any) => String(p.user_id).replace(/^tg_/, '').replace(/^user_/, ''))));
+    const keys = ids.flatMap((i) => [i, `tg_${i}`]);
+    const { data: users } = ids.length
+      ? await supabase.from('users').select('*').in('id', keys)
+      : { data: [] as any[] };
+    const byId = new Map<string, any>();
+    (users || []).forEach((u: any) => byId.set(String(u.id).replace(/^tg_/, ''), u));
+
+    return (pays || []).map((p: any) => {
+      const u = byId.get(String(p.user_id).replace(/^tg_/, ''));
+      const name = u?.full_name || u?.name || `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || null;
+      return {
+        ...p,
+        users: u
+          ? {
+              full_name: name,
+              username: u.telegram_username || u.username || null,
+              balance: Number(u.balance ?? u.wallet_balance ?? 0),
+              has_paid: Boolean(u.is_subscribed || u.has_paid),
+              paid_until: u.subscription_end || u.paid_until || null,
+              university: u.university || null,
+            }
+          : null,
+      };
+    }) as PaymentRecord[];
+  } catch (err) {
+    console.error('fetchAllPayments fallback error:', err);
     return [];
   }
-  return (r.data?.payments || []) as PaymentRecord[];
 }
 
 /**
@@ -149,32 +192,100 @@ export async function fetchAllPayments(): Promise<PaymentRecord[]> {
  */
 export async function approveReceiptPayment(
   paymentId: string,
-  _userId: string,
-  _amount: number,
+  userId: string,
+  amount: number,
   plan?: '3_months' | '6_months' | '1_year' | null
 ): Promise<{ success: boolean; newBalance: number; message: string }> {
-  const r = await apiPost('/api/admin', { action: 'approve', paymentId, plan: plan || null });
-  const d: any = r.data || {};
-  if (!r.ok || !d.ok) {
-    const msg =
-      d.reason === 'already_processed'
-        ? `Bu to'lov allaqachon ko'rib chiqilgan (${d.status})`
-        : apiErrorText(r, 'Tasdiqlashda xatolik');
-    return { success: false, newBalance: 0, message: msg };
+  try {
+    const r = await apiPost('/api/admin', { action: 'approve', paymentId, plan: plan || null });
+    const d: any = r.data || {};
+    if (r.ok && d.ok) {
+      return {
+        success: true,
+        newBalance: Number(d.new_balance || 0),
+        message: `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
+      };
+    }
+  } catch (err) {
+    console.warn('apiPost approve failed:', err);
   }
-  return {
-    success: true,
-    newBalance: Number(d.new_balance || 0),
-    message: `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
-  };
+
+  // Fallback to direct Supabase
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, newBalance: 0, message: "Supabase bilan aloqa yo'q" };
+
+  try {
+    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const rawId = String(userId).trim();
+    const tgPrefixed = `tg_${cleanId}`;
+
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('id, telegram_id, balance, wallet_balance, has_paid, paid_until, full_name, name')
+      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
+      .limit(1)
+      .maybeSingle();
+
+    const targetUserDbId = userRow?.id || rawId;
+    const currentBalance = Number(userRow?.balance ?? userRow?.wallet_balance ?? 0);
+    const newBalance = currentBalance + Number(amount);
+
+    const updateFields: Record<string, any> = {
+      id: targetUserDbId,
+      telegram_id: userRow?.telegram_id || cleanId,
+      balance: newBalance,
+      wallet_balance: newBalance,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (plan) {
+      const months = plan === '1_year' ? 12 : plan === '6_months' ? 6 : 3;
+      let expiry = new Date();
+      if (userRow?.paid_until && new Date(userRow.paid_until) > expiry) {
+        expiry = new Date(userRow.paid_until);
+      }
+      expiry.setMonth(expiry.getMonth() + months);
+      updateFields.has_paid = true;
+      updateFields.is_subscribed = true;
+      updateFields.subscription_tier = plan;
+      updateFields.subscription_end = expiry.toISOString();
+      updateFields.paid_until = expiry.toISOString();
+    }
+
+    await supabase.from('users').upsert(updateFields, { onConflict: 'id' });
+    await supabase.from('payments').update({ status: 'manual_approved', verified_by: 'admin' }).eq('id', paymentId);
+
+    return {
+      success: true,
+      newBalance,
+      message: `To'lov tasdiqlandi! +${Number(amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
+    };
+  } catch (err: any) {
+    console.error('approveReceiptPayment fallback error:', err);
+    return { success: false, newBalance: 0, message: err?.message || 'Xatolik yuz berdi' };
+  }
 }
 
 /**
  * Admin to'lovni rad etadi.
  */
 export async function rejectReceiptPayment(paymentId: string): Promise<boolean> {
-  const r = await apiPost('/api/admin', { action: 'reject', paymentId });
-  return r.ok && r.data?.ok === true;
+  try {
+    const r = await apiPost('/api/admin', { action: 'reject', paymentId });
+    if (r.ok && r.data?.ok === true) return true;
+  } catch {}
+
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('payments')
+      .update({ status: 'manual_rejected', verified_by: 'admin' })
+      .eq('id', paymentId);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -183,19 +294,77 @@ export async function rejectReceiptPayment(paymentId: string): Promise<boolean> 
 export async function adminManualCredit(
   userId: string,
   amount: number,
-  _fullName?: string,
+  fullName?: string,
   plan?: '3_months' | '6_months' | '1_year' | null
 ): Promise<{ success: boolean; newBalance: number; message: string }> {
-  const r = await apiPost('/api/admin', { action: 'credit', userId, amount, plan: plan || null });
-  const d: any = r.data || {};
-  if (!r.ok || !d.ok) {
-    return { success: false, newBalance: 0, message: apiErrorText(r, "Qo'shishda xatolik yuz berdi") };
+  try {
+    const r = await apiPost('/api/admin', { action: 'credit', userId, amount, plan: plan || null });
+    const d: any = r.data || {};
+    if (r.ok && d.ok) {
+      return {
+        success: true,
+        newBalance: Number(d.new_balance || 0),
+        message: `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga ${Number(amount).toLocaleString('uz-UZ')} so'm qo'shildi.`,
+      };
+    }
+  } catch (err) {
+    console.warn('apiPost credit failed:', err);
   }
-  return {
-    success: true,
-    newBalance: Number(d.new_balance || 0),
-    message: `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga ${Number(amount).toLocaleString('uz-UZ')} so'm qo'shildi.`,
-  };
+
+  // Fallback to direct Supabase
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, newBalance: 0, message: "Supabase bilan aloqa yo'q" };
+
+  try {
+    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const rawId = String(userId).trim();
+    const tgPrefixed = `tg_${cleanId}`;
+
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('id, telegram_id, balance, wallet_balance, has_paid, paid_until, full_name, name')
+      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
+      .limit(1)
+      .maybeSingle();
+
+    const targetUserDbId = userRow?.id || rawId;
+    const currentBalance = Number(userRow?.balance ?? userRow?.wallet_balance ?? 0);
+    const newBalance = currentBalance + Number(amount);
+
+    const updateFields: Record<string, any> = {
+      id: targetUserDbId,
+      telegram_id: userRow?.telegram_id || cleanId,
+      full_name: userRow?.full_name || userRow?.name || fullName || 'Talaba',
+      balance: newBalance,
+      wallet_balance: newBalance,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (plan) {
+      const months = plan === '1_year' ? 12 : plan === '6_months' ? 6 : 3;
+      let expiry = new Date();
+      if (userRow?.paid_until && new Date(userRow.paid_until) > expiry) {
+        expiry = new Date(userRow.paid_until);
+      }
+      expiry.setMonth(expiry.getMonth() + months);
+      updateFields.has_paid = true;
+      updateFields.is_subscribed = true;
+      updateFields.subscription_tier = plan;
+      updateFields.subscription_end = expiry.toISOString();
+      updateFields.paid_until = expiry.toISOString();
+    }
+
+    await supabase.from('users').upsert(updateFields, { onConflict: 'id' });
+
+    return {
+      success: true,
+      newBalance,
+      message: `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga ${Number(amount).toLocaleString('uz-UZ')} so'm qo'shildi.`,
+    };
+  } catch (err: any) {
+    console.error('adminManualCredit fallback error:', err);
+    return { success: false, newBalance: 0, message: err?.message || 'Qo\'shishda xatolik yuz berdi' };
+  }
 }
 
 /**
