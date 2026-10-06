@@ -204,20 +204,28 @@ export async function approveReceiptPayment(
   }
 
   try {
-    // 1. Get current user balance & status
+    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const rawId = String(userId).trim();
+    const tgPrefixed = `tg_${cleanId}`;
+
+    // 1. Get current user balance & status using flexible multi-ID search
     const { data: userRow } = await supabase
       .from('users')
-      .select('balance, has_paid, paid_until, full_name')
-      .eq('id', userId)
+      .select('id, telegram_id, balance, wallet_balance, has_paid, paid_until, full_name, name')
+      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
+      .limit(1)
       .maybeSingle();
 
-    const currentBalance = Number(userRow?.balance || 0);
+    const targetUserDbId = userRow?.id || rawId;
+    const currentBalance = Number(userRow?.balance ?? userRow?.wallet_balance ?? 0);
     const newBalance = currentBalance + Number(amount);
 
     const updateFields: Record<string, any> = {
-      id: userId,
-      full_name: userRow?.full_name || 'Talaba',
+      id: targetUserDbId,
+      telegram_id: userRow?.telegram_id || cleanId,
+      full_name: userRow?.full_name || userRow?.name || 'Talaba',
       balance: newBalance,
+      wallet_balance: newBalance,
       updated_at: new Date().toISOString(),
     };
 
@@ -235,10 +243,11 @@ export async function approveReceiptPayment(
     // 2. Update user profile
     await supabase.from('users').upsert(updateFields, { onConflict: 'id' });
 
-    // 3. Update payment status to 'approved'
+    // 3. Update payment status to 'approved' and ensure user_id is clean Telegram ID
     const { error: payError } = await supabase
       .from('payments')
       .update({
+        user_id: cleanId,
         status: 'approved',
         verified_by: 'admin',
       })
@@ -248,10 +257,26 @@ export async function approveReceiptPayment(
       console.warn('Error updating payment status:', payError.message);
     }
 
+    // 4. Send Telegram confirmation message to the student
+    if (cleanId) {
+      try {
+        fetch('/api/bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send_broadcast',
+            chatIds: [cleanId],
+            title: "To'lov tasdiqlandi",
+            message: `✅ To'lovingiz tasdiqlandi! Hisobingizga ${Number(amount).toLocaleString('uz-UZ')} so'm muvaffaqiyatli o'tkazildi.`,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
     return {
       success: true,
       newBalance,
-      message: `To'lov tasdiqlandi! +${amount.toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
+      message: `To'lov tasdiqlandi! +${Number(amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
     };
   } catch (err: any) {
     console.error('approveReceiptPayment exception:', err);
@@ -306,19 +331,27 @@ export async function adminManualCredit(
       fullName: fullName || 'Talaba',
     });
 
+    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const rawId = String(userId).trim();
+    const tgPrefixed = `tg_${cleanId}`;
+
     const { data: userRow } = await supabase
       .from('users')
-      .select('balance, has_paid, paid_until, full_name')
-      .eq('id', userId)
+      .select('id, telegram_id, balance, wallet_balance, has_paid, paid_until, full_name, name')
+      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
+      .limit(1)
       .maybeSingle();
 
-    const currentBalance = Number(userRow?.balance || 0);
+    const targetUserDbId = userRow?.id || rawId;
+    const currentBalance = Number(userRow?.balance ?? userRow?.wallet_balance ?? 0);
     const newBalance = currentBalance + Number(amount);
 
     const updateFields: Record<string, any> = {
-      id: userId,
-      full_name: userRow?.full_name || fullName || 'Talaba',
+      id: targetUserDbId,
+      telegram_id: userRow?.telegram_id || cleanId,
+      full_name: userRow?.full_name || userRow?.name || fullName || 'Talaba',
       balance: newBalance,
+      wallet_balance: newBalance,
       updated_at: new Date().toISOString(),
     };
 
@@ -338,7 +371,7 @@ export async function adminManualCredit(
     // Also record this as an approved payment in payments history
     const txId = `MANUAL_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     await supabase.from('payments').insert({
-      user_id: userId,
+      user_id: cleanId,
       amount: Number(amount),
       receipt_image_url: null,
       transaction_id: txId,
@@ -347,6 +380,22 @@ export async function adminManualCredit(
       verified_by: 'admin',
       created_at: new Date().toISOString(),
     });
+
+    // Notify student via Telegram
+    if (cleanId) {
+      try {
+        fetch('/api/bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send_broadcast',
+            chatIds: [cleanId],
+            title: "Hisob to'ldirildi",
+            message: `✅ Administrator tomonidan hisobingizga +${Number(amount).toLocaleString('uz-UZ')} so'm to'ldirildi!`,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
 
     return {
       success: true,
