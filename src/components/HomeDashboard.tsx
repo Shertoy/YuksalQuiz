@@ -201,17 +201,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     if (isVoucherClaiming || profile.voucher_claimed || profile.voucherClaimed) return;
     setIsVoucherClaiming(true);
     triggerHaptic('medium');
-    try {
-      const confetti = (await import('canvas-confetti')).default;
-      confetti({
-        particleCount: 90,
-        spread: 75,
-        origin: { y: 0.5 },
-      });
-    } catch {}
-    await claimVoucherDirectly();
+    const ok = await claimVoucherDirectly();
+    if (ok) {
+      try {
+        const confetti = (await import('canvas-confetti')).default;
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.5 } });
+      } catch {}
+      setShowVoucherCongratsModal(true);
+    }
     setIsVoucherClaiming(false);
-    setShowVoucherCongratsModal(true);
   };
 
   return (

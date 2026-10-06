@@ -1,3 +1,4 @@
+import { getTelegramInitData } from './api';
 import { Announcement, AnnouncementTargetType, Region, LeaderboardUser } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { publishAnnouncementToCloud } from './testSyncService';
@@ -154,9 +155,9 @@ export async function sendTargetedAnnouncement(
 
   // Dispatch to /api/broadcast (or fallback to /api/bot)
   try {
-    let res = await fetch('/api/broadcast', {
+    const res = await fetch('/api/broadcast', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': getTelegramInitData() },
       body: JSON.stringify({
         chatIds: targetIds,
         title: payload.title,
@@ -164,21 +165,6 @@ export async function sendTargetedAnnouncement(
         link: payload.link,
       }),
     });
-
-    if (!res.ok && res.status === 404) {
-      // Fallback to /api/bot with action: 'send_broadcast'
-      res = await fetch('/api/bot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'send_broadcast',
-          chatIds: targetIds,
-          title: payload.title,
-          message: payload.message,
-          link: payload.link,
-        }),
-      });
-    }
 
     if (res.ok) {
       const data = await res.json();

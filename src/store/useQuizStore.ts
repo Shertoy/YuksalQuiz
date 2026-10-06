@@ -1,3 +1,4 @@
+import { apiPost, apiErrorText } from '../services/api';
 import React, { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -165,7 +166,7 @@ interface QuizState {
   solveMistake: (questionId: string) => void;
   creditAuthor: (authorId: string, amount?: number) => void;
   depositBalance: (amount: number, transactionId: string) => { newBalance: number };
-  applySubscription: (plan: SubscriptionPlanType) => { success: boolean; message: string };
+  applySubscription: (plan: SubscriptionPlanType) => Promise<{ success: boolean; message: string }>;
   applyReceiptPaymentApproval: (data: {
     plan: SubscriptionPlanType;
     amount: number;
@@ -263,7 +264,7 @@ const DEFAULT_PROFILE: UserProfile = {
   isRegistered: false,
   acceptedOferta: false,
   walletBalance: 0,
-  voucherBalance: 20000, // 20 000 UZS starting voucher!
+  voucherBalance: 0, // vaucher endi 'Olish' tugmasi orqali balansga qo'shiladi
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
@@ -567,6 +568,7 @@ export const useQuizStore = create<QuizState>()(
             .from('users')
             .select('*')
             .or(`telegram_id.eq.${resolvedId},id.eq.${resolvedId},id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,id.eq.${rawId},telegram_id.eq.${rawId}` : ''}`)
+            .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();
 
@@ -592,20 +594,39 @@ export const useQuizStore = create<QuizState>()(
             console.debug('subscriptions table check notice:', subQueryErr);
           }
 
+          // Admin belgilagan narxlar hamma talabaga bir xil ko'rinadi
+          try {
+            const { data: settings } = await supabase
+              .from('app_settings')
+              .select('key, value')
+              .in('key', ['price_3_months', 'price_6_months', 'price_1_year']);
+            if (settings && settings.length) {
+              const m: Record<string, number> = {};
+              settings.forEach((r: any) => (m[r.key] = Number(r.value)));
+              const cur = get().subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
+              set({
+                subscriptionPrices: {
+                  '3_months': m.price_3_months || cur['3_months'],
+                  '6_months': m.price_6_months || cur['6_months'],
+                  '1_year': m.price_1_year || cur['1_year'],
+                },
+              });
+            }
+          } catch {
+            /* narxlar olinmasa joriy narxlar qoladi */
+          }
+
           if (dbUser || subData) {
             const numBalance = Number(dbUser?.balance ?? dbUser?.wallet_balance ?? currentProfile.walletBalance ?? 0);
             const isBlocked = Boolean(dbUser?.is_blocked);
             const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
 
-            // Obuna holatini hisoblash:
-            // a) dbUser.subscription_end muddati o'tmagan
-            // b) dbUser.paid_until muddati o'tmagan
-            // c) dbUser.has_paid === true
-            // d) subData (subscriptions jadvalidagi faol obuna)
+            // Obuna faqat muddat bo'yicha hisoblanadi. Muddat o'tgan bo'lsa obuna tugagan.
+            // (Avval has_paid belgisi hech qachon o'chmagani uchun obuna cheksiz ishlab qolardi.)
             const rawSubEnd = dbUser?.subscription_end || dbUser?.paid_until || subData?.expires_at;
-            const isDateActive = rawSubEnd ? new Date(rawSubEnd) > new Date() : false;
-            const hasPaidFlag = Boolean(dbUser?.has_paid);
-            const isSubscribed = Boolean(isDateActive || hasPaidFlag || subData);
+            const isSubscribed = rawSubEnd
+              ? new Date(rawSubEnd) > new Date()
+              : Boolean(dbUser?.has_paid && !dbUser?.paid_until && !dbUser?.subscription_end);
 
             const activeTier: any =
               dbUser?.subscription_tier ||
@@ -730,6 +751,15 @@ export const useQuizStore = create<QuizState>()(
 
       updateSubscriptionPrices: (prices: SubscriptionPrices) => {
         set({ subscriptionPrices: prices });
+        // Talabalarga ham ko'rinishi uchun serverga yoziladi (faqat admin uchun ishlaydi)
+        apiPost('/api/admin', {
+          action: 'set_prices',
+          p3: prices['3_months'],
+          p6: prices['6_months'],
+          p12: prices['1_year'],
+        }).then((r) => {
+          if (!r.ok) console.warn('Narxlarni serverga yozib bo\'lmadi:', r.data?.error);
+        });
         triggerHaptic('success');
       },
 
@@ -935,7 +965,7 @@ export const useQuizStore = create<QuizState>()(
           streak: current.streak || 1,
           lastLoginDate: today,
           registeredAt: current.registeredAt || today,
-          voucherBalance: 20000, // 20 000 UZS starting voucher guaranteed
+          voucherBalance: 0,
         };
 
         newProfile.checksum = generateIntegritySignature({
@@ -978,14 +1008,6 @@ export const useQuizStore = create<QuizState>()(
         set({
           profile: newProfile,
           leaderboard: [currentUserEntry, ...existingOthers],
-        });
-
-        get().addTransaction({
-          type: 'voucher',
-          title: "Boshlang'ich talaba vaucheri",
-          amount: 20000,
-          unit: "so'm",
-          isPositive: true,
         });
 
         import('../services/testSyncService')
@@ -1474,54 +1496,34 @@ export const useQuizStore = create<QuizState>()(
         set({ mistakes: filtered });
       },
 
-      // Apply subscription for 3_months, 6_months, or 1_year
-      applySubscription: (plan: SubscriptionPlanType) => {
-        const { profile, subscriptionPrices } = get();
-        const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
-        const originalPrice = prices[plan] || (plan === '3_months' ? 35000 : plan === '6_months' ? 60000 : 100000);
-
-        // 20 000 voucher discount applies to ANY subscription plan (3_months, 6_months, or 1_year)
-        const voucherUsed = Math.min(profile.voucherBalance || 0, 20000, originalPrice);
-        const remainingToPay = Math.max(0, originalPrice - voucherUsed);
-        const currentBalance = profile.walletBalance || 0;
-
-        // Strict Balance Verification: User CANNOT subscribe if wallet balance is insufficient!
-        if (currentBalance < remainingToPay) {
-          const missingAmount = remainingToPay - currentBalance;
+      // Obuna sotib olish. Narx va balans tekshiruvi serverda (bazada) bajariladi,
+      // shuning uchun brauzerda soxtalashtirib bo'lmaydi.
+      applySubscription: async (plan: SubscriptionPlanType) => {
+        const r = await apiPost('/api/wallet', { action: 'purchase', plan });
+        const d: any = r.data || {};
+        if (!r.ok || !d.ok) {
           triggerHaptic('error');
-          return {
-            success: false,
-            message: `Hisobingizda mablag' yetarli emas! Sizga yana ${missingAmount.toLocaleString('uz-UZ')} so'm kerak. Iltimos, hisobingizni to'ldiring.`,
-          };
+          return { success: false, message: apiErrorText(r, "Obunani faollashtirib bo'lmadi") };
         }
 
-        // Deduct payment and voucher
-        const newWalletBalance = currentBalance - remainingToPay;
-        const newVoucherBalance = Math.max(0, (profile.voucherBalance || 0) - voucherUsed);
-
-        // Calculate subscription expiry (extend if already active)
-        let expiryDate = new Date();
-        if (profile.subscriptionExpiry && new Date(profile.subscriptionExpiry) > expiryDate) {
-          expiryDate = new Date(profile.subscriptionExpiry);
-        }
-        if (plan === '3_months') {
-          expiryDate.setMonth(expiryDate.getMonth() + 3);
-        } else if (plan === '6_months') {
-          expiryDate.setMonth(expiryDate.getMonth() + 6);
-        } else {
-          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        }
-
+        const { profile } = get();
+        const price = Number(d.price || 0);
+        const newBalance = Number(d.new_balance || 0);
+        const end = d.subscription_end ? String(d.subscription_end) : undefined;
         const planLabel = plan === '3_months' ? '3 oylik' : plan === '6_months' ? '6 oylik' : '1 yillik';
 
         const updatedProfile: UserProfile = {
           ...profile,
-          walletBalance: newWalletBalance,
-          voucherBalance: newVoucherBalance,
+          walletBalance: newBalance,
+          balance: newBalance,
+          voucherBalance: 0,
           subscriptionPlan: plan,
-          subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+          subscriptionTier: plan,
+          subscriptionExpiry: end ? end.split('T')[0] : undefined,
+          subscriptionEnd: end,
+          isSubscribed: true,
           has_paid: true,
-          paid_until: expiryDate.toISOString(),
+          paid_until: end,
         };
 
         updatedProfile.checksum = generateIntegritySignature({
@@ -1536,56 +1538,19 @@ export const useQuizStore = create<QuizState>()(
 
         triggerHaptic('success');
         soundFX.playCoin();
-
         set({ profile: updatedProfile });
 
         get().addTransaction({
           type: 'deposit',
           title: `${planLabel} Premium obuna to'lovi`,
-          amount: remainingToPay,
+          amount: price,
           unit: "so'm",
           isPositive: false,
         });
 
-        if (voucherUsed > 0) {
-          get().addTransaction({
-            type: 'voucher',
-            title: "20 000 so'm vaucher chegirmasi qo'llandi",
-            amount: voucherUsed,
-            unit: "so'm",
-            isPositive: false,
-          });
-        }
-
-        // Direct sync with Supabase users table
-        const supabase = getSupabase();
-        if (supabase && profile.id) {
-          const cleanTgId = String(profile.id).replace(/^tg_/, '').replace(/^user_/, '').trim();
-          (async () => {
-            try {
-              await supabase.from('users').upsert(
-                {
-                  id: profile.id,
-                  telegram_id: profile.telegram_id || profile.telegramId || cleanTgId,
-                  balance: newWalletBalance,
-                  wallet_balance: newWalletBalance,
-                  has_paid: true,
-                  paid_until: expiryDate.toISOString(),
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: 'id' }
-              );
-            } catch (err) {
-              console.warn('applySubscription supabase sync error:', err);
-            }
-          })();
-        }
-
         return {
           success: true,
-          message: voucherUsed > 0
-            ? `20 000 so'm vaucher chegirmasi qo'llandi va hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`
-            : `Hisobingizdan ${remainingToPay.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
+          message: `Hisobingizdan ${price.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
       },
 
@@ -1623,16 +1588,33 @@ export const useQuizStore = create<QuizState>()(
         return { newBalance };
       },
 
-      // Directly claim 20 000 UZS starting voucher into wallet balance
+      // Boshlang'ich vaucherni olish. Bir martalik tekshiruv va balansga qo'shish serverda bajariladi.
       claimVoucherDirectly: async () => {
         const { profile } = get();
         if (profile.voucher_claimed || profile.voucherClaimed) return false;
 
-        const bonus = 20000;
-        const newBalance = (profile.walletBalance || 0) + bonus;
+        const r = await apiPost('/api/wallet', { action: 'claim_voucher' });
+        const d: any = r.data || {};
+
+        if (d.reason === 'already_claimed') {
+          set((st) => ({ profile: { ...st.profile, voucher_claimed: true, voucherClaimed: true, voucherBalance: 0 } }));
+          return false;
+        }
+        if (!r.ok || !d.ok) {
+          triggerHaptic('error');
+          const msg = apiErrorText(r, "Vaucherni olib bo'lmadi. Keyinroq urinib ko'ring.");
+          const tgApp = (window as any).Telegram?.WebApp;
+          if (tgApp?.showAlert) tgApp.showAlert(msg);
+          else alert(msg);
+          return false;
+        }
+
+        const bonus = Number(d.amount || 20000);
+        const newBalance = Number(d.new_balance || 0);
         const updatedProfile: UserProfile = {
           ...profile,
           walletBalance: newBalance,
+          balance: newBalance,
           voucherBalance: 0,
           voucher_claimed: true,
           voucherClaimed: true,
@@ -1652,7 +1634,7 @@ export const useQuizStore = create<QuizState>()(
 
         get().addTransaction({
           type: 'voucher',
-          title: "20 000 so'm boshlang'ich vaucher faollashtirildi",
+          title: `${bonus.toLocaleString('uz-UZ')} so'm boshlang'ich vaucher faollashtirildi`,
           amount: bonus,
           unit: "so'm",
           isPositive: true,
@@ -1660,27 +1642,6 @@ export const useQuizStore = create<QuizState>()(
 
         triggerHaptic('success');
         soundFX.playCoin();
-
-        const supabase = getSupabase();
-        if (supabase && profile.id) {
-          try {
-            const cleanTgId = String(profile.id).replace(/^tg_/, '').replace(/^user_/, '').trim();
-            await supabase.from('users').upsert(
-              {
-                id: profile.id,
-                telegram_id: profile.telegram_id || profile.telegramId || cleanTgId,
-                balance: newBalance,
-                wallet_balance: newBalance,
-                voucher_claimed: true,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'id' }
-            );
-          } catch (err) {
-            console.warn('claimVoucherDirectly supabase sync error:', err);
-          }
-        }
-
         return true;
       },
 

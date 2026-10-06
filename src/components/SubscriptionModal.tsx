@@ -42,7 +42,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const currentBalance = profile.walletBalance || 0;
   const currentVoucher = profile.voucherBalance || 0;
   const hasVoucher = currentVoucher > 0;
-  const voucherDiscount = Math.min(currentVoucher, 20000);
+  const voucherDiscount = 0; // vaucher claim qilinganda balansga qo'shiladi, chegirma emas
 
   // Dynamic Plan Pricing from store
   const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
@@ -69,7 +69,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const canAfford = currentBalance >= planCost;
   const deficit = Math.max(0, planCost - currentBalance);
 
-  const handlePayFromBalance = () => {
+  const handlePayFromBalance = async () => {
     if (!canAfford) {
       triggerHaptic('warning');
       onOpenDepositModal(deficit);
@@ -77,7 +77,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     }
 
     triggerHaptic('medium');
-    const res = applySubscription(selectedPlan);
+    const res = await applySubscription(selectedPlan);
 
     if (res.success) {
       triggerHaptic('success');

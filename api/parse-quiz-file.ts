@@ -1,3 +1,4 @@
+import { GEMINI_MODELS } from './_lib/common';
 // @ts-ignore
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
@@ -163,12 +164,7 @@ Hech qanday izoh, markdown kodi yoki qo'shimcha matn yozmang. Faqat toza JSON qa
     }
 
     // 3. Call Gemini Model with fallback cascade
-    const candidateModels = [
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-    ];
+    const candidateModels = GEMINI_MODELS;
 
     let rawAiResult = '';
     let lastError = '';
@@ -183,7 +179,7 @@ Hech qanday izoh, markdown kodi yoki qo'shimcha matn yozmang. Faqat toza JSON qa
             contents: [{ role: 'user', parts }],
             generationConfig: {
               temperature: 0.1,
-              response_mime_type: 'application/json',
+              responseMimeType: 'application/json',
             },
           }),
         });

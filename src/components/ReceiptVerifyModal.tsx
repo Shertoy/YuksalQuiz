@@ -21,6 +21,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { apiPost, apiErrorText } from '../services/api';
 import { triggerHaptic, soundFX, getTelegramWebApp } from '../utils/telegram';
 import { ReceiptVerificationResult } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
@@ -195,57 +196,21 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       setVerifyStepText("Kvitansiya tasviri tayyorlanmoqda...");
       const base64Data = compressedBase64 || (await convertFileToBase64(selectedFile));
 
-      // Agar oldin yuklanmagan bo'lsa, Supabase Storage'ga yuklash
-      let finalReceiptUrl = uploadedReceiptUrl;
-      if (!finalReceiptUrl && compressedBlob) {
-        setVerifyStepText("Kvitansiya Supabase Storage'ga saqlanmoqda...");
-        const upRes = await uploadReceiptToStorage(profile.id, compressedBlob);
-        if (upRes?.publicUrl) {
-          finalReceiptUrl = upRes.publicUrl;
-          setUploadedReceiptUrl(finalReceiptUrl);
-        }
-      }
-
-      // Kvitansiyani darhol Supabase 'payments' jadvaliga yozib qo'yish (Admin panelda darhol ko'rinadi)
-      try {
-        await recordReceiptPayment({
-          userId: profile.id,
-          fullName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          username: profile.id,
-          university: profile.university,
-          amount: selectedAmount,
-          receiptImageUrl: finalReceiptUrl || null,
-        });
-      } catch (saveErr) {
-        console.warn('Initial receipt save warning:', saveErr);
-      }
-
       setVerifyStepText("Gemini AI kvitansiyani tahlil qilmoqda...");
 
-      const tg = getTelegramWebApp();
-      const tgUsername = tg?.initDataUnsafe?.user?.username || profile.username || '';
-
-      // API call to serverless function
-      const response = await fetch('/api/verify-receipt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Data,
-          receiptImageUrl: finalReceiptUrl || null,
-          mimeType: 'image/jpeg',
-          userId: profile.id,
-          userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          userUsername: tgUsername,
-          university: profile.university || 'Kiritilmagan',
-          expectedAmount: selectedAmount,
-        }),
+      // Server Telegram imzosi orqali foydalanuvchini o'zi aniqlaydi
+      const apiRes = await apiPost('/api/verify-receipt', {
+        image: base64Data,
+        mimeType: 'image/jpeg',
+        expectedAmount: selectedAmount,
       });
 
       setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
 
-      const data: ReceiptVerificationResult = await response.json();
+      let data: ReceiptVerificationResult = apiRes.data as ReceiptVerificationResult;
+      if (!apiRes.ok && !(apiRes.data as any)?.status) {
+        data = { ok: false, status: 'rejected', message: apiErrorText(apiRes, "Chekni yuborib bo'lmadi.") } as ReceiptVerificationResult;
+      }
 
       setResult(data);
 
@@ -276,15 +241,13 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       }
     } catch (err: any) {
       console.error('Receipt verification exception:', err);
-      // Fallback pending state if network or server glitch
       const fallbackResult: ReceiptVerificationResult = {
-        ok: true,
-        status: 'pending',
-        message:
-          "Chek yuborildi. Server vaqtincha sekin ishlaganligi sababli kvitansiya admin ko'rigiga yo'naltirildi. Tez orada tekshirilib tasdiqlanadi.",
-      };
+        ok: false,
+        status: 'rejected',
+        message: "Server bilan aloqa uzildi, chek yuborilmadi. Internetni tekshirib qayta urinib ko'ring.",
+      } as ReceiptVerificationResult;
       setResult(fallbackResult);
-      triggerHaptic('warning');
+      triggerHaptic('error');
     } finally {
       setIsVerifying(false);
       setVerifyStepText('');

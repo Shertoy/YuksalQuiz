@@ -1,21 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+import { BOT_TOKEN, getServiceClient, getPrimaryAdminId, GEMINI_MODELS } from './_lib/common';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
-const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '7847500525';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://kupbaphqyyvmpqxmrtrn.supabase.co';
-
-const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const ADMIN_TELEGRAM_ID = getPrimaryAdminId();
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const supabase = getServiceClient();
 
 function escapeHtml(text: string): string {
   if (!text) return '';
@@ -137,12 +124,7 @@ MUHIM: Javobing FAQAT va FAQAT yuqoridagi toza JSON formatida bo'lsin. Hech qand
     const isKeywordRedZone = redZoneKeywordsRegex.test(cleanMessage);
 
     if (GEMINI_API_KEY) {
-      const candidateModels = [
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-      ];
+      const candidateModels = GEMINI_MODELS;
 
       for (const model of candidateModels) {
         try {

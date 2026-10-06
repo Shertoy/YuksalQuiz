@@ -1,17 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://kupbaphqyyvmpqxmrtrn.supabase.co';
-
-const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { getServiceClient, verifyRequestUser, isAdminId } from './_lib/common';
 
 /**
  * Extracts the storage relative path (e.g. "userId/123456_receipt.jpg")
@@ -53,7 +40,7 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'Content-Type, Authorization, X-Telegram-Init-Data'
   );
 
   if (req.method === 'OPTIONS') {
@@ -67,15 +54,17 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // Optional Vercel Cron Secret validation if configured
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers?.authorization;
-  if (cronSecret && authHeader && authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({
-      ok: false,
-      error: 'Unauthorized CRON request',
-    });
+  // Ruxsat: Vercel Cron (CRON_SECRET) yoki admin. Boshqalar uchun yopiq.
+  const cronSecret = process.env.CRON_SECRET || '';
+  const authHeader = String(req.headers?.authorization || '');
+  const isCron = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
+  const caller = verifyRequestUser(req);
+  const isAdmin = Boolean(caller) && isAdminId(caller!.id);
+  if (!isCron && !isAdmin) {
+    return res.status(401).json({ ok: false, error: 'Ruxsat yo\'q' });
   }
+
+  const supabase = getServiceClient();
 
   try {
     // 7 days ago timestamp (UTC)

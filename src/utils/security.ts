@@ -224,8 +224,6 @@ export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
   '7847500525', // Alisher Asqadali / Admin
   '6219808382', // Alisher Alijonov / Owner
   '117932388',  // Ali / Admin
-  '123456789',  // Dev Test Admin
-  '987654321',  // System Admin
 ];
 
 export function cleanTelegramId(rawId?: string | number | null): string {

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Maxfiy sozlamalar
+.env
+.env.production
+.env.*.local

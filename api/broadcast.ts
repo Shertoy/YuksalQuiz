@@ -1,5 +1,4 @@
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
-const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
+import { BOT_TOKEN, WEBAPP_URL, verifyRequestUser, isAdminId } from './_lib/common';
 
 function escapeHtml(text: string): string {
   if (!text) return '';
@@ -18,7 +17,7 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'Content-Type, X-Telegram-Init-Data'
   );
 
   if (req.method === 'OPTIONS') {
@@ -29,8 +28,14 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { chatIds, title, message, link, customBotToken } = req.body || {};
-  const token = customBotToken || BOT_TOKEN;
+  // Faqat Telegram imzosi tasdiqlangan admin ommaviy xabar yubora oladi
+  const caller = verifyRequestUser(req);
+  if (!caller || !isAdminId(caller.id)) {
+    return res.status(403).json({ ok: false, error: "Faqat admin xabar yubora oladi" });
+  }
+
+  const { chatIds, title, message, link } = req.body || {};
+  const token = BOT_TOKEN;
 
   if (!token) {
     return res.status(400).json({

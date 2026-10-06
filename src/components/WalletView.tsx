@@ -23,6 +23,7 @@ import {
   Star,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { apiPost, apiErrorText } from '../services/api';
 import { triggerHaptic, soundFX, generateReferralLink, getTelegramWebApp } from '../utils/telegram';
 import { isPaidUser } from '../services/paywallService';
 import { SubscriptionPlanType, TransactionType } from '../types';
@@ -154,7 +155,7 @@ export const WalletView: React.FC = () => {
 
   const currentBalance = profile.walletBalance ?? profile.balance ?? 0;
   const currentVoucher = profile.voucherBalance || 0;
-  const voucherDiscount = Math.min(currentVoucher, 20000);
+  const voucherDiscount = 0; // vaucher claim qilinganda balansga qo'shiladi, chegirma emas
   const hasVoucher = voucherDiscount > 0;
 
   // Plan Pricing
@@ -211,9 +212,9 @@ export const WalletView: React.FC = () => {
     }
   };
 
-  const handleSubscribe = (plan: SubscriptionPlanType) => {
+  const handleSubscribe = async (plan: SubscriptionPlanType) => {
     triggerHaptic('medium');
-    const res = applySubscription(plan);
+    const res = await applySubscription(plan);
     if (res.success) {
       triggerHaptic('success');
       soundFX.playSuccess();
@@ -303,55 +304,23 @@ export const WalletView: React.FC = () => {
         });
       }
 
-      // Upload to Supabase Storage receipts bucket
-      setVerifyStepText("Supabase Storage'ga yuklanmoqda...");
-      let receiptStorageUrl: string | null = null;
-      if (compressedBlob) {
-        const uploadRes = await uploadReceiptToStorage(profile.id, compressedBlob);
-        if (uploadRes?.publicUrl) {
-          receiptStorageUrl = uploadRes.publicUrl;
-        }
-      }
-
-      // Kvitansiyani darhol Supabase 'payments' jadvaliga yozib qo'yish (Admin panelda darhol ko'rinishi uchun)
-      try {
-        await recordReceiptPayment({
-          userId: profile.id,
-          fullName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          username: profile.id,
-          university: profile.university,
-          amount: 0,
-          receiptImageUrl: receiptStorageUrl || null,
-        });
-      } catch (saveErr) {
-        console.warn('Initial receipt save warning:', saveErr);
-      }
-
       setVerifyStepText("Gemini AI tahlil qilmoqda...");
 
-      const tg = getTelegramWebApp();
-      const tgUsername = tg?.initDataUnsafe?.user?.username || profile.username || '';
-
-      // API call to Vercel Serverless Function
-      const response = await fetch('/api/verify-receipt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Data,
-          receiptImageUrl: receiptStorageUrl,
-          mimeType: 'image/jpeg',
-          userId: profile.id,
-          userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          userUsername: tgUsername,
-          university: profile.university || 'Kiritilmagan',
-          expectedAmount: 0,
-        }),
+      // Server Telegram imzosi orqali foydalanuvchini o'zi aniqlaydi
+      const apiRes = await apiPost('/api/verify-receipt', {
+        image: base64Data,
+        mimeType: 'image/jpeg',
+        expectedAmount: 0,
       });
-
       setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
-      const data = await response.json();
+      const data: any = apiRes.data;
+
+      if (!apiRes.ok && !data.status) {
+        triggerHaptic('error');
+        soundFX.playError();
+        setUploadError(apiErrorText(apiRes, "Chekni yuborib bo'lmadi. Qayta urinib ko'ring."));
+        return;
+      }
 
       if (data.status === 'approved') {
         const creditedAmount = data.amount || 0;
@@ -359,7 +328,7 @@ export const WalletView: React.FC = () => {
 
         // Deposit balance directly in local store
         depositBalance(creditedAmount, txId);
-        fetchLatestUserBalance(profile.id);
+        useQuizStore.getState().syncUser();
 
         triggerHaptic('success');
         soundFX.playSuccess();
