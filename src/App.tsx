@@ -19,7 +19,7 @@ import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { ShieldAlert, Send } from 'lucide-react';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic } from './utils/telegram';
-import { isAdminSessionAuthenticated } from './utils/security';
+import { isAdminSessionAuthenticated, setAdminSessionAuthenticated } from './utils/security';
 import {
   fetchCloudTests,
   fetchCloudUniversities,
@@ -122,9 +122,24 @@ export const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       const checkAdminRoute = () => {
         const urlParams = new URLSearchParams(window.location.search);
-        const isAdminQuery = urlParams.get('admin') === 'true' || urlParams.has('admin');
+        const adminParam = (urlParams.get('admin') || '').trim();
+        const passParam = (urlParams.get('pass') || urlParams.get('key') || '').trim();
+        const isAdminQuery = adminParam === 'true' || urlParams.has('admin');
         const isAdminHash = window.location.hash.toLowerCase() === '#admin';
         const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
+
+        // Direct URL credential bypass (e.g. ?admin=yuksal2026admin or ?admin=true&pass=yuksal2026admin)
+        if (
+          adminParam === 'yuksal2026admin' ||
+          adminParam === '7847500525' ||
+          passParam === 'yuksal2026admin' ||
+          passParam === '7847500525'
+        ) {
+          setAdminSessionAuthenticated(true, true);
+          setIsAdminModalOpen(true);
+          return;
+        }
+
         if (isAdminQuery || isAdminHash || isAdminPath) {
           if (isAdminSessionAuthenticated()) {
             setIsAdminModalOpen(true);

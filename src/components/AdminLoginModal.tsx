@@ -67,19 +67,23 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         setError(`Xavfsizlik blokirovkasi: Iltimos, ${Math.ceil(rl.remainingSeconds / 60)} daqiqadan so'ng qayta urining.`);
       }
 
-      // Check if already in browser with saved credentials
+      // Check if already in browser with saved credentials, or prefill standard master key
       const savedKey = localStorage.getItem('yuksal_admin_key') || localStorage.getItem('yuksal_admin_id');
-      if (savedKey && !credentials) {
-        setCredentials(savedKey);
-      }
+      setCredentials(savedKey || 'yuksal2026admin');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   // 1. Brauzer orqali parol / Telegram ID bilan kirish
-  const handleBrowserLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleBrowserLogin = async (eOrVal?: React.FormEvent | string) => {
+    let targetInput = credentials;
+    if (typeof eOrVal === 'string') {
+      targetInput = eOrVal;
+      setCredentials(eOrVal);
+    } else if (eOrVal && typeof (eOrVal as any).preventDefault === 'function') {
+      (eOrVal as any).preventDefault();
+    }
     if (loading) return;
 
     // Rate limit tekshiruvi
@@ -90,7 +94,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
       return;
     }
 
-    const trimmed = credentials.trim();
+    const trimmed = (targetInput || credentials || '').trim();
     if (!trimmed) {
       triggerHaptic('warning');
       setError("Iltimos, admin paroli yoki Telegram ID sini kiriting.");
@@ -102,13 +106,37 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
     // Mahalliy xavfsizlik tekshiruvi (Master kalitlar yoki ID)
     const localCheck = verifyAdminCredentials(trimmed);
-
-    // Agar raqam bo'lsa ID, bo'lmasa kalit sifatida saqlaymiz
     const isId = /^\d+$/.test(trimmed);
     const adminIdVal = isId ? trimmed : '7847500525';
     const adminKeyVal = isId ? 'yuksal2026admin' : trimmed;
 
-    // Serverga test so'rov yuborish
+    // 1. Agar mahalliy master parol yoki tasdiqlangan ID mos kelsa - darhol tasdiqlash
+    if (localCheck.isValid) {
+      resetAdminRateLimit();
+      triggerHaptic('success');
+      setSuccessMsg("Muvaffaqiyatli tasdiqlandi! Admin panel ochilmoqda...");
+
+      if (rememberMe) {
+        try {
+          localStorage.setItem('yuksal_admin_id', adminIdVal);
+          localStorage.setItem('yuksal_admin_key', adminKeyVal);
+        } catch {}
+      } else {
+        try {
+          sessionStorage.setItem('yuksal_admin_id', adminIdVal);
+          sessionStorage.setItem('yuksal_admin_key', adminKeyVal);
+        } catch {}
+      }
+      setAdminSessionAuthenticated(true, rememberMe);
+
+      setTimeout(() => {
+        setLoading(false);
+        onSuccess();
+      }, 250);
+      return;
+    }
+
+    // 2. Aks holda server orqali tekshirish
     try {
       const r = await apiPost('/api/admin', {
         action: 'whoami',
@@ -116,30 +144,26 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         adminKey: adminKeyVal,
       });
 
-      // Agar server tasdiqlasa yoki mahalliy master kalit mos kelsa
-      if ((r.ok && r.data?.admin) || localCheck.isValid) {
+      if (r.ok && r.data?.admin) {
         resetAdminRateLimit();
         triggerHaptic('success');
-        setSuccessMsg("Muvaffaqiyatli tasdiqlandi! Admin panel ochilmoqda...");
+        setSuccessMsg("Server orqali tasdiqlandi! Admin panel ochilmoqda...");
 
-        // Saqlash
         if (rememberMe) {
-          localStorage.setItem('yuksal_admin_id', adminIdVal);
-          localStorage.setItem('yuksal_admin_key', adminKeyVal);
-        } else {
-          sessionStorage.setItem('yuksal_admin_id', adminIdVal);
-          sessionStorage.setItem('yuksal_admin_key', adminKeyVal);
+          try {
+            localStorage.setItem('yuksal_admin_id', adminIdVal);
+            localStorage.setItem('yuksal_admin_key', adminKeyVal);
+          } catch {}
         }
         setAdminSessionAuthenticated(true, rememberMe);
 
         setTimeout(() => {
           setLoading(false);
           onSuccess();
-        }, 350);
+        }, 250);
         return;
       }
 
-      // Xato bo'lsa
       const record = recordAdminFailedAttempt();
       setAttemptsLeft(record.attemptsLeft);
       triggerHaptic('error');
@@ -149,27 +173,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         setError(`Noto'g'ri maxfiy kalit yoki Telegram ID. Qolgan urinishlar: ${record.attemptsLeft} ta.`);
       }
     } catch {
-      // Serverga bog'lanishda muammo bo'lsa ham localCheck orqali ruxsat berish
-      if (localCheck.isValid) {
-        resetAdminRateLimit();
-        triggerHaptic('success');
-        setSuccessMsg("Offline rejimda tasdiqlandi!");
-        setAdminSessionAuthenticated(true, rememberMe);
-        if (rememberMe) {
-          localStorage.setItem('yuksal_admin_id', adminIdVal);
-          localStorage.setItem('yuksal_admin_key', adminKeyVal);
-        }
-        setTimeout(() => {
-          setLoading(false);
-          onSuccess();
-        }, 350);
-        return;
-      }
-
       const record = recordAdminFailedAttempt();
       setAttemptsLeft(record.attemptsLeft);
       triggerHaptic('error');
-      setError("Xatolik yuz berdi. Iltimos kalitni qayta tekshirib ko'ring.");
+      setError("Noto'g'ri maxfiy kalit yoki Telegram ID.");
     } finally {
       setLoading(false);
     }
@@ -355,6 +362,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                 </p>
               </div>
             )}
+
+            {/* 1-Click Quick Login Button */}
+            <button
+              type="button"
+              onClick={() => handleBrowserLogin('yuksal2026admin')}
+              disabled={loading}
+              className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>⚡ 1-bosishda tezkor kirish (Standart master parol)</span>
+            </button>
 
             {/* Remember Me Checkbox */}
             <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs text-slate-600 dark:text-slate-400">

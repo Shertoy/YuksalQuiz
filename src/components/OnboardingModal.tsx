@@ -56,7 +56,13 @@ export const OnboardingModal: React.FC = () => {
     }
   }, []);
 
-  if (profile.isRegistered) {
+  const isAdminPathOrQuery = typeof window !== 'undefined' && (
+    window.location.search.toLowerCase().includes('admin') ||
+    window.location.hash.toLowerCase().includes('admin') ||
+    window.location.pathname.toLowerCase().includes('admin')
+  );
+
+  if (profile.isRegistered || isAdminPathOrQuery) {
     return null;
   }
 

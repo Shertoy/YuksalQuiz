@@ -281,6 +281,39 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     return paymentsList.filter((p) => p.status === 'rejected').length;
   }, [paymentsList]);
 
+  const showNotification = (msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const loadPayments = async () => {
+    setIsLoadingPayments(true);
+    try {
+      const data = await fetchAllPayments();
+      setPaymentsList(data);
+    } catch (err) {
+      console.warn('Load payments error:', err);
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const allUsers = await fetchAdminUsersList();
+      setUsersList(allUsers);
+    } catch (err) {
+      console.warn('Load users error:', err);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const refreshAdminWhitelist = () => {
+    setAuthorizedAdminIds(getAuthorizedAdminTelegramIds());
+  };
+
   const navCategories: AdminNavCategory[] = useMemo(() => [
     {
       id: 'users_group' as NavCategoryId,
@@ -316,7 +349,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           badge: pendingReceiptsCount > 0 ? String(pendingReceiptsCount) : null,
           badgeColor: 'bg-amber-500 text-white animate-pulse',
           pulse: pendingReceiptsCount > 0,
-          onClickExtra: loadPayments,
+          onClickExtra: () => {
+            loadPayments();
+          },
         },
         {
           id: 'pricing' as AdminTab,
@@ -583,13 +618,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  const showNotification = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
-
   const handleAdminLogout = () => {
     triggerHaptic('medium');
     clearAdminSession();
@@ -614,18 +642,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       } else {
         showNotification(url);
       }
-    }
-  };
-
-  const loadPayments = async () => {
-    setIsLoadingPayments(true);
-    try {
-      const data = await fetchAllPayments();
-      setPaymentsList(data);
-    } catch (err) {
-      console.warn('Load payments error:', err);
-    } finally {
-      setIsLoadingPayments(false);
     }
   };
 
@@ -781,23 +797,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     triggerHaptic('light');
     showNotification(`"${name}" taklifi rad etildi`);
   };
-
-  const loadUsers = async () => {
-    setIsLoadingUsers(true);
-    try {
-      const allUsers = await fetchAdminUsersList();
-      setUsersList(allUsers);
-    } catch (err) {
-      console.warn('Load users error:', err);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  };
-
-  const refreshAdminWhitelist = () => {
-    setAuthorizedAdminIds(getAuthorizedAdminTelegramIds());
-  };
-
 
   const handleSendNews = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1002,6 +1001,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       return terms.every((t) => uniNorm.includes(t));
     });
 
+  if (!isOpen) return null;
+
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md animate-in fade-in transition-all ${
       isFullscreen ? 'p-0' : 'p-2 sm:p-4'
@@ -1159,7 +1160,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
             {/* Sub-tabs row for active category */}
             <div className="flex items-center gap-1.5 p-2 overflow-x-auto scrollbar-none text-xs">
-              {navCategories.find((c) => c.id === activeNavCategory)?.tabs.map((tabItem) => {
+              {(navCategories.find((c) => c.id === activeNavCategory)?.tabs || []).map((tabItem) => {
                 const isActive = activeTab === tabItem.id;
                 const TabIcon = tabItem.icon;
                 return (
@@ -1176,7 +1177,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80'
                     }`}
                   >
-                    <TabIcon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    {TabIcon && <TabIcon className="w-3.5 h-3.5" strokeWidth={1.75} />}
                     <span>{tabItem.label}</span>
                     {tabItem.badge && (
                       <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${tabItem.badgeColor || 'bg-slate-200 dark:bg-slate-700'}`}>
@@ -1204,7 +1205,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <span>{cat.title}</span>
                   </div>
                   <div className="space-y-0.5">
-                    {cat.tabs.map((tabItem) => {
+                    {(cat.tabs || []).map((tabItem) => {
                       const isActive = activeTab === tabItem.id;
                       const TabIcon = tabItem.icon;
                       return (
@@ -1222,12 +1223,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           }`}
                         >
                           <div className="flex items-center gap-2.5 truncate">
-                            <TabIcon
-                              className={`w-4 h-4 shrink-0 ${
-                                isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-                              }`}
-                              strokeWidth={1.75}
-                            />
+                            {TabIcon && (
+                              <TabIcon
+                                className={`w-4 h-4 shrink-0 ${
+                                  isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                                }`}
+                                strokeWidth={1.75}
+                              />
+                            )}
                             <span className="truncate">{tabItem.label}</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
