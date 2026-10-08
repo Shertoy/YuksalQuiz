@@ -56,6 +56,8 @@ import {
   Laptop,
   CheckCheck,
   Link,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -123,6 +125,8 @@ interface AdminPanelModalProps {
 
 export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClose }) => {
   const {
+    theme,
+    setTheme,
     universities,
     pendingUniversities,
     addUniversity,
@@ -885,6 +889,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <Link className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Admin Havola</span>
                 </>
+              )}
+            </button>
+
+            {/* Light / Dark Mode Toggle */}
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                const nextTheme = theme === 'dark' ? 'light' : 'dark';
+                setTheme(nextTheme);
+              }}
+              title={theme === 'dark' ? "Yorug' rejimga o'tish (Light Mode)" : "Qorong'i rejimga o'tish (Dark Mode)"}
+              className={`p-1.5 sm:p-2 rounded-xl transition-all flex items-center justify-center ${
+                theme === 'dark'
+                  ? 'text-amber-400 hover:text-amber-300 bg-slate-800 hover:bg-slate-700/80 border border-slate-700'
+                  : 'text-amber-500 hover:text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200/60'
+              }`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4" strokeWidth={2} />
+              ) : (
+                <Moon className="w-4 h-4" strokeWidth={2} />
               )}
             </button>
 

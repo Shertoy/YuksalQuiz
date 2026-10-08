@@ -13,8 +13,11 @@ import {
   HelpCircle,
   CheckCircle2,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
+import { useQuizStore } from '../store/useQuizStore';
 import {
   setAdminSessionAuthenticated,
   verifyAdminCredentials,
@@ -38,6 +41,7 @@ interface AdminLoginModalProps {
  * - Brute-force himoyasi (Rate Limiting)
  */
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { theme, setTheme } = useQuizStore();
   const isInsideTelegram = typeof window !== 'undefined' && Boolean((window as any).Telegram?.WebApp?.initData);
 
   const [activeMode, setActiveMode] = useState<'browser' | 'telegram'>(
@@ -215,12 +219,29 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-4 h-4" strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setTheme(theme === 'dark' ? 'light' : 'dark');
+              }}
+              title={theme === 'dark' ? "Yorug' rejim" : "Qorong'i rejim"}
+              className="p-2 rounded-xl text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher: Brauzer vs Telegram */}
