@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import {
   ShieldCheck,
@@ -93,10 +93,12 @@ import {
   publishUniversityToCloud,
   deleteUniversityFromCloud,
   fetchCloudLeaderboard,
+  fetchAdminUsersList,
   fetchCloudAnnouncements,
   publishAnnouncementToCloud,
   deleteAnnouncementFromCloud,
 } from '../services/testSyncService';
+import { getUserSubscriptionInfo, UserSubscriptionInfo } from '../utils/subscriptionUtils';
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import {
@@ -176,6 +178,70 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [userGenderFilter, setUserGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [userUniFilter, setUserUniFilter] = useState('all');
   const [userRegionFilter, setUserRegionFilter] = useState('all');
+  const [userSubscriptionFilter, setUserSubscriptionFilter] = useState<'all' | 'active' | 'expiring' | 'expired' | 'none' | 'has_balance'>('all');
+  const [userSortBy, setUserSortBy] = useState<'default' | 'balance_desc' | 'subscription_exp' | 'name'>('default');
+
+  // User statistics & filtered list memo
+  const totalWalletSum = useMemo(() => {
+    return usersList.reduce((acc, u) => acc + (u.walletBalance || 0), 0);
+  }, [usersList]);
+
+  const activeSubscribersCount = useMemo(() => {
+    return usersList.filter((u) => {
+      const i = getUserSubscriptionInfo(u);
+      return i.status === 'active' || i.status === 'expiring_soon';
+    }).length;
+  }, [usersList]);
+
+  const expiringSoonCount = useMemo(() => {
+    return usersList.filter((u) => getUserSubscriptionInfo(u).status === 'expiring_soon').length;
+  }, [usersList]);
+
+  const usersWithBalanceCount = useMemo(() => {
+    return usersList.filter((u) => (u.walletBalance || 0) > 0).length;
+  }, [usersList]);
+
+  const filteredUsers = useMemo(() => {
+    let list = usersList.filter((u) => {
+      if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
+      if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
+      if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
+
+      if (userSubscriptionFilter !== 'all') {
+        const subInfo = getUserSubscriptionInfo(u);
+        if (userSubscriptionFilter === 'active' && subInfo.status !== 'active' && subInfo.status !== 'expiring_soon') return false;
+        if (userSubscriptionFilter === 'expiring' && subInfo.status !== 'expiring_soon') return false;
+        if (userSubscriptionFilter === 'expired' && subInfo.status !== 'expired') return false;
+        if (userSubscriptionFilter === 'none' && subInfo.status !== 'none') return false;
+        if (userSubscriptionFilter === 'has_balance' && (u.walletBalance || 0) <= 0) return false;
+      }
+
+      if (userSearchQuery.trim()) {
+        const q = userSearchQuery.trim().toLowerCase();
+        const mName = (u.name || '').toLowerCase().includes(q);
+        const mId = (u.id || '').toLowerCase().includes(q);
+        const mUser = (u.username || '').toLowerCase().includes(q);
+        const mUni = (u.university || '').toLowerCase().includes(q);
+        const mReg = (u.region || '').toLowerCase().includes(q);
+        if (!mName && !mId && !mUser && !mUni && !mReg) return false;
+      }
+      return true;
+    });
+
+    if (userSortBy === 'balance_desc') {
+      list = [...list].sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0));
+    } else if (userSortBy === 'subscription_exp') {
+      list = [...list].sort((a, b) => {
+        const aInfo = getUserSubscriptionInfo(a);
+        const bInfo = getUserSubscriptionInfo(b);
+        return aInfo.daysRemaining - bInfo.daysRemaining;
+      });
+    } else if (userSortBy === 'name') {
+      list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'uz'));
+    }
+
+    return list;
+  }, [usersList, userGenderFilter, userUniFilter, userRegionFilter, userSubscriptionFilter, userSearchQuery, userSortBy]);
 
   // Supabase Cloud Integration state
   const initialSupabaseConfig = getSupabaseConfig();
@@ -511,47 +577,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const loadUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const cloudUsers = await fetchCloudLeaderboard();
-      const currentLeaderboard = useQuizStore.getState().leaderboard || [];
-      const currentProfile = useQuizStore.getState().profile;
-
-      const userMap = new Map<string, LeaderboardUser>();
-
-      // 1. Cloud users
-      for (const u of cloudUsers) {
-        const cId = cleanTelegramId(u.id);
-        if (cId) userMap.set(cId, { ...u, id: cId });
-      }
-
-      // 2. Local leaderboard
-      for (const u of currentLeaderboard) {
-        const cId = cleanTelegramId(u.id);
-        if (cId && !userMap.has(cId)) {
-          userMap.set(cId, { ...u, id: cId });
-        }
-      }
-
-      // 3. Current profile
-      if (currentProfile?.isRegistered) {
-        const cId = cleanTelegramId(currentProfile.id);
-        if (cId && !userMap.has(cId)) {
-          userMap.set(cId, {
-            id: cId,
-            name: `${currentProfile.firstName} ${currentProfile.lastName}`.trim() || 'Talaba',
-            gender: currentProfile.gender || 'male',
-            university: currentProfile.university || 'TATU',
-            region: currentProfile.region || 'Toshkent shahri',
-            avatar: currentProfile.avatar || '/avatars/avatar_1.png',
-            academicYear: currentProfile.academicYear || 1,
-            coins: currentProfile.coins || 0,
-            testsCompleted: currentProfile.completedTestsCount || 0,
-            weeklyActiveHours: 12,
-            registeredAt: currentProfile.registeredAt || '2026-10-03',
-          });
-        }
-      }
-
-      setUsersList(Array.from(userMap.values()));
+      const allUsers = await fetchAdminUsersList();
+      setUsersList(allUsers);
     } catch (err) {
       console.warn('Load users error:', err);
     } finally {
@@ -1054,66 +1081,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Erkak Talabalar</span>
-                    <User className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
+                    <span className="text-[11px] font-bold">Jami Hamyon Balansi</span>
+                    <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {usersList.filter((u) => u.gender === 'male').length}
+                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 truncate">
+                    {totalWalletSum.toLocaleString('uz-UZ')} <span className="text-xs font-bold text-slate-400">so'm</span>
                   </div>
-                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                    {usersList.length > 0 ? `${Math.round((usersList.filter((u) => u.gender === 'male').length / usersList.length) * 100)}% ulush` : '0%'}
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Ayol Talabalar</span>
-                    <User className="w-4 h-4 text-rose-500" strokeWidth={1.75} />
-                  </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {usersList.filter((u) => u.gender === 'female').length}
-                  </div>
-                  <div className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
-                    {usersList.length > 0 ? `${Math.round((usersList.filter((u) => u.gender === 'female').length / usersList.length) * 100)}% ulush` : '0%'}
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                    {usersWithBalanceCount} ta talabada mablag' bor
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Filtrlangan Natija</span>
-                    <Filter className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
+                    <span className="text-[11px] font-bold">Faol Obunachilar</span>
+                    <Sparkles className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
                   </div>
                   <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {usersList.filter((u) => {
-                      if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
-                      if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
-                      if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
-                      if (userSearchQuery.trim()) {
-                        const q = userSearchQuery.trim().toLowerCase();
-                        const mName = (u.name || '').toLowerCase().includes(q);
-                        const mId = (u.id || '').toLowerCase().includes(q);
-                        const mUni = (u.university || '').toLowerCase().includes(q);
-                        const mReg = (u.region || '').toLowerCase().includes(q);
-                        if (!mName && !mId && !mUni && !mReg) return false;
-                      }
-                      return true;
-                    }).length} <span className="text-xs font-normal text-slate-400">/ {usersList.length}</span>
+                    {activeSubscribersCount}
+                  </div>
+                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                    {usersList.length > 0 ? `${Math.round((activeSubscribersCount / usersList.length) * 100)}% obunachi` : '0%'}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Tugashiga &le; 7 kun</span>
+                    <Clock className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    {expiringSoonCount}
                   </div>
                   <div className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
-                    {usersList.filter((u) => {
-                      if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
-                      if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
-                      if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
-                      if (userSearchQuery.trim()) {
-                        const q = userSearchQuery.trim().toLowerCase();
-                        const mName = (u.name || '').toLowerCase().includes(q);
-                        const mId = (u.id || '').toLowerCase().includes(q);
-                        const mUni = (u.university || '').toLowerCase().includes(q);
-                        const mReg = (u.region || '').toLowerCase().includes(q);
-                        if (!mName && !mId && !mUni && !mReg) return false;
-                      }
-                      return true;
-                    }).length === usersList.length ? "Barchasi ko'rsatilmoqda" : "Filtr qo'llanilgan"}
+                    Obuna muddati tugamoqda
                   </div>
                 </div>
               </div>
@@ -1123,10 +1124,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                     <Filter className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                    <span>Filtrlash parametrlari:</span>
+                    <span>Filtrlash va saralash parametrlari:</span>
                   </div>
 
-                  {(userGenderFilter !== 'all' || userUniFilter !== 'all' || userRegionFilter !== 'all' || userSearchQuery) && (
+                  {(userGenderFilter !== 'all' || userUniFilter !== 'all' || userRegionFilter !== 'all' || userSubscriptionFilter !== 'all' || userSortBy !== 'default' || userSearchQuery) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1134,6 +1135,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         setUserGenderFilter('all');
                         setUserUniFilter('all');
                         setUserRegionFilter('all');
+                        setUserSubscriptionFilter('all');
+                        setUserSortBy('default');
                         setUserSearchQuery('');
                       }}
                       className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline font-bold flex items-center gap-1"
@@ -1151,7 +1154,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     type="text"
                     value={userSearchQuery}
                     onChange={(e) => setUserSearchQuery(e.target.value)}
-                    placeholder="Qidiruv: Ism, Telegram ID yoki OTM nomi bo'yicha..."
+                    placeholder="Qidiruv: Ism, @username, Telegram ID yoki OTM nomi bo'yicha..."
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                   {userSearchQuery && (
@@ -1165,31 +1168,54 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   )}
                 </div>
 
-                {/* 3 Dropdown Filters: Gender, University, Region */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* 1. Gender Filter */}
+                {/* 5 Dropdown Filters: Obuna/Hamyon, Saralash, OTM, Viloyat, Jinsi */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                  {/* 1. Obuna & Hamyon Filter */}
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
-                      Jinsi bo'yicha:
+                      Obuna & Hamyon:
                     </label>
                     <select
-                      value={userGenderFilter}
+                      value={userSubscriptionFilter}
                       onChange={(e) => {
                         triggerHaptic('selection');
-                        setUserGenderFilter(e.target.value as any);
+                        setUserSubscriptionFilter(e.target.value as any);
                       }}
                       className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
-                      <option value="all">Barchasi (Erkak va Ayol)</option>
-                      <option value="male">Erkak talabalar</option>
-                      <option value="female">Ayol talabalar</option>
+                      <option value="all">Barcha talabalar</option>
+                      <option value="active">⭐ Faol obunachilar</option>
+                      <option value="expiring">⏳ Tugashiga &le; 7 kun qolgan</option>
+                      <option value="expired">❌ Obunasi tugaganlar</option>
+                      <option value="none">⚪ Bepul (Obuna yo'q)</option>
+                      <option value="has_balance">💰 Balansida puli borlar (&gt; 0)</option>
                     </select>
                   </div>
 
-                  {/* 2. University Filter */}
+                  {/* 2. Saralash (Sort By) */}
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
-                      OTMlar (Universitetlar) kesimida:
+                      Saralash (Tartib):
+                    </label>
+                    <select
+                      value={userSortBy}
+                      onChange={(e) => {
+                        triggerHaptic('selection');
+                        setUserSortBy(e.target.value as any);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="default">Oxirgi ro'yxatdan o'tganlar</option>
+                      <option value="balance_desc">Hamyon balansi (ko'pdan kamga)</option>
+                      <option value="subscription_exp">Obuna tugashi yaqinlar</option>
+                      <option value="name">Alifbo bo'yicha (A-Z)</option>
+                    </select>
+                  </div>
+
+                  {/* 3. OTM Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                      OTMlar kesimida:
                     </label>
                     <select
                       value={userUniFilter}
@@ -1216,7 +1242,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     </select>
                   </div>
 
-                  {/* 3. Region Filter */}
+                  {/* 4. Region Filter */}
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
                       Viloyatlar kesimida:
@@ -1237,6 +1263,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       ))}
                     </select>
                   </div>
+
+                  {/* 5. Gender Filter */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                      Jinsi:
+                    </label>
+                    <select
+                      value={userGenderFilter}
+                      onChange={(e) => {
+                        triggerHaptic('selection');
+                        setUserGenderFilter(e.target.value as any);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="all">Barchasi</option>
+                      <option value="male">Erkak talabalar</option>
+                      <option value="female">Ayol talabalar</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1246,48 +1291,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <span>Talabalar Ro'yxati</span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-                      {usersList.filter((u) => {
-                        if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
-                        if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
-                        if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
-                        if (userSearchQuery.trim()) {
-                          const q = userSearchQuery.trim().toLowerCase();
-                          const mName = (u.name || '').toLowerCase().includes(q);
-                          const mId = (u.id || '').toLowerCase().includes(q);
-                          const mUni = (u.university || '').toLowerCase().includes(q);
-                          const mReg = (u.region || '').toLowerCase().includes(q);
-                          if (!mName && !mId && !mUni && !mReg) return false;
-                        }
-                        return true;
-                      }).length} ta
+                      {filteredUsers.length} ta
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-semibold">
-                    Top natijalar va profillar
+                    Hamyon mablag'i va obuna muddatlari
                   </span>
                 </div>
 
-                {usersList.filter((u) => {
-                  if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
-                  if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
-                  if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
-                  if (userSearchQuery.trim()) {
-                    const q = userSearchQuery.trim().toLowerCase();
-                    const mName = (u.name || '').toLowerCase().includes(q);
-                    const mId = (u.id || '').toLowerCase().includes(q);
-                    const mUni = (u.university || '').toLowerCase().includes(q);
-                    const mReg = (u.region || '').toLowerCase().includes(q);
-                    if (!mName && !mId && !mUni && !mReg) return false;
-                  }
-                  return true;
-                }).length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 text-xs space-y-2">
                     <Users className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
                     <p className="font-bold text-slate-600 dark:text-slate-300">
-                      Belgilangan parametrlar bo'yicha hech qanday talaba topilmadi
+                      Belgilangan parametrlar bo'yicha talaba topilmadi
                     </p>
                     <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                      Filtrlarni o'zgartiring yoki barcha talabalarni ko'rish uchun filtrlarni tozalang.
+                      Filtrlarni o'zgartiring yoki barcha talabalarni ko'rish uchun tozalang.
                     </p>
                     <button
                       type="button"
@@ -1295,6 +1314,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         setUserGenderFilter('all');
                         setUserUniFilter('all');
                         setUserRegionFilter('all');
+                        setUserSubscriptionFilter('all');
+                        setUserSortBy('default');
                         setUserSearchQuery('');
                       }}
                       className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition-colors"
@@ -1309,29 +1330,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         <tr>
                           <th className="py-3 px-3 w-10 text-center">№</th>
                           <th className="py-3 px-3">Talaba</th>
-                          <th className="py-3 px-3">Jinsi</th>
+                          <th className="py-3 px-3">Hamyon Balansi</th>
+                          <th className="py-3 px-3">Obuna & Qolgan muddat</th>
                           <th className="py-3 px-3">OTM (Universitet)</th>
-                          <th className="py-3 px-3">Viloyat</th>
                           <th className="py-3 px-3 text-center">Ball / Testlar</th>
                           <th className="py-3 px-3 text-right">Amal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {usersList.filter((u) => {
-                          if (userGenderFilter !== 'all' && u.gender !== userGenderFilter) return false;
-                          if (userUniFilter !== 'all' && normalizeUniversityKey(u.university) !== normalizeUniversityKey(userUniFilter)) return false;
-                          if (userRegionFilter !== 'all' && (u.region || '').toLowerCase() !== userRegionFilter.toLowerCase()) return false;
-                          if (userSearchQuery.trim()) {
-                            const q = userSearchQuery.trim().toLowerCase();
-                            const mName = (u.name || '').toLowerCase().includes(q);
-                            const mId = (u.id || '').toLowerCase().includes(q);
-                            const mUni = (u.university || '').toLowerCase().includes(q);
-                            const mReg = (u.region || '').toLowerCase().includes(q);
-                            if (!mName && !mId && !mUni && !mReg) return false;
-                          }
-                          return true;
-                        }).map((student, idx) => {
+                        {filteredUsers.map((student, idx) => {
                           const isFemale = student.gender === 'female';
+                          const subInfo = getUserSubscriptionInfo(student);
+                          const balance = student.walletBalance || 0;
+
                           return (
                             <tr
                               key={student.id}
@@ -1341,6 +1352,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                 {idx + 1}
                               </td>
 
+                              {/* Talaba profili */}
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2.5">
                                   <img
@@ -1351,65 +1363,114 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                                       (e.target as HTMLImageElement).src = '/avatars/avatar_1.png';
                                     }}
                                   />
-                                  <div>
-                                    <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                                      {student.name}
+                                  <div className="min-w-0">
+                                    <div className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                                      <span className="truncate">{student.name}</span>
+                                      {isFemale ? (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                                          Ayol
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                                          Erkak
+                                        </span>
+                                      )}
                                     </div>
-                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
-                                      <Smartphone className="w-2.5 h-2.5 text-emerald-500" strokeWidth={1.75} />
-                                      <span>ID: {student.id}</span>
+                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                      <span className="flex items-center gap-0.5">
+                                        <Smartphone className="w-2.5 h-2.5 text-emerald-500" strokeWidth={1.75} />
+                                        <span>ID: {student.id}</span>
+                                      </span>
+                                      {student.username && (
+                                        <span className="text-slate-400 truncate">
+                                          @{student.username.replace(/^@/, '')}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
                               </td>
 
-                              <td className="py-3 px-3">
-                                {isFemale ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
-                                    <span>Ayol</span>
-                                  </span>
+                              {/* Hamyon Balansi */}
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                {balance > 0 ? (
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-xs shadow-2xs">
+                                    <Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={2} />
+                                    <span>{balance.toLocaleString('uz-UZ')} so'm</span>
+                                  </div>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                                    <span>Erkak</span>
-                                  </span>
+                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 font-semibold text-xs">
+                                    <Wallet className="w-3 h-3 text-slate-400 shrink-0" strokeWidth={1.75} />
+                                    <span>0 so'm</span>
+                                  </div>
                                 )}
                               </td>
 
+                              {/* Obunasi & Qolgan muddat */}
+                              <td className="py-3 px-3">
+                                <div className="space-y-0.5">
+                                  {subInfo.status === 'active' && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-extrabold text-[11px] whitespace-nowrap shadow-2xs">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" strokeWidth={2.5} />
+                                      <span>{subInfo.label}</span>
+                                    </span>
+                                  )}
+                                  {subInfo.status === 'expiring_soon' && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-extrabold text-[11px] whitespace-nowrap shadow-2xs animate-pulse">
+                                      <Clock className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={2.5} />
+                                      <span>{subInfo.label}</span>
+                                    </span>
+                                  )}
+                                  {subInfo.status === 'expired' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-bold text-[10px] whitespace-nowrap">
+                                      <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" strokeWidth={2} />
+                                      <span>{subInfo.label}</span>
+                                    </span>
+                                  )}
+                                  {subInfo.status === 'none' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-[10px] whitespace-nowrap">
+                                      <span>Obunasi yo'q</span>
+                                    </span>
+                                  )}
+                                  <div className="text-[10px] text-slate-400 font-medium truncate max-w-[170px]" title={subInfo.subLabel}>
+                                    {subInfo.planName !== 'Bepul' ? `${subInfo.planName} • ` : ''}{subInfo.subLabel}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* OTM va Viloyat */}
                               <td className="py-3 px-3">
                                 <div className="font-semibold text-slate-700 dark:text-slate-300 text-xs max-w-xs truncate" title={student.university}>
                                   {student.university || 'Kiritilmagan'}
                                 </div>
-                                <div className="text-[10px] text-slate-400">
-                                  {student.academicYear}-bosqich talabasi
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                  <span>{student.academicYear}-kurs</span>
+                                  <span>&bull;</span>
+                                  <span className="truncate">{student.region || 'Toshkent shahri'}</span>
                                 </div>
                               </td>
 
-                              <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium text-xs whitespace-nowrap">
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" strokeWidth={1.75} />
-                                  <span>{student.region || 'Toshkent shahri'}</span>
-                                </span>
-                              </td>
-
-                              <td className="py-3 px-3 text-center">
+                              {/* Ball va Testlar */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
                                 <div className="font-black text-emerald-600 dark:text-emerald-400 text-xs">
                                   {student.scorePoints ?? (student.correctAnswersCount ? student.correctAnswersCount * 4 : 0)} ball
                                 </div>
                                 <div className="text-[10px] text-slate-400 font-semibold">
-                                  {student.testsCompleted || 0} ta test • {student.correctAnswersCount || 0} ta to'g'ri
+                                  {student.testsCompleted || 0} ta test
                                 </div>
                               </td>
 
-                              <td className="py-3 px-3 text-right">
+                              {/* Amallar */}
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
                                     onClick={() => openManualTopUpForUser(student)}
-                                    className="px-2 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-200 dark:border-amber-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                    title="Ushbu talabaga to'lov/balans qo'shish"
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-200 dark:border-amber-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Ushbu talabaga to'lov/balans yoki obuna qo'shish"
                                   >
                                     <Wallet className="w-3 h-3" strokeWidth={1.75} />
-                                    <span>+Balans</span>
+                                    <span>+Balans/Obuna</span>
                                   </button>
                                   <button
                                     type="button"

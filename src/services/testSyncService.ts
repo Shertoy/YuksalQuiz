@@ -1210,6 +1210,25 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     totalTimeSpentFormatted: row.total_time_spent_formatted || row.totalTimeSpentFormatted || formattedTime,
     weeklyActiveHours: 12.0,
     isCurrentUser: false,
+    walletBalance: Number(row.balance ?? row.wallet_balance ?? row.walletBalance ?? 0),
+    balance: Number(row.balance ?? row.wallet_balance ?? row.walletBalance ?? 0),
+    has_paid: Boolean(
+      row.has_paid ||
+      row.is_subscribed ||
+      row.isSubscribed ||
+      ((row.paid_until || row.subscription_end || row.subscriptionEnd) && new Date(row.paid_until || row.subscription_end || row.subscriptionEnd) > new Date())
+    ),
+    isSubscribed: Boolean(
+      row.is_subscribed ||
+      row.isSubscribed ||
+      row.has_paid ||
+      ((row.paid_until || row.subscription_end || row.subscriptionEnd) && new Date(row.paid_until || row.subscription_end || row.subscriptionEnd) > new Date())
+    ),
+    paid_until: row.paid_until || row.subscription_end || row.subscriptionEnd || null,
+    subscriptionEnd: row.subscription_end || row.subscriptionEnd || row.paid_until || null,
+    subscriptionTier: row.subscription_tier || row.subscription_plan || row.subscriptionTier || undefined,
+    telegram_id: row.telegram_id || cleanId,
+    username: row.username || undefined,
   };
 }
 
@@ -1569,6 +1588,101 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
 
   // Strictly TOP 20
   return allList.slice(0, 20);
+}
+
+/**
+ * Fetches all users from Supabase `users` table for the Admin Panel,
+ * including their wallet balances, subscription dates, and activity.
+ */
+export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
+  const supabase = getSupabase();
+  const userMap = new Map<string, LeaderboardUser>();
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (!error && data && Array.isArray(data)) {
+        for (const row of data) {
+          const u = mapRowToLeaderboardUser(row);
+          if (u && u.id) {
+            userMap.set(u.id, u);
+          }
+        }
+      } else if (error) {
+        console.warn('fetchAdminUsersList error:', error.message);
+      }
+    } catch (err) {
+      console.warn('fetchAdminUsersList exception:', err);
+    }
+  }
+
+  // Fallback / merge with leaderboard if any exist
+  try {
+    const leadUsers = await fetchCloudLeaderboard();
+    for (const lu of leadUsers) {
+      if (lu && lu.id && !userMap.has(lu.id)) {
+        userMap.set(lu.id, lu);
+      }
+    }
+  } catch {}
+
+  // Merge current profile if registered
+  try {
+    const profile = useQuizStore.getState().profile;
+    if (profile?.isRegistered) {
+      const cId = cleanTelegramId(profile.id);
+      if (cId) {
+        const existing = userMap.get(cId);
+        const pBal = Number(profile.walletBalance ?? profile.balance ?? 0);
+        const pEnd = profile.paid_until || profile.subscriptionEnd || profile.subscriptionExpiry || null;
+        const pPaid = Boolean(profile.has_paid || profile.isSubscribed || (pEnd && new Date(pEnd) > new Date()));
+
+        if (existing) {
+          if (pBal > 0 && (!existing.walletBalance || existing.walletBalance === 0)) {
+            existing.walletBalance = pBal;
+            existing.balance = pBal;
+          }
+          if (pPaid) {
+            existing.has_paid = true;
+            existing.isSubscribed = true;
+            existing.paid_until = pEnd;
+            existing.subscriptionEnd = pEnd;
+          }
+        } else {
+          userMap.set(cId, {
+            id: cId,
+            name: `${profile.firstName} ${profile.lastName}`.trim() || 'Talaba',
+            username: profile.username || undefined,
+            telegram_id: profile.telegram_id || cId,
+            university: profile.university || 'TATU',
+            region: profile.region || 'Toshkent shahri',
+            gender: profile.gender || 'male',
+            avatar: profile.avatar || '/avatars/avatar_1.png',
+            academicYear: profile.academicYear || 1,
+            coins: profile.coins || 0,
+            testsCompleted: profile.completedTestsCount || 0,
+            scorePoints: 0,
+            weeklyActiveHours: 12,
+            registeredAt: profile.registeredAt || '2026-10-03',
+            walletBalance: pBal,
+            balance: pBal,
+            has_paid: pPaid,
+            isSubscribed: Boolean(profile.isSubscribed || pPaid),
+            paid_until: pEnd,
+            subscriptionEnd: pEnd,
+            subscriptionTier: profile.subscriptionTier || profile.subscriptionPlan || undefined,
+          });
+        }
+      }
+    }
+  } catch {}
+
+  return Array.from(userMap.values());
 }
 
 /**

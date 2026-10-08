@@ -390,6 +390,16 @@ export interface LeaderboardUser {
   totalQuestionsAttempted?: number;
   registeredAt?: string;
   isCurrentUser?: boolean;
+  // Wallet and Subscription fields
+  walletBalance?: number;
+  balance?: number;
+  has_paid?: boolean;
+  isSubscribed?: boolean;
+  paid_until?: string | null;
+  subscriptionEnd?: string | null;
+  subscriptionTier?: string | null;
+  telegram_id?: string;
+  username?: string;
 }
 
 export type LeaderboardScope = 'otm' | 'region' | 'uzbekistan';
