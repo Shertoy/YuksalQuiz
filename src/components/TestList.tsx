@@ -259,7 +259,7 @@ export const TestList: React.FC<TestListProps> = ({
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
     const isPaid = isPaidUser(profile);
     const blockIndex = pkg.blocks.findIndex((b) => b.id === block.id);
-    const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, blockIndex, testAttempts);
+    const unlocked = isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, blockIndex, testAttempts);
 
     // 1. If sequential block is locked
     if (!unlocked) {
@@ -437,7 +437,7 @@ export const TestList: React.FC<TestListProps> = ({
         <div className="grid grid-cols-2 gap-2">
           {(pkg.blocks || []).map((block, idx) => {
             const isPaid = isPaidUser(profile);
-            const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, idx, testAttempts);
+            const unlocked = isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, idx, testAttempts);
             const isLocked = !unlocked;
 
             const blockAttempts = (testAttempts || []).filter(

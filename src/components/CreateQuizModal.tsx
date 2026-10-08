@@ -44,6 +44,9 @@ import {
   BookOpen,
   Edit3,
   Download,
+  Zap,
+  PlusCircle,
+  Save,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
@@ -451,8 +454,23 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   // ==========================================
   // 3-QADAM: BAZAGA SAQLASH VA E'LON QILISH
   // ==========================================
-  const handleSaveAndPublishQuiz = async () => {
-    if (questions.length === 0) {
+  const handleSaveAndPublishQuiz = async (overrideQuestions?: QuizQuestionInput[]) => {
+    let finalQs = (overrideQuestions && overrideQuestions.length > 0) ? overrideQuestions : questions;
+    if (finalQs.length === 0 && manualQuestions.some(q => q.question.trim().length > 0)) {
+      finalQs = manualQuestions
+        .filter((q) => q.question.trim().length > 0)
+        .map((q) => {
+          const cleanedOpts = q.options.map((opt, i) => opt.trim() || `Variant ${String.fromCharCode(65 + i)}`);
+          const correctAns = q.correct_answer.trim() || cleanedOpts[0];
+          return {
+            question: q.question.trim(),
+            options: cleanedOpts,
+            correct_answer: correctAns,
+          };
+        });
+    }
+
+    if (finalQs.length === 0) {
       setGlobalError("Saqlash uchun kamida 1 ta savol bo'lishi kerak.");
       return;
     }
@@ -480,7 +498,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
         is_public: isPublic,
         category,
         visibility: isPublic ? 'public' : 'unlisted',
-        questions,
+        questions: finalQs,
       });
 
       if (result.success) {
@@ -523,13 +541,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-3 pb-24 sm:pb-28 bg-slate-950/80 backdrop-blur-md overflow-y-auto font-sans animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center p-3 pb-24 sm:pb-28 bg-slate-950/80 backdrop-blur-md overflow-y-auto font-sans animate-in fade-in duration-200">
       <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 my-4 transition-all">
         {/* Header */}
         <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Sparkles className="w-5 h-5 animate-pulse" />
+              <PlusCircle className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -541,15 +559,30 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              onClose();
-            }}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isEditing && currentStep <= 3 && (
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => handleSaveAndPublishQuiz()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50"
+                title="O'zgarishlarni saqlash"
+              >
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>Saqlash</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onClose();
+              }}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
 
         {/* 3-STEP WIZARD PROGRESS BAR */}
@@ -575,7 +608,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
                   }`}
                 >
-                  {currentStep > 1 ? <Check className="w-3 h-3 stroke-[3]" /> : '1'}
+                  {currentStep > 1 ? <Check className="w-3 h-3 stroke-[2.5]" /> : '1'}
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-extrabold truncate">1. Pasport</p>
@@ -601,7 +634,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
                   }`}
                 >
-                  {currentStep > 2 ? <Check className="w-3 h-3 stroke-[3]" /> : '2'}
+                  {currentStep > 2 ? <Check className="w-3 h-3 stroke-[2.5]" /> : '2'}
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-extrabold truncate">2. Savollar</p>
@@ -636,13 +669,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
         {/* Global Error Banner */}
         {globalError && (
           <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 flex items-center gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-semibold animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" strokeWidth={1.75} />
             <span className="flex-1">{globalError}</span>
             <button
               onClick={() => setGlobalError('')}
-              className="text-rose-400 hover:text-rose-600 text-xs font-bold"
+              className="text-rose-400 hover:text-rose-600 p-1 rounded-lg transition-colors"
+              title="Yopish"
             >
-              ✕
+              <X className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
           </div>
         )}
@@ -654,8 +688,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* Fan nomi */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Fan nomi <span className="text-rose-500">*</span>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                <span>Fan nomi</span>
+                <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <input
@@ -725,8 +761,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
             {/* Yo'nalish / Fakultet */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Yo'nalish / Fakultet <span className="text-rose-500">*</span>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                <span>Yo'nalish / Fakultet</span>
+                <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -750,12 +788,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             {/* Ta'lim shakli (Kunduzgi / Sirtqi / Kechki / Masofaviy) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Ta'lim shakli
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <School className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                  <span>Ta'lim shakli</span>
                 </label>
                 {studyType === 'Sirtqi' && (
-                  <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
-                    🎓 Sirtqi — 5 kurs / 10 semestr
+                  <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <GraduationCap className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
+                    <span>Sirtqi — 5 kurs / 10 semestr</span>
                   </span>
                 )}
               </div>
@@ -780,8 +820,9 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             {/* Kurs tanlash */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Kurs tanlash ({maxCourse} ta kurs)
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                  <span>Kurs tanlash ({maxCourse} ta kurs)</span>
                 </label>
                 <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
                   {courseYear}-kurs
@@ -812,8 +853,9 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             {/* Semestr tanlash */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Semestr tanlash (1 - {maxSemester})
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                  <span>Semestr tanlash (1 - {maxSemester})</span>
                 </label>
                 <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
                   {semester}-semestr
@@ -843,8 +885,9 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
             {/* Ko'rinish darajasi (Ommaviy / Faqat havola orqali) */}
             <div className="pt-1">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Ko'rinish darajasi
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
+                <span>Ko'rinish darajasi</span>
               </label>
               <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <button
@@ -856,7 +899,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  <Globe className="w-3.5 h-3.5" />
+                  <Globe className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                   <span>Ommaviy (Barchaga)</span>
                 </button>
                 <button
@@ -868,21 +911,36 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  <LinkIcon className="w-3.5 h-3.5" />
+                  <LinkIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                   <span>Faqat havola orqali</span>
                 </button>
               </div>
             </div>
 
-            {/* "Keyingisi ➡" Tugmasi */}
-            <div className="pt-2">
+            {/* Step 1 Actions */}
+            <div className="pt-2 flex items-center gap-2">
+              {isEditing && (
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => handleSaveAndPublishQuiz()}
+                  className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                >
+                  <Save className="w-4 h-4 shrink-0" />
+                  <span>{isSaving ? 'Saqlanmoqda...' : "O'zgarishlarni saqlash"}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleProceedToStep2}
-                className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95"
+                className={`${
+                  isEditing
+                    ? 'flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                    : 'w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/25'
+                } py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-95`}
               >
-                <span>Keyingisi</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{isEditing ? "Savollarga o'tish" : 'Keyingisi'}</span>
+                <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -907,8 +965,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Edit3 className="w-4 h-4" />
-                <span>✍️ Donalik kiritish</span>
+                <Edit3 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                <span>Donalik kiritish</span>
               </button>
 
               <button
@@ -923,8 +981,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Layers className="w-4 h-4" />
-                <span>📋 Barchasini bittada</span>
+                <Layers className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                <span>Barchasini bittada</span>
               </button>
             </div>
 
@@ -1045,18 +1103,41 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   onClick={handleAddManualQuestion}
                   className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Yangi savol qo'shish</span>
+                  <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                  <span>Yangi savol qo'shish</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleProceedManualToPreview}
-                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                >
-                  <span>Ko'rib chiqishga o'tish</span>
-                  <ArrowRight className="w-4 h-4 shrink-0" />
-                </button>
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => handleSaveAndPublishQuiz()}
+                      className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      <span>O'zgarishlarni saqlash</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleProceedManualToPreview}
+                      className="px-4 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      title="Ko'rib chiqishga o'tish"
+                    >
+                      <span>Ko'rib chiqish</span>
+                      <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleProceedManualToPreview}
+                    className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <span>Ko'rib chiqishga o'tish</span>
+                    <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                  </button>
+                )}
               </div>
             )}
 
@@ -1080,7 +1161,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      <FileText className="w-3.5 h-3.5" />
+                      <FileText className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                       <span>Matn ko'rinishida</span>
                     </button>
                     <button
@@ -1095,7 +1176,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      <Upload className="w-3.5 h-3.5" />
+                      <Upload className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                       <span>Fayl ko'rinishida</span>
                     </button>
                   </div>
@@ -1113,7 +1194,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1"
                         title="Rasmiy HEMIS shablon nusxasini olish"
                       >
-                        {sampleCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        {sampleCopied ? <Check className="w-3 h-3 text-emerald-500" strokeWidth={2.5} /> : <Copy className="w-3 h-3" strokeWidth={1.75} />}
                         <span>{sampleCopied ? "Nusxalandi" : "Shablon nusxalash"}</span>
                       </button>
 
@@ -1125,6 +1206,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         }}
                         className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
                       >
+                        <FileText className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>Namunani joylash</span>
                       </button>
                     </div>
@@ -1138,7 +1220,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
                       title="Namunaviy HEMIS test faylini kompyuteringizga yuklab oling"
                     >
-                      <Download className="w-3 h-3" />
+                      <Download className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                       <span>Shablon fayl (.txt)</span>
                     </button>
                   )}
@@ -1149,7 +1231,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   <div className="space-y-3">
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
                       <div className="flex items-center justify-between font-bold">
-                        <span>💡 Qabul qilinadigan shablon formatlari:</span>
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.75} />
+                          <span>Qabul qilinadigan shablon formatlari:</span>
+                        </span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Avtomatik parser</span>
                       </div>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -1276,8 +1361,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           onClick={handleParseTxtDirectly}
                           className="w-full py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
-                          <CheckCircle2 className="w-4 h-4 shrink-0" />
-                          <span className="truncate">⚡ Shablon orqali zumda tahlil</span>
+                          <Zap className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                          <span className="truncate">Shablon orqali zumda tahlil</span>
                         </button>
 
                         <button
@@ -1286,8 +1371,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           onClick={handleStartAiParsing}
                           className="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
-                          <Sparkles className="w-4 h-4 shrink-0" />
-                          <span className="truncate">✨ AI orqali tahlil</span>
+                          <Sparkles className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                          <span className="truncate">AI orqali tahlil</span>
                         </button>
                       </div>
                     ) : (
@@ -1297,8 +1382,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         onClick={handleStartAiParsing}
                         className="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                       >
-                        <Sparkles className="w-4 h-4 shrink-0" />
-                        <span className="truncate">✨ Gemini AI orqali tahlil qilish</span>
+                        <Sparkles className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                        <span className="truncate">Gemini AI orqali tahlil qilish</span>
                       </button>
                     )}
                   </div>
@@ -1313,7 +1398,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 onClick={() => setCurrentStep(1)}
                 className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <ArrowLeft className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                 <span>1-qadam (Pasport)ga qaytish</span>
               </button>
             </div>
@@ -1429,7 +1514,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             <button
               type="button"
               disabled={isSaving}
-              onClick={handleSaveAndPublishQuiz}
+              onClick={() => handleSaveAndPublishQuiz()}
               className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
             >
               {isSaving ? (
@@ -1440,7 +1525,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>Testni saqlash va e'lon qilish</span>
+                  <span>{isEditing ? "O'zgarishlarni saqlash" : "Testni saqlash va e'lon qilish"}</span>
                 </>
               )}
             </button>
