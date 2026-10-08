@@ -35,6 +35,7 @@ import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 import { Language } from '../i18n/translations';
 import { getSupabase } from '../services/supabase';
+import { getGenderSafeAvatar } from '../constants/avatars';
 
 export { isUserAdmin };
 
@@ -256,7 +257,7 @@ const DEFAULT_PROFILE: UserProfile = {
   gender: 'male',
   studyType: 'Kunduzgi',
   academicYear: 1,
-  avatar: '/avatars/avatar_1.png',
+  avatar: '/avatars/avatar_3.png',
   coins: 0, // Unearned coins strictly zeroed out at start!
   streak: 1,
   lastLoginDate: new Date().toISOString().split('T')[0],
@@ -995,7 +996,8 @@ export const useQuizStore = create<QuizState>()(
           name: `${newProfile.firstName || 'Talaba'} ${newProfile.lastName || ''}`.trim() || 'Talaba',
           region: newProfile.region,
           university: newProfile.university || 'TATU',
-          avatar: newProfile.avatar || '/avatars/avatar_1.png',
+          avatar: getGenderSafeAvatar(newProfile.avatar, newProfile.gender),
+          gender: newProfile.gender,
           academicYear: newProfile.academicYear,
           coins: newProfile.coins,
           testsCompleted: Math.max(newProfile.completedTestsCount, stats.uniqueBlocksCount),
@@ -1127,7 +1129,8 @@ export const useQuizStore = create<QuizState>()(
           name: fullName,
           region: updated.region,
           university: updated.university || 'TATU',
-          avatar: updated.avatar || '/avatars/avatar_1.png',
+          avatar: getGenderSafeAvatar(updated.avatar, updated.gender),
+          gender: updated.gender,
           academicYear: updated.academicYear,
           isCurrentUser: true,
         };
@@ -1459,7 +1462,8 @@ export const useQuizStore = create<QuizState>()(
           name: `${updatedProfile.firstName || 'Talaba'} ${updatedProfile.lastName || ''}`.trim() || 'Talaba',
           region: updatedProfile.region,
           university: updatedProfile.university || 'TATU',
-          avatar: updatedProfile.avatar || '/avatars/avatar_1.png',
+          avatar: getGenderSafeAvatar(updatedProfile.avatar, updatedProfile.gender),
+          gender: updatedProfile.gender,
           academicYear: updatedProfile.academicYear,
           coins: updatedProfile.coins,
           testsCompleted: Math.max(updatedProfile.completedTestsCount, updatedStats.uniqueBlocksCount),

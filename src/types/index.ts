@@ -372,6 +372,9 @@ export interface MistakeItem {
 export interface LeaderboardUser {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   region: Region;
   university: string;
   gender?: Gender;

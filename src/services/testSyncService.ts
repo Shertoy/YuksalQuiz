@@ -1,9 +1,10 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
-import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question, StudyType } from '../types';
+import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question, StudyType, Gender } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities, cleanTelegramId } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { UserRatingStats } from '../utils/ratingUtils';
+import { getGenderSafeAvatar } from '../constants/avatars';
 
 /**
  * Maps Supabase DB row to application TestPackage model
@@ -1175,7 +1176,60 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     (score > 0 ? Math.floor(score / 4) : 0)
   ) || 0;
 
-  const displayName = row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.title || 'Talaba';
+  // 1. Ismni chuqur qidirish (faqat 'Talaba' bilan cheklanib qolmaslik)
+  const candidateNames = [
+    row.full_name,
+    row.fullName,
+    row.name,
+    `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+    row.title,
+    row.author_name,
+    row.authorName,
+  ]
+    .filter(Boolean)
+    .map((n) => String(n).trim());
+
+  const realName = candidateNames.find((n) => n.length > 0 && n.toLowerCase() !== 'talaba');
+  let displayName = realName || candidateNames[0] || '';
+
+  const rawUser = row.username || row.telegram_username || row.telegramUsername;
+  if (!displayName || displayName.toLowerCase() === 'talaba') {
+    if (rawUser) {
+      displayName = `@${String(rawUser).replace(/^@/, '')}`;
+    } else if (cleanId) {
+      const shortId = cleanId.replace(/^tg_/, '').replace(/^user_/, '');
+      displayName = `Talaba #${shortId.slice(-4) || shortId}`;
+    } else {
+      displayName = 'Talaba';
+    }
+  }
+
+  // 2. Jinsni to'g'ri aniqlash (Default ayol qilib qo'yish xatosini oldini olish)
+  let resolvedGender: Gender = 'male';
+  const gStr = String(row.gender || '').toLowerCase().trim();
+  if (gStr === 'female' || gStr === 'ayol' || gStr === 'f') {
+    resolvedGender = 'female';
+  } else if (gStr === 'male' || gStr === 'erkak' || gStr === 'm') {
+    resolvedGender = 'male';
+  } else {
+    // Ismdan jinsni tekshirish (-ova, -yeva, -qizi)
+    const nameLow = displayName.toLowerCase();
+    const isFemaleName =
+      nameLow.includes('qizi') ||
+      nameLow.includes(' ayol') ||
+      nameLow.endsWith('ova') ||
+      nameLow.endsWith('yeva') ||
+      nameLow.endsWith('eva');
+    if (isFemaleName || row.avatar === '/avatars/avatar_2.png') {
+      resolvedGender = 'female';
+    } else {
+      resolvedGender = 'male';
+    }
+  }
+
+  // 3. Avatarni jinsga moslash (Erkaklar uchun hech qachon ayol hijob rasmi chiqmasin)
+  const resolvedAvatar = getGenderSafeAvatar(row.avatar, resolvedGender);
+
   const totalSeconds = Number(
     row.total_time ??
     row.total_time_spent_seconds ??
@@ -1194,8 +1248,8 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     name: decodeHtmlEntities(displayName),
     region: row.region || row.department || 'Toshkent shahri',
     university: decodeHtmlEntities(row.university || ''),
-    avatar: row.avatar || '/avatars/avatar_1.png',
-    gender: row.gender || (row.avatar === '/avatars/avatar_1.png' || row.avatar === '/avatars/avatar_2.png' ? 'female' : 'male'),
+    avatar: resolvedAvatar,
+    gender: resolvedGender,
     registeredAt: row.registered_at || row.registeredAt || '2026-10-03',
     academicYear: (Math.min(Math.max(Number(row.academic_year ?? row.academicYear) || 1, 1), 6) as 1 | 2 | 3 | 4 | 5 | 6),
     coins: Number(row.coins) || 0,
@@ -1253,7 +1307,7 @@ export async function syncUserProfileToCloud(
     gender: profile.gender || 'male',
     region,
     university,
-    avatar: profile.avatar || '/avatars/avatar_1.png',
+    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
     academic_year: profile.academicYear || 1,
     coins: profile.coins || 0,
     tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
@@ -1275,7 +1329,7 @@ export async function syncUserProfileToCloud(
     first_name: profile.firstName || '',
     last_name: profile.lastName || '',
     name: fullName,
-    avatar: profile.avatar || '/avatars/avatar_1.png',
+    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
     university,
     region,
     gender: profile.gender || 'male',
@@ -1619,6 +1673,52 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
     } catch (err) {
       console.warn('fetchAdminUsersList exception:', err);
     }
+
+    // 2. test_packages dagi LeaderboardUser qatorlaridan haqiqiy ismlarni qidirib boyitish
+    try {
+      const { data: leadRows } = await supabase
+        .from('test_packages')
+        .select('id, title, author_id, author_name')
+        .eq('category', 'LeaderboardUser')
+        .limit(300);
+
+      if (leadRows && Array.isArray(leadRows)) {
+        for (const pkg of leadRows) {
+          const pId = String(pkg.author_id || pkg.id || '').replace(/^lead_/, '');
+          const existing = userMap.get(pId);
+          const pkgName = String(pkg.title || pkg.author_name || '').trim();
+          if (pkgName && pkgName.toLowerCase() !== 'talaba') {
+            if (existing) {
+              if (!existing.name || existing.name.toLowerCase() === 'talaba' || existing.name.startsWith('Talaba #')) {
+                existing.name = decodeHtmlEntities(pkgName);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 3. payments dagi foydalanuvchi ismlaridan ham boyitish
+    try {
+      const { data: pays } = await supabase
+        .from('payments')
+        .select('user_id, users(full_name, username)')
+        .limit(300);
+
+      if (pays && Array.isArray(pays)) {
+        for (const p of pays) {
+          const uId = String(p.user_id || '').replace(/^tg_/, '').replace(/^user_/, '');
+          const existing = userMap.get(uId);
+          const uObj: any = p.users;
+          const pName = (uObj?.full_name || '').trim();
+          if (existing && pName && pName.toLowerCase() !== 'talaba') {
+            if (!existing.name || existing.name.toLowerCase() === 'talaba' || existing.name.startsWith('Talaba #')) {
+              existing.name = decodeHtmlEntities(pName);
+            }
+          }
+        }
+      }
+    } catch {}
   }
 
   // Fallback / merge with leaderboard if any exist
@@ -1653,6 +1753,9 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
             existing.paid_until = pEnd;
             existing.subscriptionEnd = pEnd;
           }
+          if (profile.firstName && (!existing.name || existing.name.toLowerCase() === 'talaba')) {
+            existing.name = `${profile.firstName} ${profile.lastName || ''}`.trim();
+          }
         } else {
           userMap.set(cId, {
             id: cId,
@@ -1662,7 +1765,7 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
             university: profile.university || 'TATU',
             region: profile.region || 'Toshkent shahri',
             gender: profile.gender || 'male',
-            avatar: profile.avatar || '/avatars/avatar_1.png',
+            avatar: getGenderSafeAvatar(profile.avatar, profile.gender || 'male'),
             academicYear: profile.academicYear || 1,
             coins: profile.coins || 0,
             testsCompleted: profile.completedTestsCount || 0,

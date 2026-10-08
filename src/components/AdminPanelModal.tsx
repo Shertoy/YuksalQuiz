@@ -58,6 +58,7 @@ import {
   Link,
   Sun,
   Moon,
+  ArrowRight,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -110,6 +111,7 @@ import {
 import { getUserSubscriptionInfo, UserSubscriptionInfo } from '../utils/subscriptionUtils';
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
+import { getGenderSafeAvatar } from '../constants/avatars';
 import {
   PaymentRecord,
   fetchAllPayments,
@@ -157,9 +159,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     deletePromocode,
   } = useQuizStore();
 
-  const [activeTab, setActiveTab] = useState<
-    'users' | 'receipts' | 'news' | 'universities' | 'pending' | 'tests' | 'supabase' | 'pricing' | 'payments' | 'promocodes' | 'security'
-  >('users');
+  type AdminTab =
+    | 'users'
+    | 'receipts'
+    | 'news'
+    | 'universities'
+    | 'pending'
+    | 'tests'
+    | 'supabase'
+    | 'pricing'
+    | 'payments'
+    | 'promocodes'
+    | 'security';
+
+  type NavCategoryId = 'users_group' | 'finance_group' | 'tests_group' | 'system_group';
+
+  interface AdminNavTabItem {
+    id: AdminTab;
+    label: string;
+    icon: any;
+    badge?: string | number | null;
+    badgeColor?: string;
+    pulse?: boolean;
+    statusDot?: string;
+    onClickExtra?: () => void | Promise<any>;
+  }
+
+  interface AdminNavCategory {
+    id: NavCategoryId;
+    title: string;
+    shortTitle: string;
+    icon: any;
+    tabs: AdminNavTabItem[];
+  }
+
+  const getCategoryForTab = (tab: AdminTab): NavCategoryId => {
+    if (tab === 'users' || tab === 'news') return 'users_group';
+    if (tab === 'receipts' || tab === 'pricing' || tab === 'payments' || tab === 'promocodes') return 'finance_group';
+    if (tab === 'tests' || tab === 'universities' || tab === 'pending') return 'tests_group';
+    return 'system_group';
+  };
+
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeNavCategory, setActiveNavCategory] = useState<NavCategoryId>(() => getCategoryForTab('users'));
+
+  useEffect(() => {
+    setActiveNavCategory(getCategoryForTab(activeTab));
+  }, [activeTab]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const isInsideTelegram = typeof window !== 'undefined' && Boolean((window as any).Telegram?.WebApp?.initData);
@@ -200,6 +246,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     return usersList.reduce((acc, u) => acc + (u.walletBalance || 0), 0);
   }, [usersList]);
 
+  const totalApprovedReceiptsSum = useMemo(() => {
+    return paymentsList
+      .filter((p) => p.status === 'approved' || p.status === 'auto_approved' || p.status === 'manual_approved')
+      .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  }, [paymentsList]);
+
+  const approvedReceiptsCount = useMemo(() => {
+    return paymentsList.filter(
+      (p) => p.status === 'approved' || p.status === 'auto_approved' || p.status === 'manual_approved'
+    ).length;
+  }, [paymentsList]);
+
+  const pendingReceiptsCount = useMemo(() => {
+    return paymentsList.filter((p) => p.status === 'pending' || p.status === 'pending_manual').length;
+  }, [paymentsList]);
+
   const activeSubscribersCount = useMemo(() => {
     return usersList.filter((u) => {
       const i = getUserSubscriptionInfo(u);
@@ -214,6 +276,111 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const usersWithBalanceCount = useMemo(() => {
     return usersList.filter((u) => (u.walletBalance || 0) > 0).length;
   }, [usersList]);
+
+  const rejectedReceiptsCount = useMemo(() => {
+    return paymentsList.filter((p) => p.status === 'rejected').length;
+  }, [paymentsList]);
+
+  const navCategories: AdminNavCategory[] = useMemo(() => [
+    {
+      id: 'users_group' as NavCategoryId,
+      title: 'Auditoriya & Talabalar',
+      shortTitle: 'Auditoriya',
+      icon: Users,
+      tabs: [
+        {
+          id: 'users' as AdminTab,
+          label: 'Foydalanuvchilar',
+          icon: Users,
+          badge: usersList.length > 0 ? String(usersList.length) : null,
+          badgeColor: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400',
+        },
+        {
+          id: 'news' as AdminTab,
+          label: 'Xabarnomalar',
+          icon: Send,
+          pulse: (announcementReplies || []).some((r) => !r.adminReply),
+        },
+      ],
+    },
+    {
+      id: 'finance_group' as NavCategoryId,
+      title: "Moliya & To'lovlar",
+      shortTitle: 'Moliya',
+      icon: Receipt,
+      tabs: [
+        {
+          id: 'receipts' as AdminTab,
+          label: "Kvitansiyalar & To'lovlar",
+          icon: Receipt,
+          badge: pendingReceiptsCount > 0 ? String(pendingReceiptsCount) : null,
+          badgeColor: 'bg-amber-500 text-white animate-pulse',
+          pulse: pendingReceiptsCount > 0,
+          onClickExtra: loadPayments,
+        },
+        {
+          id: 'pricing' as AdminTab,
+          label: 'Obuna Narxlari',
+          icon: Tag,
+        },
+        {
+          id: 'payments' as AdminTab,
+          label: "To'lov Usullari",
+          icon: CreditCard,
+        },
+        {
+          id: 'promocodes' as AdminTab,
+          label: 'Promokodlar',
+          icon: KeyRound,
+        },
+      ],
+    },
+    {
+      id: 'tests_group' as NavCategoryId,
+      title: "Testlar & Ta'lim",
+      shortTitle: 'Testlar',
+      icon: BookOpen,
+      tabs: [
+        {
+          id: 'tests' as AdminTab,
+          label: `Testlar (${testPackages.length})`,
+          icon: BookOpen,
+          badge: testPackages.length > 0 ? String(testPackages.length) : null,
+          badgeColor: 'bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400',
+        },
+        {
+          id: 'universities' as AdminTab,
+          label: 'OTMlar & Kafedralar',
+          icon: Building2,
+        },
+        {
+          id: 'pending' as AdminTab,
+          label: 'Talabalar Takliflari',
+          icon: Clock,
+          pulse: pendingUniversities.length > 0,
+        },
+      ],
+    },
+    {
+      id: 'system_group' as NavCategoryId,
+      title: 'Tizim & Baza',
+      shortTitle: 'Tizim',
+      icon: ShieldCheck,
+      tabs: [
+        {
+          id: 'supabase' as AdminTab,
+          label: 'Supabase Baza',
+          icon: Cloud,
+          statusDot: getSupabaseConfig().isConfigured ? 'bg-emerald-500' : 'bg-amber-400',
+        },
+        {
+          id: 'security' as AdminTab,
+          label: 'Xavfsizlik',
+          icon: Database,
+        },
+      ],
+    },
+  ], [usersList.length, announcementReplies, pendingReceiptsCount, paymentsList, testPackages.length, pendingUniversities.length]);
 
   const filteredUsers = useMemo(() => {
     let list = usersList.filter((u) => {
@@ -954,199 +1121,169 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           </div>
         )}
 
-        {/* Navigation Tabs - Responsive Scrollable Bar */}
-        <div className="flex items-center gap-1 sm:gap-1.5 p-2 sm:px-4 bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs overflow-x-auto scrollbar-none shrink-0">
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('users');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'users'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Foydalanuvchilar</span>
-            {usersList.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-extrabold">
-                {usersList.length}
-              </span>
-            )}
-          </button>
+        {/* Responsive Dashboard Body (Desktop Sidebar + Mobile Categorized Bar) */}
+        <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+          {/* Mobile Categorized Header (md:hidden) */}
+          <div className="md:hidden shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90">
+            {/* 4 Main Categories Bar */}
+            <div className="grid grid-cols-4 gap-1 p-1.5 bg-slate-100/90 dark:bg-slate-950/70 border-b border-slate-200/60 dark:border-slate-800/60 text-[11px]">
+              {navCategories.map((cat) => {
+                const isCatActive = activeNavCategory === cat.id;
+                const CatIcon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setActiveNavCategory(cat.id);
+                      if (!cat.tabs.some((t) => t.id === activeTab)) {
+                        const firstTab = cat.tabs[0];
+                        if (firstTab) {
+                          setActiveTab(firstTab.id);
+                          if (firstTab.onClickExtra) firstTab.onClickExtra();
+                        }
+                      }
+                    }}
+                    className={`py-1.5 px-1 rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                      isCatActive
+                        ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                    }`}
+                  >
+                    <CatIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+                    <span className="truncate">{cat.shortTitle}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Receipts & Payments Tab */}
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('receipts');
-              loadPayments();
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
-              activeTab === 'receipts'
-                ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200/50 dark:border-amber-800/50'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.75} />
-            <span>Kvitansiyalar & To'lovlar</span>
-            {paymentsList.filter((p) => p.status === 'pending').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-white animate-pulse">
-                {paymentsList.filter((p) => p.status === 'pending').length}
-              </span>
-            )}
-          </button>
+            {/* Sub-tabs row for active category */}
+            <div className="flex items-center gap-1.5 p-2 overflow-x-auto scrollbar-none text-xs">
+              {navCategories.find((c) => c.id === activeNavCategory)?.tabs.map((tabItem) => {
+                const isActive = activeTab === tabItem.id;
+                const TabIcon = tabItem.icon;
+                return (
+                  <button
+                    key={tabItem.id}
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      setActiveTab(tabItem.id);
+                      if (tabItem.onClickExtra) tabItem.onClickExtra();
+                    }}
+                    className={`py-1.5 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    <span>{tabItem.label}</span>
+                    {tabItem.badge && (
+                      <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${tabItem.badgeColor || 'bg-slate-200 dark:bg-slate-700'}`}>
+                        {tabItem.badge}
+                      </span>
+                    )}
+                    {tabItem.pulse && !tabItem.badge && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    )}
+                    {tabItem.statusDot && (
+                      <span className={`w-2 h-2 rounded-full ${tabItem.statusDot}`} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('news');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
-              activeTab === 'news'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Xabarnomalar</span>
-            {(announcementReplies || []).some((r) => !r.adminReply) && (
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-            )}
-          </button>
+          {/* Desktop Left Sidebar (hidden md:flex) */}
+          <aside className="hidden md:flex w-64 lg:w-72 shrink-0 bg-slate-50/90 dark:bg-slate-950/70 border-r border-slate-200/80 dark:border-slate-800/80 flex-col justify-between overflow-y-auto">
+            <div className="p-3 lg:p-4 space-y-4">
+              {navCategories.map((cat) => (
+                <div key={cat.id} className="space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-black tracking-wider uppercase text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                    <span>{cat.title}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {cat.tabs.map((tabItem) => {
+                      const isActive = activeTab === tabItem.id;
+                      const TabIcon = tabItem.icon;
+                      return (
+                        <button
+                          key={tabItem.id}
+                          onClick={() => {
+                            triggerHaptic('selection');
+                            setActiveTab(tabItem.id);
+                            if (tabItem.onClickExtra) tabItem.onClickExtra();
+                          }}
+                          className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-between transition-all ${
+                            isActive
+                              ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-2xs border border-slate-200/70 dark:border-slate-700/80'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-900/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <TabIcon
+                              className={`w-4 h-4 shrink-0 ${
+                                isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                              }`}
+                              strokeWidth={1.75}
+                            />
+                            <span className="truncate">{tabItem.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {tabItem.badge && (
+                              <span
+                                className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                  tabItem.badgeColor || 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                                }`}
+                              >
+                                {tabItem.badge}
+                              </span>
+                            )}
+                            {tabItem.pulse && !tabItem.badge && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            )}
+                            {tabItem.statusDot && (
+                              <span className={`w-2 h-2 rounded-full ${tabItem.statusDot}`} />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('universities');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'universities'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>OTMlar</span>
-          </button>
+            {/* Sidebar Financial Quick Overview Widget */}
+            <div className="p-3 m-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                <span>Moliya Balansi</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                    <Receipt className="w-3 h-3 text-blue-500" /> Kassa:
+                  </span>
+                  <span className="font-extrabold text-blue-600 dark:text-blue-400 text-[11px]">
+                    {totalApprovedReceiptsSum.toLocaleString('uz-UZ')} so'm
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                    <Wallet className="w-3 h-3 text-emerald-500" /> Hamyonlar:
+                  </span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    {totalWalletSum.toLocaleString('uz-UZ')} so'm
+                  </span>
+                </div>
+              </div>
+            </div>
+          </aside>
 
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('pending');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all relative ${
-              activeTab === 'pending'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Takliflar</span>
-            {pendingUniversities.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('pricing');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'pricing'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Obuna Narxlari</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('payments');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'payments'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <CreditCard className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>To'lov Usullari</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('promocodes');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'promocodes'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Promokodlar</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('tests');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'tests'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Testlar ({testPackages.length})</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('supabase');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'supabase'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
-            <span>Supabase Baza</span>
-            {getSupabaseConfig().isConfigured ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('selection');
-              setActiveTab('security');
-            }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-              activeTab === 'security'
-                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span>Xavfsizlik</span>
-          </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 pb-20 sm:pb-8 space-y-4">
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-20 sm:pb-8 space-y-4">
           {/* USERS STATISTICS & FILTERING TAB */}
           {activeTab === 'users' && (
             <div className="space-y-4 animate-in fade-in">
@@ -1201,14 +1338,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Jami Hamyon Balansi</span>
+                    <span className="text-[11px] font-bold">Talabalar Hamyon Qoldig'i</span>
                     <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                   </div>
                   <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 truncate">
                     {totalWalletSum.toLocaleString('uz-UZ')} <span className="text-xs font-bold text-slate-400">so'm</span>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                    {usersWithBalanceCount} ta talabada mablag' bor
+                    {usersWithBalanceCount} ta talaba hisobida
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold">Tasdiqlangan Kassa Tushumi</span>
+                    <Coins className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
+                  </div>
+                  <div className="text-xl font-black text-blue-600 dark:text-blue-400 truncate">
+                    {totalApprovedReceiptsSum.toLocaleString('uz-UZ')} <span className="text-xs font-bold text-slate-400">so'm</span>
+                  </div>
+                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                    {approvedReceiptsCount} ta kvitansiya bo'yicha
                   </div>
                 </div>
 
@@ -1221,22 +1371,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     {activeSubscribersCount}
                   </div>
                   <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                    {usersList.length > 0 ? `${Math.round((activeSubscribersCount / usersList.length) * 100)}% obunachi` : '0%'}
+                    Tugashiga &le; 7 kun: {expiringSoonCount} ta
                   </div>
                 </div>
+              </div>
 
-                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Tugashiga &le; 7 kun</span>
-                    <Clock className="w-4 h-4 text-orange-500" strokeWidth={1.75} />
+              {/* Moliyaviy Hisob-kitob Farqi Tushuntirish Baneri */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/90 via-emerald-50/50 to-slate-50/90 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 border border-blue-200/80 dark:border-slate-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <Receipt className="w-4 h-4" strokeWidth={2} />
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white">
-                    {expiringSoonCount}
-                  </div>
-                  <div className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
-                    Obuna muddati tugamoqda
+                  <div className="space-y-0.5">
+                    <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                      <span>Moliyaviy Hisobot & Hisob-kitob Tushuntirishi:</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                        Kassa: {totalApprovedReceiptsSum.toLocaleString('uz-UZ')} so'm &bull; Hamyonlar: {totalWalletSum.toLocaleString('uz-UZ')} so'm
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      • <b>Tasdiqlangan Kassa ({totalApprovedReceiptsSum.toLocaleString('uz-UZ')} so'm)</b> — Kvitansiyalar & to'lovlar bo'limidagi {approvedReceiptsCount} ta tasdiqlangan chek bo'yicha tushgan real pul tushumi.<br />
+                      • <b>Talabalar Hamyon Qoldig'i ({totalWalletSum.toLocaleString('uz-UZ')} so'm)</b> — {usersList.length} ta talabaning akkauntlaridagi joriy pul miqdori (kassa tushumi + admin qo'lda to'ldirgan bonuslar yoki dastlabki hisoblar).
+                    </p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setActiveTab('receipts');
+                    loadPayments();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] whitespace-nowrap shadow-xs shrink-0 self-end sm:self-auto transition-all active:scale-95 flex items-center gap-1"
+                >
+                  <span>Kvitansiyalarga o'tish</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Filter Controls Bar */}
@@ -1459,7 +1629,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {filteredUsers.map((student, idx) => {
-                          const isFemale = student.gender === 'female';
+                          const isFemale = student.gender === 'female' || (student.gender as string) === 'ayol';
+                          const safeAvatar = getGenderSafeAvatar(student.avatar, student.gender);
+                          const fallbackAvatar = isFemale ? '/avatars/avatar_1.png' : '/avatars/avatar_3.png';
+                          const rawName = student.name || '';
+                          const displayName =
+                            rawName && rawName.toLowerCase() !== 'talaba' && !rawName.startsWith('Talaba #')
+                              ? rawName
+                              : (student.username
+                                  ? `@${student.username.replace(/^@/, '')}`
+                                  : (student.first_name
+                                      ? `${student.first_name} ${student.last_name || ''}`.trim()
+                                      : (rawName || 'Talaba')));
                           const subInfo = getUserSubscriptionInfo(student);
                           const balance = student.walletBalance || 0;
 
@@ -1476,16 +1657,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2.5">
                                   <img
-                                    src={student.avatar || '/avatars/avatar_1.png'}
-                                    alt={student.name}
+                                    src={safeAvatar}
+                                    alt={displayName}
                                     className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = '/avatars/avatar_1.png';
+                                      (e.target as HTMLImageElement).src = fallbackAvatar;
                                     }}
                                   />
                                   <div className="min-w-0">
                                     <div className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                                      <span className="truncate">{student.name}</span>
+                                      <span className="truncate">{displayName}</span>
                                       {isFemale ? (
                                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
                                           Ayol
@@ -1678,31 +1859,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Tasdiqlangan</span>
+                    <span className="text-[11px] font-bold">Tasdiqlangan Kassa</span>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={1.75} />
                   </div>
-                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                    {paymentsList.filter((p) => p.status === 'approved').length}
+                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 truncate">
+                    {totalApprovedReceiptsSum.toLocaleString('uz-UZ')} <span className="text-xs font-bold text-slate-400">so'm</span>
                   </div>
                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    Hisobga o'tkazilgan
+                    {approvedReceiptsCount} ta chek tasdiqlangan
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
                   <div className="flex items-center justify-between text-slate-400">
-                    <span className="text-[11px] font-bold">Jami Tushum</span>
-                    <Coins className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
+                    <span className="text-[11px] font-bold">Talabalar Hamyon Qoldig'i</span>
+                    <Wallet className="w-4 h-4 text-blue-500" strokeWidth={1.75} />
                   </div>
-                  <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
-                    {paymentsList
-                      .filter((p) => p.status === 'approved')
-                      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-                      .toLocaleString('uz-UZ')}{' '}
-                    <span className="text-xs font-bold text-slate-400">so'm</span>
+                  <div className="text-xl font-black text-blue-600 dark:text-blue-400 truncate">
+                    {totalWalletSum.toLocaleString('uz-UZ')} <span className="text-xs font-bold text-slate-400">so'm</span>
                   </div>
                   <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                    Muvaffaqiyatli to'lovlar
+                    {usersWithBalanceCount} ta talaba hisobida
                   </div>
                 </div>
 
@@ -1718,6 +1895,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     Soxta / xato cheklar
                   </div>
                 </div>
+              </div>
+
+              {/* Moliyaviy Hisob-kitob Farqi Tushuntirish Baneri */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/90 via-emerald-50/50 to-slate-50/90 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 border border-blue-200/80 dark:border-slate-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <Coins className="w-4 h-4" strokeWidth={2} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                      <span>Kassa Tushumi ({totalApprovedReceiptsSum.toLocaleString('uz-UZ')} so'm) va Hamyonlar ({totalWalletSum.toLocaleString('uz-UZ')} so'm):</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      • <b>Kassa Tushumi: {totalApprovedReceiptsSum.toLocaleString('uz-UZ')} so'm</b> — Talabalar kvitansiya yuklagan va admin tasdiqlagan {approvedReceiptsCount} ta to'lov orqali tushgan haqiqiy pul miqdori.<br />
+                      • <b>Hamyon Balansi: {totalWalletSum.toLocaleString('uz-UZ')} so'm</b> — Barcha talabalar hisobidagi umumiy mablag' (bunga kassa tushumidan tashqari admin tomonidan qo'lda to'ldirilgan bonuslar ham kiradi).
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setActiveTab('users');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] whitespace-nowrap shadow-xs shrink-0 self-end sm:self-auto transition-all active:scale-95 flex items-center gap-1"
+                >
+                  <span>Talabalarni ko'rish</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Quick Manual Top-up Collapsible Form */}
@@ -4171,6 +4377,7 @@ END $$;`}</pre>
             </div>
           )}
         </div>
+      </div>
 
         {/* Footer */}
         <div className="p-3 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800 flex justify-end">

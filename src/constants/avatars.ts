@@ -48,3 +48,37 @@ export function isImageAvatar(avatar?: string): boolean {
     avatar.startsWith('http')
   );
 }
+
+/**
+ * Returns a gender-appropriate avatar.
+ * Guarantees that male users NEVER get a female hijab avatar (avatar_1, avatar_2) by default.
+ */
+export function getGenderSafeAvatar(
+  avatar?: string | null,
+  gender?: 'male' | 'female' | string | null
+): string {
+  const isFemale = gender === 'female' || gender === 'ayol';
+  const clean = (avatar || '').trim();
+
+  // Erkak foydalanuvchilar uchun: hech qachon ayol hijob rasmi (avatar_1 / avatar_2) chiqmasin
+  if (!isFemale) {
+    if (!clean || clean === '/avatars/avatar_1.png' || clean === '/avatars/avatar_2.png') {
+      return '/avatars/avatar_3.png'; // Standart erkak talaba rasmi
+    }
+    return clean;
+  }
+
+  // Ayol foydalanuvchilar uchun:
+  if (!clean) {
+    return '/avatars/avatar_1.png'; // Standart ayol talaba rasmi
+  }
+  return clean;
+}
+
+/**
+ * Returns the default avatar path for a given gender.
+ */
+export function getDefaultAvatar(gender?: 'male' | 'female' | string | null): string {
+  const isFemale = gender === 'female' || gender === 'ayol';
+  return isFemale ? '/avatars/avatar_1.png' : '/avatars/avatar_3.png';
+}

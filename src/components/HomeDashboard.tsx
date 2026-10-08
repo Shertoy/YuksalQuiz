@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
+import { getGenderSafeAvatar } from '../constants/avatars';
 import { isPaidUser } from '../services/paywallService';
 import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
@@ -80,7 +81,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
     region: profile.region,
     university: profile.university || 'TATU',
-    avatar: profile.avatar || '/avatars/avatar_1.png',
+    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
+    gender: profile.gender,
     academicYear: profile.academicYear,
     coins: profile.coins,
     testsCompleted: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
