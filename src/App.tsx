@@ -19,6 +19,7 @@ import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { ShieldAlert, Send } from 'lucide-react';
 import { TestPackage, TestAttempt } from './types';
 import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic } from './utils/telegram';
+import { isAdminSessionAuthenticated } from './utils/security';
 import {
   fetchCloudTests,
   fetchCloudUniversities,
@@ -119,13 +120,23 @@ export const App: React.FC = () => {
 
     // Direct browser admin access check: ?admin=true or #admin or /admin
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isAdminQuery = urlParams.get('admin') === 'true' || urlParams.has('admin');
-      const isAdminHash = window.location.hash.toLowerCase() === '#admin';
-      const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
-      if (isAdminQuery || isAdminHash || isAdminPath) {
-        setIsAdminLoginOpen(true);
-      }
+      const checkAdminRoute = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdminQuery = urlParams.get('admin') === 'true' || urlParams.has('admin');
+        const isAdminHash = window.location.hash.toLowerCase() === '#admin';
+        const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
+        if (isAdminQuery || isAdminHash || isAdminPath) {
+          if (isAdminSessionAuthenticated()) {
+            setIsAdminModalOpen(true);
+          } else {
+            setIsAdminLoginOpen(true);
+          }
+        }
+      };
+
+      checkAdminRoute();
+      window.addEventListener('hashchange', checkAdminRoute);
+      window.addEventListener('popstate', checkAdminRoute);
     }
 
     // Check if user is blocked or has updated cloud status and latest balance
@@ -417,7 +428,13 @@ export const App: React.FC = () => {
             {activeTab === 'leaderboard' && <Leaderboard />}
             {activeTab === 'profile' && (
               <ProfileView
-                onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+                onOpenAdminLogin={() => {
+                  if (isAdminSessionAuthenticated()) {
+                    setIsAdminModalOpen(true);
+                  } else {
+                    setIsAdminLoginOpen(true);
+                  }
+                }}
                 onOpenEditProfile={() => setIsEditProfileOpen(true)}
                 onOpenReceiptModal={() => setIsReceiptModalOpen(true)}
               />

@@ -23,6 +23,14 @@ export async function apiPost<T = any>(path: string, body: Record<string, any> =
       typeof window !== 'undefined'
         ? (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id ||
           localStorage.getItem('yuksal_admin_id') ||
+          sessionStorage.getItem('yuksal_admin_id') ||
+          ''
+        : '';
+
+    const adminKey =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('yuksal_admin_key') ||
+          sessionStorage.getItem('yuksal_admin_key') ||
           ''
         : '';
 
@@ -33,11 +41,18 @@ export async function apiPost<T = any>(path: string, body: Record<string, any> =
     if (adminId) {
       headers['X-Admin-Id'] = String(adminId);
     }
+    if (adminKey) {
+      headers['X-Admin-Key'] = String(adminKey);
+    }
+
+    const payload: Record<string, any> = { ...body };
+    if (adminId && !payload.adminId) payload.adminId = String(adminId);
+    if (adminKey && !payload.adminKey) payload.adminKey = String(adminKey);
 
     const res = await fetch(path, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
     let data: any = {};
     try {

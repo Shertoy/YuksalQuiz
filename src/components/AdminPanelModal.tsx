@@ -50,6 +50,12 @@ import {
   Coins,
   Wallet,
   CircleDollarSign,
+  Maximize2,
+  Minimize2,
+  LogOut,
+  Laptop,
+  CheckCheck,
+  Link,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -76,6 +82,7 @@ import {
   removeAuthorizedAdminTelegramId,
   cleanTelegramId,
   isTelegramIdAuthorizedAdmin,
+  clearAdminSession,
 } from '../utils/security';
 import { formatDateTime } from '../utils/announcements';
 import {
@@ -149,6 +156,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [activeTab, setActiveTab] = useState<
     'users' | 'receipts' | 'news' | 'universities' | 'pending' | 'tests' | 'supabase' | 'pricing' | 'payments' | 'promocodes' | 'security'
   >('users');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const isInsideTelegram = typeof window !== 'undefined' && Boolean((window as any).Telegram?.WebApp?.initData);
   const [searchQuery, setSearchQuery] = useState('');
   const [newUniName, setNewUniName] = useState('');
   const [editingUni, setEditingUni] = useState<{ originalName: string; currentName: string } | null>(null);
@@ -407,6 +417,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const showNotification = (msg: string) => {
     setFeedback(msg);
     setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const handleAdminLogout = () => {
+    triggerHaptic('medium');
+    clearAdminSession();
+    showNotification("Admin sessiyasi yakunlandi.");
+    setTimeout(() => {
+      onClose();
+    }, 250);
+  };
+
+  const handleCopyAdminLink = () => {
+    triggerHaptic('light');
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}${window.location.pathname}?admin=true`;
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          setCopiedLink(true);
+          showNotification("Admin havolasi nusxalandi!");
+          setTimeout(() => setCopiedLink(false), 3000);
+        }).catch(() => {
+          showNotification(url);
+        });
+      } else {
+        showNotification(url);
+      }
+    }
   };
 
   const loadPayments = async () => {
@@ -795,36 +832,94 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl lg:max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md animate-in fade-in transition-all ${
+      isFullscreen ? 'p-0' : 'p-2 sm:p-4'
+    }`}>
+      <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200 ${
+        isFullscreen
+          ? 'w-full h-full rounded-none'
+          : 'rounded-3xl max-w-6xl xl:max-w-7xl w-full max-h-[95vh] h-full'
+      }`}>
         {/* Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" strokeWidth={1.75} />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+              <ShieldCheck className="w-5 h-5" strokeWidth={2} />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>YuksalQuiz Admin Paneli</span>
+              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                <span>YuksalQuiz Boshqaruv Markazi</span>
                 <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  v1.0
+                  v2.0
                 </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                  Himoyalangan
-                </span>
+                {!isInsideTelegram ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                    <Laptop className="w-3 h-3" /> Brauzer
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                    <Smartphone className="w-3 h-3" /> Telegram
+                  </span>
+                )}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                OTMlar, to'lovlar, promokodlar va tizim boshqaruvi
+                Talabalar, to'lov kvitansiyalari, imtihon testlari va tizim sozlamalari
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 transition-colors"
-          >
-            <X className="w-4 h-4" strokeWidth={1.75} />
-          </button>
+          {/* Quick Header Actions: Copy link, Fullscreen, Logout, Close */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={handleCopyAdminLink}
+              title="Brauzerda to'g'ridan-to'g'ri ochish uchun havola"
+              className="px-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 transition-all flex items-center gap-1.5"
+            >
+              {copiedLink ? (
+                <>
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline text-emerald-600">Nusxalandi</span>
+                </>
+              ) : (
+                <>
+                  <Link className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Admin Havola</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                setIsFullscreen(!isFullscreen);
+              }}
+              title={isFullscreen ? "Oynani kichraytirish" : "To'liq ekran rejimiga o'tish"}
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4" strokeWidth={1.75} />
+              ) : (
+                <Maximize2 className="w-4 h-4" strokeWidth={1.75} />
+              )}
+            </button>
+
+            <button
+              onClick={handleAdminLogout}
+              title="Admin sessiyasini tugatish (Chiqish)"
+              className="px-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 bg-slate-100 dark:bg-slate-800 transition-all flex items-center gap-1"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Chiqish</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 transition-colors"
+              title="Yopish"
+            >
+              <X className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         {/* Feedback Alert */}
@@ -835,7 +930,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         )}
 
         {/* Navigation Tabs - Responsive Scrollable Bar */}
-        <div className="flex items-center gap-1.5 p-2 bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-100 dark:border-slate-800 text-[11px] overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 sm:gap-1.5 p-2 sm:px-4 bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs overflow-x-auto scrollbar-none shrink-0">
           <button
             onClick={() => {
               triggerHaptic('selection');

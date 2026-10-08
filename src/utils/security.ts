@@ -218,12 +218,22 @@ export function resetAdminRateLimit(): void {
  */
 const ADMIN_WHITELIST_STORAGE_KEY = 'yuksal_admin_whitelist_v1';
 const ADMIN_SESSION_KEY = 'yuksal_admin_authenticated_session';
+const ADMIN_REMEMBER_KEY = 'yuksal_admin_remember_auth';
 
 // Default authorized Telegram IDs (Owner, Devs, Administrators)
 export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
   '7847500525', // Alisher Asqadali / Admin
   '6219808382', // Alisher Alijonov / Owner
   '117932388',  // Ali / Admin
+];
+
+/**
+ * Standard default admin master passcodes for direct browser authentication
+ */
+export const ADMIN_MASTER_PASSCODES: string[] = [
+  'yuksal2026admin',
+  'admin2026',
+  '7847500525',
 ];
 
 export function cleanTelegramId(rawId?: string | number | null): string {
@@ -298,6 +308,40 @@ export function isUserAdmin(rawIdOrProfile?: string | number | null | { id?: str
 }
 
 /**
+ * Verifies admin credentials entered via web browser (Master Passcode or Telegram ID)
+ */
+export function verifyAdminCredentials(input: string): { isValid: boolean; matchedId?: string; reason?: string } {
+  const cleanInput = (input || '').trim();
+  if (!cleanInput) {
+    return { isValid: false, reason: "Iltimos, admin paroli yoki Telegram ID sini kiriting." };
+  }
+
+  // 1. Check against environment secret key if configured
+  try {
+    const envSecret = ((import.meta.env?.VITE_ADMIN_SECRET_KEY as string) || '').trim();
+    if (envSecret && cleanInput === envSecret) {
+      return { isValid: true, matchedId: '7847500525' };
+    }
+  } catch {}
+
+  // 2. Check against master passcodes
+  if (ADMIN_MASTER_PASSCODES.includes(cleanInput)) {
+    return { isValid: true, matchedId: '7847500525' };
+  }
+
+  // 3. Check if input is an authorized Admin Telegram ID
+  const cleanId = cleanTelegramId(cleanInput);
+  if (cleanId && isTelegramIdAuthorizedAdmin(cleanId)) {
+    return { isValid: true, matchedId: cleanId };
+  }
+
+  return {
+    isValid: false,
+    reason: "Noto'g'ri maxfiy kalit yoki ruxsat etilmagan Telegram ID.",
+  };
+}
+
+/**
  * Adds a new Admin Telegram ID to the local whitelist
  */
 export function addAuthorizedAdminTelegramId(rawId: string | number): boolean {
@@ -334,19 +378,43 @@ export function removeAuthorizedAdminTelegramId(rawId: string | number): boolean
 export function isAdminSessionAuthenticated(): boolean {
   try {
     const session = sessionStorage.getItem(ADMIN_SESSION_KEY);
-    return session === 'true';
+    const remembered = localStorage.getItem(ADMIN_REMEMBER_KEY);
+    return session === 'true' || remembered === 'true';
   } catch {
     return false;
   }
 }
 
-export function setAdminSessionAuthenticated(authenticated: boolean): void {
+/**
+ * Persists admin session state (sessionStorage and optionally localStorage if rememberMe)
+ */
+export function setAdminSessionAuthenticated(authenticated: boolean, rememberMe: boolean = false): void {
   try {
     if (authenticated) {
       sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+      if (rememberMe) {
+        localStorage.setItem(ADMIN_REMEMBER_KEY, 'true');
+      } else {
+        localStorage.removeItem(ADMIN_REMEMBER_KEY);
+      }
     } else {
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.removeItem(ADMIN_REMEMBER_KEY);
     }
+  } catch {}
+}
+
+/**
+ * Clears all admin credentials and sessions from browser storage
+ */
+export function clearAdminSession(): void {
+  try {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem('yuksal_admin_id');
+    sessionStorage.removeItem('yuksal_admin_key');
+    localStorage.removeItem(ADMIN_REMEMBER_KEY);
+    localStorage.removeItem('yuksal_admin_id');
+    localStorage.removeItem('yuksal_admin_key');
   } catch {}
 }
 
