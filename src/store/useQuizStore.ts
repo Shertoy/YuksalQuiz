@@ -265,7 +265,9 @@ const DEFAULT_PROFILE: UserProfile = {
   isRegistered: false,
   acceptedOferta: false,
   walletBalance: 0,
-  voucherBalance: 0, // vaucher endi 'Olish' tugmasi orqali balansga qo'shiladi
+  voucherBalance: 0,
+  voucher_claimed: true, // Yangi kirganlar uchun vaucher berilmaydi
+  voucherClaimed: true,
   authorEarnings: 0,
   referralCount: 0,
   subscriptionPlan: 'none',
@@ -1687,61 +1689,17 @@ export const useQuizStore = create<QuizState>()(
         return { newBalance };
       },
 
-      // Boshlang'ich vaucherni olish. Bir martalik tekshiruv va balansga qo'shish serverda bajariladi.
+      // Boshlang'ich vaucher aksiyasi yangi foydalanuvchilar uchun to'xtatilgan. Eski olganlar bundan mustasno.
       claimVoucherDirectly: async () => {
-        const { profile } = get();
-        if (profile.voucher_claimed || profile.voucherClaimed) return false;
-
-        const r = await apiPost('/api/wallet', { action: 'claim_voucher' });
-        const d: any = r.data || {};
-
-        if (d.reason === 'already_claimed') {
-          set((st) => ({ profile: { ...st.profile, voucher_claimed: true, voucherClaimed: true, voucherBalance: 0 } }));
-          return false;
-        }
-        if (!r.ok || !d.ok) {
-          triggerHaptic('error');
-          const msg = apiErrorText(r, "Vaucherni olib bo'lmadi. Keyinroq urinib ko'ring.");
-          const tgApp = (window as any).Telegram?.WebApp;
-          if (tgApp?.showAlert) tgApp.showAlert(msg);
-          else alert(msg);
-          return false;
-        }
-
-        const bonus = Number(d.amount || 20000);
-        const newBalance = Number(d.new_balance || 0);
-        const updatedProfile: UserProfile = {
-          ...profile,
-          walletBalance: newBalance,
-          balance: newBalance,
-          voucherBalance: 0,
-          voucher_claimed: true,
-          voucherClaimed: true,
-        };
-
-        updatedProfile.checksum = generateIntegritySignature({
-          userId: updatedProfile.id,
-          coins: updatedProfile.coins,
-          completedTestsCount: updatedProfile.completedTestsCount,
-          streak: updatedProfile.streak,
-          lastLoginDate: updatedProfile.lastLoginDate,
-          walletBalance: updatedProfile.walletBalance,
-          voucherBalance: updatedProfile.voucherBalance,
-        });
-
-        set({ profile: updatedProfile });
-
-        get().addTransaction({
-          type: 'voucher',
-          title: `${bonus.toLocaleString('uz-UZ')} so'm boshlang'ich vaucher faollashtirildi`,
-          amount: bonus,
-          unit: "so'm",
-          isPositive: true,
-        });
-
-        triggerHaptic('success');
-        soundFX.playCoin();
-        return true;
+        set((st) => ({
+          profile: {
+            ...st.profile,
+            voucher_claimed: true,
+            voucherClaimed: true,
+            voucherBalance: 0,
+          },
+        }));
+        return false;
       },
 
       // Apply direct P2P Payment approval verified by Gemini AI or Telegram Admin
@@ -1978,9 +1936,11 @@ export const useQuizStore = create<QuizState>()(
             state.profile.subscriptionExpiry = undefined;
           }
 
-          // Migrate voucher balance to 20 000
+          // Yangi siyosat: yangi foydalanuvchilarga vaucher berilmaydi. Eski berilganlar saqlanadi.
           if (state.profile.voucherBalance === 35000 || state.profile.voucherBalance === undefined) {
-            state.profile.voucherBalance = 20000;
+            state.profile.voucherBalance = 0;
+            state.profile.voucher_claimed = true;
+            state.profile.voucherClaimed = true;
           } else {
             state.profile.voucherBalance = Math.min(Math.max(state.profile.voucherBalance ?? 0, 0), 20000);
           }

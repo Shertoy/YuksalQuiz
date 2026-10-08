@@ -57,18 +57,12 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'claim_voucher') {
-      const { data, error } = await db.rpc('claim_voucher', { p_user: row?.id || tgKey });
-      if (error) throw error;
-      // Foydalanuvchi qatori yangi bo'lsa, ismini ham yozib qo'yamiz
-      await db
-        .from('users')
-        .update({
-          telegram_id: user.id,
-          telegram_username: user.username || null,
-          first_name: row?.first_name || user.firstName || null,
-        })
-        .eq('id', row?.id || tgKey);
-      return res.status(data?.ok ? 200 : 409).json(data);
+      // Yangi foydalanuvchilar uchun vaucher aksiyasi tugatilgan. Eski berilganlar saqlanadi.
+      return res.status(400).json({
+        ok: false,
+        reason: 'promotion_ended',
+        error: "Boshlang'ich vaucher aksiyasi yakunlangan. Yangi foydalanuvchilarga vaucher berilmaydi.",
+      });
     }
 
     if (action === 'purchase') {

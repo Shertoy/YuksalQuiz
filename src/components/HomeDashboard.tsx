@@ -453,50 +453,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
 
 
-      {/* 20 000 UZS Starting Voucher Card - Disappears permanently once claimed */}
-      {!profile.voucher_claimed && !profile.voucherClaimed && (
-        <div
-          onClick={handleClaimVoucher}
-          className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/40 text-white rounded-3xl p-4 shadow-xl space-y-3 relative overflow-hidden cursor-pointer hover:border-emerald-400 active:scale-[0.99] transition-all group"
-        >
-          <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
-
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
-                <Ticket className="w-5 h-5 text-slate-950" strokeWidth={1.75} />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-extrabold text-white">
-                    20 000 so'm boshlang'ich vaucheringiz faol!
-                  </h3>
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
-                    Sovg'a
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-100 leading-relaxed font-medium">
-                  Ushbu vaucherni bosing va to'g'ridan-to'g'ri balansingizga +20 000 so'm qabul qilib oling!
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-1 relative z-10">
-            <button
-              type="button"
-              disabled={isVoucherClaiming}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center leading-none gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
-            >
-              <Gift className="w-4 h-4 text-slate-950 shrink-0" />
-              <span>{isVoucherClaiming ? "Qo'shilmoqda..." : "Balansga +20 000 so'm qabul qilish"}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-
-
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
         <button

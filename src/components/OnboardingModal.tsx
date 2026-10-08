@@ -177,8 +177,8 @@ export const OnboardingModal: React.FC = () => {
               </p>
 
               <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-2xl p-4 text-left mb-6 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  <Ticket className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={1.75} />
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
                   <span>{t.onboardingVoucherBenefit}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">

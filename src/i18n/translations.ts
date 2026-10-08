@@ -636,7 +636,7 @@ export const translations: Record<Language, Translations> = {
     semesterSelectPlaceholder: 'Semestrni tanlang',
     academicYearSelectPlaceholder: "O'quv yilini tanlang",
     paywallLimitReachedTitle: 'Kunlik bepul limit tugadi',
-    paywallLimitReachedDesc: "Siz ushbu testni bugun 2 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.",
+    paywallLimitReachedDesc: "Siz ushbu testni bugun 1 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.",
     paywallTopUpBtn: "Hisobni to'ldirish",
     paywallBackBtn: 'Orqaga qaytish',
 
@@ -652,7 +652,7 @@ export const translations: Record<Language, Translations> = {
     themeDark: "Qorong'i (Tungi)",
 
     // Onboarding Benefits
-    onboardingVoucherBenefit: "20 000 so'mlik boshlang'ich obuna vaucheri taqdim etiladi!",
+    onboardingVoucherBenefit: "Har kuni 1 ta testni bepul topshirish imkoniyati",
     onboardingPracticeBenefit: 'Barcha testlar va fanlar bo\'yicha mashq qilish imkoniyati',
     onboardingSecurityBenefit: 'Rasmiy Ommaviy oferta va shifrlangan xotira',
 
@@ -969,7 +969,7 @@ export const translations: Record<Language, Translations> = {
     semesterSelectPlaceholder: 'Выберите семестр',
     academicYearSelectPlaceholder: 'Выберите учебный год',
     paywallLimitReachedTitle: 'Дневной бесплатный лимит исчерпан',
-    paywallLimitReachedDesc: 'Вы прошли этот тест сегодня 2 раза бесплатно. Пополните баланс для безлимитного доступа ко всем тестам без ограничений.',
+    paywallLimitReachedDesc: 'Вы прошли этот тест сегодня 1 раз бесплатно. Пополните баланс для безлимитного доступа ко всем тестам без ограничений.',
     paywallTopUpBtn: 'Пополнить баланс',
     paywallBackBtn: 'Вернуться назад',
 
@@ -985,7 +985,7 @@ export const translations: Record<Language, Translations> = {
     themeDark: 'Темная (Ночная)',
 
     // Onboarding Benefits
-    onboardingVoucherBenefit: 'Стартовый ваучер на 20 000 сум на любую подписку!',
+    onboardingVoucherBenefit: 'Возможность бесплатно сдавать 1 тест каждый день',
     onboardingPracticeBenefit: 'Возможность практиковаться по всем тестам и предметам',
     onboardingSecurityBenefit: 'Официальная Публичная оферта и защищенное хранилище',
 
@@ -1302,7 +1302,7 @@ export const translations: Record<Language, Translations> = {
     semesterSelectPlaceholder: 'Select semester',
     academicYearSelectPlaceholder: 'Select academic year',
     paywallLimitReachedTitle: 'Daily Free Limit Reached',
-    paywallLimitReachedDesc: 'You have taken this test 2 times for free today. Top up your balance to get unlimited access to all tests without daily limits.',
+    paywallLimitReachedDesc: 'You have taken this test 1 time for free today. Top up your balance to get unlimited access to all tests without daily limits.',
     paywallTopUpBtn: 'Top Up Balance',
     paywallBackBtn: 'Go Back',
 
@@ -1318,7 +1318,7 @@ export const translations: Record<Language, Translations> = {
     themeDark: 'Dark (Night)',
 
     // Onboarding Benefits
-    onboardingVoucherBenefit: '20,000 UZS starter voucher granted for any subscription!',
+    onboardingVoucherBenefit: 'Opportunity to take 1 test for free every day',
     onboardingPracticeBenefit: 'Unlimited practice across all tests and subjects',
     onboardingSecurityBenefit: 'Official Public Offer and encrypted storage',
 

@@ -92,7 +92,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
           {/* Matn */}
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mt-2.5 max-w-sm mx-auto">
-            Siz ushbu testni bugun 2 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.
+            Siz ushbu testni bugun 1 marta bepul topshirdingiz. Kunlik cheklovlarsiz barcha testlardan foydalanish uchun balansingizni to'ldiring.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               Bugungi urinishlar:
             </span>
             <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-400 font-black text-[11px] border border-orange-200 dark:border-orange-800">
-              2 / 2 (Tugagan)
+              1 / 1 (Tugagan)
             </span>
           </div>
 

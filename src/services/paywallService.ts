@@ -5,11 +5,11 @@ import { UserProfile, TestAttempt } from '../types';
  * 
  * Rules:
  * 1. If user.has_paid === true (or has active subscription) -> Unlimited access.
- * 2. If free user -> Maximum 2 free attempts per test per day.
- * 3. 3rd attempt is blocked and prompts Paywall modal.
+ * 2. If free user -> Maximum 1 free attempt per test per day (oldingi limit 2 ta edi).
+ * 3. 2nd attempt is blocked and prompts Paywall modal.
  */
 
-export const DAILY_FREE_TEST_LIMIT = 2;
+export const DAILY_FREE_TEST_LIMIT = 1;
 
 const STORAGE_PREFIX = 'yuksal_daily_attempts_';
 
