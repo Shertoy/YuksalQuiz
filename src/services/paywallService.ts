@@ -45,6 +45,20 @@ export function isPaidUser(profile?: UserProfile | null): boolean {
 }
 
 /**
+ * Calculates remaining days of active subscription.
+ * Returns null if no expiration date is found.
+ */
+export function getSubscriptionRemainingDays(profile?: UserProfile | null): number | null {
+  if (!profile) return null;
+  const expiryStr = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
+  if (!expiryStr) return null;
+  const expiryDate = new Date(expiryStr);
+  if (isNaN(expiryDate.getTime())) return null;
+  const diffMs = expiryDate.getTime() - Date.now();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
+/**
  * Generates test key for tracking
  */
 export function getTestKey(pkgId: string, blockId?: string): string {

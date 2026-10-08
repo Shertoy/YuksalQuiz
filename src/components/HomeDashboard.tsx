@@ -25,11 +25,12 @@ import {
   Wallet,
   Gift,
   Star,
+  Clock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
 import { getGenderSafeAvatar } from '../constants/avatars';
-import { isPaidUser } from '../services/paywallService';
+import { isPaidUser, getSubscriptionRemainingDays } from '../services/paywallService';
 import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
@@ -74,6 +75,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Compute rating stats and ranking
   const stats = calculateUserRatingStats(testAttempts);
+  const remainingDays = getSubscriptionRemainingDays(profile);
 
   const cleanProfileId = (profile.id || '').replace(/^lead_/, '');
   const currentUserEntry: LeaderboardUser = {
@@ -325,30 +327,89 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* Active Subscription Badge if user has active plan */}
+      {/* Active Subscription Badge & Expiration Alert */}
       {isPaidUser(profile) && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/20 border-2 border-amber-500/50 flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black shadow-md shadow-orange-500/30 shrink-0">
-              <Star className="w-5 h-5 fill-amber-100 text-amber-100" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-black text-slate-900 dark:text-white">
-                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
-                </span>
-                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase tracking-wider">
-                  Faol
-                </span>
+        <div className="space-y-2">
+          {/* 10-day Expiration Warning Banner */}
+          {remainingDays !== null && remainingDays <= 10 && remainingDays > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/70 flex items-center justify-between gap-3 shadow-sm animate-pulse">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-500/30 shrink-0">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                      ⚠️ Obunangiz tugashiga {remainingDays} kun qoldi!
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-500 text-white uppercase tracking-wider">
+                      Eslatma
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 truncate mt-0.5">
+                    Cheklovlarsiz test ishlashni davom ettirish uchun obunani yangilang
+                  </p>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                Muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}
-              </p>
+              <button
+                type="button"
+                onClick={onOpenReceiptModal}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-extrabold text-xs shrink-0 shadow-sm transition-all"
+              >
+                Yangilash
+              </button>
             </div>
+          )}
+
+          {remainingDays !== null && remainingDays <= 0 && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/15 border-2 border-rose-500/70 flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center font-black shadow-md shadow-rose-500/30 shrink-0">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-black text-rose-900 dark:text-rose-200 block truncate">
+                    ⌛ Obunangiz muddati tugagan
+                  </span>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300 truncate mt-0.5">
+                    Barcha testlarni ishlash uchun obunani yangilang
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenReceiptModal}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold text-xs shrink-0 shadow-sm transition-all"
+              >
+                Yangilash
+              </button>
+            </div>
+          )}
+
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/20 border-2 border-amber-500/50 flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black shadow-md shadow-orange-500/30 shrink-0">
+                <Star className="w-5 h-5 fill-amber-100 text-amber-100" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase tracking-wider">
+                    Faol
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  Muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}
+                  {remainingDays !== null && remainingDays > 0 ? ` (${remainingDays} kun qoldi)` : ''}
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl bg-amber-500/10 shrink-0">
+              VIP Kirish
+            </span>
           </div>
-          <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl bg-amber-500/10 shrink-0">
-            VIP Kirish
-          </span>
         </div>
       )}
 

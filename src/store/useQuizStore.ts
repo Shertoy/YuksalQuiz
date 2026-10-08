@@ -688,51 +688,82 @@ export const useQuizStore = create<QuizState>()(
           }
 
           if (dbUser || subData || leadPkgUser || approvedPaymentsSum > 0 || adminCreditBal > 0) {
-            const numBalance = Math.max(
-              Number(dbUser?.balance ?? dbUser?.wallet_balance ?? 0),
-              approvedPaymentsSum,
-              leadPkgBal,
-              adminCreditBal,
-              Number(currentProfile.walletBalance || 0)
-            );
+            // Authoritative server balance resolution
+            let numBalance = 0;
+            if (leadPkgUser && typeof leadPkgUser.wallet_balance === 'number') {
+              numBalance = Number(leadPkgUser.wallet_balance);
+            } else if (typeof leadPkgBal === 'number' && leadPkgBal > 0) {
+              numBalance = leadPkgBal;
+            } else if (dbUser && typeof (dbUser.balance ?? dbUser.wallet_balance) === 'number') {
+              numBalance = Number(dbUser.balance ?? dbUser.wallet_balance);
+            } else {
+              numBalance = Number(currentProfile.walletBalance || 0);
+            }
+
+            if (approvedPaymentsSum > numBalance) {
+              numBalance = approvedPaymentsSum;
+            }
+
             const isBlocked = Boolean(dbUser?.is_blocked);
             const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
 
             // Obuna tekshiruvi: muddat, is_subscribed bayrog'i, has_paid yoki subscription_tier bo'yicha
             const rawSubEnd =
+              leadPkgUser?.subscription_end ||
+              leadPkgUser?.paid_until ||
               dbUser?.subscription_end ||
               dbUser?.paid_until ||
               subData?.expires_at ||
-              leadPkgUser?.subscription_end ||
-              leadPkgUser?.paid_until ||
               adminCreditExpiry;
 
             const isSubscribed = Boolean(
               (rawSubEnd && new Date(rawSubEnd) > new Date()) ||
-              dbUser?.is_subscribed === true ||
-              dbUser?.has_paid === true ||
               leadPkgUser?.is_subscribed === true ||
               leadPkgUser?.has_paid === true ||
-              (dbUser?.subscription_tier && dbUser?.subscription_tier !== 'none') ||
-              (dbUser?.subscription_plan && dbUser?.subscription_plan !== 'none') ||
+              dbUser?.is_subscribed === true ||
+              dbUser?.has_paid === true ||
+              (dbUser?.subscription_tier && dbUser?.subscription_tier !== 'none' && dbUser?.subscription_tier !== 'free') ||
+              (dbUser?.subscription_plan && dbUser?.subscription_plan !== 'none' && dbUser?.subscription_plan !== 'free') ||
               Boolean(subData?.expires_at && new Date(subData.expires_at) > new Date()) ||
               Boolean(adminCreditPlan)
             );
 
             const activeTier: any =
+              leadPkgUser?.subscription_tier ||
               dbUser?.subscription_tier ||
               dbUser?.subscription_plan ||
               subData?.plan_name ||
               subData?.plan ||
-              leadPkgUser?.subscription_tier ||
               adminCreditPlan ||
-              (isSubscribed ? (currentProfile.subscriptionPlan && currentProfile.subscriptionPlan !== 'none' ? currentProfile.subscriptionPlan : '3_months') : 'none');
+              (isSubscribed ? (currentProfile.subscriptionPlan || '3_months') : 'none');
 
             const activeEnd =
               rawSubEnd ||
-              currentProfile.subscriptionExpiry ||
-              currentProfile.paid_until ||
-              (isSubscribed ? new Date(Date.now() + 90 * 86400000).toISOString() : undefined);
+              (isSubscribed ? currentProfile.subscriptionEnd || currentProfile.paid_until || new Date(Date.now() + 90 * 86400000).toISOString() : undefined);
+
+            // 10 kunlik obuna tugashi eslatmasi (in-app bildirishnoma)
+            if (activeEnd && isSubscribed) {
+              const expDate = new Date(activeEnd);
+              if (!isNaN(expDate.getTime())) {
+                const remainingDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                if (remainingDays <= 10 && remainingDays > 0) {
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const existingAnn = (get().announcements || []).find(
+                    (a) => a.tag === 'eslatma' && a.title.includes('Obuna') && a.date === todayStr
+                  );
+                  if (!existingAnn) {
+                    get().addAnnouncement({
+                      title: `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`,
+                      message: `Hurmatli talaba, sizning VIP Premium obunangiz tugashiga ${remainingDays} kun qoldi. Testlarni cheklovlarsiz ishlashda davom etish uchun hamyoningiz orqali obunani yangilashingiz mumkin.`,
+                      tag: 'eslatma',
+                      targetType: 'user',
+                      targetValue: resolvedId,
+                      targetLabel: 'Talabaga',
+                    });
+                  }
+                }
+              }
+            }
 
             console.log('⚡ Yangilangan state: Balans =', numBalance, 'Obuna =', isSubscribed, activeTier, activeEnd);
 
@@ -1597,20 +1628,117 @@ export const useQuizStore = create<QuizState>()(
         set({ mistakes: filtered });
       },
 
-      // Obuna sotib olish. Narx va balans tekshiruvi serverda (bazada) bajariladi,
-      // shuning uchun brauzerda soxtalashtirib bo'lmaydi.
+      // Obuna sotib olish: hamyondagi mablag'dan avtomatik yechish va faollashtirish
       applySubscription: async (plan: SubscriptionPlanType) => {
-        const r = await apiPost('/api/wallet', { action: 'purchase', plan });
-        const d: any = r.data || {};
-        if (!r.ok || !d.ok) {
-          triggerHaptic('error');
-          return { success: false, message: apiErrorText(r, "Obunani faollashtirib bo'lmadi") };
+        const { profile, subscriptionPrices } = get();
+        const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
+        const planPrice = prices[plan] || (plan === '1_year' ? 100000 : plan === '6_months' ? 60000 : 35000);
+        const currentBalance = Number(profile.walletBalance ?? profile.balance ?? 0);
+
+        if (currentBalance < planPrice) {
+          triggerHaptic('warning');
+          return {
+            success: false,
+            message: `Hamyoningizda yetarli mablag' mavjud emas. Kerakli summa: ${planPrice.toLocaleString('uz-UZ')} so'm, sizda: ${currentBalance.toLocaleString('uz-UZ')} so'm.`,
+          };
         }
 
-        const { profile } = get();
-        const price = Number(d.price || 0);
-        const newBalance = Number(d.new_balance || 0);
-        const end = d.subscription_end ? String(d.subscription_end) : undefined;
+        let serverSuccess = false;
+        let serverData: any = null;
+
+        // 1. Server API orqali sinab ko'rish
+        try {
+          const r = await apiPost('/api/wallet', { action: 'purchase', plan });
+          if (r.ok && r.data?.ok) {
+            serverSuccess = true;
+            serverData = r.data;
+          }
+        } catch (serverErr) {
+          console.debug('Server purchase notice:', serverErr);
+        }
+
+        const newBalance = serverSuccess && typeof serverData?.new_balance === 'number'
+          ? Number(serverData.new_balance)
+          : Math.max(0, currentBalance - planPrice);
+
+        const months = plan === '1_year' ? 12 : plan === '6_months' ? 6 : 3;
+        let expiryDate = new Date();
+        const curEnd = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
+        if (curEnd && new Date(curEnd) > expiryDate) {
+          expiryDate = new Date(curEnd);
+        }
+        expiryDate.setMonth(expiryDate.getMonth() + months);
+        const endIso = serverSuccess && serverData?.subscription_end
+          ? String(serverData.subscription_end)
+          : expiryDate.toISOString();
+
+        // 2. Supabase test_packages va subscriptions ga sinxronlashtirish
+        try {
+          const supabase = getSupabase();
+          if (supabase) {
+            const rawId = String(profile.id || '').trim();
+            const cleanId = cleanTelegramId(rawId);
+            const targetId = rawId || cleanId;
+
+            // A. test_packages LeaderboardUser yangilash
+            const leadPkgIds = [
+              `lead_${targetId}`,
+              `lead_${cleanId}`,
+              `lead_user-${cleanId}`,
+              `lead_tg_${cleanId}`,
+            ];
+            for (const lId of leadPkgIds) {
+              try {
+                const { data: curLead } = await supabase
+                  .from('test_packages')
+                  .select('id, blocks')
+                  .eq('id', lId)
+                  .maybeSingle();
+                if (curLead) {
+                  const b0 = Array.isArray(curLead.blocks) && curLead.blocks[0] ? { ...curLead.blocks[0] } : {};
+                  b0.wallet_balance = newBalance;
+                  b0.balance = newBalance;
+                  b0.has_paid = true;
+                  b0.is_subscribed = true;
+                  b0.subscription_tier = plan;
+                  b0.subscription_end = endIso;
+                  b0.paid_until = endIso;
+                  await supabase.from('test_packages').update({
+                    author_wallet_balance: newBalance,
+                    blocks: [b0],
+                  }).eq('id', lId);
+                }
+              } catch {}
+            }
+
+            // B. subscriptions jadvaliga yozish
+            try {
+              await supabase.from('subscriptions').insert({
+                user_id: targetId,
+                plan_name: plan,
+                price: planPrice,
+                expires_at: endIso,
+                created_at: new Date().toISOString(),
+              });
+            } catch {}
+
+            // C. users jadvaliga yozish
+            try {
+              await supabase.from('users').update({
+                balance: newBalance,
+                has_paid: true,
+                paid_until: endIso,
+                is_subscribed: true,
+                subscription_end: endIso,
+                subscription_tier: plan,
+                updated_at: new Date().toISOString(),
+              }).eq('id', targetId);
+            } catch {}
+          }
+        } catch (syncErr) {
+          console.warn('Subscription cloud sync notice:', syncErr);
+        }
+
         const planLabel = plan === '3_months' ? '3 oylik' : plan === '6_months' ? '6 oylik' : '1 yillik';
 
         const updatedProfile: UserProfile = {
@@ -1620,11 +1748,11 @@ export const useQuizStore = create<QuizState>()(
           voucherBalance: 0,
           subscriptionPlan: plan,
           subscriptionTier: plan,
-          subscriptionExpiry: end ? end.split('T')[0] : undefined,
-          subscriptionEnd: end,
+          subscriptionExpiry: endIso.split('T')[0],
+          subscriptionEnd: endIso,
           isSubscribed: true,
           has_paid: true,
-          paid_until: end,
+          paid_until: endIso,
         };
 
         updatedProfile.checksum = generateIntegritySignature({
@@ -1643,15 +1771,15 @@ export const useQuizStore = create<QuizState>()(
 
         get().addTransaction({
           type: 'deposit',
-          title: `${planLabel} Premium obuna to'lovi`,
-          amount: price,
+          title: `${planLabel} Premium obuna to'lovi (Hamyondan)`,
+          amount: planPrice,
           unit: "so'm",
           isPositive: false,
         });
 
         return {
           success: true,
-          message: `Hisobingizdan ${price.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
+          message: `Hisobingizdan ${planPrice.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
       },
 

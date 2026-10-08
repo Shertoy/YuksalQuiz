@@ -59,6 +59,8 @@ import {
   Sun,
   Moon,
   ArrowRight,
+  Crown,
+  Scale,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -118,6 +120,7 @@ import {
   approveReceiptPayment,
   rejectReceiptPayment,
   adminManualCredit,
+  ManualCreditMode,
 } from '../services/receiptService';
 
 interface AdminPanelModalProps {
@@ -225,10 +228,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const [showManualTopUp, setShowManualTopUp] = useState(false);
 
   // Manual Top-up form state
+  const [manualActionMode, setManualActionMode] = useState<ManualCreditMode>('subscription_only');
   const [manualUserId, setManualUserId] = useState('');
   const [manualFullName, setManualFullName] = useState('');
   const [manualAmount, setManualAmount] = useState('35000');
-  const [manualPlan, setManualPlan] = useState<'none' | '3_months' | '6_months' | '1_year'>('none');
+  const [manualPlan, setManualPlan] = useState<'none' | '3_months' | '6_months' | '1_year'>('3_months');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
   // Users statistics & filter state
@@ -700,20 +704,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       showNotification("Iltimos, talabaning Telegram ID sini kiriting.");
       return;
     }
-    const amt = Number(manualAmount);
-    if (!amt || amt <= 0) {
+    const amt = Number(manualAmount) || 0;
+    if (manualActionMode !== 'subscription_only' && amt < 0) {
       showNotification("Iltimos, to'g'ri summa kiriting.");
       return;
     }
     setIsSubmittingManual(true);
     triggerHaptic('medium');
     try {
-      const plan = manualPlan !== 'none' ? manualPlan : null;
+      const plan = manualPlan !== 'none' ? manualPlan : (manualActionMode === 'subscription_only' ? '3_months' : null);
       const res = await adminManualCredit(
         manualUserId.trim(),
         amt,
         manualFullName.trim() || undefined,
-        plan
+        plan,
+        manualActionMode
       );
       if (res.success) {
         triggerHaptic('success');
@@ -721,7 +726,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         setManualUserId('');
         setManualFullName('');
         setManualAmount('35000');
-        setManualPlan('none');
+        setManualPlan('3_months');
         setShowManualTopUp(false);
         await loadPayments();
         await loadUsers();
@@ -736,9 +741,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     }
   };
 
-  const openManualTopUpForUser = (user: LeaderboardUser) => {
+  const openManualTopUpForUser = (user: LeaderboardUser, mode: ManualCreditMode = 'subscription_only') => {
     setManualUserId(user.id);
     setManualFullName(user.name);
+    setManualActionMode(mode);
+    if (mode === 'set_balance') {
+      setManualAmount(String(user.walletBalance || 0));
+    } else if (mode === 'subscription_only') {
+      setManualPlan('3_months');
+    }
     setShowManualTopUp(true);
     setActiveTab('receipts');
     triggerHaptic('selection');
@@ -1766,23 +1777,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                               {/* Amallar */}
                               <td className="py-3 px-3 text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1.5">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     type="button"
-                                    onClick={() => openManualTopUpForUser(student)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-200 dark:border-amber-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                    title="Ushbu talabaga to'lov/balans yoki obuna qo'shish"
+                                    onClick={() => openManualTopUpForUser(student, 'subscription_only')}
+                                    className="px-2 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200 dark:border-purple-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Faqat VIP obunani yoqish (hamyon o'zgarmaydi)"
                                   >
-                                    <Wallet className="w-3 h-3" strokeWidth={1.75} />
-                                    <span>+Balans/Obuna</span>
+                                    <Crown className="w-3 h-3 text-purple-600 dark:text-purple-400" strokeWidth={1.75} />
+                                    <span>Obuna</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openManualTopUpForUser(student, 'add_funds')}
+                                    className="px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Talaba hamyoniga pul qo'shish"
+                                  >
+                                    <Coins className="w-3 h-3 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                                    <span>+Pul</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openManualTopUpForUser(student, 'set_balance')}
+                                    className="px-2 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200 dark:border-amber-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Balansni to'g'rilash (0 qilish yoki aniq summa belgilash)"
+                                  >
+                                    <Scale className="w-3 h-3 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+                                    <span>To'g'rilash</span>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleDirectMessageUser(student)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                    title="Ushbu talabaga shaxsiy xabar yuborish"
+                                    className="px-2 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200 dark:border-blue-800 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                    title="Talabaga shaxsiy xabar yuborish"
                                   >
-                                    <Send className="w-3 h-3" strokeWidth={1.75} />
+                                    <Send className="w-3 h-3 text-blue-600 dark:text-blue-400" strokeWidth={1.75} />
                                     <span>Xabar</span>
                                   </button>
                                 </div>
@@ -1933,13 +1962,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               {showManualTopUp && (
                 <form
                   onSubmit={handleManualCreditSubmit}
-                  className="p-4 rounded-3xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-3.5 animate-in slide-in-from-top-2"
+                  className="p-4 rounded-3xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-4 animate-in slide-in-from-top-2"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
                       <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
-                        Talaba Hisobiga Qo'lda To'lov / Balans Qo'shish
+                        Talaba Hisobini Boshqarish (Obuna / Pul / To'g'rilash)
                       </h5>
                     </div>
                     <button
@@ -1951,6 +1980,92 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     </button>
                   </div>
 
+                  {/* Mode Selector Tabs */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualActionMode('subscription_only');
+                        setManualPlan('3_months');
+                        triggerHaptic('selection');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        manualActionMode === 'subscription_only'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Crown className="w-3.5 h-3.5" />
+                      <span>Faqat Obuna</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualActionMode('add_funds');
+                        setManualPlan('none');
+                        triggerHaptic('selection');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        manualActionMode === 'add_funds'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>Pul Qo'shish</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualActionMode('set_balance');
+                        triggerHaptic('selection');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        manualActionMode === 'set_balance'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>Balansni To'g'rilash</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualActionMode('both');
+                        setManualPlan('3_months');
+                        triggerHaptic('selection');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        manualActionMode === 'both'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Obuna + Pul</span>
+                    </button>
+                  </div>
+
+                  {/* Mode explanation info box */}
+                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                    {manualActionMode === 'subscription_only' && (
+                      <p>👑 <b>Faqat Obuna Yoqish:</b> Talaba hamyoniga qo'shimcha pul o'tkazilmaydi (balans o'zgarmaydi). Faqat tanlangan muddatga VIP obuna faollashtiriladi va talabaga bildirishnoma yuboriladi.</p>
+                    )}
+                    {manualActionMode === 'add_funds' && (
+                      <p>💳 <b>Hamyonga Pul Qo'shish:</b> Talaba hamyoniga kiritilgan summa qo'shiladi. Talaba ilovada o'z xohishi bilan istagan tarifini aktivlashtirishi mumkin.</p>
+                    )}
+                    {manualActionMode === 'set_balance' && (
+                      <p>⚖️ <b>Balansni Aniq Belgilash (To'g'rilash):</b> Talaba balansi aynan shu summaga o'rnatiladi (masalan: ortiqcha pullarni 0 qilish yoki 25 000 so'm qilib qo'yish uchun).</p>
+                    )}
+                    {manualActionMode === 'both' && (
+                      <p>🔄 <b>Obuna va Pul Qo'shish:</b> Ham hamyonga kiritilgan summa o'tkaziladi, ham VIP obunasi faollashadi.</p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
@@ -1960,7 +2075,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         type="text"
                         value={manualUserId}
                         onChange={(e) => setManualUserId(e.target.value)}
-                        placeholder="Masalan: 117932388 yoki 6219808382"
+                        placeholder="Masalan: 117932388 yoki user-k31dje7"
                         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                         required
                       />
@@ -1981,67 +2096,119 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
-                        Summa (so'm):
-                      </label>
-                      <div className="space-y-1.5">
-                        <input
-                          type="number"
-                          value={manualAmount}
-                          onChange={(e) => setManualAmount(e.target.value)}
-                          placeholder="35000"
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          required
-                        />
-                        <div className="flex gap-1.5">
-                          {[35000, 60000, 100000].map((amt) => (
-                            <button
-                              key={amt}
-                              type="button"
-                              onClick={() => {
-                                setManualAmount(amt.toString());
-                                if (amt === 35000) setManualPlan('3_months');
-                                if (amt === 60000) setManualPlan('6_months');
-                                if (amt === 100000) setManualPlan('1_year');
-                              }}
-                              className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold hover:bg-amber-50 text-slate-700 dark:text-slate-300"
-                            >
-                              {amt.toLocaleString('uz-UZ')}
-                            </button>
-                          ))}
+                    {/* Summa Input / Balance Status */}
+                    {manualActionMode === 'subscription_only' ? (
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                          Hamyon Summasi:
+                        </label>
+                        <div className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400">
+                          0 so'm (Hamyon balansi o'zgarmaydi)
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                          {manualActionMode === 'set_balance' ? "Yangi Balans Summasi (so'm):" : "Qo'shiladigan Summa (so'm):"}
+                        </label>
+                        <div className="space-y-1.5">
+                          <input
+                            type="number"
+                            value={manualAmount}
+                            onChange={(e) => setManualAmount(e.target.value)}
+                            placeholder={manualActionMode === 'set_balance' ? "0" : "35000"}
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required
+                          />
+                          <div className="flex gap-1.5 flex-wrap">
+                            {manualActionMode === 'set_balance' ? (
+                              [0, 25000, 35000, 50000].map((amt) => (
+                                <button
+                                  key={amt}
+                                  type="button"
+                                  onClick={() => setManualAmount(amt.toString())}
+                                  className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold hover:bg-amber-50 text-slate-700 dark:text-slate-300"
+                                >
+                                  {amt === 0 ? "0 so'm (0 qilish)" : `${amt.toLocaleString('uz-UZ')} so'm`}
+                                </button>
+                              ))
+                            ) : (
+                              [10000, 25000, 35000, 60000, 100000].map((amt) => (
+                                <button
+                                  key={amt}
+                                  type="button"
+                                  onClick={() => setManualAmount(amt.toString())}
+                                  className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold hover:bg-amber-50 text-slate-700 dark:text-slate-300"
+                                >
+                                  +{amt.toLocaleString('uz-UZ')}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
-                        Tarif / Obuna yoqish:
-                      </label>
-                      <select
-                        value={manualPlan}
-                        onChange={(e) => setManualPlan(e.target.value as any)}
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="none">Faqat hamyon balansiga qo'shish (Obunasiz)</option>
-                        <option value="3_months">3 oylik VIP Obuna (35 000 so'm)</option>
-                        <option value="6_months">6 oylik VIP Obuna (60 000 so'm)</option>
-                        <option value="1_year">1 yillik VIP Obuna (100 000 so'm)</option>
-                      </select>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Obuna tanlansa, talaba hisobida VIP obuna belgilangan muddatga avtomatik faollashadi.
-                      </p>
-                    </div>
+                    {/* Plan Selector */}
+                    {manualActionMode === 'add_funds' ? (
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                          Tarif / Obuna:
+                        </label>
+                        <div className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400">
+                          Obuna yoqilmaydi (Faqat pul qo'shiladi)
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">
+                          Tarif / Obuna muddati:
+                        </label>
+                        <select
+                          value={manualPlan}
+                          onChange={(e) => setManualPlan(e.target.value as any)}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+                          {manualActionMode === 'set_balance' && (
+                            <option value="none">Obunaga tegilmasin (Mavjud holati qolsin)</option>
+                          )}
+                          <option value="3_months">3 oylik VIP Obuna (90 kun)</option>
+                          <option value="6_months">6 oylik VIP Obuna (180 kun)</option>
+                          <option value="1_year">1 yillik VIP Obuna (365 kun)</option>
+                        </select>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Talaba hisobida VIP obuna ko'rsatilgan muddatga faollashtiriladi.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end pt-1">
                     <button
                       type="submit"
                       disabled={isSubmittingManual}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                      className={`px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-1.5 shadow-md disabled:opacity-50 transition-all ${
+                        manualActionMode === 'subscription_only'
+                          ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/20'
+                          : manualActionMode === 'set_balance'
+                          ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                          : manualActionMode === 'both'
+                          ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                      }`}
                     >
                       <CheckCircle2 className={`w-3.5 h-3.5 ${isSubmittingManual ? 'animate-spin' : ''}`} strokeWidth={1.75} />
-                      <span>{isSubmittingManual ? 'Bajarilmoqda...' : "Hisobga Qo'shish"}</span>
+                      <span>
+                        {isSubmittingManual
+                          ? 'Bajarilmoqda...'
+                          : manualActionMode === 'subscription_only'
+                          ? "👑 Faqat Obunani Yoqish"
+                          : manualActionMode === 'set_balance'
+                          ? "⚖️ Balansni To'g'rilash"
+                          : manualActionMode === 'both'
+                          ? "🔄 Obuna va Pul Qo'shish"
+                          : "💳 Hamyonga Pul Qo'shish"}
+                      </span>
                     </button>
                   </div>
                 </form>

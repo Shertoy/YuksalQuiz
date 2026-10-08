@@ -25,7 +25,7 @@ import {
 import confetti from 'canvas-confetti';
 import { apiPost, apiErrorText } from '../services/api';
 import { triggerHaptic, soundFX, generateReferralLink, getTelegramWebApp } from '../utils/telegram';
-import { isPaidUser } from '../services/paywallService';
+import { isPaidUser, getSubscriptionRemainingDays } from '../services/paywallService';
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import {
@@ -52,6 +52,7 @@ export const WalletView: React.FC = () => {
   const [copiedRef, setCopiedRef] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | TransactionType>('all');
+  const [showExtendPlans, setShowExtendPlans] = useState(false);
 
   // Realtime Polling & Balance Sync State
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
@@ -157,6 +158,10 @@ export const WalletView: React.FC = () => {
   const currentVoucher = profile.voucherBalance || 0;
   const voucherDiscount = 0; // vaucher claim qilinganda balansga qo'shiladi, chegirma emas
   const hasVoucher = voucherDiscount > 0;
+
+  const isSubscribed = isPaidUser(profile);
+  const remainingDays = getSubscriptionRemainingDays(profile);
+  const isEndingSoon = remainingDays !== null && remainingDays <= 10 && remainingDays > 0;
 
   // Plan Pricing
   const prices = subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
@@ -527,7 +532,7 @@ export const WalletView: React.FC = () => {
       {/* =========================================================================
           2. TARIFLAR BLOKI (3 TA KARTA)
          ========================================================================= */}
-      {isPaidUser(profile) ? (
+      {isPaidUser(profile) && (
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/80 border-2 border-amber-500/60 rounded-3xl p-5 text-white shadow-xl space-y-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/30 shrink-0">
@@ -544,21 +549,53 @@ export const WalletView: React.FC = () => {
               </div>
               <p className="text-xs text-amber-200/90 mt-1">
                 Amal qilish muddati: <b className="text-white">{profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}</b> gacha
+                {remainingDays !== null && ` (${remainingDays} kun qoldi)`}
               </p>
             </div>
           </div>
+
+          {/* 10-day expiration warning */}
+          {isEndingSoon && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-500/60 flex items-start gap-2.5 text-xs text-amber-200 animate-in fade-in">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-extrabold text-amber-300 block text-sm">
+                  ⚠️ Obunangiz tugashiga {remainingDays} kun qoldi!
+                </span>
+                <span className="text-[11px] text-amber-100/90 mt-0.5 block">
+                  Barcha testlarga to'siqsiz kirishni davom ettirish uchun hamyon mablag'ingizdan foydalanib muddatni hoziroq uzaytirishingiz mumkin.
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs text-slate-200 flex items-center justify-between">
             <span>Barcha HEMIS va fan testlariga to'liq cheksiz kirish yoqilgan</span>
             <span className="font-mono font-bold text-emerald-300">VIP</span>
           </div>
+
+          {/* Extend button */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              setShowExtendPlans((prev) => !prev);
+            }}
+            className="w-full py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs font-bold text-white border border-white/20 shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>{showExtendPlans ? "Tariflarni yashirish" : "Obuna muddatini uzaytirish / Yangi tarif tanlash"}</span>
+          </button>
         </div>
-      ) : (
+      )}
+
+      {(!isPaidUser(profile) || showExtendPlans || isEndingSoon) && (
         <div className="space-y-3 pt-1">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
             <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Obuna Tariflari
+              {isPaidUser(profile) ? "Obunani Uzaytirish Tariflari" : "Obuna Tariflari"}
             </h3>
           </div>
           {hasVoucher && (
@@ -573,7 +610,7 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                3 Oylik Reja
+                {isPaidUser(profile) ? "3 Oylik (+90 kun qo'shiladi)" : "3 Oylik Reja"}
               </span>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
                 3 oylik Premium
@@ -602,7 +639,7 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('3_months')}
                 className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Obunani yoqish</span>
+                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost3M.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
@@ -623,7 +660,7 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                Tavsiya etiladi (6 oy)
+                {isPaidUser(profile) ? "Tavsiya etiladi (+180 kun qo'shiladi)" : "Tavsiya etiladi (6 oy)"}
               </span>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
                 6 oylik Premium
@@ -652,7 +689,7 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('6_months')}
                 className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Obunani yoqish</span>
+                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost6M.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (
@@ -673,7 +710,7 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                To'liq 1 Yil (365 kun)
+                {isPaidUser(profile) ? "1 Yil (+365 kun qo'shiladi)" : "To'liq 1 Yil (365 kun)"}
               </span>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
                 1 yillik Premium
@@ -702,7 +739,7 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('1_year')}
                 className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Obunani yoqish</span>
+                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost1Y.toLocaleString('uz-UZ')} so'm)</span>
               </button>
             ) : (

@@ -1723,11 +1723,22 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
                 existing.name = decodeHtmlEntities(pkgName);
               }
             }
-            if (pkgBal > (existing.walletBalance || 0)) {
+            // test_packages LeaderboardUser qatori admin to'g'irlashlari uchun asosiy manba
+            if (typeof pkg.author_wallet_balance === 'number' || typeof blockUser?.wallet_balance === 'number') {
+              existing.walletBalance = pkgBal;
+              existing.balance = pkgBal;
+            } else if (pkgBal > (existing.walletBalance || 0)) {
               existing.walletBalance = pkgBal;
               existing.balance = pkgBal;
             }
-            if (pkgPaid) {
+
+            if (blockUser && typeof blockUser.has_paid === 'boolean') {
+              existing.has_paid = blockUser.has_paid;
+              existing.isSubscribed = Boolean(blockUser.is_subscribed || blockUser.has_paid);
+              existing.paid_until = pkgEnd;
+              existing.subscriptionEnd = pkgEnd;
+              if (blockUser.subscription_tier) existing.subscriptionTier = blockUser.subscription_tier;
+            } else if (pkgPaid) {
               existing.has_paid = true;
               existing.isSubscribed = true;
               existing.paid_until = pkgEnd;

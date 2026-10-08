@@ -21,10 +21,12 @@ export function isAnnouncementForUser(ann: Announcement, user: UserProfile): boo
   if (ann.targetType === 'user') {
     if (!ann.targetValue) return false;
     const val = ann.targetValue.trim().toLowerCase();
-    const userIdMatch = user.id.toLowerCase() === val;
-    const fullName = `${user.firstName} ${user.lastName}`.trim().toLowerCase();
-    const nameMatch = fullName.includes(val) || val.includes(fullName);
-    const firstMatch = user.firstName.toLowerCase() === val;
+    const cleanTarget = val.replace(/^tg_/, '').replace(/^user_/, '').replace(/^user-/, '');
+    const cleanUserId = user.id.toLowerCase().replace(/^tg_/, '').replace(/^user_/, '').replace(/^user-/, '');
+    const userIdMatch = user.id.toLowerCase() === val || (cleanTarget.length > 0 && cleanTarget === cleanUserId);
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+    const nameMatch = fullName ? (fullName.includes(val) || val.includes(fullName)) : false;
+    const firstMatch = user.firstName ? user.firstName.toLowerCase() === val : false;
     return userIdMatch || nameMatch || firstMatch;
   }
 

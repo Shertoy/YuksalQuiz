@@ -17,6 +17,7 @@ import {
 import confetti from 'canvas-confetti';
 import { triggerHaptic, soundFX } from '../utils/telegram';
 import { SubscriptionPlanType } from '../types';
+import { isPaidUser, getSubscriptionRemainingDays } from '../services/paywallService';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -38,6 +39,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (!isOpen) return null;
+
+  const isSubscribed = isPaidUser(profile);
+  const remainingDays = getSubscriptionRemainingDays(profile);
+  const isEndingSoon = remainingDays !== null && remainingDays <= 10 && remainingDays > 0;
 
   const currentBalance = profile.walletBalance || 0;
   const currentVoucher = profile.voucherBalance || 0;
@@ -117,13 +122,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>Obuna Bo'lish / Tariflar</span>
+                <span>{isSubscribed ? "Obunani Uzaytirish / Tariflar" : "Obuna Bo'lish / Tariflar"}</span>
                 <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                   Premium
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Barcha HEMIS va fan testlariga cheksiz kirish huquqi
+                {isSubscribed ? "Mavjud obuna muddatini uzaytirish va yangi reja tanlash" : "Barcha HEMIS va fan testlariga cheksiz kirish huquqi"}
               </p>
             </div>
           </div>
@@ -142,6 +147,34 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
         {/* Modal Content */}
         <div className="overflow-y-auto overscroll-contain p-5 pb-8 space-y-4 flex-1">
+          {/* Active Subscription Status Banner */}
+          {isSubscribed && (
+            <div
+              className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-2.5 ${
+                isEndingSoon
+                  ? 'bg-amber-500/15 border-amber-500/50 text-amber-900 dark:text-amber-200'
+                  : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Crown className="w-4 h-4 shrink-0 text-amber-500" />
+                <div className="min-w-0">
+                  <span className="font-extrabold truncate block">
+                    {isEndingSoon
+                      ? `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`
+                      : `⭐ Faol Premium (${remainingDays !== null ? `${remainingDays} kun qoldi` : 'Faol'})`}
+                  </span>
+                  <span className="text-[10px] opacity-80 block truncate">
+                    Yangi tanlangan muddat joriy sanangizga qo'shiladi (+uzaytirish)
+                  </span>
+                </div>
+              </div>
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0">
+                VIP
+              </span>
+            </div>
+          )}
+
           {/* User Balance Bar */}
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -320,7 +353,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <Check className="w-5 h-5 text-white" strokeWidth={2} />
-                <span>Hisobdan to'lash ({planCost.toLocaleString('uz-UZ')} so'm)</span>
+                <span>
+                  {isSubscribed
+                    ? `Obunani uzaytirish (${planCost.toLocaleString('uz-UZ')} so'm)`
+                    : `Hisobdan to'lash (${planCost.toLocaleString('uz-UZ')} so'm)`}
+                </span>
               </button>
             ) : (
               <div className="space-y-2">
