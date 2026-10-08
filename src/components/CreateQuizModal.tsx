@@ -1054,7 +1054,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   onClick={handleProceedManualToPreview}
                   className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
-                  <span>Ko'rib chiqishga o'tish (Preview) ➡</span>
+                  <span>Ko'rib chiqishga o'tish</span>
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             )}
@@ -1177,7 +1178,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         <button
                           type="button"
                           onClick={() => setBulkText('')}
-                          className="px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 font-bold text-xs transition-colors"
+                          className="px-3.5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 font-bold text-xs transition-colors shrink-0 flex items-center justify-center whitespace-nowrap"
                         >
                           Tozalash
                         </button>
@@ -1185,10 +1186,11 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       <button
                         type="button"
                         onClick={handleParseBulkText}
-                        className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                        className="flex-1 py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
                       >
-                        <FileText className="w-4 h-4" />
-                        <span>Matnni tahlil qilish (Parser qilish) ➡</span>
+                        <FileText className="w-4 h-4 shrink-0" />
+                        <span className="whitespace-nowrap">Matnni tahlil qilish</span>
+                        <ArrowRight className="w-4 h-4 shrink-0" />
                       </button>
                     </div>
                   </div>
@@ -1272,20 +1274,20 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           type="button"
                           disabled={!fileTextContent || isAiLoading}
                           onClick={handleParseTxtDirectly}
-                          className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                          className="w-full py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>⚡ Shablon orqali zumda tahlil</span>
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span className="truncate">⚡ Shablon orqali zumda tahlil</span>
                         </button>
 
                         <button
                           type="button"
                           disabled={!file || isAiLoading}
                           onClick={handleStartAiParsing}
-                          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                          className="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
-                          <Sparkles className="w-4 h-4" />
-                          <span>✨ AI orqali tahlil</span>
+                          <Sparkles className="w-4 h-4 shrink-0" />
+                          <span className="truncate">✨ AI orqali tahlil</span>
                         </button>
                       </div>
                     ) : (
@@ -1293,10 +1295,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         type="button"
                         disabled={!file || isAiLoading}
                         onClick={handleStartAiParsing}
-                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                        className="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                       >
-                        <Sparkles className="w-4 h-4" />
-                        <span>✨ Gemini AI orqali tahlil qilish</span>
+                        <Sparkles className="w-4 h-4 shrink-0" />
+                        <span className="truncate">✨ Gemini AI orqali tahlil qilish</span>
                       </button>
                     )}
                   </div>
@@ -1311,8 +1313,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 onClick={() => setCurrentStep(1)}
                 className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>⬅ 1-qadam (Pasport)ga qaytish</span>
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span>1-qadam (Pasport)ga qaytish</span>
               </button>
             </div>
           </div>
@@ -1423,7 +1425,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <span>Yangi savol qo'shish</span>
             </button>
 
-            {/* "💾 Testni saqlash va e'lon qilish" Tugmasi */}
+            {/* "Testni saqlash va e'lon qilish" Tugmasi */}
             <button
               type="button"
               disabled={isSaving}
@@ -1432,25 +1434,39 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                   <span>Bazada saqlanmoqda...</span>
                 </>
               ) : (
                 <>
-                  <span>💾 Testni saqlash va e'lon qilish</span>
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>Testni saqlash va e'lon qilish</span>
                 </>
               )}
             </button>
 
-            {/* 2-qadamga qaytish */}
-            <button
-              type="button"
-              onClick={() => setCurrentStep(2)}
-              className="w-full py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
-            >
-              <ArrowLeft className="w-3 h-3" />
-              <span>Savol kiritish usuliga qaytish</span>
-            </button>
+            {/* Qadamlarga qaytish */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+                <span>Pasportni tahrirlash</span>
+              </button>
+
+              <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+                <span>Savollar usuliga qaytish</span>
+              </button>
+            </div>
           </div>
         )}
 

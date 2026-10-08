@@ -255,11 +255,9 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
         return;
       }
       for (let o = 0; o < 4; o++) {
-        if (!q.options[o].trim()) {
+        if (!q.options[o]?.trim()) {
           const optLetter = ['A', 'B', 'C', 'D'][o];
-          setErrorMsg(`${i + 1}-savolning ${optLetter} varianti to'ldirilmagan.`);
-          triggerHaptic('error');
-          return;
+          q.options[o] = `Variant ${optLetter}`;
         }
       }
     }
@@ -276,13 +274,17 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
       study_type: studyType,
     };
 
-    const finalQuestions: EditableQuestionItem[] = questions.map((q) => ({
-      id: q.id,
-      question: q.question.trim(),
-      options: q.options.map((o) => o.trim()),
-      correct_answer: q.options[q.correctIndex].trim(),
-      explanation: q.explanation?.trim(),
-    }));
+    const finalQuestions: EditableQuestionItem[] = questions.map((q) => {
+      const cleanOpts = q.options.map((o, idx) => o?.trim() || `Variant ${['A', 'B', 'C', 'D'][idx]}`);
+      const cIdx = Math.max(0, Math.min(3, q.correctIndex ?? 0));
+      return {
+        id: q.id,
+        question: q.question.trim(),
+        options: cleanOpts,
+        correct_answer: cleanOpts[cIdx] || cleanOpts[0],
+        explanation: q.explanation?.trim(),
+      };
+    });
 
     setIsSaving(true);
     triggerHaptic('medium');
@@ -295,7 +297,7 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
         onSaved?.();
         setTimeout(() => {
           onClose();
-        }, 800);
+        }, 900);
       } else {
         triggerHaptic('error');
         setErrorMsg(res.message || "Saqlashda xatolik yuz berdi.");
@@ -692,37 +694,53 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 shrink-0">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={() => {
-              triggerHaptic('light');
-              onClose();
-            }}
-            className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
-          >
-            Bekor qilish
-          </button>
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2 shrink-0">
+          {errorMsg && (
+            <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span className="font-semibold">{errorMsg}</span>
+            </div>
+          )}
 
-          <button
-            type="button"
-            disabled={isSaving || isLoadingQuestions}
-            onClick={handleSave}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saqlanmoqda...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>💾 O'zgarishlarni saqlash</span>
-              </>
-            )}
-          </button>
+          {successMsg && (
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+              <span className="font-bold">{successMsg}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => {
+                triggerHaptic('light');
+                onClose();
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+            >
+              Bekor qilish
+            </button>
+
+            <button
+              type="button"
+              disabled={isSaving || (isLoadingQuestions && questions.length === 0)}
+              onClick={handleSave}
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saqlanmoqda...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 shrink-0" />
+                  <span>O'zgarishlarni saqlash</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
       </div>

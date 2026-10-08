@@ -32,9 +32,12 @@ function mapRowToTestPackage(row: any): TestPackage {
 
   const firstBlock = Array.isArray(row.blocks) && row.blocks.length > 0 ? row.blocks[0] : null;
   const rawSemester = row.semester !== undefined ? row.semester : firstBlock?.semester;
+  const rawCourseYear = row.course_year !== undefined ? row.course_year : firstBlock?.course_year;
   const rawAcademicYear = row.academic_year || row.academicYear || firstBlock?.academicYear || firstBlock?.academic_year;
+  const rawStudyType = row.study_type || row.studyType || firstBlock?.studyType || firstBlock?.study_type || 'Kunduzgi';
   const parsedSemester = rawSemester ? Number(rawSemester) : undefined;
-  const parsedAcademicYear = rawAcademicYear ? String(rawAcademicYear) : undefined;
+  const parsedCourseYear = rawCourseYear ? Number(rawCourseYear) : (parsedSemester ? Math.ceil(parsedSemester / 2) : 1);
+  const parsedAcademicYear = rawAcademicYear ? String(rawAcademicYear) : `${parsedCourseYear}-kurs`;
 
   return {
     id: row.id,
@@ -56,22 +59,31 @@ function mapRowToTestPackage(row: any): TestPackage {
     isCommunityCreated: Boolean(row.is_community_created ?? true),
     authorWalletBalance: Number(row.author_wallet_balance) || 0,
     semester: parsedSemester && !isNaN(parsedSemester) ? parsedSemester : undefined,
-    academicYear: parsedAcademicYear || undefined,
-    course_year: row.course_year ? Number(row.course_year) : undefined,
-    faculty: row.faculty || row.department,
-    studyType: (row.study_type || row.studyType || undefined) as any,
-    study_type: (row.study_type || row.studyType || undefined) as any,
+    academicYear: parsedAcademicYear,
+    course_year: parsedCourseYear,
+    faculty: row.faculty || row.department || firstBlock?.faculty,
+    studyType: rawStudyType as any,
+    study_type: rawStudyType as any,
   };
 }
 
 /**
- * Maps application TestPackage model to Supabase DB row
+ * Maps application TestPackage model to Supabase DB row.
+ * NOTE: test_packages table in Supabase has exactly 16 columns:
+ * id, title, category, university, is_custom_university, is_pending_review,
+ * department, is_public, password, total_questions, blocks, created_at,
+ * author_id, author_name, is_community_created, author_wallet_balance.
+ * Additional metadata like studyType, course_year, semester are stored inside `blocks`.
  */
 function mapTestPackageToRow(pkg: TestPackage): Record<string, any> {
   const blocksWithMeta = (Array.isArray(pkg.blocks) ? pkg.blocks : []).map((b) => ({
     ...b,
     semester: pkg.semester,
+    course_year: pkg.course_year,
+    studyType: pkg.studyType || pkg.study_type || 'Kunduzgi',
+    study_type: pkg.studyType || pkg.study_type || 'Kunduzgi',
     academicYear: pkg.academicYear,
+    faculty: pkg.faculty || pkg.department,
   }));
 
   return {
@@ -90,7 +102,6 @@ function mapTestPackageToRow(pkg: TestPackage): Record<string, any> {
     author_name: pkg.authorName,
     is_community_created: Boolean(pkg.isCommunityCreated ?? true),
     author_wallet_balance: Number(pkg.authorWalletBalance) || 0,
-    study_type: pkg.studyType || pkg.study_type || null,
     created_at: pkg.createdAt ? new Date(pkg.createdAt).toISOString() : new Date().toISOString(),
   };
 }
@@ -162,14 +173,21 @@ export async function fetchCloudTests(): Promise<{
       reconcilePackageWithProgress(cp, localPkgMap.get(cp.id), testAttempts || [])
     );
 
-    // Retain only local packages that were created by THIS user while offline and pending sync.
+    // Retain non-deleted local packages not yet returned from cloud
     const localDrafts = (testPackages || []).filter(
       (localPkg: any) =>
-        localPkg.authorId === profile?.id &&
-        localPkg._isPendingSync === true &&
+        !localPkg.id?.startsWith('lead_') &&
+        !localPkg.id?.startsWith('__system_') &&
         !deletedSet.has(localPkg.id) &&
         !validCloudPackages.some((cp) => cp.id === localPkg.id)
     );
+
+    // Automatically push local draft packages to Supabase cloud in the background
+    if (localDrafts.length > 0) {
+      Promise.all(
+        localDrafts.map((pkg) => publishTestToCloud(pkg).catch(() => {}))
+      ).catch(() => {});
+    }
 
     const mergedPackages: TestPackage[] = [...reconciledValidCloudPackages, ...localDrafts];
 
@@ -372,15 +390,21 @@ export async function saveQuizWithQuestions(params: {
     studyType: finalStudyType,
     study_type: finalStudyType,
     academicYear: params.course_year ? `${params.course_year}-kurs` : params.academicYear || '2025-2026',
+    isPendingReview: false,
   };
 
   useQuizStore.getState().createTestPackage(testPackage);
-  await publishTestToCloud(testPackage);
+  const cloudRes = await publishTestToCloud(testPackage);
+  if (!cloudRes.success) {
+    console.warn('publishTestToCloud notice:', cloudRes.message);
+  }
 
   return {
     success: true,
     quizId: params.quizId,
-    message: "Test muvaffaqiyatli saqlandi va e'lon qilindi!",
+    message: cloudRes.success
+      ? "Test muvaffaqiyatli saqlandi va barchaga ko'rinadi!"
+      : `Test saqlandi (${cloudRes.message})`,
   };
 }
 
@@ -467,6 +491,32 @@ export async function fetchQuizQuestionsForEdit(quizId: string): Promise<Editabl
       }
     } catch (e) {
       console.warn('Error fetching questions from questions table:', e);
+    }
+
+    // Fallback: Query test_packages table directly for blocks JSON
+    try {
+      const { data: tpData } = await supabase
+        .from('test_packages')
+        .select('blocks')
+        .eq('id', quizId)
+        .maybeSingle();
+
+      if (tpData?.blocks && Array.isArray(tpData.blocks) && tpData.blocks.length > 0) {
+        const flattened = tpData.blocks.flatMap((b: any) => b.questions || []);
+        if (flattened.length > 0) {
+          return flattened.map((q: any) => ({
+            id: q.id,
+            question: decodeHtmlEntities(q.text || ''),
+            options: (Array.isArray(q.options) ? q.options : []).map(decodeHtmlEntities),
+            correct_answer: decodeHtmlEntities(
+              q.options?.[q.correctOptionIndex] || q.options?.[0] || ''
+            ),
+            explanation: q.explanation ? decodeHtmlEntities(q.explanation) : undefined,
+          }));
+        }
+      }
+    } catch (tpErr) {
+      console.warn('Error fetching test_packages blocks for edit:', tpErr);
     }
   }
 
@@ -601,14 +651,17 @@ export async function updateQuizWithQuestions(
     studyType: studyType as any,
     study_type: studyType as any,
     academicYear: `${courseYear}-kurs`,
+    isPendingReview: false,
   };
 
   useQuizStore.getState().updateTestPackage(updatedPkg);
-  await publishTestToCloud(updatedPkg);
+  const cloudRes = await publishTestToCloud(updatedPkg);
 
   return {
     success: true,
-    message: '✅ Test muvaffaqiyatli yangilandi!',
+    message: cloudRes.success
+      ? '✅ Test muvaffaqiyatli yangilandi va bulutga yozildi!'
+      : `Test yangilandi (${cloudRes.message})`,
   };
 }
 

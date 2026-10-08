@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useQuizStore, useIsAdmin } from '../store/useQuizStore';
+import { useQuizStore, useIsAdmin, normalizeUniversityKey } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { AdminEditQuizModal } from './AdminEditQuizModal';
 import {
@@ -17,6 +17,7 @@ import {
   Calendar,
   RefreshCw,
   BookOpen,
+  ArrowLeft,
 } from 'lucide-react';
 import { TestPackage, TestBlock } from '../types';
 import { triggerHaptic } from '../utils/telegram';
@@ -108,19 +109,59 @@ export const TestList: React.FC<TestListProps> = ({
   const [deletingPkg, setDeletingPkg] = useState<TestPackage | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const cleanUserId = String(profile.id || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
-  const rawUserId = String(profile.id || '').trim();
+  const cleanUserId = String(profile.id || '').replace(/^tg_/, '').replace(/^user_/, '').trim().toLowerCase();
+  const rawUserId = String(profile.id || '').trim().toLowerCase();
+  const tgId = String(profile.telegram_id || profile.telegramId || '').trim().toLowerCase();
+  const tgIdClean = tgId.replace(/^tg_/, '').replace(/^user_/, '').trim().toLowerCase();
 
   const isUserAuthor = (pkg: TestPackage) => {
-    const pkgAuthor = String(pkg.authorId || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
-    const pkgCreator = String(pkg.creator_id || pkg.creatorId || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
-    return (
-      (pkgAuthor && (pkgAuthor === cleanUserId || pkgAuthor === rawUserId || String(pkg.authorId) === rawUserId)) ||
-      (pkgCreator && (pkgCreator === cleanUserId || pkgCreator === rawUserId || String(pkg.creator_id) === rawUserId))
-    );
+    if (!pkg) return false;
+    const authorId = String(pkg.authorId || '').trim().toLowerCase();
+    const cleanAuthorId = authorId.replace(/^tg_/, '').replace(/^user_/, '').trim();
+    const creatorId = String(pkg.creator_id || pkg.creatorId || '').trim().toLowerCase();
+    const cleanCreatorId = creatorId.replace(/^tg_/, '').replace(/^user_/, '').trim();
+
+    const currentIds = [cleanUserId, rawUserId, tgId, tgIdClean].filter(Boolean);
+    if (
+      currentIds.some(
+        (id) =>
+          id === authorId ||
+          id === cleanAuthorId ||
+          id === creatorId ||
+          id === cleanCreatorId
+      )
+    ) {
+      return true;
+    }
+
+    const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim().toLowerCase();
+    if (fullName && pkg.authorName && pkg.authorName.trim().toLowerCase() === fullName) {
+      return true;
+    }
+    if (profile.username && pkg.authorName && pkg.authorName.trim().toLowerCase() === profile.username.trim().toLowerCase()) {
+      return true;
+    }
+    return false;
   };
 
-  const myTestsCount = testPackages.filter((p) => isUserAuthor(p)).length;
+  const myTestPackages = useMemo(() => {
+    return testPackages.filter((pkg) => {
+      if (!isUserAuthor(pkg)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          pkg.title.toLowerCase().includes(q) ||
+          (pkg.department && pkg.department.toLowerCase().includes(q)) ||
+          (pkg.university && pkg.university.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [testPackages, profile, cleanUserId, rawUserId, tgId, tgIdClean, searchQuery]);
+
+  const myTestsCount = useMemo(() => {
+    return testPackages.filter((p) => isUserAuthor(p)).length;
+  }, [testPackages, profile, cleanUserId, rawUserId, tgId, tgIdClean]);
 
   const handleDeleteTest = (pkg: TestPackage) => {
     triggerHaptic('warning');
@@ -146,21 +187,26 @@ export const TestList: React.FC<TestListProps> = ({
 
   // Calculate list of universities that actually have tests in the database
   const universityCatalog = useMemo(() => {
-    const uniMap = new Map<string, TestPackage[]>();
+    const uniMap = new Map<string, { name: string; packages: TestPackage[] }>();
     testPackages.forEach((pkg) => {
-      if (onlyMyTests && !isUserAuthor(pkg)) return;
-      const uni = (pkg.university || "Boshqa OTM").trim();
-      if (!uniMap.has(uni)) {
-        uniMap.set(uni, []);
+      const rawUni = (pkg.university || "Boshqa OTM").trim();
+      const normKey = normalizeUniversityKey(rawUni);
+      if (!uniMap.has(normKey)) {
+        uniMap.set(normKey, { name: rawUni, packages: [] });
+      } else {
+        const existing = uniMap.get(normKey)!;
+        if (rawUni.length > existing.name.length) {
+          existing.name = rawUni;
+        }
       }
-      uniMap.get(uni)!.push(pkg);
+      uniMap.get(normKey)!.packages.push(pkg);
     });
 
-    const list = Array.from(uniMap.entries()).map(([uniName, pkgs]) => ({
-      name: uniName,
-      monogram: getUniversityMonogram(uniName),
-      packages: pkgs,
-      testCount: pkgs.length,
+    const list = Array.from(uniMap.values()).map((entry) => ({
+      name: entry.name,
+      monogram: getUniversityMonogram(entry.name),
+      packages: entry.packages,
+      testCount: entry.packages.length,
     }));
 
     list.sort((a, b) => b.testCount - a.testCount || a.name.localeCompare(b.name, 'uz'));
@@ -178,15 +224,27 @@ export const TestList: React.FC<TestListProps> = ({
         (p.department && p.department.toLowerCase().includes(q))
       )
     );
-  }, [testPackages, onlyMyTests, profile.id, searchQuery]);
+  }, [testPackages, searchQuery]);
+
+  // Search matching tests directly when query is entered
+  const matchingSearchTests = useMemo(() => {
+    if (!searchQuery.trim() || onlyMyTests) return [];
+    const q = searchQuery.toLowerCase();
+    return testPackages.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        (p.department && p.department.toLowerCase().includes(q)) ||
+        (p.university && p.university.toLowerCase().includes(q))
+    );
+  }, [testPackages, searchQuery, onlyMyTests]);
 
   // Tests for currently selected university
   const testsForSelectedUni = useMemo(() => {
     if (!selectedUniversity) return [];
+    const targetNorm = normalizeUniversityKey(selectedUniversity);
     return testPackages.filter((pkg) => {
-      if (onlyMyTests && !isUserAuthor(pkg)) return false;
-      const uni = (pkg.university || "Boshqa OTM").trim().toLowerCase();
-      if (uni !== selectedUniversity.trim().toLowerCase()) return false;
+      const pkgNorm = normalizeUniversityKey(pkg.university || "Boshqa OTM");
+      if (pkgNorm !== targetNorm) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -196,7 +254,7 @@ export const TestList: React.FC<TestListProps> = ({
       }
       return true;
     });
-  }, [testPackages, selectedUniversity, onlyMyTests, profile.id, searchQuery]);
+  }, [testPackages, selectedUniversity, searchQuery]);
 
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
     const isPaid = isPaidUser(profile);
@@ -272,6 +330,195 @@ export const TestList: React.FC<TestListProps> = ({
       setPasswordError(t.wrongPassword);
     }
   };
+
+  const renderTestCard = (pkg: TestPackage) => (
+    <div
+      key={pkg.id}
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm transition-all"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            {pkg.department && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                {decodeHtmlEntities(pkg.department)}
+              </span>
+            )}
+
+            {(pkg.studyType || pkg.study_type || pkg.course_year || pkg.semester) && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
+                <span>
+                  {pkg.studyType || pkg.study_type ? `${pkg.studyType || pkg.study_type} • ` : ''}
+                  {pkg.course_year ? `${pkg.course_year}-kurs` : ''}
+                  {pkg.course_year && pkg.semester ? ' • ' : ''}
+                  {pkg.semester ? `${pkg.semester}-semestr` : ''}
+                </span>
+              </span>
+            )}
+
+            {!pkg.isPublic ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
+                <Lock className="w-3 h-3" />
+                <span>{t.privateAccess}</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                <Unlock className="w-3 h-3" />
+                <span>{t.publicAccess}</span>
+              </span>
+            )}
+
+            {pkg.isCommunityCreated && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                {t.communityTestBadge}
+              </span>
+            )}
+
+            {isUserAuthor(pkg) && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
+                {t.myTestBadge}
+              </span>
+            )}
+          </div>
+
+          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+            {decodeHtmlEntities(pkg.title)}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+            {decodeHtmlEntities(pkg.university || '')} • {t.authorLabel}: {decodeHtmlEntities(pkg.authorName || '')}
+          </p>
+        </div>
+
+        <div className="text-right shrink-0 flex flex-col items-end gap-1.5 ml-2">
+          <span className="text-[11px] font-bold text-slate-400">
+            {pkg.totalQuestions} {t.questionsCount}
+          </span>
+
+          {(isAdmin || isUserAuthor(pkg)) && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHaptic('light');
+                  setAdminEditingQuiz(pkg);
+                }}
+                className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-400 font-bold text-[11px] transition-all active:scale-95 border border-amber-200/50 dark:border-amber-800/50"
+                title="Tahrirlash"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Tahrirlash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteTest(pkg);
+                }}
+                className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50 flex items-center justify-center leading-none"
+                title="O'chirish"
+              >
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sequential Test Blocks Selection */}
+      <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
+        <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
+          {t.testBlocksLabel}:
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          {(pkg.blocks || []).map((block, idx) => {
+            const isPaid = isPaidUser(profile);
+            const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, idx, testAttempts);
+            const isLocked = !unlocked;
+
+            const blockAttempts = (testAttempts || []).filter(
+              (a) =>
+                a.testPackageId === pkg.id &&
+                (a.blockId === block.id || a.blockTitle === block.title)
+            );
+            const passing =
+              block.passingScore ||
+              Math.max(1, Math.ceil((block.questions?.length || 25) * 0.7));
+            const maxScore =
+              blockAttempts.length > 0
+                ? Math.max(...blockAttempts.map((a) => a.score))
+                : block.bestScore || 0;
+            const isPassed = Boolean(
+              block.isPassed ||
+              maxScore >= passing ||
+              blockAttempts.some((a) => a.isPassed || a.score >= passing)
+            );
+            const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
+            const isLimitReached = !isPaid && todayAttempts >= 2;
+
+            return (
+              <button
+                key={block.id}
+                onClick={() => handleTestClick(pkg, block)}
+                className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
+                  isLocked
+                    ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
+                    : isLimitReached
+                    ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/80 dark:border-orange-900/50 text-slate-800 dark:text-slate-200 hover:border-orange-400'
+                    : isPassed
+                    ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100 hover:border-emerald-500'
+                    : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/50 text-slate-800 dark:text-slate-100 hover:border-emerald-400'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-xs flex items-center gap-1">
+                    {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+                    <span>{decodeHtmlEntities(block.title)}</span>
+                  </span>
+                  {isLocked ? (
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  ) : isLimitReached ? (
+                    <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5 shrink-0">
+                      <Lock className="w-2.5 h-2.5" /> 2/2
+                    </span>
+                  ) : isPassed ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="opacity-80">
+                    {block.questions?.length || 0} {t.questionsCount}
+                  </span>
+                  <span>
+                    {isLocked ? (
+                      t.lockedStatus
+                    ) : isLimitReached ? (
+                      <span className="text-orange-600 dark:text-orange-400 font-bold">
+                        Limit tugagan
+                      </span>
+                    ) : maxScore > 0 ? (
+                      <span className="font-bold">
+                        {t.bestScoreLabel}: {maxScore}/{block.questions?.length || 0} ({maxScore * 4} {t.pointsLabel})
+                      </span>
+                    ) : (
+                      t.start
+                    )}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pb-20">
@@ -381,24 +628,72 @@ export const TestList: React.FC<TestListProps> = ({
         />
       </div>
 
-      {!selectedUniversity ? (
-        /* OTM Katalogi View */
+      {onlyMyTests ? (
+        /* Mening testlarim ro'yxati (To'g'ridan-to'g'ri kartalar ko'rinishida) */
         <div className="space-y-3">
-          {universityCatalog.length === 0 ? (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400">
+              Mening testlarim ({myTestPackages.length} ta)
+            </span>
+          </div>
+
+          {myTestPackages.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                {t.myTestsEmptyTitle}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
+                {t.myTestsEmptyDesc}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenCreateModal();
+                }}
+                className="flex items-center justify-center leading-none gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all mx-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.createTestBtn}</span>
+              </button>
+            </div>
+          ) : (
+            myTestPackages.map((pkg) => renderTestCard(pkg))
+          )}
+        </div>
+      ) : !selectedUniversity ? (
+        /* Barcha testlar - OTMlar katalogi yoki qidiruv natijalari */
+        <div className="space-y-3">
+          {/* Agar qidiruv so'zi kiritilgan bo'lsa va mos testlar topilsa, to'g'ridan-to'g'ri ko'rsatamiz */}
+          {searchQuery.trim() && matchingSearchTests.length > 0 && (
+            <div className="space-y-2.5 mb-4">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Qidiruv bo'yicha topilgan testlar ({matchingSearchTests.length})</span>
+                </span>
+              </div>
+              {matchingSearchTests.map((pkg) => renderTestCard(pkg))}
+            </div>
+          )}
+
+          {universityCatalog.length === 0 && matchingSearchTests.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">
               <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
                 <School className="w-7 h-7" />
               </div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                {onlyMyTests ? t.myTestsEmptyTitle : "Hozircha testlar mavjud emas"}
+                Hozircha testlar mavjud emas
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
-                {onlyMyTests
-                  ? t.myTestsEmptyDesc
-                  : "Yangi test qo'shish orqali boshlang yoki boshqa qidiruv so'zini kiriting."}
+                Yangi test qo'shish orqali boshlang yoki boshqa qidiruv so'zini kiriting.
               </p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <button
+                  type="button"
                   onClick={() => {
                     triggerHaptic('light');
                     onOpenCreateModal();
@@ -411,37 +706,46 @@ export const TestList: React.FC<TestListProps> = ({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2.5">
-              {universityCatalog.map((item) => (
-                <div
-                  key={item.name}
-                  onClick={() => {
-                    triggerHaptic('selection');
-                    setSelectedUniversity(item.name);
-                  }}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-all shadow-xs"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center justify-center font-black text-xs shrink-0 shadow-sm tracking-wider">
-                      {item.monogram}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
-                        {decodeHtmlEntities(item.name)}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                        {item.testCount} ta test
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+            <div className="space-y-2">
+              {searchQuery.trim() && matchingSearchTests.length > 0 && universityCatalog.length > 0 && (
+                <div className="px-1 pt-2">
+                  <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400">
+                    OTMlar katalogi bo'yicha ({universityCatalog.length})
+                  </span>
                 </div>
-              ))}
+              )}
+              <div className="grid grid-cols-1 gap-2.5">
+                {universityCatalog.map((item) => (
+                  <div
+                    key={item.name}
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      setSelectedUniversity(item.name);
+                    }}
+                    className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-all shadow-xs"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center justify-center font-black text-xs shrink-0 shadow-sm tracking-wider">
+                        {item.monogram}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
+                          {decodeHtmlEntities(item.name)}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                          {item.testCount} ta test
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       ) : (
-        /* Selected University Tests View */
+        /* Tanlangan OTM testlari */
         <div className="space-y-3">
           {/* Back Button & Test Count */}
           <div className="flex items-center justify-between gap-2">
@@ -453,7 +757,7 @@ export const TestList: React.FC<TestListProps> = ({
               }}
               className="px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all active:scale-95 shadow-xs"
             >
-              <span>⬅</span>
+              <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
               <span>Barcha OTMlar</span>
             </button>
             <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400">
@@ -488,6 +792,7 @@ export const TestList: React.FC<TestListProps> = ({
                 Qidiruv so'zini o'zgartiring yoki ushbu OTM uchun yangi test qo'shing.
               </p>
               <button
+                type="button"
                 onClick={() => {
                   triggerHaptic('light');
                   onOpenCreateModal();
@@ -499,194 +804,7 @@ export const TestList: React.FC<TestListProps> = ({
               </button>
             </div>
           ) : (
-            testsForSelectedUni.map((pkg) => (
-              <div
-                key={pkg.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm transition-all"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                      {pkg.department && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
-                          {decodeHtmlEntities(pkg.department)}
-                        </span>
-                      )}
-
-                      {(pkg.studyType || pkg.study_type || pkg.course_year || pkg.semester) && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
-                          <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
-                          <span>
-                            {pkg.studyType || pkg.study_type ? `${pkg.studyType || pkg.study_type} • ` : ''}
-                            {pkg.course_year ? `${pkg.course_year}-kurs` : ''}
-                            {pkg.course_year && pkg.semester ? ' • ' : ''}
-                            {pkg.semester ? `${pkg.semester}-semestr` : ''}
-                          </span>
-                        </span>
-                      )}
-
-                      {!pkg.isPublic ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
-                          <Lock className="w-3 h-3" />
-                          <span>{t.privateAccess}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                          <Unlock className="w-3 h-3" />
-                          <span>{t.publicAccess}</span>
-                        </span>
-                      )}
-
-                      {pkg.isCommunityCreated && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
-                          {t.communityTestBadge}
-                        </span>
-                      )}
-
-                      {isUserAuthor(pkg) && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80">
-                          {t.myTestBadge}
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                      {decodeHtmlEntities(pkg.title)}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {decodeHtmlEntities(pkg.university || '')} • {t.authorLabel}: {decodeHtmlEntities(pkg.authorName || '')}
-                    </p>
-                  </div>
-
-                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-400">
-                      {pkg.totalQuestions} {t.questionsCount}
-                    </span>
-
-                    {(isAdmin || isUserAuthor(pkg)) && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            triggerHaptic('light');
-                            setAdminEditingQuiz(pkg);
-                          }}
-                          className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-400 font-bold text-[11px] transition-all active:scale-95 border border-amber-200/50 dark:border-amber-800/50"
-                          title="Tahrirlash"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Tahrirlash</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTest(pkg);
-                          }}
-                          className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 transition-all active:scale-95 border border-rose-200/50 dark:border-rose-900/50 flex items-center justify-center leading-none"
-                          title="O'chirish"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Sequential Test Blocks Selection */}
-                <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70">
-                  <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                    {t.testBlocksLabel}:
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {pkg.blocks.map((block, idx) => {
-                      const isPaid = isPaidUser(profile);
-                      const unlocked = isPaid || isUserAuthor(pkg) || isAdmin || isBlockUnlocked(pkg, idx, testAttempts);
-                      const isLocked = !unlocked;
-
-                      const blockAttempts = (testAttempts || []).filter(
-                        (a) =>
-                          a.testPackageId === pkg.id &&
-                          (a.blockId === block.id || a.blockTitle === block.title)
-                      );
-                      const passing =
-                        block.passingScore ||
-                        Math.max(1, Math.ceil((block.questions?.length || 25) * 0.7));
-                      const maxScore =
-                        blockAttempts.length > 0
-                          ? Math.max(...blockAttempts.map((a) => a.score))
-                          : block.bestScore || 0;
-                      const isPassed = Boolean(
-                        block.isPassed ||
-                        maxScore >= passing ||
-                        blockAttempts.some((a) => a.isPassed || a.score >= passing)
-                      );
-                      const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
-                      const isLimitReached = !isPaid && todayAttempts >= 2;
-
-                      return (
-                        <button
-                          key={block.id}
-                          onClick={() => handleTestClick(pkg, block)}
-                          className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[60px] active:scale-[0.98] ${
-                            isLocked
-                              ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400'
-                              : isLimitReached
-                              ? 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/80 dark:border-orange-900/50 text-slate-800 dark:text-slate-200 hover:border-orange-400'
-                              : isPassed
-                              ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100 hover:border-emerald-500'
-                              : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/50 text-slate-800 dark:text-slate-100 hover:border-emerald-400'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs flex items-center gap-1">
-                              {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
-                              <span>{decodeHtmlEntities(block.title)}</span>
-                            </span>
-                            {isLocked ? (
-                              <Lock className="w-3.5 h-3.5 text-slate-400" />
-                            ) : isLimitReached ? (
-                              <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5">
-                                <Lock className="w-2.5 h-2.5" /> 2/2
-                              </span>
-                            ) : isPassed ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5 text-orange-500" />
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="opacity-80">
-                              {block.questions.length} {t.questionsCount}
-                            </span>
-                            <span>
-                              {isLocked ? (
-                                t.lockedStatus
-                              ) : isLimitReached ? (
-                                <span className="text-orange-600 dark:text-orange-400 font-bold">
-                                  Limit tugagan
-                                </span>
-                              ) : maxScore > 0 ? (
-                                <span className="font-bold">
-                                  {t.bestScoreLabel}: {maxScore}/{block.questions.length} ({maxScore * 4} {t.pointsLabel})
-                                </span>
-                              ) : (
-                                t.start
-                              )}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))
+            testsForSelectedUni.map((pkg) => renderTestCard(pkg))
           )}
         </div>
       )}
