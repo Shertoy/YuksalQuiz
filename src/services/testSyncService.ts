@@ -1125,14 +1125,14 @@ export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocke
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('is_blocked, balance, wallet_balance, voucher_claimed')
+      .select('is_blocked, balance, voucher_claimed')
       .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
       .limit(1)
       .maybeSingle();
 
     if (!error && data) {
       const isBlocked = Boolean(data.is_blocked);
-      const balance = Number(data.balance ?? data.wallet_balance ?? 0);
+      const balance = Number(data.balance ?? 0);
       const voucherClaimed = Boolean(data.voucher_claimed);
       if (isBlocked) {
         useQuizStore.getState().setUserBlocked(true);
@@ -1326,31 +1326,20 @@ export async function syncUserProfileToCloud(
   // 1. Primary: Direct upsert to public.users table!
   const userRowForUsersTable = {
     id: profile.id,
-    first_name: profile.firstName || '',
-    last_name: profile.lastName || '',
-    name: fullName,
-    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
+    full_name: fullName,
+    avatar_url: getGenderSafeAvatar(profile.avatar, profile.gender),
     university,
     region,
-    gender: profile.gender || 'male',
-    academic_year: profile.academicYear || 1,
-    coins: profile.coins || 0,
     telegram_id: profile.telegram_id || profile.telegramId || String(profile.id).replace(/^tg_/, '').replace(/^user_/, ''),
     balance: Math.max(profile.walletBalance || 0, profile.balance || 0),
-    wallet_balance: Math.max(profile.walletBalance || 0, profile.balance || 0),
     voucher_claimed: Boolean(profile.voucher_claimed || profile.voucherClaimed),
-    has_paid: Boolean(profile.has_paid),
-    paid_until: profile.paid_until || null,
-    tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
-    total_tests: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
-    correct_answers: stats.totalCorrectAnswers,
-    correct_answers_count: stats.totalCorrectAnswers,
-    total_score: stats.scorePoints,
-    score_points: stats.scorePoints,
-    total_time: stats.totalTimeSpentSeconds,
-    total_time_spent_seconds: stats.totalTimeSpentSeconds,
-    accuracy_percentage: stats.accuracyPercentage,
-    language: useQuizStore.getState().language || 'uz',
+    has_paid: Boolean(profile.has_paid || profile.isSubscribed),
+    paid_until: profile.paid_until || profile.subscriptionEnd || null,
+    total_tests: Math.max(profile.completedTestsCount || 0, stats.uniqueBlocksCount || 0),
+    correct_answers: stats.totalCorrectAnswers || 0,
+    total_score: stats.scorePoints || 0,
+    total_time: stats.totalTimeSpentSeconds || 0,
+    best_score: stats.scorePoints || 0,
     updated_at: new Date().toISOString(),
   };
 
@@ -1674,46 +1663,166 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
       console.warn('fetchAdminUsersList exception:', err);
     }
 
-    // 2. test_packages dagi LeaderboardUser qatorlaridan haqiqiy ismlarni qidirib boyitish
+    // 2. test_packages dagi LeaderboardUser qatorlaridan barcha foydalanuvchilarni olish va birlashtirish
     try {
       const { data: leadRows } = await supabase
         .from('test_packages')
-        .select('id, title, author_id, author_name')
+        .select('*')
         .eq('category', 'LeaderboardUser')
-        .limit(300);
+        .limit(500);
 
       if (leadRows && Array.isArray(leadRows)) {
         for (const pkg of leadRows) {
-          const pId = String(pkg.author_id || pkg.id || '').replace(/^lead_/, '');
-          const existing = userMap.get(pId);
-          const pkgName = String(pkg.title || pkg.author_name || '').trim();
-          if (pkgName && pkgName.toLowerCase() !== 'talaba') {
-            if (existing) {
+          let rawBlocks = pkg.blocks;
+          if (typeof rawBlocks === 'string') {
+            try { rawBlocks = JSON.parse(rawBlocks); } catch {}
+          }
+          const blockUser = Array.isArray(rawBlocks) && rawBlocks[0] ? rawBlocks[0] : null;
+          const pId = String(blockUser?.id || pkg.author_id || pkg.id || '').replace(/^lead_/, '');
+          const cleanPId = pId.replace(/^tg_/, '').replace(/^user_/, '');
+
+          const existing = userMap.get(pId) || userMap.get(cleanPId) || userMap.get(`user-${cleanPId}`) || userMap.get(`tg_${cleanPId}`);
+
+          const pkgBal = Math.max(
+            Number(pkg.author_wallet_balance || 0),
+            Number(blockUser?.wallet_balance || 0),
+            Number(blockUser?.balance || 0)
+          );
+          const pkgEnd = blockUser?.subscription_end || blockUser?.paid_until || null;
+          const pkgPaid = Boolean(blockUser?.has_paid || blockUser?.is_subscribed || (pkgEnd && new Date(pkgEnd) > new Date()));
+
+          if (!existing) {
+            const mapped = mapRowToLeaderboardUser(blockUser || {
+              id: pId,
+              name: pkg.title || pkg.author_name,
+              university: pkg.university,
+              region: pkg.department,
+              balance: pkgBal,
+              wallet_balance: pkgBal,
+              has_paid: pkgPaid,
+              paid_until: pkgEnd,
+            });
+            if (mapped && mapped.id) {
+              if (pkgBal > 0) {
+                mapped.walletBalance = pkgBal;
+                mapped.balance = pkgBal;
+              }
+              if (pkgPaid) {
+                mapped.has_paid = true;
+                mapped.isSubscribed = true;
+                mapped.paid_until = pkgEnd;
+                mapped.subscriptionEnd = pkgEnd;
+                mapped.subscriptionTier = blockUser?.subscription_tier;
+              }
+              userMap.set(mapped.id, mapped);
+            }
+          } else {
+            const pkgName = String(blockUser?.name || pkg.title || pkg.author_name || '').trim();
+            if (pkgName && pkgName.toLowerCase() !== 'talaba') {
               if (!existing.name || existing.name.toLowerCase() === 'talaba' || existing.name.startsWith('Talaba #')) {
                 existing.name = decodeHtmlEntities(pkgName);
               }
+            }
+            if (pkgBal > (existing.walletBalance || 0)) {
+              existing.walletBalance = pkgBal;
+              existing.balance = pkgBal;
+            }
+            if (pkgPaid) {
+              existing.has_paid = true;
+              existing.isSubscribed = true;
+              existing.paid_until = pkgEnd;
+              existing.subscriptionEnd = pkgEnd;
+              if (blockUser?.subscription_tier) existing.subscriptionTier = blockUser.subscription_tier;
+            }
+          }
+        }
+      }
+    } catch (leadErr) {
+      console.warn('fetchAdminUsersList test_packages error:', leadErr);
+    }
+
+    // 3. payments jadvalidagi tasdiqlangan to'lovlarni hisoblash
+    try {
+      const { data: pays } = await supabase
+        .from('payments')
+        .select('*')
+        .in('status', ['approved', 'auto_approved', 'manual_approved']);
+
+      if (pays && Array.isArray(pays)) {
+        const paySums = new Map<string, number>();
+        for (const p of pays) {
+          const uId = String(p.user_id || '').trim();
+          const cleanU = uId.replace(/^tg_/, '').replace(/^user_/, '');
+          const amt = Number(p.amount || 0);
+          paySums.set(uId, (paySums.get(uId) || 0) + amt);
+          paySums.set(cleanU, (paySums.get(cleanU) || 0) + amt);
+        }
+
+        for (const [id, u] of userMap.entries()) {
+          const clean = id.replace(/^tg_/, '').replace(/^user_/, '');
+          const sum = Math.max(
+            paySums.get(id) || 0,
+            paySums.get(clean) || 0,
+            paySums.get(`user-${clean}`) || 0,
+            paySums.get(`tg_${clean}`) || 0
+          );
+          if (sum > (u.walletBalance || 0)) {
+            u.walletBalance = sum;
+            u.balance = sum;
+          }
+        }
+      }
+    } catch {}
+
+    // 4. AdminCredit paketlarini tekshirish
+    try {
+      const { data: creds } = await supabase
+        .from('test_packages')
+        .select('*')
+        .eq('category', 'AdminCredit');
+
+      if (creds && Array.isArray(creds)) {
+        for (const c of creds) {
+          const b0 = Array.isArray(c.blocks) && c.blocks[0] ? c.blocks[0] : {};
+          const cId = String(c.author_id || b0.user_id || '').replace(/^tg_/, '').replace(/^user_/, '');
+          const u = userMap.get(cId) || userMap.get(`user-${cId}`) || userMap.get(`tg_${cId}`);
+          if (u) {
+            const cBal = Number(c.author_wallet_balance || b0.amount || 0);
+            if (cBal > (u.walletBalance || 0)) {
+              u.walletBalance = cBal;
+              u.balance = cBal;
+            }
+            if (b0.plan && b0.expiry && new Date(b0.expiry) > new Date()) {
+              u.has_paid = true;
+              u.isSubscribed = true;
+              u.paid_until = b0.expiry;
+              u.subscriptionEnd = b0.expiry;
+              u.subscriptionTier = b0.plan;
             }
           }
         }
       }
     } catch {}
 
-    // 3. payments dagi foydalanuvchi ismlaridan ham boyitish
+    // 5. subscriptions jadvalidan faol obunalarni sinxronlashtirish
     try {
-      const { data: pays } = await supabase
-        .from('payments')
-        .select('user_id, users(full_name, username)')
-        .limit(300);
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('*');
 
-      if (pays && Array.isArray(pays)) {
-        for (const p of pays) {
-          const uId = String(p.user_id || '').replace(/^tg_/, '').replace(/^user_/, '');
-          const existing = userMap.get(uId);
-          const uObj: any = p.users;
-          const pName = (uObj?.full_name || '').trim();
-          if (existing && pName && pName.toLowerCase() !== 'talaba') {
-            if (!existing.name || existing.name.toLowerCase() === 'talaba' || existing.name.startsWith('Talaba #')) {
-              existing.name = decodeHtmlEntities(pName);
+      if (subs && Array.isArray(subs)) {
+        const now = new Date();
+        for (const s of subs) {
+          if (s.expires_at && new Date(s.expires_at) > now) {
+            const uId = String(s.user_id || '').trim();
+            const clean = uId.replace(/^tg_/, '').replace(/^user_/, '');
+            const target = userMap.get(uId) || userMap.get(clean) || userMap.get(`user-${clean}`) || userMap.get(`tg_${clean}`);
+            if (target) {
+              target.has_paid = true;
+              target.isSubscribed = true;
+              target.paid_until = s.expires_at;
+              target.subscriptionEnd = s.expires_at;
+              target.subscriptionTier = s.plan_name || s.plan || target.subscriptionTier;
             }
           }
         }

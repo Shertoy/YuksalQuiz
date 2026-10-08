@@ -575,25 +575,93 @@ export const useQuizStore = create<QuizState>()(
 
           console.log("📦 Supabase qaytargan foydalanuvchi ma'lumoti:", dbUser, 'Xato:', error);
 
-          // 3. subscriptions jadvalidan faol obunani parallel tekshirish
+          // 3. subscriptions jadvalidan faol obunani parallel tekshirish (status columniga tayanmasdan)
           let subData: any = null;
           try {
-            const { data: foundSub, error: subErr } = await supabase
+            const { data: foundSubs, error: subErr } = await supabase
               .from('subscriptions')
               .select('*')
               .or(`user_id.eq.${resolvedId},user_id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,user_id.eq.${rawId}` : ''}`)
-              .eq('status', 'active')
               .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+              .limit(5);
 
-            if (!subErr && foundSub) {
-              subData = foundSub;
-              console.log('💎 subscriptions jadvalidagi faol obuna:', subData);
+            if (!subErr && foundSubs && foundSubs.length > 0) {
+              const activeSub = foundSubs.find(
+                (s: any) => s.expires_at && new Date(s.expires_at) > new Date()
+              );
+              if (activeSub) {
+                subData = activeSub;
+                console.log('💎 subscriptions jadvalidagi faol obuna:', subData);
+              }
             }
           } catch (subQueryErr) {
             console.debug('subscriptions table check notice:', subQueryErr);
           }
+
+          // 4. test_packages jadvalidan foydalanuvchi ma'lumotlarini tekshirish
+          let leadPkgUser: any = null;
+          let leadPkgBal = 0;
+          try {
+            const { data: lp } = await supabase
+              .from('test_packages')
+              .select('id, author_wallet_balance, blocks')
+              .or(`id.eq.lead_${resolvedId},id.eq.lead_${cleanId},id.eq.lead_user-${cleanId},author_id.eq.${resolvedId},author_id.eq.${cleanId}`)
+              .limit(1)
+              .maybeSingle();
+
+            if (lp) {
+              const b0 = Array.isArray(lp.blocks) && lp.blocks[0] ? lp.blocks[0] : null;
+              leadPkgUser = b0;
+              leadPkgBal = Math.max(
+                Number(lp.author_wallet_balance || 0),
+                Number(b0?.wallet_balance || 0),
+                Number(b0?.balance || 0)
+              );
+            }
+          } catch (lpErr) {
+            console.debug('test_packages check notice:', lpErr);
+          }
+
+          // 5. payments jadvalidan tasdiqlangan to'lovlarni jamlash
+          let approvedPaymentsSum = 0;
+          try {
+            const { data: userPays } = await supabase
+              .from('payments')
+              .select('amount')
+              .or(`user_id.eq.${resolvedId},user_id.eq.${cleanId},user_id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,user_id.eq.${rawId}` : ''}`)
+              .in('status', ['approved', 'auto_approved', 'manual_approved']);
+
+            if (userPays && userPays.length > 0) {
+              approvedPaymentsSum = userPays.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
+            }
+          } catch (payErr) {
+            console.debug('payments check notice:', payErr);
+          }
+
+          // 6. AdminCredit paketlarini tekshirish
+          let adminCreditBal = 0;
+          let adminCreditExpiry: string | null = null;
+          let adminCreditPlan: string | null = null;
+          try {
+            const { data: creds } = await supabase
+              .from('test_packages')
+              .select('author_wallet_balance, blocks')
+              .eq('category', 'AdminCredit')
+              .or(`author_id.eq.${resolvedId},author_id.eq.${cleanId},author_id.eq.${rawId}`)
+              .order('created_at', { ascending: false });
+
+            if (creds && creds.length > 0) {
+              for (const c of creds) {
+                const b0 = Array.isArray(c.blocks) && c.blocks[0] ? c.blocks[0] : {};
+                const cBal = Number(c.author_wallet_balance || b0.amount || 0);
+                if (cBal > adminCreditBal) adminCreditBal = cBal;
+                if (b0.plan && b0.expiry && new Date(b0.expiry) > new Date()) {
+                  adminCreditExpiry = b0.expiry;
+                  adminCreditPlan = b0.plan;
+                }
+              }
+            }
+          } catch {}
 
           // Admin belgilagan narxlar hamma talabaga bir xil ko'rinadi
           try {
@@ -617,26 +685,45 @@ export const useQuizStore = create<QuizState>()(
             /* narxlar olinmasa joriy narxlar qoladi */
           }
 
-          if (dbUser || subData) {
-            const numBalance = Number(dbUser?.balance ?? dbUser?.wallet_balance ?? currentProfile.walletBalance ?? 0);
+          if (dbUser || subData || leadPkgUser || approvedPaymentsSum > 0 || adminCreditBal > 0) {
+            const numBalance = Math.max(
+              Number(dbUser?.balance ?? dbUser?.wallet_balance ?? 0),
+              approvedPaymentsSum,
+              leadPkgBal,
+              adminCreditBal,
+              Number(currentProfile.walletBalance || 0)
+            );
             const isBlocked = Boolean(dbUser?.is_blocked);
             const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
 
             // Obuna tekshiruvi: muddat, is_subscribed bayrog'i, has_paid yoki subscription_tier bo'yicha
-            const rawSubEnd = dbUser?.subscription_end || dbUser?.paid_until || subData?.expires_at;
+            const rawSubEnd =
+              dbUser?.subscription_end ||
+              dbUser?.paid_until ||
+              subData?.expires_at ||
+              leadPkgUser?.subscription_end ||
+              leadPkgUser?.paid_until ||
+              adminCreditExpiry;
+
             const isSubscribed = Boolean(
               (rawSubEnd && new Date(rawSubEnd) > new Date()) ||
               dbUser?.is_subscribed === true ||
               dbUser?.has_paid === true ||
+              leadPkgUser?.is_subscribed === true ||
+              leadPkgUser?.has_paid === true ||
               (dbUser?.subscription_tier && dbUser?.subscription_tier !== 'none') ||
               (dbUser?.subscription_plan && dbUser?.subscription_plan !== 'none') ||
-              subData?.status === 'active'
+              Boolean(subData?.expires_at && new Date(subData.expires_at) > new Date()) ||
+              Boolean(adminCreditPlan)
             );
 
             const activeTier: any =
               dbUser?.subscription_tier ||
               dbUser?.subscription_plan ||
+              subData?.plan_name ||
               subData?.plan ||
+              leadPkgUser?.subscription_tier ||
+              adminCreditPlan ||
               (isSubscribed ? (currentProfile.subscriptionPlan && currentProfile.subscriptionPlan !== 'none' ? currentProfile.subscriptionPlan : '3_months') : 'none');
 
             const activeEnd =
