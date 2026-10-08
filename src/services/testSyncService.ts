@@ -1,5 +1,5 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
-import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question } from '../types';
+import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question, StudyType } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import { decodeHtmlEntities, cleanTelegramId } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
@@ -59,6 +59,8 @@ function mapRowToTestPackage(row: any): TestPackage {
     academicYear: parsedAcademicYear || undefined,
     course_year: row.course_year ? Number(row.course_year) : undefined,
     faculty: row.faculty || row.department,
+    studyType: (row.study_type || row.studyType || undefined) as any,
+    study_type: (row.study_type || row.studyType || undefined) as any,
   };
 }
 
@@ -88,6 +90,7 @@ function mapTestPackageToRow(pkg: TestPackage): Record<string, any> {
     author_name: pkg.authorName,
     is_community_created: Boolean(pkg.isCommunityCreated ?? true),
     author_wallet_balance: Number(pkg.authorWalletBalance) || 0,
+    study_type: pkg.studyType || pkg.study_type || null,
     created_at: pkg.createdAt ? new Date(pkg.createdAt).toISOString() : new Date().toISOString(),
   };
 }
@@ -272,31 +275,37 @@ export async function saveQuizWithQuestions(params: {
   course_year?: number;
   semester?: number;
   academicYear?: string;
+  studyType?: StudyType;
+  study_type?: StudyType;
 }): Promise<{ success: boolean; quizId: string; message: string }> {
   const supabase = getSupabase();
   const isPublicFlag = params.is_public !== undefined ? params.is_public : params.visibility !== 'unlisted';
   const finalCategory = params.category || 'Oliy Ta\'lim (HEMIS)';
   const finalVisibility = isPublicFlag ? 'public' : 'unlisted';
+  const finalStudyType = params.study_type || params.studyType || 'Kunduzgi';
 
   // 1. Try writing to Supabase `quizzes` and `questions` tables
   if (supabase) {
     try {
+      const quizPayload: Record<string, any> = {
+        id: params.quizId,
+        title: params.title,
+        university: params.university || null,
+        faculty: params.faculty || params.department || null,
+        course_year: params.course_year || (params.semester ? Math.ceil(params.semester / 2) : 1),
+        semester: params.semester || 1,
+        creator_id: params.creatorId,
+        creator_name: params.creatorName || 'Talaba',
+        is_public: isPublicFlag,
+        visibility: finalVisibility,
+        category: finalCategory,
+        total_questions: params.questions.length,
+        updated_at: new Date().toISOString(),
+        study_type: finalStudyType,
+      };
+
       const { error: quizErr } = await supabase.from('quizzes').upsert(
-        {
-          id: params.quizId,
-          title: params.title,
-          university: params.university || null,
-          faculty: params.faculty || params.department || null,
-          course_year: params.course_year || (params.semester ? Math.ceil(params.semester / 2) : 1),
-          semester: params.semester || 1,
-          creator_id: params.creatorId,
-          creator_name: params.creatorName || 'Talaba',
-          is_public: isPublicFlag,
-          visibility: finalVisibility,
-          category: finalCategory,
-          total_questions: params.questions.length,
-          updated_at: new Date().toISOString(),
-        },
+        quizPayload,
         { onConflict: 'id' }
       );
 
@@ -359,6 +368,9 @@ export async function saveQuizWithQuestions(params: {
     isCommunityCreated: true,
     authorWalletBalance: 0,
     semester: params.semester || 1,
+    course_year: params.course_year || (params.semester ? Math.ceil(params.semester / 2) : 1),
+    studyType: finalStudyType,
+    study_type: finalStudyType,
     academicYear: params.course_year ? `${params.course_year}-kurs` : params.academicYear || '2025-2026',
   };
 
@@ -406,6 +418,8 @@ export interface QuizPassportData {
   semester?: number;
   is_public?: boolean;
   category?: string;
+  studyType?: StudyType;
+  study_type?: StudyType;
 }
 
 export interface EditableQuestionItem {
@@ -489,6 +503,8 @@ export async function updateQuizWithQuestions(
   const semester = Number(quizData.semester) || 1;
   const isPublic = quizData.is_public ?? true;
   const category = quizData.category || "Oliy Ta'lim (HEMIS)";
+  const existingPkg = useQuizStore.getState().testPackages.find((p) => p.id === quizId);
+  const studyType = quizData.study_type || quizData.studyType || existingPkg?.studyType || 'Kunduzgi';
 
   if (!quizId) {
     return { success: false, message: "Test ID ko'rsatilmadi." };
@@ -516,6 +532,7 @@ export async function updateQuizWithQuestions(
           category,
           total_questions: questions.length,
           updated_at: new Date().toISOString(),
+          study_type: studyType,
         },
         { onConflict: 'id' }
       );
@@ -565,7 +582,6 @@ export async function updateQuizWithQuestions(
 
   const blocks = splitQuestionsIntoBlocks(mappedQuestions);
 
-  const existingPkg = useQuizStore.getState().testPackages.find((p) => p.id === quizId);
   const updatedPkg: TestPackage = {
     id: quizId,
     title,
@@ -581,6 +597,9 @@ export async function updateQuizWithQuestions(
     isCommunityCreated: existingPkg?.isCommunityCreated ?? true,
     authorWalletBalance: existingPkg?.authorWalletBalance || 0,
     semester,
+    course_year: courseYear,
+    studyType: studyType as any,
+    study_type: studyType as any,
     academicYear: `${courseYear}-kurs`,
   };
 

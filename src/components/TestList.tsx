@@ -514,10 +514,11 @@ export const TestList: React.FC<TestListProps> = ({
                         </span>
                       )}
 
-                      {(pkg.course_year || pkg.semester) && (
+                      {(pkg.studyType || pkg.study_type || pkg.course_year || pkg.semester) && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
                           <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
                           <span>
+                            {pkg.studyType || pkg.study_type ? `${pkg.studyType || pkg.study_type} • ` : ''}
                             {pkg.course_year ? `${pkg.course_year}-kurs` : ''}
                             {pkg.course_year && pkg.semester ? ' • ' : ''}
                             {pkg.semester ? `${pkg.semester}-semestr` : ''}

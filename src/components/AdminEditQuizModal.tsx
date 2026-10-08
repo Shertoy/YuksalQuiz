@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuizStore, deduplicateUniversities } from '../store/useQuizStore';
-import { TestPackage, TOP_UNIVERSITIES } from '../types';
+import { TestPackage, TOP_UNIVERSITIES, StudyType } from '../types';
 import {
   updateQuizWithQuestions,
   fetchQuizQuestionsForEdit,
@@ -62,10 +62,13 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
   const [faculty, setFaculty] = useState(
     decodeHtmlEntities((quiz as any).faculty || quiz.department || '')
   );
+  const [studyType, setStudyType] = useState<StudyType>(
+    (quiz as any).studyType || (quiz as any).study_type || 'Kunduzgi'
+  );
 
-  const initialCourse = quiz.semester ? Math.ceil(quiz.semester / 2) : 1;
+  const initialCourse = quiz.course_year || (quiz.semester ? Math.ceil(quiz.semester / 2) : 1);
   const [courseYear, setCourseYear] = useState<number>(
-    initialCourse >= 1 && initialCourse <= 4 ? initialCourse : 1
+    initialCourse >= 1 && initialCourse <= 5 ? initialCourse : 1
   );
   const [semester, setSemester] = useState<number>(quiz.semester || 1);
   const [isPublic, setIsPublic] = useState<boolean>(quiz.isPublic ?? true);
@@ -96,8 +99,11 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
     }
 
     setFaculty(decodeHtmlEntities((quiz as any).faculty || quiz.department || ''));
-    const c = quiz.semester ? Math.ceil(quiz.semester / 2) : 1;
-    setCourseYear(c >= 1 && c <= 4 ? c : 1);
+    const resolvedStudyType: StudyType = (quiz as any).studyType || (quiz as any).study_type || 'Kunduzgi';
+    setStudyType(resolvedStudyType);
+    const maxCourse = resolvedStudyType === 'Sirtqi' ? 5 : 4;
+    const c = quiz.course_year || (quiz.semester ? Math.ceil(quiz.semester / 2) : 1);
+    setCourseYear(c >= 1 && c <= maxCourse ? c : 1);
     setSemester(quiz.semester || 1);
     setIsPublic(quiz.isPublic ?? true);
     setErrorMsg(null);
@@ -266,6 +272,8 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
       semester,
       is_public: isPublic,
       category: quiz.category || "Oliy Ta'lim (HEMIS)",
+      studyType,
+      study_type: studyType,
     };
 
     const finalQuestions: EditableQuestionItem[] = questions.map((q) => ({
@@ -429,16 +437,54 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
               />
             </div>
 
+            {/* Ta'lim shakli (Kunduzgi / Sirtqi / Kechki / Masofaviy) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Ta'lim shakli</span>
+                </label>
+                {studyType === 'Sirtqi' && (
+                  <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800/60">
+                    Sirtqi ta'lim (5-kursgacha)
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(['Kunduzgi', 'Sirtqi', 'Kechki', 'Masofaviy'] as StudyType[]).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setStudyType(st);
+                      if (st !== 'Sirtqi' && courseYear > 4) {
+                        setCourseYear(4);
+                        setSemester(7);
+                      }
+                    }}
+                    className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all text-center ${
+                      studyType === st
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
+                    }`}
+                  >
+                    {st === 'Kunduzgi' ? '🎓 Kunduzgi' : st === 'Sirtqi' ? '💼 Sirtqi (5 kurs)' : st === 'Kechki' ? '🌙 Kechki' : '💻 Masofaviy'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Kurs va Semestr */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              {/* Kurs tanlash (1-4 radio) */}
+              {/* Kurs tanlash */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Kursni tanlang</span>
+                  <span>Kursni tanlang ({studyType === 'Sirtqi' ? '1-5 kurs' : '1-4 kurs'})</span>
                 </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 4].map((c) => (
+                <div className={`grid ${studyType === 'Sirtqi' ? 'grid-cols-5' : 'grid-cols-4'} gap-1.5`}>
+                  {(studyType === 'Sirtqi' ? [1, 2, 3, 4, 5] : [1, 2, 3, 4]).map((c) => (
                     <label
                       key={c}
                       onClick={() => {
@@ -468,11 +514,11 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
                 </div>
               </div>
 
-              {/* Semestr tanlash (1-8 select) */}
+              {/* Semestr tanlash */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-blue-500" />
-                  <span>Semestrni tanlang</span>
+                  <span>Semestrni tanlang ({studyType === 'Sirtqi' ? '1-10 semestr' : '1-8 semestr'})</span>
                 </label>
                 <select
                   value={semester}
@@ -484,7 +530,7 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  {(studyType === 'Sirtqi' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [1, 2, 3, 4, 5, 6, 7, 8]).map((s) => (
                     <option key={s} value={s}>
                       {s}-semestr ({Math.ceil(s / 2)}-kurs)
                     </option>

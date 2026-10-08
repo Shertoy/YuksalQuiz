@@ -6,11 +6,18 @@ import {
   TestPackage,
   MAIN_CATEGORIES,
   MainCategory,
+  StudyType,
 } from '../types';
 import {
   saveQuizWithQuestions,
   QuizQuestionInput,
 } from '../services/testSyncService';
+import {
+  parseBulkQuizText,
+  HEMIS_SAMPLE_TEMPLATE,
+  STANDARD_SAMPLE_TEMPLATE,
+  downloadSampleTemplateFile,
+} from '../utils/quizParser';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import {
   X,
@@ -36,6 +43,7 @@ import {
   Layers,
   BookOpen,
   Edit3,
+  Download,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 
@@ -45,7 +53,8 @@ interface CreateQuizModalProps {
 }
 
 type WizardStep = 1 | 2 | 3 | 4; // 1: Metadata, 2: Questions Input, 3: Preview, 4: Success Share
-type QuestionInputMethod = 'ai_file' | 'bulk_text' | 'manual';
+type TopInputMode = 'manual' | 'bulk'; // 'manual' (Donalik) | 'bulk' (Barchasini bittada)
+type BulkSubMode = 'text' | 'file'; // 'text' (Matn orqali) | 'file' (Fayl orqali)
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -73,7 +82,9 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
   // Step state
   const [currentStep, setCurrentStep] = useState<WizardStep>(isEditing ? 3 : 1);
-  const [inputMethod, setInputMethod] = useState<QuestionInputMethod>('ai_file');
+  const [topInputMode, setTopInputMode] = useState<TopInputMode>('manual');
+  const [bulkSubMode, setBulkSubMode] = useState<BulkSubMode>('text');
+  const [sampleCopied, setSampleCopied] = useState<boolean>(false);
 
   // --- 1-QADAM: TEST PASPORTI (METADATA) ---
   const [title, setTitle] = useState(editPackage?.title || '');
@@ -92,12 +103,35 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   const [isCustomUni, setIsCustomUni] = useState(initialIsCustomUni);
   const [customUniName, setCustomUniName] = useState(initialIsCustomUni && editPackage ? editPackage.university : '');
 
-  // Kurs tanlash (1, 2, 3, 4-kurs)
-  const initialCourse = editPackage?.semester ? Math.ceil(editPackage.semester / 2) : 1;
-  const [courseYear, setCourseYear] = useState<number>(initialCourse >= 1 && initialCourse <= 4 ? initialCourse : 1);
+  // Ta'lim shakli (Kunduzgi, Sirtqi [5-kurs], Kechki, Masofaviy)
+  const [studyType, setStudyType] = useState<StudyType>(
+    (editPackage as any)?.studyType || (editPackage as any)?.study_type || (profile.studyType as any) || 'Kunduzgi'
+  );
 
-  // Semestr tanlash (1 dan 8 gacha)
+  const maxCourse = studyType === 'Sirtqi' ? 5 : 4;
+  const maxSemester = studyType === 'Sirtqi' ? 10 : 8;
+
+  // Kurs tanlash (Sirtqi bo'lsa 1-5, aks holda 1-4)
+  const initialCourse = editPackage?.semester ? Math.ceil(editPackage.semester / 2) : 1;
+  const [courseYear, setCourseYear] = useState<number>(
+    initialCourse >= 1 && initialCourse <= maxCourse ? initialCourse : 1
+  );
+
+  // Semestr tanlash (Sirtqi bo'lsa 1-10, aks holda 1-8)
   const [semester, setSemester] = useState<number>(editPackage?.semester || 1);
+
+  const handleStudyTypeChange = (newType: StudyType) => {
+    setStudyType(newType);
+    const newMaxC = newType === 'Sirtqi' ? 5 : 4;
+    const newMaxS = newType === 'Sirtqi' ? 10 : 8;
+    if (courseYear > newMaxC) {
+      setCourseYear(newMaxC);
+      setSemester(newMaxS);
+    } else if (semester > newMaxS) {
+      setSemester(newMaxS);
+    }
+    triggerHaptic('light');
+  };
 
   // Ko'rinish darajasi (Ommaviy / Faqat havola)
   const [isPublic, setIsPublic] = useState<boolean>(editPackage ? editPackage.isPublic : true);
@@ -112,18 +146,19 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   }>({});
 
   // --- 2-QADAM: SAVOLLARNI KIRITISH ---
-  // USUL A: AI Fayl yuklash
+  // USUL A: Fayl yuklash (AI yoki Shablon orqali)
   const [file, setFile] = useState<File | null>(null);
   const [fileBase64, setFileBase64] = useState<string>('');
+  const [fileTextContent, setFileTextContent] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiLoadingMsg, setAiLoadingMsg] = useState('Hujjat tahlilga tayyorlanmoqda...');
 
-  // USUL B: Ommaviy matn (Bulk Parser)
+  // USUL B: Ommaviy matn (Shablon / HEMIS Parser)
   const [bulkText, setBulkText] = useState('');
   const [bulkError, setBulkError] = useState('');
 
-  // USUL C: Qo'lda bittalab kiritish (Manual)
+  // USUL C: Qo'lda bittalab donalik kiritish (Manual)
   const [manualQuestions, setManualQuestions] = useState<QuizQuestionInput[]>([
     {
       question: '',
@@ -198,6 +233,36 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       setGlobalError("Faylni o'qishda xatolik yuz berdi.");
     };
     reader.readAsDataURL(selected);
+
+    // Agar matn (.txt) fayl bo'lsa, to'g'ridan-to'g'ri matnini ham o'qiymiz
+    if (selected.name.toLowerCase().endsWith('.txt')) {
+      const txtReader = new FileReader();
+      txtReader.onload = () => {
+        setFileTextContent(txtReader.result as string);
+      };
+      txtReader.readAsText(selected);
+    } else {
+      setFileTextContent('');
+    }
+  };
+
+  const handleParseTxtDirectly = () => {
+    if (!fileTextContent.trim()) {
+      setGlobalError(".txt fayli bo'sh yoki o'qib bo'lmadi.");
+      triggerHaptic('warning');
+      return;
+    }
+
+    const res = parseBulkQuizText(fileTextContent);
+    if (res.questions.length > 0) {
+      setQuestions(res.questions);
+      setGlobalError('');
+      setCurrentStep(3); // To Preview
+      triggerHaptic('success');
+    } else {
+      setGlobalError(res.error || ".txt faylidan test savollari aniqlanmadi.");
+      triggerHaptic('error');
+    }
   };
 
   const handleStartAiParsing = async () => {
@@ -260,7 +325,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   };
 
   // ==========================================
-  // USUL B: OMMchannel MATN PARSERI (==== VA ++++)
+  // USUL B: SHABLON ASOSIDA MATNNI TAHLIL QILISH
   // ==========================================
   const handleParseBulkText = () => {
     const trimmed = bulkText.trim();
@@ -270,127 +335,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       return;
     }
 
-    try {
-      const parsed: QuizQuestionInput[] = [];
-
-      // Format 1: ++++ question delimiter va ==== option delimiter
-      if (trimmed.includes('++++')) {
-        const rawBlocks = trimmed.split(/\+{4,}/).map((b) => b.trim()).filter(Boolean);
-
-        rawBlocks.forEach((blockStr) => {
-          const parts = blockStr.split(/={4,}/).map((p) => p.trim()).filter(Boolean);
-          if (parts.length >= 2) {
-            const qText = parts[0];
-            const rawOptions = parts.slice(1);
-            let correctAns = '';
-            const options: string[] = [];
-
-            rawOptions.forEach((opt) => {
-              let optText = opt;
-              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
-                optText = optText.replace(/^[#+*]+/, '').trim();
-                correctAns = optText;
-              } else if (optText.startsWith('=')) {
-                optText = optText.substring(1).trim();
-              }
-              options.push(optText);
-            });
-
-            while (options.length < 4) {
-              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
-            }
-
-            if (!correctAns) {
-              correctAns = options[0];
-            }
-
-            parsed.push({
-              question: qText,
-              options: options.slice(0, 4),
-              correct_answer: correctAns,
-            });
-          }
-        });
-      } else if (trimmed.includes('====')) {
-        // Format 2: ==== bilan ajratilgan savollar bloki
-        const rawBlocks = trimmed.split(/={4,}/).map((b) => b.trim()).filter(Boolean);
-        // Agar har bir blokda 1 savol va variantlar bo'lsa
-        rawBlocks.forEach((blockStr) => {
-          const lines = blockStr.split('\n').map((l) => l.trim()).filter(Boolean);
-          if (lines.length >= 2) {
-            const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
-            const rawOpts = lines.slice(1);
-            let correctAns = '';
-            const options: string[] = [];
-
-            rawOpts.forEach((opt) => {
-              let optText = opt;
-              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
-                optText = optText.replace(/^[#+*]+/, '').trim();
-                correctAns = optText;
-              } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
-                optText = optText.replace(/^[A-D][\.\)]\s*/i, '').trim();
-              }
-              options.push(optText);
-            });
-
-            while (options.length < 4) {
-              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
-            }
-
-            parsed.push({
-              question: qText,
-              options: options.slice(0, 4),
-              correct_answer: correctAns || options[0],
-            });
-          }
-        });
-      } else {
-        // Fallback: Standart bo'sh satrlar bilan ajratilgan testlar
-        const blocks = trimmed.split(/\n\s*\n/);
-        blocks.forEach((b) => {
-          const lines = b.split('\n').map((l) => l.trim()).filter(Boolean);
-          if (lines.length >= 2) {
-            const qText = lines[0].replace(/^\d+[\.\)]\s*/, '');
-            const rawOpts = lines.slice(1);
-            let correctAns = '';
-            const options: string[] = [];
-
-            rawOpts.forEach((opt) => {
-              let optText = opt;
-              if (optText.startsWith('#') || optText.startsWith('+') || optText.startsWith('*')) {
-                optText = optText.replace(/^[#+*]+/, '').trim();
-                correctAns = optText;
-              } else if (/^[A-D][\.\)]\s*/i.test(optText)) {
-                optText = optText.replace(/^[A-D][\.\)]\s*/i, '').trim();
-              }
-              options.push(optText);
-            });
-
-            while (options.length < 4) {
-              options.push(`Variant ${String.fromCharCode(65 + options.length)}`);
-            }
-
-            parsed.push({
-              question: qText,
-              options: options.slice(0, 4),
-              correct_answer: correctAns || options[0],
-            });
-          }
-        });
-      }
-
-      if (parsed.length > 0) {
-        setQuestions(parsed);
-        setBulkError('');
-        setCurrentStep(3); // To Preview
-        triggerHaptic('success');
-      } else {
-        setBulkError("Format aniqlanmadi. Savollar orasiga ==== va to'g'ri javob oldiga # yoki + qo'ying.");
-        triggerHaptic('error');
-      }
-    } catch {
-      setBulkError("Matnni tahlil qilishda xatolik yuz berdi.");
+    const res = parseBulkQuizText(trimmed);
+    if (res.questions.length > 0) {
+      setQuestions(res.questions);
+      setBulkError('');
+      setCurrentStep(3); // To Preview
+      triggerHaptic('success');
+    } else {
+      setBulkError(res.error || "Format aniqlanmadi. Rasmiy HEMIS (==== va ++++) yoki A, B, C, D formatida kiriting.");
       triggerHaptic('error');
     }
   };
@@ -521,6 +473,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
         faculty: faculty.trim(),
         course_year: courseYear,
         semester,
+        studyType: studyType,
+        study_type: studyType,
         creatorId: profile.id,
         creatorName,
         is_public: isPublic,
@@ -560,6 +514,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       `🎯 Yuksal Quiz'da yangi test e'lon qilindi!\n\n` +
       `📚 Fan: ${title}\n` +
       `🏫 OTM: ${isCustomUni ? customUniName : university}\n` +
+      `📖 Ta'lim shakli: ${studyType}\n` +
       `🎓 ${courseYear}-kurs, ${semester}-semestr\n\n` +
       `Bilimingizni sinab ko'ring:`
     );
@@ -792,19 +747,53 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               )}
             </div>
 
-            {/* Kurs tanlash (Radio: 1-kurs | 2-kurs | 3-kurs | 4-kurs) */}
+            {/* Ta'lim shakli (Kunduzgi / Sirtqi / Kechki / Masofaviy) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Kurs tanlash
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Ta'lim shakli
+                </label>
+                {studyType === 'Sirtqi' && (
+                  <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
+                    🎓 Sirtqi — 5 kurs / 10 semestr
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 3, 4].map((k) => (
+                {(['Kunduzgi', 'Sirtqi', 'Kechki', 'Masofaviy'] as StudyType[]).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => handleStudyTypeChange(st)}
+                    className={`py-2 px-1 rounded-xl text-xs font-extrabold border transition-all ${
+                      studyType === st
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kurs tanlash */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Kurs tanlash ({maxCourse} ta kurs)
+                </label>
+                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {courseYear}-kurs
+                </span>
+              </div>
+              <div className={`grid gap-2 ${studyType === 'Sirtqi' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                {Array.from({ length: maxCourse }, (_, i) => i + 1).map((k) => (
                   <button
                     key={k}
                     type="button"
                     onClick={() => {
                       setCourseYear(k);
-                      // Auto-select corresponding odd semester
                       setSemester(k * 2 - 1);
                       triggerHaptic('light');
                     }}
@@ -820,18 +809,18 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               </div>
             </div>
 
-            {/* Semestr tanlash (Radio / Select: 1 dan 8 gacha) */}
+            {/* Semestr tanlash */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Semestr tanlash (1 - 8)
+                  Semestr tanlash (1 - {maxSemester})
                 </label>
                 <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
                   {semester}-semestr
                 </span>
               </div>
-              <div className="grid grid-cols-8 gap-1">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+              <div className={`grid gap-1 ${studyType === 'Sirtqi' ? 'grid-cols-5 sm:grid-cols-10' : 'grid-cols-8'}`}>
+                {Array.from({ length: maxSemester }, (_, i) => i + 1).map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -900,188 +889,58 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
         )}
 
         {/* ============================================================== */}
-        {/* ▶ 2-QADAM: SAVOLLARNI KIRITISH USULINI TANLASH (TABS)          */}
+        {/* ▶ 2-QADAM: SAVOLLARNI KIRITISH (DONALIK YOKI BARCHASINI BITTADA) */}
         {/* ============================================================== */}
         {currentStep === 2 && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Usul Tanlash Tablari */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            {/* 2 Ta Bosh Rejim: Donalik yoki Barchasini bittada */}
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => {
-                  setInputMethod('ai_file');
+                  setTopInputMode('manual');
                   triggerHaptic('light');
                 }}
-                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
-                  inputMethod === 'ai_file'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                  topInputMode === 'manual'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                <span>AI Fayl yuklash</span>
+                <Edit3 className="w-4 h-4" />
+                <span>✍️ Donalik kiritish</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  setInputMethod('bulk_text');
+                  setTopInputMode('bulk');
                   triggerHaptic('light');
                 }}
-                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
-                  inputMethod === 'bulk_text'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                  topInputMode === 'bulk'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Ommaviy matn</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setInputMethod('manual');
-                  triggerHaptic('light');
-                }}
-                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all ${
-                  inputMethod === 'manual'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Qo'lda kiritish</span>
+                <Layers className="w-4 h-4" />
+                <span>📋 Barchasini bittada</span>
               </button>
             </div>
 
             {/* -------------------------------------------------------- */}
-            {/* USUL A: 📄 AI FAYL YUKLASH (.docx, .pdf, .txt)           */}
+            {/* 1. DONALIK KIRITISH (MANUAL BITTALAB)                    */}
             {/* -------------------------------------------------------- */}
-            {inputMethod === 'ai_file' && (
-              <div className="space-y-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".docx,.pdf,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-
-                {!file ? (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-3xl p-8 text-center cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30 dark:bg-slate-800/30 group"
-                  >
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <Upload className="w-7 h-7" />
-                    </div>
-                    <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
-                      Word (.docx), PDF yoki Matn faylini tanlang
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                      Maksimal hajm: 5 MB &bull; Gemini 1.5 Flash avtomatik savol va javoblarni ajratadi
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                        <FileCode className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {file.name}
-                        </p>
-                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB &bull; Yuklashga tayyor
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFile(null);
-                        setFileBase64('');
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
-                      className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
-                      title="O'chirish"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* AI Loading Screen */}
-                {isAiLoading && (
-                  <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 text-center space-y-2.5 animate-pulse">
-                    <Loader2 className="w-7 h-7 mx-auto text-emerald-600 animate-spin" />
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      Gemini 1.5 Flash hujjatni o'qimoqda
-                    </p>
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {aiLoadingMsg}
-                    </p>
-                  </div>
-                )}
-
-                {/* AI Tahlil Tugmasi */}
-                <button
-                  type="button"
-                  disabled={!file || isAiLoading}
-                  onClick={handleStartAiParsing}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>✨ Gemini AI orqali tahlil qilish</span>
-                </button>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------- */}
-            {/* USUL B: 📝 OMMAVIY MATN (BULK PARSER)                     */}
-            {/* -------------------------------------------------------- */}
-            {inputMethod === 'bulk_text' && (
+            {topInputMode === 'manual' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  <span>Test matnini nusxalab qo'ying (paste)</span>
-                  <span className="text-emerald-600 font-bold">Format: #to'g'ri, ====, ++++</span>
+                <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between">
+                  <span>Savollarni bittalab kiritish va to'g'ri javobni tanlash</span>
+                  <span className="font-extrabold text-emerald-700 dark:text-emerald-300">
+                    Jami: {manualQuestions.length} ta
+                  </span>
                 </div>
 
-                <textarea
-                  rows={9}
-                  value={bulkText}
-                  onChange={(e) => {
-                    setBulkText(e.target.value);
-                    if (bulkError) setBulkError('');
-                  }}
-                  placeholder="Savol matni&#10;====&#10;#To'g'ri javob varianti&#10;====&#10;Noto'g'ri javob 1&#10;====&#10;Noto'g'ri javob 2&#10;====&#10;Noto'g'ri javob 3&#10;++++&#10;&#10;Keyingi savol matni...&#10;===="
-                  className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed"
-                />
-
-                {bulkError && (
-                  <p className="text-[11px] text-rose-500 font-semibold">{bulkError}</p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleParseBulkText}
-                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Matnni tahlil qilish (Parser qilish) ➡</span>
-                </button>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------- */}
-            {/* USUL C: ✍ QO'LDA BITTALAB KIRITISH (MANUAL)              */}
-            {/* -------------------------------------------------------- */}
-            {inputMethod === 'manual' && (
-              <div className="space-y-3">
-                <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+                <div className="max-h-72 sm:max-h-80 overflow-y-auto space-y-3 pr-1">
                   {manualQuestions.map((mq, mIdx) => (
                     <div
                       key={mIdx}
@@ -1091,13 +950,16 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
                           Savol #{mIdx + 1}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveManualQuestion(mIdx)}
-                          className="text-slate-400 hover:text-rose-500 p-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {manualQuestions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveManualQuestion(mIdx)}
+                            className="text-slate-400 hover:text-rose-500 p-1 transition-colors"
+                            title="Savolni o'chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       <input
@@ -1112,14 +974,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           });
                         }}
                         placeholder="Savol matnini kiriting..."
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       />
 
                       <div className="space-y-1.5">
-                        <p className="text-[10px] font-bold text-slate-500">
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                           Variantlar (To'g'ri javobni tanlash uchun harfni bosing):
                         </p>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {mq.options.map((opt, oIdx) => {
                             const isCorr = mq.correct_answer === opt && opt.length > 0;
                             const letter = String.fromCharCode(65 + oIdx);
@@ -1127,10 +989,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                             return (
                               <div
                                 key={oIdx}
-                                className={`flex items-center gap-1.5 p-1 rounded-xl border ${
+                                className={`flex items-center gap-1.5 p-1 rounded-xl border transition-all ${
                                   isCorr
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                                 }`}
                               >
                                 <button
@@ -1142,13 +1004,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                                       return up;
                                     });
                                   }}
-                                  className={`w-5 h-5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
+                                  className={`w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 transition-all ${
                                     isCorr
-                                      ? 'bg-emerald-600 text-white'
+                                      ? 'bg-emerald-600 text-white shadow-sm'
                                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'
                                   }`}
+                                  title="To'g'ri javob deb belgilash"
                                 >
-                                  {isCorr ? <Check className="w-3 h-3 stroke-[3]" /> : letter}
+                                  {isCorr ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : letter}
                                 </button>
                                 <input
                                   type="text"
@@ -1180,19 +1043,264 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 <button
                   type="button"
                   onClick={handleAddManualQuestion}
-                  className="w-full py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ Yana savol qo'shish</span>
+                  <span>+ Yangi savol qo'shish</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleProceedManualToPreview}
-                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
-                  <span>Ko'rib chiqishga o'tish ➡</span>
+                  <span>Ko'rib chiqishga o'tish (Preview) ➡</span>
                 </button>
+              </div>
+            )}
+
+            {/* -------------------------------------------------------- */}
+            {/* 2. BARCHASINI BITTADA (SHABLON ASOSIDA: MATN YOKI FAYL) */}
+            {/* -------------------------------------------------------- */}
+            {topInputMode === 'bulk' && (
+              <div className="space-y-3.5">
+                {/* Matn yoki Fayl tanlash podtabi */}
+                <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
+                  <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkSubMode('text');
+                        triggerHaptic('light');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        bulkSubMode === 'text'
+                          ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Matn ko'rinishida</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkSubMode('file');
+                        triggerHaptic('light');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        bulkSubMode === 'file'
+                          ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Fayl ko'rinishida</span>
+                    </button>
+                  </div>
+
+                  {bulkSubMode === 'text' ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(HEMIS_SAMPLE_TEMPLATE);
+                          setSampleCopied(true);
+                          triggerHaptic('success');
+                          setTimeout(() => setSampleCopied(false), 2000);
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1"
+                        title="Rasmiy HEMIS shablon nusxasini olish"
+                      >
+                        {sampleCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{sampleCopied ? "Nusxalandi" : "Shablon nusxalash"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkText(HEMIS_SAMPLE_TEMPLATE);
+                          triggerHaptic('light');
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
+                      >
+                        <span>Namunani joylash</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadSampleTemplateFile('hemis');
+                        triggerHaptic('success');
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
+                      title="Namunaviy HEMIS test faylini kompyuteringizga yuklab oling"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Shablon fayl (.txt)</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Sub-mode A: Matn ko'rinishida */}
+                {bulkSubMode === 'text' && (
+                  <div className="space-y-3">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                      <div className="flex items-center justify-between font-bold">
+                        <span>💡 Qabul qilinadigan shablon formatlari:</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Avtomatik parser</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        • <b>HEMIS formati</b>: Savollar orasiga <code>++++</code>, variantlar orasiga <code>====</code>, to'g'ri javob oldiga <code>#</code>.<br />
+                        • <b>Standart format</b>: Savol matni, pastidan <code>A) B) C) D)</code> va <code>Javob: B</code> (yoki to'g'ri variant oldiga <code>*</code>).
+                      </p>
+                    </div>
+
+                    <textarea
+                      rows={9}
+                      value={bulkText}
+                      onChange={(e) => {
+                        setBulkText(e.target.value);
+                        if (bulkError) setBulkError('');
+                      }}
+                      placeholder={`Savol matni\n====\n#To'g'ri javob varianti\n====\nNoto'g'ri javob 1\n====\nNoto'g'ri javob 2\n====\nNoto'g'ri javob 3\n++++\n\nKeyingi savol matni...`}
+                      className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed"
+                    />
+
+                    {bulkError && (
+                      <p className="text-[11px] text-rose-500 font-semibold">{bulkError}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      {bulkText.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setBulkText('')}
+                          className="px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 font-bold text-xs transition-colors"
+                        >
+                          Tozalash
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleParseBulkText}
+                        className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Matnni tahlil qilish (Parser qilish) ➡</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-mode B: Fayl ko'rinishida */}
+                {bulkSubMode === 'file' && (
+                  <div className="space-y-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".docx,.pdf,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {!file ? (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-3xl p-7 text-center cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30 dark:bg-slate-800/30 group"
+                      >
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                          Word (.docx), PDF yoki Matn (.txt) faylini tanlang
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                          Maksimal hajm: 5 MB &bull; .txt fayllar zumda tahlil qilinadi, .docx va .pdf AI orqali
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                            <FileCode className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                              {file.name}
+                            </p>
+                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB &bull; {file.name.toLowerCase().endsWith('.txt') ? 'Matn formati (zumda tahlil mumkin)' : 'AI tahliliga tayyor'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFile(null);
+                            setFileBase64('');
+                            setFileTextContent('');
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
+                          title="O'chirish"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* AI Loading Screen */}
+                    {isAiLoading && (
+                      <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 text-center space-y-2.5 animate-pulse">
+                        <Loader2 className="w-7 h-7 mx-auto text-emerald-600 animate-spin" />
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          Gemini 1.5 Flash hujjatni o'qimoqda
+                        </p>
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          {aiLoadingMsg}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Tahlil qilish tugmalari */}
+                    {file?.name.toLowerCase().endsWith('.txt') ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={!fileTextContent || isAiLoading}
+                          onClick={handleParseTxtDirectly}
+                          className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>⚡ Shablon orqali zumda tahlil</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={!file || isAiLoading}
+                          onClick={handleStartAiParsing}
+                          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>✨ AI orqali tahlil</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!file || isAiLoading}
+                        onClick={handleStartAiParsing}
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span>✨ Gemini AI orqali tahlil qilish</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1220,7 +1328,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <div className="min-w-0">
                 <p className="font-extrabold text-slate-900 dark:text-white truncate">{title}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {isCustomUni ? customUniName : university} &bull; {courseYear}-kurs, {semester}-semestr &bull; {faculty}
+                  {isCustomUni ? customUniName : university} &bull; {studyType} &bull; {courseYear}-kurs, {semester}-semestr &bull; {faculty}
                 </p>
               </div>
               <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-xs shrink-0">

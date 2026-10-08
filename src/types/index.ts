@@ -31,7 +31,7 @@ export const UZBEKISTAN_REGIONS: Region[] = [
   'Qoraqalpog\'iston',
 ];
 
-export type StudyType = 'Kunduzgi' | 'Sirtqi' | 'Kechki' | 'Tibbiyot';
+export type StudyType = 'Kunduzgi' | 'Sirtqi' | 'Kechki' | 'Masofaviy' | 'Tibbiyot';
 export type AcademicYear = 1 | 2 | 3 | 4 | 5 | 6;
 export type Gender = 'male' | 'female';
 
@@ -43,8 +43,23 @@ export function getAvailableAcademicYears(studyType: StudyType): AcademicYear[] 
       return [1, 2, 3, 4, 5, 6];
     case 'Kunduzgi':
     case 'Kechki':
+    case 'Masofaviy':
     default:
       return [1, 2, 3, 4];
+  }
+}
+
+export function getAvailableSemesters(studyType: StudyType): number[] {
+  switch (studyType) {
+    case 'Sirtqi':
+      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    case 'Tibbiyot':
+      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    case 'Kunduzgi':
+    case 'Kechki':
+    case 'Masofaviy':
+    default:
+      return [1, 2, 3, 4, 5, 6, 7, 8];
   }
 }
 
@@ -302,9 +317,11 @@ export interface TestPackage {
   courseYear?: number;
   faculty?: string;
   academicYear?: string;
+  studyType?: StudyType;
+  study_type?: StudyType;
 }
 
-export const AVAILABLE_SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export const AVAILABLE_SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 export const AVAILABLE_ACADEMIC_YEARS = [
   '2023-2024',
   '2024-2025',
