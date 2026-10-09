@@ -37,6 +37,39 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS telegram_id TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS referral_count INT DEFAULT 0;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS referred_by TEXT;
 
+-- Avvalgi migratsiyadagi (20261007) asosiy obyektlar: bo'lmasa yaratiladi, bor bo'lsa o'zgarmaydi
+CREATE TABLE IF NOT EXISTS public.wallet_transactions (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       TEXT NOT NULL,
+  type          TEXT NOT NULL,
+  amount        NUMERIC NOT NULL,
+  balance_after NUMERIC,
+  ref           TEXT,
+  note          TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON public.wallet_transactions (user_id, created_at DESC);
+ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.norm_tg_id(p TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT regexp_replace(btrim(COALESCE(p, '')), '^(tg_|user_)', '');
+$$;
+
+CREATE OR REPLACE FUNCTION public._resolve_user(p TEXT)
+RETURNS TEXT LANGUAGE sql STABLE AS $$
+  SELECT u.id
+  FROM public.users u
+  WHERE u.id = p
+     OR u.id = public.norm_tg_id(p)
+     OR u.id = 'tg_' || public.norm_tg_id(p)
+     OR u.telegram_id = public.norm_tg_id(p)
+  ORDER BY (u.id = p) DESC,
+           (u.id = 'tg_' || public.norm_tg_id(p)) DESC,
+           u.created_at ASC
+  LIMIT 1;
+$$;
+
 -- ---------------------------------------------------------
 -- 2. Pul ustunlari himoyasi
 --    anon/authenticated (brauzer) yozsa: pul ustunlari eski qiymatida qoladi.
@@ -95,6 +128,22 @@ DROP POLICY IF EXISTS "Public Delete for receipts" ON storage.objects;
 -- ---------------------------------------------------------
 -- 4. Qo'llab-quvvatlash chati: faqat server (/api/support-chat, bot)
 -- ---------------------------------------------------------
+-- Jadval bazada bo'lmasa yaratiladi (20261006 migratsiyasi ishga tushmagan bo'lishi mumkin).
+-- Brauzer uchun ruxsat (policy) berilmaydi: faqat server yozadi va o'qiydi.
+CREATE TABLE IF NOT EXISTS public.support_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL,
+    user_name TEXT,
+    user_username TEXT,
+    message TEXT NOT NULL,
+    reply TEXT,
+    sender TEXT NOT NULL DEFAULT 'user' CHECK (sender IN ('user', 'ai', 'admin')),
+    status TEXT NOT NULL DEFAULT 'resolved_by_ai' CHECK (status IN ('resolved_by_ai', 'forwarded_to_admin', 'replied_by_admin')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_user_id ON public.support_messages (user_id);
+CREATE INDEX IF NOT EXISTS idx_support_messages_created_at ON public.support_messages (created_at DESC);
+ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow read support_messages" ON public.support_messages;
 DROP POLICY IF EXISTS "Allow insert support_messages" ON public.support_messages;
 DROP POLICY IF EXISTS "Allow update support_messages" ON public.support_messages;
@@ -291,31 +340,43 @@ END $$;
 -- 9. To'lovlar va hamyon tarixi: brauzer hammaning to'lovini o'qiy olmaydi.
 --    Ilova o'z tarixini /api/wallet (action: history) orqali oladi.
 -- ---------------------------------------------------------
-DROP POLICY IF EXISTS "Allow public read payments" ON public.payments;
-DROP POLICY IF EXISTS "wallet_tx public read" ON public.wallet_transactions;
+DO $$
+BEGIN
+  IF to_regclass('public.payments') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "Allow public read payments" ON public.payments;
+  END IF;
+  IF to_regclass('public.wallet_transactions') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "wallet_tx public read" ON public.wallet_transactions;
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------
 -- 10. Obuna muddatini users jadvaliga yig'ish (hech kim premiumini yo'qotmasligi uchun).
 --     Ilova endi obunani faqat users.subscription_end bo'yicha tekshiradi.
 -- ---------------------------------------------------------
--- 10a. subscriptions jadvalidagi faol obunalar
-UPDATE public.users u
-SET subscription_end = s.max_end,
-    paid_until = s.max_end,
-    is_subscribed = true,
-    has_paid = true,
-    subscription_tier = COALESCE(u.subscription_tier, s.plan)
-FROM (
-  SELECT public.norm_tg_id(user_id) AS uid,
-         MAX(expires_at) AS max_end,
-         (ARRAY_AGG(COALESCE(plan, plan_name) ORDER BY expires_at DESC))[1] AS plan
-  FROM public.subscriptions
-  WHERE expires_at > now()
-  GROUP BY public.norm_tg_id(user_id)
-) s
-WHERE (public.norm_tg_id(u.id) = s.uid OR u.telegram_id = s.uid)
-  AND (COALESCE(u.subscription_end, u.paid_until) IS NULL
-       OR COALESCE(u.subscription_end, u.paid_until) < s.max_end);
+-- 10a. subscriptions jadvalidagi faol obunalar (jadval yoki ustun bo'lmasa o'tkazib yuboriladi)
+DO $$
+BEGIN
+  UPDATE public.users u
+  SET subscription_end = s.max_end,
+      paid_until = s.max_end,
+      is_subscribed = true,
+      has_paid = true,
+      subscription_tier = COALESCE(u.subscription_tier, s.plan)
+  FROM (
+    SELECT public.norm_tg_id(user_id) AS uid,
+           MAX(expires_at) AS max_end,
+           (ARRAY_AGG(COALESCE(plan, plan_name) ORDER BY expires_at DESC))[1] AS plan
+    FROM public.subscriptions
+    WHERE expires_at > now()
+    GROUP BY public.norm_tg_id(user_id)
+  ) s
+  WHERE (public.norm_tg_id(u.id) = s.uid OR u.telegram_id = s.uid)
+    AND (COALESCE(u.subscription_end, u.paid_until) IS NULL
+         OR COALESCE(u.subscription_end, u.paid_until) < s.max_end);
+EXCEPTION WHEN undefined_table OR undefined_column THEN
+  RAISE NOTICE 'subscriptions jadvalidan obunalar ko''chirilmadi: %', SQLERRM;
+END $$;
 
 -- 10b. Admin panelidan berilgan obunalar (test_packages, category = 'AdminCredit')
 DO $$
@@ -383,3 +444,26 @@ WHERE subscription_end IS NULL AND paid_until IS NOT NULL;
 -- ) t
 -- WHERE approved_sum - spent_on_subs > COALESCE(balance, 0)
 -- ORDER BY approved_sum - spent_on_subs - COALESCE(balance, 0) DESC;
+
+-- ---------------------------------------------------------
+-- 11. Natija jadvali: ilova ishlashi uchun kerakli obyektlar bazada bormi.
+--     "yo'q" chiqsa, o'sha qatorda ko'rsatilgan migratsiyani ishga tushiring.
+-- ---------------------------------------------------------
+SELECT t.nom AS obyekt,
+       CASE WHEN t.bor THEN 'bor' ELSE 'YO''Q' END AS holat,
+       t.manba AS qaysi_migratsiyada
+FROM (VALUES
+  ('jadval: payments',                    to_regclass('public.payments') IS NOT NULL,              '20261003_p2p_receipt_payments.sql'),
+  ('jadval: subscriptions',               to_regclass('public.subscriptions') IS NOT NULL,         '20261003_sync_users_and_test_results.sql'),
+  ('jadval: app_settings',                to_regclass('public.app_settings') IS NOT NULL,          '20261007_fix_wallet_security.sql'),
+  ('jadval: support_messages',            to_regclass('public.support_messages') IS NOT NULL,      'shu migratsiya'),
+  ('jadval: wallet_transactions',         to_regclass('public.wallet_transactions') IS NOT NULL,   'shu migratsiya'),
+  ('funksiya: approve_payment',           to_regprocedure('public.approve_payment(uuid,text,text)') IS NOT NULL, '20261007_fix_wallet_security.sql'),
+  ('funksiya: reject_payment',            to_regprocedure('public.reject_payment(uuid,text)') IS NOT NULL,       '20261007_fix_wallet_security.sql'),
+  ('funksiya: purchase_subscription',     to_regprocedure('public.purchase_subscription(text,text)') IS NOT NULL, '20261007_fix_wallet_security.sql'),
+  ('funksiya: admin_credit',              to_regprocedure('public.admin_credit(text,numeric,text,text)') IS NOT NULL, '20261007_fix_wallet_security.sql'),
+  ('funksiya: approve_payment_with_amount', to_regprocedure('public.approve_payment_with_amount(uuid,numeric,text)') IS NOT NULL, 'shu migratsiya'),
+  ('funksiya: reverse_payment',           to_regprocedure('public.reverse_payment(uuid,text)') IS NOT NULL,      'shu migratsiya'),
+  ('trigger: pul himoyasi',               EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_protect_user_money'), 'shu migratsiya')
+) AS t(nom, bor, manba)
+ORDER BY t.bor, t.nom;
