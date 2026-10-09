@@ -139,8 +139,12 @@ async function markHandled(chatId: any, messageId: any, label: string) {
 }
 
 /** Eski xabarlardagi callback_data (manual_approve:USER:UUID) ham ishlashi uchun */
-function parseAction(data: string): { kind: string; arg: string } {
+function parseAction(data: string): { kind: string; arg: string; customAmount?: number } {
   const uuid = data.match(UUID_RE)?.[0] || '';
+  const mCustom = data.match(/^pa(\d+):/);
+  if (mCustom) {
+    return { kind: 'approve', arg: uuid, customAmount: parseInt(mCustom[1], 10) };
+  }
   if (data.startsWith('pa:') || data.startsWith('manual_approve:') || data.startsWith('approve_pay_'))
     return { kind: 'approve', arg: uuid };
   if (data.startsWith('pr:') || data.startsWith('manual_reject:') || data.startsWith('reject_pay_'))
@@ -159,7 +163,7 @@ async function handleAdminCallback(cq: any) {
   const fromId = String(cq.from?.id || '');
   const chatId = cq.message?.chat?.id;
   const messageId = cq.message?.message_id;
-  const { kind, arg } = parseAction(String(cq.data || ''));
+  const { kind, arg, customAmount } = parseAction(String(cq.data || ''));
 
   if (kind === 'archive') {
     await answerCallback(cq.id, "Tasdiqlandi (arxivlandi)");
@@ -169,56 +173,199 @@ async function handleAdminCallback(cq: any) {
 
   if (kind === 'approve') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
-    const { data, error } = await db.rpc('approve_payment', {
-      p_payment_id: arg,
-      p_actor: fromId,
-      p_status: 'manual_approved',
-    });
-    if (error) {
-      console.error('approve_payment error:', error.message);
-      return void (await answerCallback(cq.id, `Xatolik: ${error.message}`, true));
+
+    // Agar admin aniq summani bosgan bo'lsa, payments jadvalidagi summani yangilash
+    if (customAmount && customAmount > 0) {
+      try {
+        await db.from('payments').update({ amount: customAmount }).eq('id', arg);
+      } catch {}
     }
-    if (!data?.ok) {
-      const why =
-        data?.reason === 'already_processed'
-          ? `Bu to'lov allaqachon ko'rib chiqilgan (${data.status})`
-          : data?.reason === 'user_not_found'
-            ? 'Foydalanuvchi bazadan topilmadi'
-            : `Bajarilmadi: ${data?.reason}`;
-      return void (await answerCallback(cq.id, why, true));
+
+    let approveData: any = null;
+    try {
+      const { data, error } = await db.rpc('approve_payment', {
+        p_payment_id: arg,
+        p_actor: fromId,
+        p_status: 'manual_approved',
+      });
+      if (!error && data?.ok) {
+        approveData = data;
+      } else if (data?.reason === 'already_processed') {
+        return void (await answerCallback(cq.id, `Bu to'lov allaqachon ko'rib chiqilgan (${data?.status || 'tasdiqlangan'})`, true));
+      } else {
+        console.warn('approve_payment RPC returned error or not ok, proceeding to direct DB update:', error?.message);
+      }
+    } catch (rpcErr) {
+      console.warn('approve_payment RPC exception:', rpcErr);
     }
-    const amount = Number(data.amount).toLocaleString('uz-UZ');
+
+    // Direct database update fallback agar RPC ishlamasa
+    if (!approveData) {
+      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
+      if (!pay) {
+        return void (await answerCallback(cq.id, "To'lov bazadan topilmadi", true));
+      }
+      if (pay.status === 'manual_approved' || pay.status === 'auto_approved') {
+        return void (await answerCallback(cq.id, `Bu to'lov allaqachon tasdiqlangan (${pay.status})`, true));
+      }
+
+      const userKey = pay.user_id;
+      const cleanUserKey = cleanId(userKey);
+      const { data: usr } = await db
+        .from('users')
+        .select('*')
+        .or(`id.eq.${userKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!usr) {
+        return void (await answerCallback(cq.id, "Talaba bazadan topilmadi", true));
+      }
+
+      const amt = Number(pay.amount || 0);
+      const curBal = Number(usr.balance ?? usr.wallet_balance ?? 0);
+      const newBal = curBal + amt;
+
+      // 1. Foydalanuvchi balansini yangilash
+      await db.from('users').update({
+        balance: newBal,
+        wallet_balance: newBal,
+        updated_at: new Date().toISOString(),
+      }).eq('id', usr.id);
+
+      // 2. To'lov maqomini yangilash
+      await db.from('payments').update({
+        status: 'manual_approved',
+        verified_by: fromId,
+        notes: `Admin tasdiqladi (${fromId}): ${new Date().toISOString()}`,
+      }).eq('id', arg);
+
+      // 3. Tranzaksiya tarixiga kiritish
+      await db.from('wallet_transactions').insert({
+        user_id: usr.id,
+        type: 'deposit',
+        amount: amt,
+        balance_after: newBal,
+        ref: arg,
+        note: `Admin tomonidan tasdiqlangan (${fromId})`,
+      });
+
+      // 4. Test paketlari muallif balansini yangilash
+      try {
+        await db.from('test_packages')
+          .update({ author_wallet_balance: newBal })
+          .or(`id.eq.lead_${usr.id},id.eq.lead_${cleanUserKey}`);
+      } catch {}
+
+      approveData = {
+        ok: true,
+        amount: amt,
+        user_id: cleanId(usr.telegram_id || usr.id),
+        new_balance: newBal,
+      };
+    }
+
+    const amount = Number(approveData.amount).toLocaleString('uz-UZ');
     await answerCallback(cq.id, `Tasdiqlandi: +${amount} so'm`, true);
     await markHandled(chatId, messageId, `Tasdiqlandi (+${amount} so'm)`);
-    await tgSend(data.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amount} so'm qo'shildi.`);
+    await tgSend(approveData.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amount} so'm qo'shildi.`);
     return;
   }
 
   if (kind === 'reject') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
-    const { data, error } = await db.rpc('reject_payment', { p_payment_id: arg, p_actor: fromId });
-    if (error) return void (await answerCallback(cq.id, `Xatolik: ${error.message}`, true));
-    if (!data?.ok) {
-      return void (await answerCallback(cq.id, `Allaqachon ko'rib chiqilgan (${data?.status || data?.reason})`, true));
+
+    let rejectData: any = null;
+    try {
+      const { data, error } = await db.rpc('reject_payment', { p_payment_id: arg, p_actor: fromId });
+      if (!error && data?.ok) {
+        rejectData = data;
+      } else if (data?.reason === 'already_processed') {
+        return void (await answerCallback(cq.id, `Allaqachon ko'rib chiqilgan (${data?.status || 'rad etilgan'})`, true));
+      }
+    } catch (rpcErr) {
+      console.warn('reject_payment RPC exception:', rpcErr);
     }
+
+    // Direct database update fallback
+    if (!rejectData) {
+      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
+      if (!pay) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
+      if (pay.status === 'rejected' || pay.status === 'manual_rejected') {
+        return void (await answerCallback(cq.id, `Allaqachon rad etilgan (${pay.status})`, true));
+      }
+
+      await db.from('payments').update({
+        status: 'manual_rejected',
+        verified_by: fromId,
+        notes: `Admin rad etdi (${fromId}): ${new Date().toISOString()}`,
+      }).eq('id', arg);
+
+      rejectData = {
+        ok: true,
+        user_id: cleanId(pay.user_id),
+      };
+    }
+
     await answerCallback(cq.id, 'Kvitansiya rad etildi', true);
     await markHandled(chatId, messageId, 'Rad etildi');
-    await tgSend(data.user_id, "Siz yuborgan to'lov kvitansiyasi tasdiqlanmadi. Iltimos, haqiqiy chekni yuklang.");
+    await tgSend(rejectData.user_id, "Siz yuborgan to'lov kvitansiyasi tasdiqlanmadi. Iltimos, haqiqiy chekni yuklang.");
     return;
   }
 
   if (kind === 'reverse') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
-    const { data, error } = await db.rpc('reverse_payment', { p_payment_id: arg, p_actor: fromId });
-    if (error) return void (await answerCallback(cq.id, `Xatolik: ${error.message}`, true));
-    if (!data?.ok) {
-      return void (await answerCallback(cq.id, `Bajarilmadi: ${data?.reason}`, true));
+
+    let reverseData: any = null;
+    try {
+      const { data, error } = await db.rpc('reverse_payment', { p_payment_id: arg, p_actor: fromId });
+      if (!error && data?.ok) {
+        reverseData = data;
+      }
+    } catch (rpcErr) {
+      console.warn('reverse_payment RPC exception:', rpcErr);
     }
-    const back = Number(data.reversed).toLocaleString('uz-UZ');
+
+    if (!reverseData) {
+      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
+      if (!pay) return void (await answerCallback(cq.id, "To'lov topilmadi", true));
+
+      const userKey = pay.user_id;
+      const cleanUserKey = cleanId(userKey);
+      const { data: usr } = await db
+        .from('users')
+        .select('*')
+        .or(`id.eq.${userKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
+        .maybeSingle();
+
+      const amt = Number(pay.amount || 0);
+      if (usr) {
+        const curBal = Number(usr.balance ?? usr.wallet_balance ?? 0);
+        const newBal = Math.max(0, curBal - amt);
+        await db.from('users').update({ balance: newBal, wallet_balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
+        await db.from('payments').update({ status: 'reversed', verified_by: fromId }).eq('id', arg);
+        await db.from('wallet_transactions').insert({
+          user_id: usr.id,
+          type: 'withdraw',
+          amount: amt,
+          balance_after: newBal,
+          ref: arg,
+          note: `Soxta to'lov bekor qilindi (${fromId})`,
+        });
+      }
+      reverseData = {
+        ok: true,
+        reversed: amt,
+        user_id: usr ? cleanId(usr.telegram_id || usr.id) : cleanUserKey,
+      };
+    }
+
+    const back = Number(reverseData.reversed).toLocaleString('uz-UZ');
     await answerCallback(cq.id, `Ogohlantirildi, ${back} so'm qaytarildi`, true);
     await markHandled(chatId, messageId, `Ogohlantirildi (-${back} so'm)`);
     await tgSend(
-      data.user_id,
+      reverseData.user_id,
       "Diqqat: yuborgan chekingizda qoidabuzarlik aniqlandi va summa hisobingizdan qaytarildi. Takrorlansa hisobingiz bloklanadi."
     );
     return;

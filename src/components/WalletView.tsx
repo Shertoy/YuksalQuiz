@@ -109,6 +109,21 @@ export const WalletView: React.FC = () => {
           });
           return;
         }
+
+        if (
+          payRes?.status === 'rejected' ||
+          payRes?.status === 'manual_rejected'
+        ) {
+          if (!isMounted) return;
+          setPendingPaymentId(null);
+          triggerHaptic('error');
+          soundFX.playError();
+          setFeedback({
+            type: 'error',
+            message: "Administrator to'lov kvitansiyasini rad etdi. Iltimos, haqiqiy chekni yuklang.",
+          });
+          return;
+        }
       }
 
       // 3. Agar balans boshlang'ichdan oshgan bo'lsa, bir zumda tasdiqlash
@@ -311,11 +326,14 @@ export const WalletView: React.FC = () => {
 
       setVerifyStepText("Gemini AI tahlil qilmoqda...");
 
-      // Server Telegram imzosi orqali foydalanuvchini o'zi aniqlaydi
+      // Server Telegram imzosi yoki foydalanuvchi ma'lumotlari orqali foydalanuvchini aniqlaydi
       const apiRes = await apiPost('/api/verify-receipt', {
         image: base64Data,
         mimeType: 'image/jpeg',
         expectedAmount: 0,
+        userId: profile.id || profile.telegramId || profile.telegram_id || '',
+        userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+        userUsername: profile.username || '',
       });
       setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
       const data: any = apiRes.data;

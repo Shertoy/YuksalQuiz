@@ -198,11 +198,14 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
       setVerifyStepText("Gemini AI kvitansiyani tahlil qilmoqda...");
 
-      // Server Telegram imzosi orqali foydalanuvchini o'zi aniqlaydi
+      // Server Telegram imzosi yoki foydalanuvchi ma'lumotlari orqali foydalanuvchini aniqlaydi
       const apiRes = await apiPost('/api/verify-receipt', {
         image: base64Data,
         mimeType: 'image/jpeg',
         expectedAmount: selectedAmount,
+        userId: profile.id || profile.telegramId || profile.telegram_id || '',
+        userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
+        userUsername: profile.username || '',
       });
 
       setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
