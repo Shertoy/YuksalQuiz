@@ -162,7 +162,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <span className="font-extrabold truncate block">
                     {isEndingSoon
                       ? `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`
-                      : `⭐ Faol Premium (${remainingDays !== null ? `${remainingDays} kun qoldi` : 'Faol'})`}
+                      : `Faol Premium (${remainingDays !== null ? `${remainingDays} kun qoldi` : 'Faol'})`}
                   </span>
                   <span className="text-[10px] opacity-80 block truncate">
                     Yangi tanlangan muddat joriy sanangizga qo'shiladi (+uzaytirish)

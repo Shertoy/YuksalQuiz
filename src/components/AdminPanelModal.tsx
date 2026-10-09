@@ -2051,18 +2051,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   </div>
 
                   {/* Mode explanation info box */}
-                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                     {manualActionMode === 'subscription_only' && (
-                      <p>👑 <b>Faqat Obuna Yoqish:</b> Talaba hamyoniga qo'shimcha pul o'tkazilmaydi (balans o'zgarmaydi). Faqat tanlangan muddatga VIP obuna faollashtiriladi va talabaga bildirishnoma yuboriladi.</p>
+                      <p className="flex items-start gap-1.5">
+                        <Crown className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+                        <span><b>Faqat Obuna Yoqish:</b> Talaba hamyoniga qo'shimcha pul o'tkazilmaydi (balans o'zgarmaydi). Faqat tanlangan muddatga VIP obuna faollashtiriladi va talabaga bildirishnoma yuboriladi.</span>
+                      </p>
                     )}
                     {manualActionMode === 'add_funds' && (
-                      <p>💳 <b>Hamyonga Pul Qo'shish:</b> Talaba hamyoniga kiritilgan summa qo'shiladi. Talaba ilovada o'z xohishi bilan istagan tarifini aktivlashtirishi mumkin.</p>
+                      <p className="flex items-start gap-1.5">
+                        <Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+                        <span><b>Hamyonga Pul Qo'shish:</b> Talaba hamyoniga kiritilgan summa qo'shiladi. Talaba ilovada o'z xohishi bilan istagan tarifini aktivlashtirishi mumkin.</span>
+                      </p>
                     )}
                     {manualActionMode === 'set_balance' && (
-                      <p>⚖️ <b>Balansni Aniq Belgilash (To'g'rilash):</b> Talaba balansi aynan shu summaga o'rnatiladi (masalan: ortiqcha pullarni 0 qilish yoki 25 000 so'm qilib qo'yish uchun).</p>
+                      <p className="flex items-start gap-1.5">
+                        <Scale className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+                        <span><b>Balansni Aniq Belgilash (To'g'rilash):</b> Talaba balansi aynan shu summaga o'rnatiladi (masalan: ortiqcha pullarni 0 qilish yoki 25 000 so'm qilib qo'yish uchun).</span>
+                      </p>
                     )}
                     {manualActionMode === 'both' && (
-                      <p>🔄 <b>Obuna va Pul Qo'shish:</b> Ham hamyonga kiritilgan summa o'tkaziladi, ham VIP obunasi faollashadi.</p>
+                      <p className="flex items-start gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+                        <span><b>Obuna va Pul Qo'shish:</b> Ham hamyonga kiritilgan summa o'tkaziladi, ham VIP obunasi faollashadi.</span>
+                      </p>
                     )}
                   </div>
 
@@ -2555,7 +2567,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                               </span>
                               <button
                                 type="button"
-                                onClick={() => openManualTopUpForUser({ id: payment.user_id, name: payment.users?.full_name || 'Talaba' } as any)}
+                                onClick={() => openManualTopUpForUser({ id: payment.user_id, name: payment.users?.full_name || 'Talaba' } as any, 'add_funds')}
                                 className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline font-semibold"
                               >
                                 Yana balans qo'shish

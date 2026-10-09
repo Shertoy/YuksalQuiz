@@ -25,7 +25,7 @@ import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
 import { isBlockUnlocked } from '../utils/progressUtils';
-import { isPaidUser, getTodayAttemptsCount } from '../services/paywallService';
+import { isPaidUser, getTodayAttemptsCount, DAILY_FREE_TEST_LIMIT } from '../services/paywallService';
 
 const getUniversityMonogram = (name: string): string => {
   if (!name) return 'OTM';
@@ -360,12 +360,12 @@ export const TestList: React.FC<TestListProps> = ({
 
             {!pkg.isPublic ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
-                <Lock className="w-3 h-3" />
+                <Lock className="w-3 h-3" strokeWidth={1.75} />
                 <span>{t.privateAccess}</span>
               </span>
             ) : (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                <Unlock className="w-3 h-3" />
+                <Unlock className="w-3 h-3" strokeWidth={1.75} />
                 <span>{t.publicAccess}</span>
               </span>
             )}
@@ -408,7 +408,7 @@ export const TestList: React.FC<TestListProps> = ({
                 className="flex items-center justify-center leading-none gap-1 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-400 font-bold text-[11px] transition-all active:scale-95 border border-amber-200/50 dark:border-amber-800/50"
                 title="Tahrirlash"
               >
-                <Edit3 className="w-3.5 h-3.5" />
+                <Edit3 className="w-3.5 h-3.5" strokeWidth={1.75} />
                 <span>Tahrirlash</span>
               </button>
 
@@ -458,7 +458,7 @@ export const TestList: React.FC<TestListProps> = ({
               blockAttempts.some((a) => a.isPassed || a.score >= passing)
             );
             const todayAttempts = !isPaid ? getTodayAttemptsCount(pkg.id, block.id, testAttempts) : 0;
-            const isLimitReached = !isPaid && todayAttempts >= 2;
+            const isLimitReached = !isPaid && todayAttempts >= DAILY_FREE_TEST_LIMIT;
 
             return (
               <button
@@ -476,19 +476,19 @@ export const TestList: React.FC<TestListProps> = ({
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-xs flex items-center gap-1">
-                    {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+                    {!pkg.isPublic && <Lock className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={1.75} />}
                     <span>{decodeHtmlEntities(block.title)}</span>
                   </span>
                   {isLocked ? (
-                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" strokeWidth={1.75} />
                   ) : isLimitReached ? (
                     <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5 shrink-0">
-                      <Lock className="w-2.5 h-2.5" /> 2/2
+                      <Lock className="w-2.5 h-2.5" strokeWidth={1.75} /> {todayAttempts}/{DAILY_FREE_TEST_LIMIT}
                     </span>
                   ) : isPassed ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" strokeWidth={1.75} />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-orange-500 shrink-0" strokeWidth={1.75} />
                   )}
                 </div>
 

@@ -463,7 +463,7 @@ export const WalletView: React.FC = () => {
               <Crown className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={2} />
               <div className="min-w-0">
                 <p className="text-xs font-extrabold text-white truncate">
-                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                  {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                 </p>
                 <p className="text-[10px] text-amber-200">
                   Amal qilish muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")} gacha
@@ -541,7 +541,7 @@ export const WalletView: React.FC = () => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-extrabold text-sm sm:text-base text-white">
-                  ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                  {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                 </h4>
                 <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase tracking-wider">
                   Faol

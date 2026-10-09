@@ -129,7 +129,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" strokeWidth={2.5} />
+                <Check className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2} />
                 <span className="text-emerald-700">Nusxalandi!</span>
               </>
             ) : (
@@ -147,7 +147,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
         <button
           type="button"
           onClick={handleNativeShare}
-          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95"
+          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
         >
           <Share2 className="w-4 h-4 text-white" strokeWidth={1.75} />
           <span>Do'stlarni taklif qilish (+1 000 so'm)</span>
@@ -157,7 +157,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
       {/* Informative footer */}
       <div className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1 opacity-90">
         <Sparkles className="w-3 h-3 text-orange-400" strokeWidth={1.75} />
-        <span>Telegram orqali do'stingiz ilovaga kirganda 20 000 so'm vaucher oladi!</span>
+        <span>Do'stlaringiz ilovaga qo'shilganda hisobingizga avtomatik +1 000 so'm qo'shiladi!</span>
       </div>
     </div>
   );

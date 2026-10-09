@@ -122,13 +122,13 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         <div className="relative z-10 mt-3.5 space-y-2">
           <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200">
             <div className="w-5 h-5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
             </div>
             <span>Barcha testlarni cheklovlarsiz yechish</span>
           </div>
           <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200">
             <div className="w-5 h-5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Crown className="w-3.5 h-3.5" />
+              <Crown className="w-3.5 h-3.5" strokeWidth={1.75} />
             </div>
             <span>OTM va Respublika reytingida ishtirok etish</span>
           </div>
@@ -137,7 +137,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         {/* Current Balance Bar */}
         <div className="relative z-10 mt-3.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
           <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-            <Wallet className="w-3.5 h-3.5 text-emerald-500" />
+            <Wallet className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
             Hamyon balansingiz:
           </span>
           <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
@@ -153,12 +153,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             onClick={handleTopUpClick}
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-400/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
-            <CreditCard className="w-5 h-5 text-white" strokeWidth={2} />
+            <CreditCard className="w-5 h-5 text-white" strokeWidth={1.75} />
             <span>Hisobni to'ldirish</span>
           </button>
 
-          {/* Agar hisobida mablag' bo'lsa, to'g'ridan-to'g'ri tarif faollashtirish imkoni */}
-          {currentBalance >= 35000 && onOpenSubscription && (
+          {/* Tariflar va obuna faollashtirish imkoni */}
+          {onOpenSubscription && (
             <button
               type="button"
               onClick={() => {
@@ -167,8 +167,8 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold text-xs border border-amber-500/30 flex items-center justify-center gap-1.5 transition-all"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Balansdan tarif sotib olish</span>
+              <Crown className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.75} />
+              <span>{currentBalance >= 35000 ? "Balansdan tarif sotib olish" : "Tariflar va Obuna rejalarini ko'rish"}</span>
             </button>
           )}
 
@@ -178,7 +178,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             onClick={handleBackClick}
             className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span>Orqaga qaytish</span>
           </button>
         </div>

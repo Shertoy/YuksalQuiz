@@ -394,7 +394,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-black text-slate-900 dark:text-white">
-                    ⭐ {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
+                    {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                   </span>
                   <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase tracking-wider">
                     Faol

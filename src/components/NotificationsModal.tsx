@@ -30,7 +30,7 @@ interface NotificationsModalProps {
 
 const QUICK_SUGGESTIONS = [
   "Test qanday yaratiladi?",
-  "20 000 so'm vaucher qanday ishlaydi?",
+  "VIP obuna qanday faollashtiriladi?",
   "Reyting ballari qanday hisoblanadi?",
   "To'lov kvitansiyasini qanday yuklayman?",
 ];
