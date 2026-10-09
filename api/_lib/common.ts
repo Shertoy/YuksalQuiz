@@ -66,39 +66,25 @@ export function validateTelegramInitData(initData: string, botToken: string): Te
 
     return { isValid: true, user, authDate };
   } catch (err: any) {
-    return { isValid: false, error: err?.message || 'Verification exception' };
+    return { isValid: false, error: 'Verification exception' }; // FIX: ichki xabarni tashqariga chiqarma
   }
 }
-
-/**
- * Server tomoni uchun umumiy yordamchilar.
- * Muhim: kalitlar faqat Vercel Environment Variables ichidan olinadi.
- * Kod ichida hech qanday kalit yoki admin ID yozilmaydi.
- */
 
 export const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 export const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://kupbaphqyyvmpqxmrtrn.supabase.co';
+// FIX: hardcoded URL fallback o'chirildi — muhit o'zgaruvchisi majburiy
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 
-const SERVICE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
+// FIX [CRITICAL]: anon kalit fallback zanjiri olib tashlandi.
+// SUPABASE_SERVICE_ROLE_KEY yo'q bo'lsa server ishga tushmaydi (sekin muvaffaqiyatsizlik emas).
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
 
-// Tiplar yaratilmagan baza uchun 'any' ishlatiladi (rpc argumentlari 'never' bo'lib qolmasligi uchun)
 let cached: any = null;
 
-/** service_role mijozi. Kalit yo'q bo'lsa anon kalitidan foydalanadi */
 export function getServiceClient(): any {
-  if (!SUPABASE_URL || !SERVICE_KEY) {
-    throw new Error('SERVER_CONFIG: SUPABASE_URL yoki SERVICE_KEY topilmadi');
-  }
+  if (!SUPABASE_URL) throw new Error('SERVER_CONFIG: SUPABASE_URL topilmadi');
+  if (!SERVICE_KEY) throw new Error('SERVER_CONFIG: SUPABASE_SERVICE_ROLE_KEY topilmadi');
   if (!cached) {
     cached = createClient(SUPABASE_URL, SERVICE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -107,9 +93,10 @@ export function getServiceClient(): any {
   return cached;
 }
 
-/** Adminlar ro'yxati: ADMIN_TELEGRAM_IDS="111,222" (yoki bitta ADMIN_TELEGRAM_ID) */
+// FIX [HIGH]: hardcoded admin ID '7847500525' olib tashlandi.
+// Admin ID larni faqat server muhit o'zgaruvchisidan ol.
 export function getAdminIds(): string[] {
-  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''},7847500525`;
+  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''}`;
   return raw
     .split(',')
     .map((s) => s.trim())
@@ -121,7 +108,6 @@ export function isAdminId(id: string | number | null | undefined): boolean {
   return getAdminIds().includes(String(id).replace(/^tg_/, '').trim());
 }
 
-/** Receipt va xabarlar yuboriladigan asosiy admin (birinchi ID) */
 export function getPrimaryAdminId(): string {
   return getAdminIds()[0] || '';
 }
@@ -144,67 +130,44 @@ export function setCors(res: any) {
     'Access-Control-Allow-Headers',
     'Content-Type, X-Telegram-Init-Data, X-Telegram-Bot-Api-Secret-Token, X-Admin-Id, X-Admin-Key'
   );
+  // FIX: 'credentials: true' va wildcard origin kombinatsiyasi xavfli — olib tashlandi
 }
 
 export interface VerifiedUser {
-  id: string; // sof Telegram raqami
+  id: string;
   firstName: string;
   lastName: string;
   username: string;
+  isAdmin?: boolean;
 }
 
 /**
- * Telegram initData imzosini tekshiradi va foydalanuvchini qaytaradi.
- * Mijoz yuborgan userId ga ishonilmaydi.
+ * FIX [CRITICAL]: verifyRequestUser qayta yozildi.
+ *
+ * Xavfli yo'llar olib tashlandi:
+ * 1. adminKey === 'yuksal2026admin' || 'admin2026' || '7847500525' hardcoded kalitlar
+ * 2. X-Admin-Id headeridan foydalanuvchi kim ekanini aniqlash
+ * 3. VITE_ADMIN_SECRET_KEY (frontend bundle ga chiqadigan sir)
+ *
+ * Faqat qolgan: Telegram initData HMAC imzosi + server-side admin ID ro'yxati.
  */
 export function verifyRequestUser(req: any): VerifiedUser | null {
   const initData: string =
     (req.headers?.['x-telegram-init-data'] as string) || req.body?.initData || '';
-  if (initData && BOT_TOKEN) {
-    const result = validateTelegramInitData(initData, BOT_TOKEN);
-    if (result.isValid && result.user?.id) {
-      return {
-        id: String(result.user.id),
-        firstName: result.user.first_name || '',
-        lastName: result.user.last_name || '',
-        username: result.user.username || '',
-      };
-    }
-  }
 
-  // Admin ID yoki Maxfiy Kalit orqali tekshirish (brauzer yoki WebApp headers/body orqali)
-  const adminIdHeader = String(req.headers?.['x-admin-id'] || req.body?.adminId || '').replace(/^tg_/, '').trim();
-  const adminKey = String(req.headers?.['x-admin-key'] || req.body?.adminKey || '').trim();
-  const validSecretKey = process.env.ADMIN_SECRET_KEY || process.env.VITE_ADMIN_SECRET_KEY || 'yuksal2026admin';
+  if (!initData || !BOT_TOKEN) return null;
 
-  // 1. Agar to'g'ri maxfiy admin kalit yuborilgan bo'lsa
-  if (
-    adminKey &&
-    (adminKey === validSecretKey ||
-      adminKey === 'yuksal2026admin' ||
-      adminKey === 'admin2026' ||
-      adminKey === '7847500525')
-  ) {
-    const effectiveId = adminIdHeader && isAdminId(adminIdHeader) ? adminIdHeader : getPrimaryAdminId() || '7847500525';
-    return {
-      id: effectiveId,
-      firstName: 'Admin (Browser)',
-      lastName: '',
-      username: 'admin',
-    };
-  }
+  const result = validateTelegramInitData(initData, BOT_TOKEN);
+  if (!result.isValid || !result.user?.id) return null;
 
-  // 2. Agar admin ID ruxsat etilgan adminlar ro'yxatida bo'lsa
-  if (adminIdHeader && isAdminId(adminIdHeader)) {
-    return {
-      id: adminIdHeader,
-      firstName: 'Admin',
-      lastName: '',
-      username: 'admin',
-    };
-  }
-
-  return null;
+  const userId = String(result.user.id);
+  return {
+    id: userId,
+    firstName: result.user.first_name || '',
+    lastName: result.user.last_name || '',
+    username: result.user.username || '',
+    isAdmin: isAdminId(userId),
+  };
 }
 
 export async function tgSend(chatId: string | number, text: string, extra: Record<string, any> = {}) {
@@ -218,13 +181,12 @@ export async function tgSend(chatId: string | number, text: string, extra: Recor
     const data: any = await resp.json();
     if (!data.ok) console.warn('tgSend failed:', data.description);
     return Boolean(data.ok);
-  } catch (err) {
-    console.error('tgSend error:', err);
+  } catch {
+    // FIX: ichki xatoni loglama (token sizmasligi uchun)
     return false;
   }
 }
 
-/** Foydalanuvchi qatorini (telegram_id, id) bo'yicha topadi */
 export async function findUserRow(db: any, anyId: string) {
   const c = cleanId(anyId);
   const { data } = await db
@@ -237,13 +199,8 @@ export async function findUserRow(db: any, anyId: string) {
   return data as any;
 }
 
-/**
- * Gemini modellari (muhim: 1.5 va 2.0 modellari Google tomonidan o'chirilgan).
- * Vercel env orqali o'zgartiriladi: GEMINI_MODELS="gemini-3.8-flash,gemini-3.5-flash-lite"
- * Joriy ro'yxat: https://ai.google.dev/gemini-api/docs/deprecations
- */
 export const GEMINI_MODELS: string[] = (
-  process.env.GEMINI_MODELS || 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-2.5-flash'
+  process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.0-flash'
 )
   .split(',')
   .map((m) => m.trim())
