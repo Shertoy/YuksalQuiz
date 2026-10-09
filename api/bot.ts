@@ -308,18 +308,26 @@ async function handleAdminCallback(cq: any) {
   }
 
   if (kind === 'ask_amount') {
-    await answerCallback(cq.id, "Shu xabarga Reply bosib faqat summani yozing (masalan: 32400)");
+    // Avval to'lov holatini tekshiramiz: tasdiqlangan chekka qayta summa so'ralmaydi
+    const { data: pay } = await db.from('payments').select('status, amount').eq('id', arg).maybeSingle();
+    if (!pay) return void (await answerCallback(cq.id, "To'lov topilmadi", true));
+    if (!['pending', 'pending_manual'].includes(String(pay.status))) {
+      const amt = Number(pay.amount || 0).toLocaleString('uz-UZ');
+      await markHandled(chatId, messageId, `Avval ko'rib chiqilgan (${pay.status}, ${amt} so'm)`);
+      return void (await answerCallback(cq.id, `Bu to'lov allaqachon ko'rib chiqilgan (${amt} so'm). Qayta kiritish shart emas.`, true));
+    }
+
+    await answerCallback(cq.id, "Javob (Reply) qilib summani yozing");
     await tgCall('sendMessage', {
       chat_id: chatId,
       parse_mode: 'HTML',
       reply_to_message_id: messageId,
       text:
-        `✏️ <b>Summa kiritish</b>\n\n` +
-        `To'lov ID: <code>${escapeHtml(arg)}</code>\n\n` +
-        `Shu xabarga <b>Reply</b> bosing va faqat <b>raqam</b> yozing:\n` +
+        `✏️ <b>Summani yozing</b>\n\n` +
+        `Shu xabarga <b>javob (Reply)</b> qilib, chekdagi summani faqat raqam bilan yozing.\n` +
         `Masalan: <code>32400</code>\n\n` +
-        `Yoki: <code>/setamount ${escapeHtml(arg)} 32400</code>`,
-      reply_markup: { force_reply: true, selective: true },
+        `<i>To'lov: ${escapeHtml(arg)}</i>`,
+      reply_markup: { force_reply: true, selective: true, input_field_placeholder: 'Masalan: 32400' },
     });
     return;
   }
@@ -396,7 +404,20 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
       replyBody = text;
     }
   }
-  if (!targetUserId || !replyBody) return false;
+  if (!targetUserId || !replyBody) {
+    // Admin javob (Reply) qilmasdan faqat raqam yozsa, jim qolmaymiz: qanday qilishni aytamiz
+    if (/^\d[\d\s.,']*$/.test(text)) {
+      await tgSend(
+        chatId,
+        "ℹ️ Summa qabul qilinmadi: u qaysi chekka tegishli ekani noma'lum.\n\n" +
+          "Chek xabaridagi <b>✏️ Summani kiritish</b> tugmasini bosing, keyin chiqqan xabarga " +
+          "<b>javob (Reply)</b> qilib raqamni yozing.\n\n" +
+          "Reply qilish: xabarni bosib turing (yoki o'ngga suring) → <b>Javob berish</b>."
+      );
+      return true;
+    }
+    return false;
+  }
 
   try {
     await db.from('support_messages').insert({
