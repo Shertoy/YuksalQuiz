@@ -623,15 +623,23 @@ export default async function handler(req: any, res: any) {
     // Telegram'dan kelgani tasdiqlanganmi?
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
     const headerSecret = String(req.headers?.['x-telegram-bot-api-secret-token'] || '');
-    // Agar secret o'rnatilgan bo'lsa tekshiramiz, sozlanmagan bo'lsa admin ID orqali ruxsat beriladi
-    const trusted = secret ? headerSecret === secret : true;
+    // Pulga tegadigan admin amallari FAQAT Telegram imzolagan so'rovda bajariladi.
+    // Secret o'rnatilmagan bo'lsa admin amallari yopiq (soxta so'rov bilan pul qo'shib bo'lmasin).
+    // /start kabi oddiy javoblar secretsiz ham ishlayveradi.
+    const trusted = Boolean(secret) && headerSecret === secret;
 
     // 1. Admin tugmalari (Callback queries)
     if (update.callback_query) {
       const cq = update.callback_query;
       if (!trusted) {
-        console.error('TELEGRAM_WEBHOOK_SECRET xatosi: admin callback rad etildi');
-        await answerCallback(cq.id, "Xavfsizlik tekshiruvidan o'tmadi", true);
+        console.error('TELEGRAM_WEBHOOK_SECRET sozlanmagan yoki mos emas: admin callback rad etildi');
+        await answerCallback(
+          cq.id,
+          secret
+            ? "Xavfsizlik tekshiruvidan o'tmadi"
+            : "Admin tugmalari o'chiq: Vercel'da TELEGRAM_WEBHOOK_SECRET sozlang va webhookni qayta ulang",
+          true
+        );
         return res.status(200).json({ ok: true });
       }
       if (!isAdminId(cq.from?.id)) {
