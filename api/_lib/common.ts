@@ -93,7 +93,7 @@ export function getServiceClient(): any {
   return cached;
 }
 
-// FIX [HIGH]: hardcoded admin ID '7847500525' olib tashlandi.
+// Admin ID lar faqat server muhit o'zgaruvchisidan olinadi (kodda saqlanmaydi).
 // Admin ID larni faqat server muhit o'zgaruvchisidan ol.
 export function getAdminIds(): string[] {
   const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''}`;
@@ -144,18 +144,30 @@ export interface VerifiedUser {
 /**
  * FIX [CRITICAL]: verifyRequestUser qayta yozildi.
  *
- * Xavfli yo'llar olib tashlandi:
- * 1. adminKey === 'yuksal2026admin' || 'admin2026' || '7847500525' hardcoded kalitlar
- * 2. X-Admin-Id headeridan foydalanuvchi kim ekanini aniqlash
- * 3. VITE_ADMIN_SECRET_KEY (frontend bundle ga chiqadigan sir)
- *
- * Faqat qolgan: Telegram initData HMAC imzosi + server-side admin ID ro'yxati.
+ * Faqat ikki yo'l: Telegram initData HMAC imzosi + serverdagi admin ID ro'yxati,
+ * yoki brauzerdagi admin uchun serverdagi ADMIN_SECRET_KEY.
+ * Hardcoded kalitlar, X-Admin-Id va VITE_ADMIN_SECRET_KEY qabul qilinmaydi.
  */
+// Brauzer orqali admin kirishi: faqat serverdagi ADMIN_SECRET_KEY (VITE_ emas, frontendga chiqmaydi).
+// Kalit kamida 16 belgi bo'lishi shart.
+function verifyAdminBrowserKey(req: any): VerifiedUser | null {
+  const serverKey = String(process.env.ADMIN_SECRET_KEY || '');
+  const given = String(req.headers?.['x-admin-key'] || '');
+  if (serverKey.length < 16 || !given) return null;
+  const a = crypto.createHash('sha256').update(given).digest();
+  const b = crypto.createHash('sha256').update(serverKey).digest();
+  if (!crypto.timingSafeEqual(a, b)) return null;
+  const adminId = getPrimaryAdminId();
+  if (!adminId) return null;
+  return { id: adminId, firstName: 'Admin', lastName: '', username: 'admin', isAdmin: true };
+}
+
 export function verifyRequestUser(req: any): VerifiedUser | null {
   const initData: string =
     (req.headers?.['x-telegram-init-data'] as string) || req.body?.initData || '';
 
-  if (!initData || !BOT_TOKEN) return null;
+  if (!initData) return verifyAdminBrowserKey(req);
+  if (!BOT_TOKEN) return null;
 
   const result = validateTelegramInitData(initData, BOT_TOKEN);
   if (!result.isValid || !result.user?.id) return null;

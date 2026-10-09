@@ -23,6 +23,14 @@
 
   --color-bg-clean-light: #fcfdfd;
   --color-bg-clean-dark: #020617;
+
+  /* Bitta shrift: "font-sans" klassi ham Plus Jakarta Sans'ni ishlatadi
+     (avval Tailwind'ning tizim shriftiga o'tib ketardi, shuning uchun shrift har xil ko'rinardi) */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Plus Jakarta Sans eng qalin varianti 800. font-black (900) brauzer tomonidan
+     soxta qalinlashtirilmasligi uchun 800 ga tenglashtiriladi. */
+  --font-weight-black: 800;
 }
 
 :root {

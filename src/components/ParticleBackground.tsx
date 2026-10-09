@@ -22,6 +22,20 @@ interface AmbientOrb {
   colorType: 'emerald' | 'orange' | 'teal';
 }
 
+/**
+ * Kuchsiz telefon yoki "harakatni kamaytirish" yoqilgan bo'lsa animatsiya o'chiriladi
+ * (doimiy 60fps chizish batareya va tezlikka ta'sir qiladi).
+ */
+export function shouldReduceBackgroundMotion(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return true;
+  } catch {}
+  const cores = (navigator as any)?.hardwareConcurrency || 8;
+  const memory = (navigator as any)?.deviceMemory || 8;
+  return cores <= 4 || memory <= 2;
+}
+
 export const ParticleBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -46,7 +60,8 @@ export const ParticleBackground: React.FC = () => {
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      ctx.scale(dpr, dpr);
+      // setTransform: har resize da masshtab ustma-ust ko'paymasin
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     resize();

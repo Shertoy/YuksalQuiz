@@ -1,3 +1,5 @@
+import { create } from 'zustand';
+
 /**
  * Anti-Tampering, Anti-Cheat & Disaster Recovery Security Suite for YuksalQuiz
  * 
@@ -213,208 +215,110 @@ export function resetAdminRateLimit(): void {
 
 /**
  * -------------------------------------------------------------
- * Admin Telegram ID Whitelist & Access Control Security
+ * Admin huquqi: FAQAT server tasdiqlaydi
  * -------------------------------------------------------------
+ * Frontend kodida admin ID, parol yoki maxfiy kalit saqlanmaydi.
+ * Admin ekanligi /api/admin (action: whoami) orqali tekshiriladi:
+ *  - Telegram ichida: imzolangan initData bo'yicha (ADMIN_TELEGRAM_IDS)
+ *  - Brauzerda: serverdagi ADMIN_SECRET_KEY bilan
+ * Natija faqat xotirada (sahifa yangilansa qayta tekshiriladi), localStorage
+ * ni o'zgartirib admin bo'lib bo'lmaydi.
  */
-const ADMIN_WHITELIST_STORAGE_KEY = 'yuksal_admin_whitelist_v1';
-const ADMIN_SESSION_KEY = 'yuksal_admin_authenticated_session';
-const ADMIN_REMEMBER_KEY = 'yuksal_admin_remember_auth';
+const ADMIN_BROWSER_KEY_STORAGE = 'yuksal_admin_key';
 
-// Default authorized Telegram IDs (Owner, Devs, Administrators)
-export const DEFAULT_ADMIN_TELEGRAM_IDS: string[] = [
-  '7847500525', // Alisher Asqadali / Admin
-  '6219808382', // Alisher Alijonov / Owner
-  '117932388',  // Ali / Admin
-];
+interface AdminSessionState {
+  verified: boolean;
+  adminId: string | null;
+}
 
-/**
- * Standard default admin master passcodes for direct browser authentication
- */
-export const ADMIN_MASTER_PASSCODES: string[] = [
-  'yuksal2026admin',
-  'admin2026',
-  '7847500525',
-];
+export const useAdminSession = create<AdminSessionState>(() => ({
+  verified: false,
+  adminId: null,
+}));
 
 export function cleanTelegramId(rawId?: string | number | null): string {
   if (rawId === undefined || rawId === null) return '';
   return String(rawId).replace(/^tg_/, '').replace(/^user_/, '').trim();
 }
 
-/**
- * Returns all currently authorized Admin Telegram IDs (Env + Storage + Defaults)
- */
-export function getAuthorizedAdminTelegramIds(): string[] {
-  const idsSet = new Set<string>();
-
-  // 1. Defaults
-  for (const id of DEFAULT_ADMIN_TELEGRAM_IDS) {
-    const cleaned = cleanTelegramId(id);
-    if (cleaned) idsSet.add(cleaned);
+/** Brauzer rejimida admin o'z kalitini "eslab qolish"ni tanlagan bo'lsa qaytaradi */
+export function getStoredAdminBrowserKey(): string {
+  try {
+    return localStorage.getItem(ADMIN_BROWSER_KEY_STORAGE) || sessionStorage.getItem(ADMIN_BROWSER_KEY_STORAGE) || '';
+  } catch {
+    return '';
   }
+}
 
-  // 2. Vite Environment variable (e.g. VITE_ADMIN_TELEGRAM_ID or VITE_ADMIN_TELEGRAM_IDS="7847500525,6219808382")
+export function storeAdminBrowserKey(key: string, rememberMe: boolean): void {
   try {
-    const singleEnvId = (import.meta.env?.VITE_ADMIN_TELEGRAM_ID as string) || '';
-    if (singleEnvId) {
-      const cleaned = cleanTelegramId(singleEnvId);
-      if (cleaned) idsSet.add(cleaned);
-    }
-    const envIds = (import.meta.env?.VITE_ADMIN_TELEGRAM_IDS as string) || '';
-    if (envIds) {
-      envIds.split(',').forEach((item) => {
-        const cleaned = cleanTelegramId(item);
-        if (cleaned) idsSet.add(cleaned);
-      });
+    if (rememberMe) {
+      localStorage.setItem(ADMIN_BROWSER_KEY_STORAGE, key);
+    } else {
+      sessionStorage.setItem(ADMIN_BROWSER_KEY_STORAGE, key);
     }
   } catch {}
-
-  // 3. Stored Custom Whitelist in localStorage
-  try {
-    const raw = localStorage.getItem(ADMIN_WHITELIST_STORAGE_KEY);
-    if (raw) {
-      const parsed: string[] = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item) => {
-          const cleaned = cleanTelegramId(item);
-          if (cleaned) idsSet.add(cleaned);
-        });
-      }
-    }
-  } catch {}
-
-  return Array.from(idsSet);
 }
 
 /**
- * Checks whether the given Telegram ID or user ID is authorized as an Admin.
- */
-export function isTelegramIdAuthorizedAdmin(rawId?: string | number | null): boolean {
-  if (rawId === undefined || rawId === null) return false;
-  const target = cleanTelegramId(rawId);
-  if (!target) return false;
-
-  const authorized = getAuthorizedAdminTelegramIds();
-  return authorized.includes(target);
-}
-
-/**
- * Helper to determine if a user or user ID has Admin privileges.
+ * Server tomonidan tasdiqlangan joriy admin bo'lsa true.
+ * ID berilsa, aynan shu foydalanuvchi tasdiqlangan admin ekani tekshiriladi.
  */
 export function isUserAdmin(rawIdOrProfile?: string | number | null | { id?: string }): boolean {
-  if (!rawIdOrProfile) return false;
-  const idStr = typeof rawIdOrProfile === 'object' && rawIdOrProfile !== null ? rawIdOrProfile.id : rawIdOrProfile;
-  return isTelegramIdAuthorizedAdmin(idStr);
+  const s = useAdminSession.getState();
+  if (!s.verified) return false;
+  if (rawIdOrProfile === undefined || rawIdOrProfile === null) return true;
+  const idStr =
+    typeof rawIdOrProfile === 'object' ? rawIdOrProfile.id : rawIdOrProfile;
+  if (!idStr || !s.adminId) return true;
+  return cleanTelegramId(idStr) === cleanTelegramId(s.adminId);
 }
 
-/**
- * Verifies admin credentials entered via web browser (Master Passcode or Telegram ID)
- */
-export function verifyAdminCredentials(input: string): { isValid: boolean; matchedId?: string; reason?: string } {
-  const cleanInput = (input || '').trim();
-  if (!cleanInput) {
-    return { isValid: false, reason: "Iltimos, admin paroli yoki Telegram ID sini kiriting." };
-  }
-
-  // 1. Check against environment secret key if configured
-  try {
-    const envSecret = ((import.meta.env?.VITE_ADMIN_SECRET_KEY as string) || '').trim();
-    if (envSecret && cleanInput === envSecret) {
-      return { isValid: true, matchedId: '7847500525' };
-    }
-  } catch {}
-
-  // 2. Check against master passcodes
-  if (ADMIN_MASTER_PASSCODES.includes(cleanInput)) {
-    return { isValid: true, matchedId: '7847500525' };
-  }
-
-  // 3. Check if input is an authorized Admin Telegram ID
-  const cleanId = cleanTelegramId(cleanInput);
-  if (cleanId && isTelegramIdAuthorizedAdmin(cleanId)) {
-    return { isValid: true, matchedId: cleanId };
-  }
-
-  return {
-    isValid: false,
-    reason: "Noto'g'ri maxfiy kalit yoki ruxsat etilmagan Telegram ID.",
-  };
+export function isTelegramIdAuthorizedAdmin(rawId?: string | number | null): boolean {
+  return isUserAdmin(rawId);
 }
 
-/**
- * Adds a new Admin Telegram ID to the local whitelist
- */
-export function addAuthorizedAdminTelegramId(rawId: string | number): boolean {
-  const cleaned = cleanTelegramId(rawId);
-  if (!cleaned) return false;
-
-  const current = getAuthorizedAdminTelegramIds();
-  if (!current.includes(cleaned)) {
-    const updated = [...current, cleaned];
-    try {
-      localStorage.setItem(ADMIN_WHITELIST_STORAGE_KEY, JSON.stringify(updated));
-    } catch {}
-  }
-  return true;
+/** Server tasdiqlagan admin ID (ko'rsatish uchun) */
+export function getAuthorizedAdminTelegramIds(): string[] {
+  const id = useAdminSession.getState().adminId;
+  return id ? [cleanTelegramId(id)] : [];
 }
 
-/**
- * Removes an Admin Telegram ID from the whitelist
- */
-export function removeAuthorizedAdminTelegramId(rawId: string | number): boolean {
-  const cleaned = cleanTelegramId(rawId);
-  if (!cleaned) return false;
-
-  const current = getAuthorizedAdminTelegramIds().filter((id) => id !== cleaned);
-  try {
-    localStorage.setItem(ADMIN_WHITELIST_STORAGE_KEY, JSON.stringify(current));
-  } catch {}
-  return true;
+/** Adminlar ro'yxati endi faqat serverdagi ADMIN_TELEGRAM_IDS orqali boshqariladi */
+export function addAuthorizedAdminTelegramId(_rawId: string | number): boolean {
+  return false;
 }
 
-/**
- * Check if the current browser session has active admin authorization
- */
+export function removeAuthorizedAdminTelegramId(_rawId: string | number): boolean {
+  return false;
+}
+
+/** Joriy sessiyada server admin huquqini tasdiqlaganmi */
 export function isAdminSessionAuthenticated(): boolean {
-  try {
-    const session = sessionStorage.getItem(ADMIN_SESSION_KEY);
-    const remembered = localStorage.getItem(ADMIN_REMEMBER_KEY);
-    return session === 'true' || remembered === 'true';
-  } catch {
-    return false;
-  }
+  return useAdminSession.getState().verified;
 }
 
 /**
- * Persists admin session state (sessionStorage and optionally localStorage if rememberMe)
+ * Faqat server javobidan keyin chaqiriladi (whoami muvaffaqiyatli bo'lganda).
  */
-export function setAdminSessionAuthenticated(authenticated: boolean, rememberMe: boolean = false): void {
-  try {
-    if (authenticated) {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      if (rememberMe) {
-        localStorage.setItem(ADMIN_REMEMBER_KEY, 'true');
-      } else {
-        localStorage.removeItem(ADMIN_REMEMBER_KEY);
-      }
-    } else {
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      localStorage.removeItem(ADMIN_REMEMBER_KEY);
-    }
-  } catch {}
+export function setAdminSessionAuthenticated(authenticated: boolean, _rememberMe: boolean = false, adminId?: string | null): void {
+  useAdminSession.setState({
+    verified: authenticated,
+    adminId: authenticated ? (adminId ? cleanTelegramId(adminId) : useAdminSession.getState().adminId) : null,
+  });
 }
 
-/**
- * Clears all admin credentials and sessions from browser storage
- */
+/** Admin sessiyasini va eslab qolingan kalitni o'chiradi */
 export function clearAdminSession(): void {
+  useAdminSession.setState({ verified: false, adminId: null });
   try {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_BROWSER_KEY_STORAGE);
     sessionStorage.removeItem('yuksal_admin_id');
-    sessionStorage.removeItem('yuksal_admin_key');
-    localStorage.removeItem(ADMIN_REMEMBER_KEY);
+    sessionStorage.removeItem('yuksal_admin_authenticated_session');
+    localStorage.removeItem(ADMIN_BROWSER_KEY_STORAGE);
     localStorage.removeItem('yuksal_admin_id');
-    localStorage.removeItem('yuksal_admin_key');
+    localStorage.removeItem('yuksal_admin_remember_auth');
+    localStorage.removeItem('yuksal_admin_whitelist_v1');
   } catch {}
 }
 

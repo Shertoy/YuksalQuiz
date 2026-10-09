@@ -77,11 +77,21 @@ export default async function handler(req: any, res: any) {
     if (action === 'approve') {
       const paymentId = String(req.body?.paymentId || '');
       const plan = req.body?.plan || null;
-      const { data, error } = await db.rpc('approve_payment', {
-        p_payment_id: paymentId,
-        p_actor: actor,
-        p_status: 'manual_approved',
-      });
+      const customAmount = Math.round(Number(req.body?.amount || 0));
+      // Admin summa ko'rsatsa (AI o'qiy olmagan chek), summa bilan atomar tasdiqlanadi
+      const { data: current } = await db.from('payments').select('amount').eq('id', paymentId).maybeSingle();
+      const useCustom = customAmount > 0 && Number(current?.amount || 0) !== customAmount;
+      const { data, error } = useCustom
+        ? await db.rpc('approve_payment_with_amount', {
+            p_payment_id: paymentId,
+            p_amount: customAmount,
+            p_actor: actor,
+          })
+        : await db.rpc('approve_payment', {
+            p_payment_id: paymentId,
+            p_actor: actor,
+            p_status: 'manual_approved',
+          });
       if (error) throw error;
       if (!data?.ok) return res.status(409).json(data);
 
@@ -131,9 +141,41 @@ export default async function handler(req: any, res: any) {
 
     if (action === 'credit') {
       const userId = cleanId(req.body?.userId);
-      const amount = Number(req.body?.amount || 0);
       const plan = req.body?.plan || null;
+      const mode = String(req.body?.mode || 'add_funds');
+      let amount = Math.round(Number(req.body?.amount || 0));
       if (!userId) return res.status(400).json({ ok: false, error: 'userId kerak' });
+
+      // "Balansni belgilash": joriy balans bilan farq hisoblanadi va shu farq yoziladi
+      if (mode === 'set_balance') {
+        if (amount < 0) return res.status(400).json({ ok: false, error: "Balans manfiy bo'lishi mumkin emas" });
+        const { data: rows } = await db
+          .from('users')
+          .select('id, balance, wallet_balance')
+          .or(`id.eq.${userId},id.eq.tg_${userId},telegram_id.eq.${userId}`)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        const row = Array.isArray(rows) ? rows[0] : null;
+        if (!row) return res.status(404).json({ ok: false, error: 'Talaba topilmadi' });
+        const cur = Number(row.balance ?? row.wallet_balance ?? 0);
+        const delta = amount - cur;
+        if (delta !== 0) {
+          const { error: chErr } = await db.rpc('_wallet_change', {
+            p_user: row.id,
+            p_amount: delta,
+            p_type: 'admin_set_balance',
+            p_ref: actor,
+            p_note: `Admin balansni ${amount} qilib belgiladi`,
+          });
+          if (chErr) throw chErr;
+        }
+        amount = 0;
+        if (!plan) {
+          await tgSend(userId, `Administrator hisobingiz balansini ${Number(req.body?.amount || 0).toLocaleString('uz-UZ')} so'm qilib belgiladi.`);
+          return res.status(200).json({ ok: true, new_balance: Number(req.body?.amount || 0) });
+        }
+      }
+
       if (!amount && !plan) return res.status(400).json({ ok: false, error: 'Summa yoki tarif kerak' });
 
       // tg_ prefiksli ID bilan sinab ko'ramiz, keyin oddiy ID bilan
@@ -157,8 +199,7 @@ export default async function handler(req: any, res: any) {
 
       if (!data?.ok) {
         console.error('admin_credit error:', error);
-        const errMsg = typeof error === 'string' ? error : error?.message || JSON.stringify(error) || 'RPC xatosi';
-        return res.status(500).json({ ok: false, error: errMsg });
+        return res.status(500).json({ ok: false, error: "Bazaga yozib bo'lmadi. Migratsiyalar ishga tushirilganini tekshiring." });
       }
 
       const parts: string[] = [];
@@ -193,6 +234,6 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ ok: false, error: "Noma'lum action" });
   } catch (err: any) {
     console.error('admin api error:', err);
-    return res.status(500).json({ ok: false, error: err?.message || 'Server xatosi' });
+    return res.status(500).json({ ok: false, error: 'Server xatosi' });
   }
 }

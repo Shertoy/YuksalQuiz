@@ -1930,38 +1930,7 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
       console.warn('fetchAdminUsersList test_packages error:', leadErr);
     }
 
-    // 3. payments jadvalidagi tasdiqlangan to'lovlarni hisoblash
-    try {
-      const { data: pays } = await supabase
-        .from('payments')
-        .select('*')
-        .in('status', ['approved', 'auto_approved', 'manual_approved']);
-
-      if (pays && Array.isArray(pays)) {
-        const paySums = new Map<string, number>();
-        for (const p of pays) {
-          const uId = String(p.user_id || '').trim();
-          const cleanU = uId.replace(/^tg_/, '').replace(/^user_/, '');
-          const amt = Number(p.amount || 0);
-          paySums.set(uId, (paySums.get(uId) || 0) + amt);
-          paySums.set(cleanU, (paySums.get(cleanU) || 0) + amt);
-        }
-
-        for (const [id, u] of userMap.entries()) {
-          const clean = id.replace(/^tg_/, '').replace(/^user_/, '');
-          const sum = Math.max(
-            paySums.get(id) || 0,
-            paySums.get(clean) || 0,
-            paySums.get(`user-${clean}`) || 0,
-            paySums.get(`tg_${clean}`) || 0
-          );
-          if (sum > (u.walletBalance || 0)) {
-            u.walletBalance = sum;
-            u.balance = sum;
-          }
-        }
-      }
-    } catch {}
+    // Balans faqat users jadvalidan olinadi (to'lovlar yig'indisi balans emas: sarflangan pul ham bor).
 
     // 4. AdminCredit paketlarini tekshirish
     try {

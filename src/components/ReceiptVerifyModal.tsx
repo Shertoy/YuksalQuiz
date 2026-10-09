@@ -78,6 +78,29 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     }
   }, [initialAmount]);
 
+  // Oyna yopilganda eski chek, natija va xatolar tozalanadi (keyingi ochilishda toza holat)
+  useEffect(() => {
+    if (isOpen) return;
+    setSelectedFile(null);
+    setPreviewUrl((prev) => {
+      if (prev && prev.startsWith('blob:')) {
+        try { URL.revokeObjectURL(prev); } catch {}
+      }
+      return null;
+    });
+    setCompressedBlob(null);
+    setCompressedBase64(null);
+    setOriginalSizeBytes(0);
+    setCompressedSizeBytes(0);
+    setUploadedReceiptUrl(null);
+    setVerifyStepText('');
+    setResult(null);
+    setUploadError(null);
+    setIsVerifying(false);
+    setIsCompressing(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const CARD_NUMBER_RAW = '9860080382320093';
@@ -263,7 +286,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">

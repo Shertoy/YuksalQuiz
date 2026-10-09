@@ -52,8 +52,17 @@ export default async function handler(req: any, res: any) {
       const cNewUser = cleanId(user.id);
       const cReferrer = cleanId(referrerRaw);
 
-      if (!cReferrer) {
-        return res.status(400).json({ ok: false, error: 'referrerId talab qilinadi' });
+      if (!cReferrer || !/^\d{3,15}$/.test(cReferrer)) {
+        return res.status(400).json({ ok: false, error: "referrerId noto'g'ri" });
+      }
+
+      // Faqat yangi foydalanuvchi va faqat bir marta: avval taklif qilingan bo'lsa bonus berilmaydi
+      if (userRow?.referred_by) {
+        return res.status(200).json({ ok: true, already_credited: true });
+      }
+      const createdAt = userRow?.created_at ? new Date(userRow.created_at).getTime() : Date.now();
+      if (Date.now() - createdAt > 3 * 24 * 3600_000) {
+        return res.status(200).json({ ok: false, reason: 'not_new_user' });
       }
       if (cReferrer === cNewUser) {
         return res.status(200).json({ ok: false, reason: 'self_referral_ignored' });
@@ -90,7 +99,17 @@ export default async function handler(req: any, res: any) {
         p_ref: `ref_${cNewUser}`,
         p_note: `Do'st taklifi bonusi (+1 000 so'm)`,
       });
-      if (rpcErr) throw rpcErr;
+      if (rpcErr) {
+        // Noyob indeks: parallel so'rovda ikkinchi bonus yozilmaydi
+        if (String(rpcErr.code) === '23505' || /duplicate key/i.test(String(rpcErr.message || ''))) {
+          return res.status(200).json({ ok: true, already_credited: true });
+        }
+        throw rpcErr;
+      }
+
+      if (userRow?.id) {
+        await db.from('users').update({ referred_by: referrerRow.id }).eq('id', userRow.id).is('referred_by', null);
+      }
 
       const newBalance = Number(rpcResult ?? 0);
       const updatedRefCount = Number(referrerRow.referral_count || 0) + 1;
@@ -129,11 +148,38 @@ export default async function handler(req: any, res: any) {
       (prices || []).forEach((p: any) => (map[p.key] = Number(p.value)));
       const end = userRow?.subscription_end || userRow?.paid_until || null;
       const active = end ? new Date(end) > new Date() : false;
+      // Talabaning o'z hamyon tarixi (brauzer payments/wallet_transactions ni bevosita o'qiy olmaydi)
+      let history: any[] = [];
+      let payments: any[] = [];
+      if (userRow?.id) {
+        const ids = Array.from(new Set([userRow.id, cleanId(userRow.id), `tg_${cleanId(userRow.id)}`]));
+        const [{ data: tx }, { data: pays }] = await Promise.all([
+          db
+            .from('wallet_transactions')
+            .select('id, type, amount, balance_after, note, created_at')
+            .in('user_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(30),
+          db
+            .from('payments')
+            .select('id, amount, status, transaction_id, created_at')
+            .in('user_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(20),
+        ]);
+        history = tx || [];
+        payments = pays || [];
+      }
       return res.status(200).json({
         ok: true,
+        userId: userRow?.id || null,
+        telegramId: userRow?.telegram_id || cleanId(user.id),
+        isBlocked: Boolean(userRow?.is_blocked),
         balance: Number(userRow?.balance ?? userRow?.wallet_balance ?? 0),
         referralCount: Number(userRow?.referral_count ?? 0),
         voucherClaimed: Boolean(userRow?.voucher_claimed),
+        history,
+        payments,
         subscription: {
           active,
           plan: active ? userRow?.subscription_tier || null : null,

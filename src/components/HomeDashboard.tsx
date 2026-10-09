@@ -35,6 +35,7 @@ import { TestPackage, LeaderboardUser } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
+import { localDateKey } from '../utils/date';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -147,7 +148,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     : 0;
 
   // Check if claimed today (24h lockout)
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateKey();
   const isClaimedToday = profile.lastClaimedDailyDate === today;
 
   // Compute Rank title
@@ -592,14 +593,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <div className="space-y-2">
-            {testPackages.slice(0, 3).map((pkg) => (
+            {testPackages
+              // Parolli yopiq testlar va savolsiz paketlar tavsiyada ko'rsatilmaydi
+              // (ular parol tekshiruvini chetlab o'tib ochilib qolardi)
+              .filter((pkg) => !(pkg.password && !pkg.isPublic) && (pkg.blocks?.[0]?.questions?.length || 0) > 0)
+              .slice(0, 3)
+              .map((pkg) => (
               <div
                 key={pkg.id}
-                onClick={() => onStartTest(pkg, pkg.blocks[0]?.id || '')}
+                onClick={() => onStartTest(pkg, pkg.blocks[0].id)}
                 className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 transition-all active:scale-[0.99] shadow-xs"
               >
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/70 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug">

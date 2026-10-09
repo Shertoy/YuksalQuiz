@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useQuizStore, useUserBalanceRealtime } from './store/useQuizStore';
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -9,17 +9,16 @@ import { TestRunner } from './components/TestRunner';
 import { PostTestReview } from './components/PostTestReview';
 import { ResultsAndMistakes } from './components/ResultsAndMistakes';
 import { Leaderboard } from './components/Leaderboard';
-import { CreateQuizModal } from './components/CreateQuizModal';
 import { ProfileView } from './components/ProfileView';
 import { WalletView } from './components/WalletView';
-import { AdminPanelModal } from './components/AdminPanelModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { ShieldAlert, Send } from 'lucide-react';
 import { TestPackage, TestAttempt } from './types';
-import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic } from './utils/telegram';
-import { isAdminSessionAuthenticated, setAdminSessionAuthenticated } from './utils/security';
+import { initTelegramApp, getTelegramWebApp, syncTelegramTheme, triggerHaptic, useTelegramBackButton } from './utils/telegram';
+import { isAdminSessionAuthenticated, setAdminSessionAuthenticated, getStoredAdminBrowserKey } from './utils/security';
+import { apiPost, getTelegramInitData } from './services/api';
 import {
   fetchCloudTests,
   fetchCloudUniversities,
@@ -29,7 +28,7 @@ import {
   checkUserBlockedStatus,
 } from './services/testSyncService';
 import { LeaderboardUser } from './types';
-import { ParticleBackground } from './components/ParticleBackground';
+import { ParticleBackground, shouldReduceBackgroundMotion } from './components/ParticleBackground';
 import { AppLoader } from './components/AppLoader';
 import { EditProfileModal } from './components/EditProfileModal';
 import { ReceiptVerifyModal } from './components/ReceiptVerifyModal';
@@ -40,6 +39,15 @@ import {
   recordTestStartAttempt,
   isPaidUser,
 } from './services/paywallService';
+
+// Og'ir oynalar (admin panel, test yaratish) faqat ochilganda yuklanadi:
+// talabalar ularning kodini har safar yuklab olmaydi.
+const AdminPanelModal = lazy(() =>
+  import('./components/AdminPanelModal').then((m) => ({ default: m.AdminPanelModal }))
+);
+const CreateQuizModal = lazy(() =>
+  import('./components/CreateQuizModal').then((m) => ({ default: m.CreateQuizModal }))
+);
 
 export const App: React.FC = () => {
   useUserBalanceRealtime();
@@ -120,41 +128,43 @@ export const App: React.FC = () => {
       checkDailyStreak();
     }
 
-    // Direct browser admin access check: ?admin=true or #admin or /admin
-    if (typeof window !== 'undefined') {
-      const checkAdminRoute = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const adminParam = (urlParams.get('admin') || '').trim();
-        const passParam = (urlParams.get('pass') || urlParams.get('key') || '').trim();
-        const isAdminQuery = adminParam === 'true' || urlParams.has('admin');
-        const isAdminHash = window.location.hash.toLowerCase() === '#admin';
-        const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
+    // Admin huquqini server orqali jim tekshirish (Telegram ichida yoki eslab qolingan kalit bilan).
+    // Frontendda parol yoki admin ID saqlanmaydi.
+    let adminCheckCancelled = false;
+    const verifyAdminSilently = async () => {
+      if (!getTelegramInitData() && !getStoredAdminBrowserKey()) return false;
+      const r = await apiPost('/api/admin', { action: 'whoami' });
+      if (adminCheckCancelled) return false;
+      if (r.ok && r.data?.admin) {
+        setAdminSessionAuthenticated(true, true, r.data?.id || null);
+        return true;
+      }
+      return false;
+    };
+    const adminCheckPromise = verifyAdminSilently().catch(() => false);
 
-        // Direct URL credential bypass (e.g. ?admin=yuksal2026admin or ?admin=true&pass=yuksal2026admin)
-        if (
-          adminParam === 'yuksal2026admin' ||
-          adminParam === '7847500525' ||
-          passParam === 'yuksal2026admin' ||
-          passParam === '7847500525'
-        ) {
-          setAdminSessionAuthenticated(true, true);
-          setIsAdminModalOpen(true);
-          return;
-        }
+    // Brauzerda admin sahifasini ochish: ?admin, #admin yoki /admin (faqat kirish oynasini ochadi)
+    const checkAdminRoute = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isAdminQuery = urlParams.has('admin');
+      const isAdminHash = window.location.hash.toLowerCase() === '#admin';
+      const isAdminPath = window.location.pathname.toLowerCase().endsWith('/admin');
 
-        if (isAdminQuery || isAdminHash || isAdminPath) {
+      if (isAdminQuery || isAdminHash || isAdminPath) {
+        adminCheckPromise.then(() => {
+          if (adminCheckCancelled) return;
           if (isAdminSessionAuthenticated()) {
             setIsAdminModalOpen(true);
           } else {
             setIsAdminLoginOpen(true);
           }
-        }
-      };
+        });
+      }
+    };
 
-      checkAdminRoute();
-      window.addEventListener('hashchange', checkAdminRoute);
-      window.addEventListener('popstate', checkAdminRoute);
-    }
+    checkAdminRoute();
+    window.addEventListener('hashchange', checkAdminRoute);
+    window.addEventListener('popstate', checkAdminRoute);
 
     // Check if user is blocked or has updated cloud status and latest balance
     if (profile.id) {
@@ -194,6 +204,9 @@ export const App: React.FC = () => {
     }, 2200);
 
     return () => {
+      adminCheckCancelled = true;
+      window.removeEventListener('hashchange', checkAdminRoute);
+      window.removeEventListener('popstate', checkAdminRoute);
       clearTimeout(loaderTimer);
       unsubRealtime?.();
       if (tg && handleThemeChange && typeof (tg as any).offEvent === 'function') {
@@ -216,6 +229,15 @@ export const App: React.FC = () => {
 
   // Deep Link handler: auto-open test when start=quiz_{quiz_id} or ?quiz_id=... is present,
   // and capture referral start=ref_{ref_id} or ?ref=...
+  // Bo'lim, test yoki natija oynasi almashganda sahifa boshidan ochilsin
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [activeTab, activeTestPkg, reviewState]);
+
+  const [reduceBgMotion] = useState(() => shouldReduceBackgroundMotion());
+
+  const deepLinkHandledRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
@@ -238,9 +260,12 @@ export const App: React.FC = () => {
       urlParams.get('quiz_id') ||
       (startParam.startsWith('quiz_') ? startParam.replace('quiz_', '').trim() : '');
 
-    if (rawQuizId && testPackages && testPackages.length > 0 && !activeTestPkg) {
+    // Havoladagi test faqat BIR MARTA ochiladi. Aks holda test tugagach yoki
+    // bekor qilingach u qayta-qayta avtomatik boshlanib qolardi.
+    if (rawQuizId && !deepLinkHandledRef.current && testPackages && testPackages.length > 0 && !activeTestPkg) {
       const targetPkg = testPackages.find((p) => p.id === rawQuizId);
       if (targetPkg && targetPkg.blocks && targetPkg.blocks.length > 0) {
+        deepLinkHandledRef.current = true;
         handleStartTest(targetPkg, targetPkg.blocks[0].id);
       }
     }
@@ -335,6 +360,25 @@ export const App: React.FC = () => {
     setActiveTab('tests');
   };
 
+  // Telegram "Orqaga" tugmasi: avval ochiq oynani yopadi, keyin natija oynasidan,
+  // so'ng boshqa bo'limdan bosh sahifaga qaytaradi. Test paytida TestRunner o'zi boshqaradi.
+  // Bosh sahifada tugma yashiriladi (shunda ilova o'zi yopiladi).
+  const backAction: (() => void) | null = (() => {
+    if (activeTestPkg) return null;
+    if (isAdminLoginOpen) return () => setIsAdminLoginOpen(false);
+    if (isReceiptModalOpen) return () => { setIsReceiptModalOpen(false); setDepositSuggestedAmount(undefined); };
+    if (isSubscriptionModalOpen) return () => { setIsSubscriptionModalOpen(false); setPendingTestStart(null); };
+    if (isPaywallModalOpen) return () => { setIsPaywallModalOpen(false); setPaywallTargetTest(null); };
+    if (isEditProfileOpen) return () => setIsEditProfileOpen(false);
+    if (isNotificationsOpen) return () => setIsNotificationsOpen(false);
+    if (isCreateModalOpen || editingTestPkg) return () => { setIsCreateModalOpen(false); setEditingTestPkg(null); };
+    if (isAdminModalOpen) return () => setIsAdminModalOpen(false);
+    if (reviewState) return () => handleDoneReview();
+    if (activeTab !== 'home') return () => setActiveTab('home');
+    return null;
+  })();
+  useTelegramBackButton(backAction);
+
   // 4. Bloklangan foydalanuvchilar himoyasi
   if (profile.is_blocked || profile.isBlocked) {
     return (
@@ -398,8 +442,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-full w-full overflow-hidden bg-slate-50/80 dark:bg-[#030712]/90 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative">
-      {/* Floating Interactive Star-like Particle Background */}
-      <ParticleBackground />
+      {/* Fon animatsiyasi: test paytida va kuchsiz qurilmalarda o'chiriladi */}
+      {!activeTestPkg && !reduceBgMotion && <ParticleBackground />}
 
       {/* Real-time Offline Connectivity Monitor & Banner */}
       <div className="relative z-20">
@@ -418,7 +462,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* Main Scrollable Container with Dynamic Safe Padding */}
-      <main className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative z-10 ${
+      <main ref={mainRef} className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative z-10 ${
         activeTestPkg ? 'pb-4' : 'pb-32 scroll-smooth'
       }`}>
         {/* Test Engine View */}
@@ -522,6 +566,10 @@ export const App: React.FC = () => {
         }}
         onTopUp={() => {
           setIsPaywallModalOpen(false);
+          // To'lovdan keyin talaba aynan shu testga qaytishi uchun eslab qolamiz
+          if (paywallTargetTest) {
+            setPendingTestStart({ pkg: paywallTargetTest.pkg, blockId: paywallTargetTest.blockId });
+          }
           setIsReceiptModalOpen(true);
         }}
         onOpenSubscription={() => {
@@ -551,13 +599,15 @@ export const App: React.FC = () => {
 
       {/* Create / Edit Test Modal (AI Test Importer) */}
       {(isCreateModalOpen || Boolean(editingTestPkg)) && (
-        <CreateQuizModal
-          editPackage={editingTestPkg}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setEditingTestPkg(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <CreateQuizModal
+            editPackage={editingTestPkg}
+            onClose={() => {
+              setIsCreateModalOpen(false);
+              setEditingTestPkg(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {/* Notifications Modal */}
@@ -577,10 +627,14 @@ export const App: React.FC = () => {
       />
 
       {/* Admin Panel Modal */}
-      <AdminPanelModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-      />
+      {isAdminModalOpen && (
+        <Suspense fallback={null}>
+          <AdminPanelModal
+            isOpen={isAdminModalOpen}
+            onClose={() => setIsAdminModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Persistent Bottom Navigation Bar - cleanly hidden when modal is open */}
       {!activeTestPkg && !isEditProfileOpen && !isReceiptModalOpen && !isSubscriptionModalOpen && !isPaywallModalOpen && !isCreateModalOpen && !editingTestPkg && !isAdminModalOpen && !isAdminLoginOpen && !isNotificationsOpen && (

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 /**
  * Telegram WebApp Integration & Audio FX Engine
  */
@@ -119,7 +120,8 @@ export function initTelegramApp(): void {
     try {
       tg.ready();
       tg.expand();
-      tg.enableClosingConfirmation();
+      // "Yopishni tasdiqlash" faqat test ishlanayotganda yoqiladi (useTestClosingConfirmation)
+      tg.disableClosingConfirmation?.();
     } catch (e) {
       console.warn('Telegram WebApp init notice:', e);
     }
@@ -430,3 +432,61 @@ class SoundEffectsManager {
 }
 
 export const soundFX = new SoundEffectsManager();
+
+
+// -------------------------------------------------------------
+// Telegram "Orqaga" tugmasi (Android tizim tugmasi ham shu orqali ishlaydi)
+// -------------------------------------------------------------
+// Bir nechta komponent tugmani so'rashi mumkin: oxirgi faollashgani ishlaydi.
+const backHandlerStack: Array<{ current: (() => void) | null }> = [];
+let backClickBound = false;
+
+function syncTelegramBackButton(): void {
+  const tg = getTelegramWebApp();
+  if (!tg?.BackButton) return;
+  if (!backClickBound) {
+    tg.BackButton.onClick(() => {
+      const top = backHandlerStack[backHandlerStack.length - 1];
+      top?.current?.();
+    });
+    backClickBound = true;
+  }
+  if (backHandlerStack.length > 0) tg.BackButton.show();
+  else tg.BackButton.hide();
+}
+
+/**
+ * handler berilsa Telegram "Orqaga" tugmasi ko'rinadi va bosilganda shu handler ishlaydi.
+ * handler null bo'lsa tugma yashiriladi (ilova yopilishi o'rniga).
+ */
+export function useTelegramBackButton(handler: (() => void) | null): void {
+  const ref = useRef<(() => void) | null>(handler);
+  ref.current = handler;
+  const active = Boolean(handler);
+  useEffect(() => {
+    if (!active) return;
+    const entry = ref;
+    backHandlerStack.push(entry);
+    syncTelegramBackButton();
+    return () => {
+      const i = backHandlerStack.lastIndexOf(entry);
+      if (i >= 0) backHandlerStack.splice(i, 1);
+      syncTelegramBackButton();
+    };
+  }, [active]);
+}
+
+/** Test ishlanayotganda tasodifan ilovani yopib qo'ymaslik uchun tasdiq so'raladi */
+export function useTestClosingConfirmation(): void {
+  useEffect(() => {
+    const tg = getTelegramWebApp();
+    try {
+      tg?.enableClosingConfirmation?.();
+    } catch {}
+    return () => {
+      try {
+        tg?.disableClosingConfirmation?.();
+      } catch {}
+    };
+  }, []);
+}

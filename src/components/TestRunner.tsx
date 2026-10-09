@@ -3,7 +3,7 @@ import { TestPackage, UserAnswerRecord, TestAttempt } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { Clock, CheckCircle2, X, ChevronRight } from 'lucide-react';
-import { triggerHaptic, soundFX } from '../utils/telegram';
+import { triggerHaptic, soundFX, useTelegramBackButton, useTestClosingConfirmation } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
 
 /**
@@ -133,22 +133,45 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     }
   };
 
-  // Continuous uninterrupted global countdown timer
+  // Taymer haqiqiy vaqt bo'yicha hisoblanadi (Date.now). Telegram yig'ib qo'yilganda
+  // setInterval sekinlashadi, shuning uchun soniyalarni sanash vaqtni "to'xtatib" qo'yardi.
+  const startedAtRef = useRef(Date.now());
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTotalSecondsSpent((spent) => spent + 1);
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          finishTestWithAnswers(selectedAnswersRef.current, totalTestDuration);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
+    startedAtRef.current = Date.now();
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
+      setTotalSecondsSpent(elapsed);
+      setSecondsRemaining(Math.max(0, totalTestDuration - elapsed));
+    };
+    const timer = setInterval(tick, 500);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [questions.length, totalTestDuration]);
+
+  // Vaqt tugadi: testni yakunlash (state yangilanishidan tashqarida)
+  useEffect(() => {
+    if (secondsRemaining <= 0 && questions.length > 0) {
+      finishTestWithAnswers(selectedAnswersRef.current, totalTestDuration);
+    }
+  }, [secondsRemaining]);
+
+  // Javobdan keyingi 700ms kutish taymeri: testdan chiqilsa bekor qilinadi
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
+
+  // Telegram "Orqaga" tugmasi: chiqishni tasdiqlash oynasi; oyna ochiq bo'lsa uni yopadi
+  useTelegramBackButton(() => setShowConfirmCancel((v) => !v));
+  useTestClosingConfirmation();
 
   // Option selection with instant feedback + 700ms pause + auto-advance
   const handleSelectOption = (optIndex: number) => {
@@ -176,14 +199,15 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     }
 
     // 700ms pause, then one-way advance or finish
-    setTimeout(() => {
+    advanceTimerRef.current = setTimeout(() => {
+      advanceTimerRef.current = null;
       setWrongShakeIndex(null);
       setIsTransitioning(false);
 
       if (currentIndex < questions.length - 1) {
         setCurrentIndex((prev) => prev + 1);
       } else {
-        finishTestWithAnswers(updatedAnswers, totalSecondsSpent);
+        finishTestWithAnswers(updatedAnswers, Math.floor((Date.now() - startedAtRef.current) / 1000));
       }
     }, 700);
   };
@@ -195,7 +219,29 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const progressPercentage = Math.round(((currentIndex + 1) / questions.length) * 100);
+  const progressPercentage = questions.length
+    ? Math.round(((currentIndex + 1) / questions.length) * 100)
+    : 0;
+
+  // Blokda savol bo'lmasa ilova ishdan chiqmasin
+  if (!block || questions.length === 0 || !currentQ) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center gap-3 py-16 px-6">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+          <X className="w-6 h-6" strokeWidth={1.75} />
+        </div>
+        <p className="font-bold text-sm text-slate-800 dark:text-slate-100">Bu blokda hali savollar yo'q</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Boshqa blokni tanlang yoki keyinroq qayta urinib ko'ring.</p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-2 px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm active:scale-[0.98]"
+        >
+          Orqaga
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 pb-2 select-none">
@@ -205,9 +251,10 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowConfirmCancel(true)}
-              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              aria-label="Testdan chiqish"
+              className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
             >
-              <X className="w-4 h-4" strokeWidth={1.75} />
+              <X className="w-5 h-5" strokeWidth={1.75} />
             </button>
             <div>
               <h3 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">
@@ -301,7 +348,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                   key={`q${currentIndex}-opt${optIdx}`}
                   disabled={isTransitioning || currentAnswer !== undefined}
                   onClick={() => handleSelectOption(optIdx)}
-                  className={`w-full p-3.5 rounded-2xl border text-left text-xs font-semibold flex items-center gap-3 transition-colors duration-100 touch-manipulation ${
+                  className={`w-full p-3.5 rounded-2xl border text-left text-sm font-semibold flex items-center gap-3 transition-colors duration-100 touch-manipulation ${
                     isShaking ? 'animate-wrong-shake' : ''
                   } ${cardStyle}`}
                 >
@@ -334,7 +381,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             }`}
           >
             <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
-            <ChevronRight className="w-4 h-4" strokeWidth={2} />
+            <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
           </button>
         </div>
       </div>

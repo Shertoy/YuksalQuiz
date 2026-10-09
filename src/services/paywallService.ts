@@ -29,19 +29,12 @@ export function getTodayDateString(): string {
  */
 export function isPaidUser(profile?: UserProfile | null): boolean {
   if (!profile) return false;
-  if (profile.isSubscribed === true) return true;
-  if (profile.has_paid === true) return true;
-  if (profile.subscriptionTier && profile.subscriptionTier !== 'none') return true;
-  if (profile.subscriptionEnd && new Date(profile.subscriptionEnd) > new Date()) return true;
-  if (profile.paid_until && new Date(profile.paid_until) > new Date()) return true;
-  if (
-    profile.subscriptionPlan &&
-    profile.subscriptionPlan !== 'none' &&
-    (!profile.subscriptionExpiry || new Date(profile.subscriptionExpiry) > new Date())
-  ) {
-    return true;
-  }
-  return false;
+  // Obuna faqat tugash sanasi kelajakda bo'lsa faol. Sana serverdan keladi (syncUser).
+  // has_paid / subscriptionTier bayroqlari muddat tugagandan keyin ham qolib ketishi mumkin.
+  const end = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
+  if (!end) return false;
+  const t = new Date(end).getTime();
+  return !Number.isNaN(t) && t > Date.now();
 }
 
 /**

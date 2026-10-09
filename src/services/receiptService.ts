@@ -57,7 +57,7 @@ export async function uploadReceiptToStorage(
       .from('receipts')
       .upload(filePath, blobOrFile, {
         contentType: 'image/jpeg',
-        upsert: true,
+        upsert: false,
       });
 
     if (error) {
@@ -238,429 +238,89 @@ export async function fetchAllPayments(): Promise<PaymentRecord[]> {
 }
 
 /**
- * Admin to'lovni tasdiqlaydi. Pul serverda, bazadagi atomik funksiya orqali
- * bir marta qo'shiladi (ikki marta bosilsa ham ikkilanmaydi).
+ * Admin to'lovni tasdiqlaydi. Pul faqat serverda, bazadagi atomar funksiya orqali
+ * bir marta qo'shiladi. Brauzerdan to'g'ridan-to'g'ri yozish yo'q: baza uni rad etadi
+ * va avval "muvaffaqiyatli" deb yolg'on xabar chiqarardi.
  */
 export async function approveReceiptPayment(
   paymentId: string,
-  userId: string,
+  _userId: string,
   amount: number,
   plan?: '3_months' | '6_months' | '1_year' | null
 ): Promise<{ success: boolean; newBalance: number; message: string }> {
-  try {
-    const r = await apiPost('/api/admin', { action: 'approve', paymentId, plan: plan || null });
-    const d: any = r.data || {};
-    if (r.ok && d.ok) {
-      return {
-        success: true,
-        newBalance: Number(d.new_balance || 0),
-        message: `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
-      };
-    }
-  } catch (err) {
-    console.warn('apiPost approve failed:', err);
-  }
-
-  // Fallback to direct Supabase
-  const supabase = getSupabase();
-  if (!supabase) return { success: false, newBalance: 0, message: "Supabase bilan aloqa yo'q" };
-
-  try {
-    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
-    const rawId = String(userId).trim();
-    const tgPrefixed = `tg_${cleanId}`;
-
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('id, telegram_id, balance, has_paid, paid_until, full_name, username')
-      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
-      .limit(1)
-      .maybeSingle();
-
-    const targetUserDbId = userRow?.id || rawId;
-    const currentBalance = Number(userRow?.balance ?? 0);
-    const newBalance = currentBalance + Number(amount);
-
-    let expiry: Date | null = null;
-    if (plan) {
-      const months = plan === '1_year' ? 12 : plan === '6_months' ? 6 : 3;
-      expiry = new Date();
-      if (userRow?.paid_until && new Date(userRow.paid_until) > expiry) {
-        expiry = new Date(userRow.paid_until);
-      }
-      expiry.setMonth(expiry.getMonth() + months);
-    }
-
-    // 1. Update payments table record
-    await supabase.from('payments').update({
-      status: 'approved',
-      verified_by: 'admin',
-    }).eq('id', paymentId);
-
-    // 2. Insert active subscription record if plan
-    if (plan && expiry) {
-      try {
-        await supabase.from('subscriptions').insert({
-          user_id: targetUserDbId,
-          plan_name: plan,
-          price: Number(amount) || 0,
-          expires_at: expiry.toISOString(),
-          created_at: new Date().toISOString(),
-        });
-      } catch {}
-    }
-
-    // 3. Update test_packages LeaderboardUser row
-    const leadPkgIds = [
-      `lead_${cleanId}`,
-      `lead_${targetUserDbId}`,
-      `lead_${rawId}`,
-      `lead_tg_${cleanId}`,
-      `lead_user-${cleanId}`,
-      `lead_user_${cleanId}`,
-    ];
-    for (const lId of leadPkgIds) {
-      try {
-        const { data: curLead } = await supabase
-          .from('test_packages')
-          .select('id, blocks, title')
-          .eq('id', lId)
-          .maybeSingle();
-        if (curLead) {
-          let b0 = Array.isArray(curLead.blocks) && curLead.blocks[0] ? { ...curLead.blocks[0] } : {};
-          b0.wallet_balance = newBalance;
-          b0.balance = newBalance;
-          if (plan && expiry) {
-            b0.has_paid = true;
-            b0.paid_until = expiry.toISOString();
-            b0.is_subscribed = true;
-            b0.subscription_tier = plan;
-            b0.subscription_end = expiry.toISOString();
-          }
-          await supabase.from('test_packages').update({
-            author_wallet_balance: newBalance,
-            blocks: [b0],
-          }).eq('id', lId);
-        }
-      } catch {}
-    }
-
-    // 4. Update users table with valid columns
-    try {
-      const updateFields: Record<string, any> = {
-        id: targetUserDbId,
-        telegram_id: userRow?.telegram_id || cleanId,
-        balance: newBalance,
-        updated_at: new Date().toISOString(),
-      };
-      if (plan && expiry) {
-        updateFields.has_paid = true;
-        updateFields.is_subscribed = true;
-        updateFields.subscription_tier = plan;
-        updateFields.subscription_end = expiry.toISOString();
-        updateFields.paid_until = expiry.toISOString();
-      }
-      await supabase.from('users').upsert(updateFields, { onConflict: 'id' });
-    } catch {}
-
+  const r = await apiPost('/api/admin', {
+    action: 'approve',
+    paymentId,
+    amount: Number(amount) > 0 ? Math.round(Number(amount)) : null,
+    plan: plan || null,
+  });
+  const d: any = r.data || {};
+  if (r.ok && d.ok) {
     return {
       success: true,
-      newBalance,
-      message: `To'lov tasdiqlandi! +${Number(amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
+      newBalance: Number(d.new_balance || 0),
+      message: `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
     };
-  } catch (err: any) {
-    console.error('approveReceiptPayment fallback error:', err);
-    return { success: false, newBalance: 0, message: err?.message || 'Xatolik yuz berdi' };
   }
+  return { success: false, newBalance: 0, message: adminReasonText(d) || apiErrorText(r, 'Tasdiqlab bo\'lmadi') };
 }
 
 /**
- * Admin to'lovni rad etadi.
+ * Admin to'lovni rad etadi (faqat server orqali).
  */
 export async function rejectReceiptPayment(paymentId: string): Promise<boolean> {
-  try {
-    const r = await apiPost('/api/admin', { action: 'reject', paymentId });
-    if (r.ok && r.data?.ok === true) return true;
-  } catch {}
-
-  const supabase = getSupabase();
-  if (!supabase) return false;
-  try {
-    const { error } = await supabase
-      .from('payments')
-      .update({ status: 'manual_rejected', verified_by: 'admin' })
-      .eq('id', paymentId);
-    return !error;
-  } catch {
-    return false;
-  }
+  const r = await apiPost('/api/admin', { action: 'reject', paymentId });
+  return Boolean(r.ok && r.data?.ok === true);
 }
 
 export type ManualCreditMode = 'subscription_only' | 'add_funds' | 'set_balance' | 'both';
 
+function adminReasonText(d: any): string {
+  const reason = String(d?.reason || '');
+  if (reason === 'already_processed') return `Bu to'lov allaqachon ko'rib chiqilgan (${d?.status || '-'})`;
+  if (reason === 'bad_amount') return "Summa ko'rsatilmagan. Avval to'g'ri summani kiriting.";
+  if (reason === 'payment_not_found') return "To'lov topilmadi";
+  if (reason === 'unauthorized' || reason === 'forbidden') return "Admin huquqi tasdiqlanmadi. Qayta kiring.";
+  return '';
+}
+
 /**
- * Admin talaba hisobiga qo'lda pul qo'shadi, balansni to'g'rilaydi yoki obunani yoqadi.
+ * Admin talaba hisobiga qo'lda pul qo'shadi, balansni belgilaydi yoki obunani yoqadi.
+ * Hammasi server (/api/admin credit) orqali; natija bazada haqiqatan yozilgandagina "muvaffaqiyatli".
  */
 export async function adminManualCredit(
   userId: string,
   amount: number,
-  fullName?: string,
+  _fullName?: string,
   plan?: '3_months' | '6_months' | '1_year' | null,
   mode: ManualCreditMode = 'add_funds'
 ): Promise<{ success: boolean; newBalance: number; message: string }> {
-  const supabase = getSupabase();
-  if (!supabase) return { success: false, newBalance: 0, message: "Supabase bilan aloqa yo'q" };
-
-  try {
-    const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
-    const rawId = String(userId).trim();
-    const tgPrefixed = `tg_${cleanId}`;
-    const userPrefixed = `user-${cleanId}`;
-
-    // 1. Fetch user from users table or test_packages
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('id, telegram_id, balance, has_paid, paid_until, full_name, username, university, region')
-      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgPrefixed},id.eq.${userPrefixed},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
-      .limit(1)
-      .maybeSingle();
-
-    // Check test_packages for current balance
-    const leadPkgIds = [
-      `lead_${userId}`,
-      `lead_${cleanId}`,
-      `lead_${rawId}`,
-      `lead_${userPrefixed}`,
-      `lead_tg_${cleanId}`,
-    ];
-    let curLeadBal = 0;
-    for (const lId of leadPkgIds) {
-      try {
-        const { data: lp } = await supabase
-          .from('test_packages')
-          .select('author_wallet_balance, blocks')
-          .eq('id', lId)
-          .maybeSingle();
-        if (lp) {
-          const b0 = Array.isArray(lp.blocks) && lp.blocks[0] ? lp.blocks[0] : {};
-          curLeadBal = Math.max(curLeadBal, Number(lp.author_wallet_balance || 0), Number(b0.wallet_balance || 0));
-        }
-      } catch {}
-    }
-
-    const targetUserDbId = userRow?.id || rawId;
-    const currentBalance = curLeadBal > 0 ? curLeadBal : Number(userRow?.balance ?? 0);
-
-    // Calculate newBalance based on mode
-    let newBalance = currentBalance;
-    if (mode === 'subscription_only') {
-      newBalance = currentBalance; // Hamyon o'zgarmaydi!
-    } else if (mode === 'set_balance') {
-      newBalance = Math.max(0, Number(amount)); // Aniq summa qilib belgilash (masalan, 0 yoki 25000)
-    } else if (mode === 'add_funds' || mode === 'both') {
-      newBalance = currentBalance + Number(amount);
-    }
-
-    // Subscription plan calculation
-    const shouldActivatePlan = mode === 'subscription_only' || mode === 'both' || (mode === 'set_balance' && Boolean(plan));
-    const activePlan = shouldActivatePlan ? (plan || '3_months') : null;
-    let expiry: Date | null = null;
-    if (activePlan) {
-      const months = activePlan === '1_year' ? 12 : activePlan === '6_months' ? 6 : 3;
-      expiry = new Date();
-      if (userRow?.paid_until && new Date(userRow.paid_until) > expiry) {
-        expiry = new Date(userRow.paid_until);
-      }
-      expiry.setMonth(expiry.getMonth() + months);
-    }
-
-    const planLabel = activePlan === '1_year' ? '1 yillik' : activePlan === '6_months' ? '6 oylik' : '3 oylik';
-
-    // 2. Insert approved record into payments table only if funds were actually deposited
-    if ((mode === 'add_funds' || mode === 'both') && Number(amount) > 0) {
-      try {
-        const paymentRow = {
-          user_id: targetUserDbId,
-          amount: Number(amount) || 0,
-          transaction_id: `MANUAL_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-          sender_card: activePlan ? `Admin Manual (${activePlan})` : 'Admin Manual',
-          status: 'approved',
-          verified_by: 'admin',
-          created_at: new Date().toISOString(),
-        };
-        await supabase.from('payments').insert(paymentRow);
-      } catch (payErr) {
-        console.warn('payments table insert notice:', payErr);
-      }
-    }
-
-    // 3. Insert active subscription record if plan activated
-    if (activePlan && expiry) {
-      try {
-        await supabase.from('subscriptions').insert({
-          user_id: targetUserDbId,
-          plan_name: activePlan,
-          price: mode === 'subscription_only' ? 0 : Number(amount) || 0,
-          expires_at: expiry.toISOString(),
-          created_at: new Date().toISOString(),
-        });
-      } catch {}
-    }
-
-    // 4. Update or create test_packages LeaderboardUser row (guaranteed persistence)
-    let packageUpdated = false;
-    for (const lId of leadPkgIds) {
-      try {
-        const { data: curLead } = await supabase
-          .from('test_packages')
-          .select('id, blocks, title, author_name, university, department')
-          .eq('id', lId)
-          .maybeSingle();
-
-        if (curLead) {
-          let b0 = Array.isArray(curLead.blocks) && curLead.blocks[0] ? { ...curLead.blocks[0] } : {};
-          b0.wallet_balance = newBalance;
-          b0.balance = newBalance;
-          if (activePlan && expiry) {
-            b0.has_paid = true;
-            b0.paid_until = expiry.toISOString();
-            b0.is_subscribed = true;
-            b0.subscription_tier = activePlan;
-            b0.subscription_end = expiry.toISOString();
-          }
-          await supabase.from('test_packages').update({
-            author_wallet_balance: newBalance,
-            blocks: [b0],
-          }).eq('id', lId);
-          packageUpdated = true;
-        }
-      } catch {}
-    }
-
-    if (!packageUpdated) {
-      try {
-        const userObj = {
-          id: targetUserDbId,
-          name: fullName || userRow?.full_name || 'Talaba',
-          wallet_balance: newBalance,
-          balance: newBalance,
-          has_paid: Boolean(activePlan),
-          paid_until: activePlan && expiry ? expiry.toISOString() : null,
-          is_subscribed: Boolean(activePlan),
-          subscription_tier: activePlan || undefined,
-          subscription_end: activePlan && expiry ? expiry.toISOString() : null,
-          university: userRow?.university || 'YuksalQuiz',
-          region: userRow?.region || 'Toshkent shahri',
-          gender: 'male',
-          avatar: '/avatars/avatar_1.png',
-        };
-        await supabase.from('test_packages').upsert({
-          id: `lead_${targetUserDbId}`,
-          title: userObj.name,
-          category: 'LeaderboardUser',
-          university: 'YuksalQuiz',
-          department: 'Talaba',
-          author_id: targetUserDbId,
-          author_name: userObj.name,
-          author_wallet_balance: newBalance,
-          blocks: [userObj],
-          is_public: false,
-        }, { onConflict: 'id' });
-      } catch (createErr) {
-        console.warn('test_packages create notice:', createErr);
-      }
-    }
-
-    // 5. Update users table where possible
-    try {
-      const updateFields: Record<string, any> = {
-        id: targetUserDbId,
-        telegram_id: userRow?.telegram_id || cleanId,
-        full_name: userRow?.full_name || fullName || 'Talaba',
-        balance: newBalance,
-        updated_at: new Date().toISOString(),
-      };
-      if (activePlan && expiry) {
-        updateFields.has_paid = true;
-        updateFields.is_subscribed = true;
-        updateFields.subscription_tier = activePlan;
-        updateFields.subscription_end = expiry.toISOString();
-        updateFields.paid_until = expiry.toISOString();
-      }
-      await supabase.from('users').upsert(updateFields, { onConflict: 'id' });
-    } catch {}
-
-    // 6. Send in-app notification / announcement to user
-    try {
-      const { sendTargetedAnnouncement } = await import('./notificationService');
-      let notifTitle = '';
-      let notifMessage = '';
-      if (mode === 'subscription_only') {
-        notifTitle = '👑 VIP Obuna faollashtirildi!';
-        notifMessage = `Hurmatli talaba, hisobingizda ${planLabel} VIP obunasi muvaffaqiyatli yoqildi! Barcha testlar va fanlardan cheklovlarsiz foydalanishingiz mumkin.`;
-      } else if (mode === 'set_balance') {
-        notifTitle = '⚖️ Hisob balansi yangilandi';
-        notifMessage = `Hurmatli talaba, admin tomonidan hisob balansingiz ${newBalance.toLocaleString('uz-UZ')} so'm qilib belgilandi.`;
-      } else if (mode === 'both') {
-        notifTitle = '⭐ VIP Obuna va Balans qo\'shildi!';
-        notifMessage = `Hurmatli talaba, hisobingizga ${Number(amount).toLocaleString('uz-UZ')} so'm o'tkazildi va ${planLabel} VIP obunasi faollashtirildi!`;
-      } else {
-        notifTitle = '💳 Hamyoningiz to\'ldirildi!';
-        notifMessage = `Hurmatli talaba, hisobingizga ${Number(amount).toLocaleString('uz-UZ')} so'm muvaffaqiyatli o'tkazildi! Yangi balansingiz: ${newBalance.toLocaleString('uz-UZ')} so'm.`;
-      }
-
-      await sendTargetedAnnouncement({
-        title: notifTitle,
-        message: notifMessage,
-        tag: 'muhim',
-        targetType: 'user',
-        targetValue: targetUserDbId,
-        sendViaTelegramBot: true,
-      });
-    } catch (notifErr) {
-      console.warn('Targeted notification warning:', notifErr);
-    }
-
-    // 7. Update current Zustand store in case the current session is this student
-    try {
-      const { useQuizStore } = await import('../store/useQuizStore');
-      const prof = useQuizStore.getState().profile;
-      const curClean = (prof.id || '').replace(/^tg_/, '').replace(/^user_/, '').trim();
-      if (curClean === cleanId || prof.id === targetUserDbId) {
-        useQuizStore.setState((s) => ({
-          profile: {
-            ...s.profile,
-            walletBalance: newBalance,
-            balance: newBalance,
-            has_paid: activePlan ? true : s.profile.has_paid,
-            paid_until: activePlan && expiry ? expiry.toISOString() : s.profile.paid_until,
-            subscriptionEnd: activePlan && expiry ? expiry.toISOString() : s.profile.subscriptionEnd,
-            subscriptionPlan: activePlan || s.profile.subscriptionPlan,
-          },
-        }));
-      }
-    } catch {}
-
-    let successMsg = '';
-    if (mode === 'subscription_only') {
-      successMsg = `Muvaffaqiyatli! Talaba (ID: ${userId}) uchun ${planLabel} VIP obunasi faollashtirildi (balans o'zgarmadi: ${newBalance.toLocaleString('uz-UZ')} so'm).`;
-    } else if (mode === 'set_balance') {
-      successMsg = `Muvaffaqiyatli! Talaba (ID: ${userId}) balansi ${newBalance.toLocaleString('uz-UZ')} so'm qilib belgilandi.`;
-    } else if (mode === 'both') {
-      successMsg = `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga +${Number(amount).toLocaleString('uz-UZ')} so'm qo'shildi va ${planLabel} obunasi faollashtirildi.`;
-    } else {
-      successMsg = `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga +${Number(amount).toLocaleString('uz-UZ')} so'm qo'shildi. Yangi balans: ${newBalance.toLocaleString('uz-UZ')} so'm.`;
-    }
-
-    return {
-      success: true,
-      newBalance,
-      message: successMsg,
-    };
-  } catch (err: any) {
-    console.error('adminManualCredit fallback error:', err);
-    return { success: false, newBalance: 0, message: err?.message || 'Qo\'shishda xatolik yuz berdi' };
+  const usePlan = mode === 'subscription_only' || mode === 'both' ? plan || null : null;
+  const useAmount = mode === 'subscription_only' ? 0 : Math.round(Number(amount) || 0);
+  const r = await apiPost('/api/admin', {
+    action: 'credit',
+    userId,
+    amount: useAmount,
+    plan: usePlan,
+    mode,
+  });
+  const d: any = r.data || {};
+  if (!r.ok || !d.ok) {
+    return { success: false, newBalance: 0, message: adminReasonText(d) || apiErrorText(r, "Qo'shishda xatolik yuz berdi") };
   }
+  const newBalance = Number(d.new_balance || 0);
+  const planLabel = usePlan === '1_year' ? '1 yillik' : usePlan === '6_months' ? '6 oylik' : '3 oylik';
+  let msg = '';
+  if (mode === 'subscription_only') {
+    msg = `Muvaffaqiyatli! Talaba (ID: ${userId}) uchun ${planLabel} obuna faollashtirildi (balans: ${newBalance.toLocaleString('uz-UZ')} so'm).`;
+  } else if (mode === 'set_balance') {
+    msg = `Muvaffaqiyatli! Talaba (ID: ${userId}) balansi ${newBalance.toLocaleString('uz-UZ')} so'm qilib belgilandi.`;
+  } else if (mode === 'both') {
+    msg = `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga +${useAmount.toLocaleString('uz-UZ')} so'm qo'shildi va ${planLabel} obuna faollashtirildi.`;
+  } else {
+    msg = `Muvaffaqiyatli! Talaba (ID: ${userId}) hisobiga +${useAmount.toLocaleString('uz-UZ')} so'm qo'shildi. Yangi balans: ${newBalance.toLocaleString('uz-UZ')} so'm.`;
+  }
+  return { success: true, newBalance, message: msg };
 }
 
 /**
@@ -676,66 +336,39 @@ export async function triggerReceiptsCleanup(): Promise<any> {
 }
 
 /**
- * Fetches the latest balance for user from Supabase 'users' table,
- * matching by id, cleanId, tg_ prefixed id, or telegram_id.
- * Immediately syncs to Zustand store.
+ * Talabaning hamyon ma'lumoti faqat serverdan (/api/wallet me).
+ * Bir necha chaqiriq bir vaqtda kelsa, bitta so'rov ishlatiladi.
+ */
+let walletMeInflight: Promise<any | null> | null = null;
+let walletMeCache: { at: number; data: any } | null = null;
+
+async function fetchWalletMe(): Promise<any | null> {
+  if (walletMeCache && Date.now() - walletMeCache.at < 1500) return walletMeCache.data;
+  if (walletMeInflight) return walletMeInflight;
+  walletMeInflight = (async () => {
+    try {
+      const r = await apiPost('/api/wallet', { action: 'me' });
+      if (r.ok && r.data?.ok) {
+        walletMeCache = { at: Date.now(), data: r.data };
+        return r.data;
+      }
+      return null;
+    } finally {
+      walletMeInflight = null;
+    }
+  })();
+  return walletMeInflight;
+}
+
+/**
+ * Serverdagi balansni qaytaradi va store'ni yangilaydi (max() emas, aynan server qiymati).
  */
 export async function fetchLatestUserBalance(userId: string): Promise<number | null> {
-  const supabase = getSupabase();
-  if (!supabase || !userId) return null;
-
-  const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
-  const rawId = String(userId).trim();
-  const tgId = `tg_${cleanId}`;
-
+  if (!userId) return null;
   try {
-    const { data } = await supabase
-      .from('users')
-      .select('id, telegram_id, balance, voucher_claimed')
-      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
-      .limit(1)
-      .maybeSingle();
-
-    // Also check payments table for total approved receipts
-    const { data: userPays } = await supabase
-      .from('payments')
-      .select('amount')
-      .or(`user_id.eq.${rawId},user_id.eq.${cleanId},user_id.eq.${tgId},user_id.eq.user-${cleanId}`)
-      .in('status', ['approved', 'auto_approved', 'manual_approved']);
-
-    // Also check test_packages for author_wallet_balance
-    let leadPkgBal = 0;
-    try {
-      const { data: lp } = await supabase
-        .from('test_packages')
-        .select('author_wallet_balance, blocks')
-        .or(`id.eq.lead_${rawId},id.eq.lead_${cleanId},id.eq.lead_user-${cleanId},author_id.eq.${rawId},author_id.eq.${cleanId}`)
-        .limit(1)
-        .maybeSingle();
-      if (lp) {
-        leadPkgBal = Math.max(Number(lp.author_wallet_balance || 0), Number(lp.blocks?.[0]?.wallet_balance || 0));
-      }
-    } catch {}
-
-    const sumPays = (userPays || []).reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
-    const dbBal = Number(data?.balance ?? 0);
-    const finalBal = Math.max(dbBal, sumPays, leadPkgBal);
-
-    const voucherClaimed = Boolean(data?.voucher_claimed);
-    try {
-      const { useQuizStore } = await import('../store/useQuizStore');
-      useQuizStore.setState((s) => ({
-        profile: {
-          ...s.profile,
-          walletBalance: Math.max(s.profile.walletBalance || 0, finalBal),
-          balance: Math.max(s.profile.balance || 0, finalBal),
-          telegram_id: data?.telegram_id || cleanId,
-          voucher_claimed: voucherClaimed || s.profile.voucher_claimed,
-          voucherClaimed: voucherClaimed || s.profile.voucherClaimed,
-        },
-      }));
-    } catch {}
-    return finalBal;
+    const { useQuizStore } = await import('../store/useQuizStore');
+    const bal = await useQuizStore.getState().syncUser();
+    return typeof bal === 'number' ? bal : null;
   } catch (err) {
     console.warn('fetchLatestUserBalance error:', err);
   }
@@ -743,54 +376,22 @@ export async function fetchLatestUserBalance(userId: string): Promise<number | n
 }
 
 /**
- * Checks if user currently has any pending payments awaiting admin review.
+ * Talabaning admin tekshiruvini kutayotgan oxirgi to'lovi.
  */
 export async function fetchUserLatestPendingPayment(userId: string): Promise<PaymentRecord | null> {
-  const supabase = getSupabase();
-  if (!supabase || !userId) return null;
-
-  const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
-  const rawId = String(userId).trim();
-  const tgId = `tg_${cleanId}`;
-
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .or(`user_id.eq.${rawId},user_id.eq.${cleanId},user_id.eq.${tgId}`)
-      .in('status', ['pending', 'pending_manual'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!error && data) {
-      return data as PaymentRecord;
-    }
-  } catch (err) {
-    console.warn('fetchUserLatestPendingPayment error:', err);
-  }
-  return null;
+  if (!userId) return null;
+  const me = await fetchWalletMe();
+  const pending = (me?.payments || []).find((p: any) => p.status === 'pending' || p.status === 'pending_manual');
+  return pending ? (pending as PaymentRecord) : null;
 }
 
 /**
- * Check payment status by ID.
+ * To'lov holatini tekshirish (faqat talabaning o'z to'lovlari ichidan).
  */
 export async function checkPaymentStatus(paymentId: string): Promise<{ status: string; amount?: number } | null> {
-  const supabase = getSupabase();
-  if (!supabase || !paymentId) return null;
-
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('id, status, amount')
-      .eq('id', paymentId)
-      .maybeSingle();
-
-    if (!error && data) {
-      return { status: data.status, amount: Number(data.amount) || 0 };
-    }
-  } catch (err) {
-    console.warn('checkPaymentStatus error:', err);
-  }
-  return null;
+  if (!paymentId) return null;
+  walletMeCache = null;
+  const me = await fetchWalletMe();
+  const pay = (me?.payments || []).find((p: any) => p.id === paymentId);
+  return pay ? { status: pay.status, amount: Number(pay.amount) || 0 } : null;
 }

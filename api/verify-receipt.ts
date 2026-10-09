@@ -23,8 +23,6 @@ const SUPABASE_URL =
 const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
   '';
 
 let cachedDb: any = null;
@@ -92,7 +90,7 @@ const HOLDER_KEYWORDS = [
     .filter((w) => w.length >= 3)),
 ];
 
-const AUTO_APPROVE_MAX = Number(process.env.AUTO_APPROVE_MAX || 200000);
+const AUTO_APPROVE_MAX = Number(process.env.AUTO_APPROVE_MAX || 100000);
 const MAX_RECEIPT_AGE_HOURS = Number(process.env.MAX_RECEIPT_AGE_HOURS || 48);
 
 const GEMINI_MODELS = (
@@ -177,31 +175,7 @@ function verifyRequestUser(req: any) {
     }
   }
 
-  // Admin kalit tekshiruvi
-  const adminIdHeader = String(req.headers?.['x-admin-id'] || req.body?.adminId || '').replace(/^tg_/, '').trim();
-  const adminKey = String(req.headers?.['x-admin-key'] || req.body?.adminKey || '').trim();
-  const validSecretKey = process.env.ADMIN_SECRET_KEY || process.env.VITE_ADMIN_SECRET_KEY || '';
-
-  if (adminKey && validSecretKey && adminKey === validSecretKey) {
-    return {
-      id: adminIdHeader || 'admin',
-      firstName: 'Admin',
-      lastName: '',
-      username: 'admin',
-    };
-  }
-
-  // Foydalanuvchi tanasi bo'yicha fallback (Mini Appdan uzatilgan holda)
-  const bodyUserId = String(req.body?.userId || req.headers?.['x-user-id'] || '').trim();
-  if (bodyUserId) {
-    return {
-      id: cleanId(bodyUserId),
-      firstName: String(req.body?.userName || 'Talaba').split(' ')[0] || 'Talaba',
-      lastName: String(req.body?.userName || '').split(' ').slice(1).join(' ') || '',
-      username: String(req.body?.userUsername || '').trim(),
-    };
-  }
-
+  // Faqat Telegram imzosi bilan tasdiqlangan foydalanuvchi. Body/header dagi userId yoki admin kalitiga ishonilmaydi.
   return null;
 }
 
@@ -406,7 +380,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const { image, mimeType = 'image/jpeg', expectedAmount = 0 } = req.body || {};
+  const { image, mimeType = 'image/jpeg' } = req.body || {};
   if (!image || typeof image !== 'string') {
     return res.status(400).json({ ok: false, error: 'Kvitansiya rasmi yuborilmadi.' });
   }
@@ -460,6 +434,28 @@ export default async function handler(req: any, res: any) {
       }
     } catch {}
 
+    // Bir xil rasm qayta yuborilganini aniqlash (AI ga pul sarflamasdan)
+    const receiptHash = crypto.createHash('sha256').update(base64Data).digest('hex');
+    try {
+      const { data: sameImg, error: hashErr } = await db
+        .from('payments')
+        .select('id,status')
+        .eq('receipt_hash', receiptHash)
+        .not('status', 'in', '("rejected","manual_rejected")')
+        .limit(1)
+        .maybeSingle();
+      if (!hashErr && sameImg) {
+        return res.status(200).json({
+          ok: false,
+          status: 'rejected',
+          reason: 'duplicate',
+          message: "Bu chek avval yuborilgan. Natijasini hamyon bo'limida ko'ring.",
+        });
+      }
+    } catch {
+      /* receipt_hash ustuni hali yo'q bo'lsa tekshiruv o'tkazib yuboriladi */
+    }
+
     // Rasmni Supabase Storage ga yuklash
     let receiptUrl: string | null = null;
     try {
@@ -474,10 +470,19 @@ export default async function handler(req: any, res: any) {
       console.warn('Storage upload notice:', err);
     }
 
+    // To'lov qatorini yozish. receipt_hash ustuni hali qo'shilmagan bo'lsa, usiz qayta yoziladi.
+    async function insertPayment(fields: Record<string, any>) {
+      let r = await db.from('payments').insert({ ...fields, receipt_hash: receiptHash }).select('id').single();
+      if (r.error && /receipt_hash/i.test(String(r.error.message || ''))) {
+        r = await db.from('payments').insert(fields).select('id').single();
+      }
+      return r as { data: any; error: any };
+    }
+
     // Gemini tahlili
     const { data: ai, error: aiError } = await analyzeWithGemini(base64Data, mime);
 
-    const paid = Number(ai?.amount || 0);
+    const paid = Math.round(Number(ai?.amount || 0));
     const cardDigits = String(ai?.recipient_card || '').replace(/\D/g, '');
     const cardOk =
       OFFICIAL_CARD_NUMBER.length > 0 &&
@@ -492,47 +497,75 @@ export default async function handler(req: any, res: any) {
     }
 
     const txFromAi = ai?.transaction_id ? String(ai.transaction_id).trim() : '';
-    const autoOk = Boolean(
+    let autoOk = Boolean(
       ai?.is_valid && paid > 0 && paid <= AUTO_APPROVE_MAX && txFromAi && (cardOk || nameOk) && !tooOld
     );
+    // Avval rad etilgan chek qayta yuborilsa (masalan, aniqroq rasm bilan) admin qo'lda ko'radi
+    let resubmittedAfterReject = false;
 
     const safeName = escapeHtml(fullName);
     const safeUser = escapeHtml(user.username || 'mavjud_emas');
+    const tgUserId = user.id;
+    const senderCard = ai?.recipient_card || (ai?.detected_bank ? `Bank: ${ai.detected_bank}` : null);
+
+    // Tranzaksiya raqami avval ishlatilganmi (har ikki yo'l uchun)
+    if (txFromAi) {
+      // Shu tranzaksiya bo'yicha barcha yozuvlar: bittasi ham rad etilmagan bo'lsa — takroriy chek
+      // Raqam rasmdan olinadi (talaba nazoratida), shuning uchun filtr satriga qo'shilmaydi
+      const [{ data: exactRows }, { data: resubRows }] = await Promise.all([
+        db.from('payments').select('id,status').eq('transaction_id', txFromAi).limit(20),
+        db
+          .from('payments')
+          .select('id,status')
+          .like('transaction_id', `RESUBMIT_${txFromAi.replace(/[%_\\]/g, (c) => '\\' + c)}_%`)
+          .limit(20),
+      ]);
+      const rows: any[] = [...(exactRows || []), ...(resubRows || [])];
+      const isRejected = (st: any) => ['rejected', 'manual_rejected'].includes(String(st));
+      const activeTx = rows.find((r) => !isRejected(r.status));
+      const sameTx = activeTx || rows[0] || null;
+      if (sameTx && !activeTx) {
+        resubmittedAfterReject = true;
+        autoOk = false;
+      } else if (sameTx) {
+        await sendReceiptToAdmin({
+          base64Data,
+          mime,
+          receiptUrl,
+          caption:
+            `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n\n` +
+            `🔁 <b>Takroriy chek rad etildi (pul qo'shilmadi)</b>\n\n` +
+            `👤 Talaba: ${safeName} (@${safeUser})\n` +
+            `🆔 Telegram ID: <code>${user.id}</code>\n` +
+            `🧾 Tranzaksiya: <code>${escapeHtml(txFromAi)}</code>\n` +
+            `ℹ️ Bu tranzaksiya avval yuborilgan (holati: ${escapeHtml(sameTx.status)}).`,
+          keyboard: [
+            [
+              { text: '💬 Talabaga yozish', callback_data: `reply_support:${user.id}` },
+              { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
+            ],
+          ],
+        });
+        return res.status(200).json({
+          ok: false,
+          status: 'rejected',
+          reason: 'duplicate',
+          message: "Bu to'lov cheki allaqachon tizimda ro'yxatdan o'tgan.",
+        });
+      }
+    }
 
     // ---------------- A: AI ishonch bilan tasdiqladi (Halol to'g'ri chek) ----------------
     if (autoOk) {
-      let { data: inserted, error: insErr } = await db
-        .from('payments')
-        .insert({
-          user_id: userKey,
-          amount: paid,
-          transaction_id: txFromAi,
-          receipt_image_url: receiptUrl,
-          sender_card: ai?.recipient_card || (ai?.detected_bank ? `Bank: ${ai.detected_bank}` : null),
-          status: 'pending',
-          verified_by: null,
-        })
-        .select('id')
-        .single();
-
-      // Agar foreign key xatosi bo'lsa (user_id users jadvalida topilmasa)
-      if (insErr && (insErr as any).code === '23503') {
-        const fallbackInsert = await db
-          .from('payments')
-          .insert({
-            user_id: '117932388',
-            amount: paid,
-            transaction_id: txFromAi,
-            receipt_image_url: receiptUrl,
-            sender_card: `student:${userKey} | ${ai?.recipient_card || ai?.detected_bank || ''}`.trim(),
-            status: 'pending',
-            verified_by: null,
-          })
-          .select('id')
-          .single();
-        inserted = fallbackInsert.data;
-        insErr = fallbackInsert.error;
-      }
+      const { data: inserted, error: insErr } = await insertPayment({
+        user_id: userKey,
+        amount: paid,
+        transaction_id: txFromAi,
+        receipt_image_url: receiptUrl,
+        sender_card: senderCard,
+        status: 'pending',
+        verified_by: null,
+      });
 
       if (insErr) {
         if ((insErr as any).code === '23505') {
@@ -546,101 +579,74 @@ export default async function handler(req: any, res: any) {
         throw insErr;
       }
 
-      let newBal = 0;
-      let approvedOk = false;
-
-      try {
-        const { data: appr, error: apprErr } = await db.rpc('approve_payment', {
-          p_payment_id: inserted.id,
-          p_actor: 'ai',
-          p_status: 'auto_approved',
-        });
-        if (!apprErr && appr?.ok) {
-          approvedOk = true;
-          newBal = Number(appr.new_balance || 0);
-        }
-      } catch (rpcErr) {
-        console.warn('approve_payment RPC failed, applying direct update:', rpcErr);
-      }
-
-      // RPC fail bo'lsa to'g'ridan-to'g'ri atomik yangilash (fallback)
-      if (!approvedOk) {
-        const curBal = Number(row?.balance ?? 0);
-        newBal = curBal + paid;
-        try {
-          await db.from('users').update({
-            balance: newBal,
-            updated_at: new Date().toISOString()
-          }).eq('id', userKey);
-        } catch {}
-
-        await db.from('payments').update({
-          status: 'auto_approved',
-          verified_by: 'ai',
-        }).eq('id', inserted.id);
-
-        try {
-          await db.from('wallet_transactions').insert({
-            user_id: userKey,
-            type: 'deposit',
-            amount: paid,
-            balance_after: newBal,
-            ref: inserted.id,
-            note: 'AI tomonidan tasdiqlangan to\'lov'
-          });
-        } catch {}
-      }
-
-      // test_packages jadvalida ham yangilash
-      try {
-        await db.from('test_packages')
-          .update({ author_wallet_balance: newBal })
-          .or(`id.eq.lead_${userKey},id.eq.lead_${cleanId(userKey)}`);
-      } catch {}
-
-      // Adminga darhol kvitansiyani yuborish (bir vaqtda bildirishnoma)
-      await sendReceiptToAdmin({
-        base64Data,
-        mime,
-        receiptUrl,
-        caption:
-          `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
-          `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
-          `✅ <b>To'lov AI tomonidan tasdiqlandi (+${paid.toLocaleString('uz-UZ')} so'm)</b>\n\n` +
-          `👤 Talaba: ${safeName} (@${safeUser})\n` +
-          `🆔 Telegram ID: <code>${user.id}</code>\n` +
-          `💰 Summa: <b>${paid.toLocaleString('uz-UZ')} so'm</b>\n` +
-          `🧾 Tranzaksiya: <code>${escapeHtml(txFromAi)}</code>\n` +
-          `🏦 To'lov tizimi: ${escapeHtml(ai?.detected_bank || '-')}\n` +
-          `🕒 Sana: ${escapeHtml(ai?.receipt_datetime || 'Bugun')}\n` +
-          `ℹ️ AI xulosasi: ${escapeHtml(ai?.ai_reason || "Barcha rekvizitlar to'g'ri")}`,
-        keyboard: [
-          [{ text: "✅ Hammasi to'g'ri (Arxivlash)", callback_data: 'noop_archive' }],
-          [
-            { text: '⚠️ Soxta: Pulni qaytarish (-summa)', callback_data: `pw:${inserted.id}` },
-            { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
-          ],
-        ],
+      const { data: appr, error: apprErr } = await db.rpc('approve_payment', {
+        p_payment_id: inserted.id,
+        p_actor: 'ai',
+        p_status: 'auto_approved',
       });
 
+      if (!apprErr && appr?.ok) {
+        const newBal = Number(appr.new_balance || 0);
+
+        // Admin xabarnomasi: hammasi joyida bo'lsa arxivlaydi, soxta bo'lsa pulni qaytaradi
+        await sendReceiptToAdmin({
+          base64Data,
+          mime,
+          receiptUrl,
+          caption:
+            `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
+            `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
+            `✅ <b>To'lov AI tomonidan tasdiqlandi (+${paid.toLocaleString('uz-UZ')} so'm)</b>\n\n` +
+            `👤 Talaba: ${safeName} (@${safeUser})\n` +
+            `🆔 Telegram ID: <code>${user.id}</code>\n` +
+            `💰 Summa: <b>${paid.toLocaleString('uz-UZ')} so'm</b>\n` +
+            `🧾 Tranzaksiya: <code>${escapeHtml(txFromAi)}</code>\n` +
+            `🏦 To'lov tizimi: ${escapeHtml(ai?.detected_bank || '-')}\n` +
+            `🕒 Sana: ${escapeHtml(ai?.receipt_datetime || 'Bugun')}\n` +
+            `ℹ️ AI xulosasi: ${escapeHtml(ai?.ai_reason || "Barcha rekvizitlar to'g'ri")}\n` +
+            `🔑 To'lov ID: <code>${inserted.id}</code>`,
+          keyboard: [
+            [{ text: "✅ Hammasi to'g'ri (Arxivlash)", callback_data: 'noop_archive' }],
+            [
+              { text: '⚠️ Soxta: Pulni qaytarish (-summa)', callback_data: `pw:${inserted.id}` },
+              { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
+            ],
+          ],
+        });
+
+        return res.status(200).json({
+          ok: true,
+          status: 'approved',
+          paymentId: inserted.id,
+          transactionId: txFromAi,
+          amount: paid,
+          newBalance: newBal,
+          paymentSystem: ai?.detected_bank || '',
+          message: `Kvitansiya tasdiqlandi. Hisobingizga +${paid.toLocaleString('uz-UZ')} so'm qo'shildi.`,
+        });
+      }
+
+      // RPC ishlamasa pul qo'lda yozilmaydi: to'lov admin tekshiruviga o'tadi
+      console.error('approve_payment (auto) failed:', apprErr?.message || appr?.reason);
+      await db.from('payments').update({ status: 'pending_manual' }).eq('id', inserted.id).eq('status', 'pending');
+      await sendManualReview(inserted.id, txFromAi, "AI tasdiqladi, lekin avtomatik qo'shishda server xatosi");
       return res.status(200).json({
         ok: true,
-        status: 'approved',
+        status: 'pending',
         paymentId: inserted.id,
         transactionId: txFromAi,
         amount: paid,
-        newBalance: newBal,
-        paymentSystem: ai?.detected_bank || '',
-        message: `Kvitansiya tasdiqlandi. Hisobingizga +${paid.toLocaleString('uz-UZ')} so'm qo'shildi.`,
+        message: "Kvitansiya qabul qilindi va adminga yuborildi. Administrator tekshirgach balansingizga qo'shiladi.",
       });
     }
 
     // ---------------- B: Chek xato, ishonchsiz yoki AI to'liq o'qiy olmagan (Admin ko'rib chiqadi) ----------------
-    const pendingAmount = paid > 0 ? paid : Number(expectedAmount) || 0;
+    // Summa faqat AI o'qigan qiymat. Talaba yuborgan summa tugmaga qo'yilmaydi.
     const reasons: string[] = [];
     if (!ai) reasons.push(aiError || 'AI javob bermadi');
     else {
       if (!ai.is_valid) reasons.push(ai.ai_reason || "AI chekni aniq o'qiy olmadi");
+      if (!paid) reasons.push("Summa o'qilmadi");
       if (paid > AUTO_APPROVE_MAX) reasons.push(`Summa ${AUTO_APPROVE_MAX.toLocaleString('uz-UZ')} dan katta`);
       if (!txFromAi) reasons.push('Tranzaksiya raqami topilmadi');
       if (!cardOk && !nameOk) reasons.push('Qabul qiluvchi rekvizitga mos emas');
@@ -648,111 +654,79 @@ export default async function handler(req: any, res: any) {
     }
     const reasonText = reasons.join('. ') || "Qo'lda tekshirish kerak";
 
-    const txId = txFromAi || `PENDING_${Date.now()}_${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-    let { data: pend, error: pendErr } = await db
-      .from('payments')
-      .insert({
-        user_id: userKey,
-        amount: pendingAmount,
-        transaction_id: txId,
-        receipt_image_url: receiptUrl,
-        sender_card: ai?.recipient_card || (ai?.detected_bank ? `Bank: ${ai.detected_bank}` : null),
-        status: 'pending_manual',
-        verified_by: null,
-      })
-      .select('id')
-      .single();
+    if (resubmittedAfterReject) reasons.unshift('Bu tranzaksiya avval rad etilgan edi, talaba qayta yubordi');
+    const txId = resubmittedAfterReject
+      ? `RESUBMIT_${txFromAi}_${Date.now()}`
+      : txFromAi || `PENDING_${Date.now()}_${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    const { data: pend, error: pendErr } = await insertPayment({
+      user_id: userKey,
+      amount: paid,
+      transaction_id: txId,
+      receipt_image_url: receiptUrl,
+      sender_card: senderCard,
+      status: 'pending_manual',
+      verified_by: null,
+    });
 
     if (pendErr && (pendErr as any).code === '23505') {
-      const retry = await db
-        .from('payments')
-        .insert({
-          user_id: userKey,
-          amount: pendingAmount,
-          transaction_id: `DUP_${txId}_${Date.now()}`,
-          receipt_image_url: receiptUrl,
-          sender_card: ai?.recipient_card || (ai?.detected_bank ? `Bank: ${ai.detected_bank}` : null),
-          status: 'pending_manual',
-          verified_by: null,
-        })
-        .select('id')
-        .single();
-      pend = retry.data;
-      pendErr = retry.error;
+      return res.status(200).json({
+        ok: false,
+        status: 'rejected',
+        reason: 'duplicate',
+        message: "Bu to'lov cheki allaqachon tizimda ro'yxatdan o'tgan.",
+      });
     }
-
-    // Agar foreign key xatosi bo'lsa (user_id users jadvalida topilmasa)
-    if (pendErr && (pendErr as any).code === '23503') {
-      const fallbackInsert = await db
-        .from('payments')
-        .insert({
-          user_id: '117932388',
-          amount: pendingAmount,
-          transaction_id: txId,
-          receipt_image_url: receiptUrl,
-          sender_card: `student:${userKey} | ${ai?.recipient_card || ai?.detected_bank || ''}`.trim(),
-          status: 'pending_manual',
-          verified_by: null,
-        })
-        .select('id')
-        .single();
-      pend = fallbackInsert.data;
-      pendErr = fallbackInsert.error;
-    }
-
     if (pendErr || !pend) throw pendErr || new Error("To'lov yozilmadi");
 
-    // Adminga chekni yuborish
-    const amountLabel = pendingAmount > 0 ? `${pendingAmount.toLocaleString('uz-UZ')} so'm` : "Ko'rsatilmagan";
-    await sendReceiptToAdmin({
-      base64Data,
-      mime,
-      receiptUrl,
-      caption:
-        `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
-        `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
-        `⏳ <b>Kvitansiyani ko'rib chiqish kerak (Qo'lda tekshirish)</b>\n\n` +
-        `👤 Talaba: ${safeName} (@${safeUser})\n` +
-        `🆔 Telegram ID: <code>${user.id}</code>\n` +
-        `💰 Summa: <b>${amountLabel}</b>\n` +
-        `🧾 Tranzaksiya: <code>${escapeHtml(txId)}</code>\n` +
-        `🏦 Tizim: ${escapeHtml(ai?.detected_bank || "Noma'lum")}\n` +
-        `⚠️ Sabab / AI xulosasi: ${escapeHtml(reasonText)}\n\n` +
-        `💡 <i>Summani tasdiqlash uchun: shu xabarga Reply bosib faqat raqam yozing (masalan: <code>32400</code>)</i>`,
-      keyboard: pendingAmount > 0
-        ? [
-            [
-              { text: `✅ Tasdiqlash (${amountLabel})`, callback_data: `pa:${pend.id}` },
-              { text: '❌ Rad etish', callback_data: `pr:${pend.id}` },
-            ],
-            [
-              { text: '💬 Talabaga yozish', callback_data: `reply_support:${user.id}` },
-              { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
-            ],
-          ]
-        : [
-            // Summa noma'lum — admin shu xabarga reply qilib faqat raqam yozadi
-            [
-              { text: "✏️ Summani kiritish (reply qiling)", callback_data: `ask_amount:${pend.id}` },
-            ],
-            [
-              { text: '❌ Rad etish', callback_data: `pr:${pend.id}` },
-              { text: '💬 Talabaga yozish', callback_data: `reply_support:${user.id}` },
-              { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
-            ],
-          ],
-    });
+    await sendManualReview(pend.id, txId, reasonText);
 
     return res.status(200).json({
       ok: true,
       status: 'pending',
       paymentId: pend.id,
       transactionId: txId,
-      amount: pendingAmount,
+      amount: paid,
       message: "Kvitansiya qabul qilindi va adminga yuborildi. Administrator tekshirgach balansingizga qo'shiladi.",
     });
+
+    // Adminga qo'lda tekshirish uchun chek yuborish
+    async function sendManualReview(paymentId: string, txLabel: string, reason: string) {
+      const amountLabel = paid > 0 ? `${paid.toLocaleString('uz-UZ')} so'm` : "AI o'qiy olmadi";
+      const amountRow =
+        paid > 0
+          ? [
+              { text: `✅ Tasdiqlash (${amountLabel})`, callback_data: `pa:${paymentId}` },
+              { text: '✏️ Boshqa summa', callback_data: `ask_amount:${paymentId}` },
+            ]
+          : [{ text: '✏️ Summani kiritish', callback_data: `ask_amount:${paymentId}` }];
+      await sendReceiptToAdmin({
+        base64Data,
+        mime,
+        receiptUrl,
+        caption:
+          `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
+          `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
+          `⏳ <b>Kvitansiyani ko'rib chiqish kerak (Qo'lda tekshirish)</b>\n\n` +
+          `👤 Talaba: ${safeName} (@${safeUser})\n` +
+          `🆔 Telegram ID: <code>${tgUserId}</code>\n` +
+          `💰 Summa: <b>${amountLabel}</b>\n` +
+          `🧾 Tranzaksiya: <code>${escapeHtml(txLabel)}</code>\n` +
+          `🏦 Tizim: ${escapeHtml(ai?.detected_bank || "Noma'lum")}\n` +
+          `⚠️ Sabab / AI xulosasi: ${escapeHtml(reason)}\n` +
+          `🔑 To'lov ID: <code>${paymentId}</code>\n\n` +
+          `💡 <i>Boshqa summa bilan tasdiqlash: shu xabarga Reply qilib faqat raqam yozing (masalan: <code>32400</code>)</i>`,
+        keyboard: [
+          amountRow,
+          [
+            { text: '❌ Rad etish', callback_data: `pr:${paymentId}` },
+            { text: '💬 Talabaga yozish', callback_data: `reply_support:${tgUserId}` },
+          ],
+          [{ text: '🚫 Bloklash', callback_data: `ban:${tgUserId}` }],
+        ],
+      });
+    }
   } catch (err: any) {
-    console.error('verify-receipt error:', err);
-    return res.status(500).json({ ok: false, error: err?.message || 'Server xatosi' });
+    console.error('verify-receipt error:', err?.message || err);
+    return res.status(500).json({ ok: false, error: "Server xatosi. Birozdan so'ng qayta urinib ko'ring." });
   }
 }

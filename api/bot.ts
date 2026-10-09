@@ -22,8 +22,6 @@ const SUPABASE_URL =
 const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
   '';
 
 let cachedDb: any = null;
@@ -159,79 +157,51 @@ function parseAction(data: string): { kind: string; arg: string; customAmount?: 
   return { kind: 'unknown', arg: '' };
 }
 
-// Summani o'rnatib to'lovni tasdiqlash (admin reply yoki /setamount orqali)
+// To'lov RPC sabablarini admin uchun tushunarli matnga aylantirish
+function rpcReasonText(data: any): string {
+  const r = String(data?.reason || '');
+  if (r === 'already_processed') return `Bu to'lov allaqachon ko'rib chiqilgan (holati: ${data?.status || '-'})`;
+  if (r === 'not_credited') return `Bu to'lov hisobga tushmagan (holati: ${data?.status || '-'}), qaytarish shart emas`;
+  if (r === 'payment_not_found') return "To'lov bazadan topilmadi";
+  if (r === 'user_not_found') return 'Talaba bazadan topilmadi';
+  if (r === 'bad_amount') return "Summa noto'g'ri";
+  return r || "noma'lum sabab";
+}
+
+// Summani o'rnatib to'lovni tasdiqlash (admin reply yoki /setamount orqali).
+// Hammasi bitta atomar RPC ichida: holat tekshiriladi, summa yoziladi, pul bir marta qo'shiladi.
+const MAX_REPLY_AMOUNT = Number(process.env.MAX_ADMIN_REPLY_AMOUNT || 1000000);
+
 async function approveWithAmount(db: any, chatId: any, paymentId: string, amount: number, adminId?: any): Promise<boolean> {
-  try {
-    // 1. Holatni tekshirish: faqat kutilayotgan to'lovga summa kiritiladi (ikki marta tushishining oldini oladi)
-    const { data: cur } = await db.from('payments').select('id,status').eq('id', paymentId).maybeSingle();
-    if (!cur) {
-      await tgSend(chatId, `❌ To'lov topilmadi: <code>${paymentId}</code>`);
-      return true;
-    }
-    if (!['pending', 'pending_manual'].includes(String(cur.status))) {
-      await tgSend(chatId, `ℹ️ Bu to'lov allaqachon ko'rib chiqilgan (holati: <b>${escapeHtml(cur.status)}</b>). Qayta tasdiqlanmadi.`);
-      return true;
-    }
-
-    // 2. Summani faqat kutilayotgan holatda yangilash
-    await db.from('payments').update({ amount }).eq('id', paymentId).in('status', ['pending', 'pending_manual']);
-
-    // 3. approve_payment RPC chaqirish
-    let approveData: any = null;
-    let rpcFailed = false;
-    try {
-      const { data, error } = await db.rpc('approve_payment', {
-        p_payment_id: paymentId,
-        p_actor: String(adminId || 'admin'),
-        p_status: 'manual_approved',
-      });
-      if (!error && data?.ok) approveData = data;
-      else if (error) rpcFailed = true;
-      else {
-        await tgSend(chatId, `ℹ️ Tasdiqlanmadi: ${escapeHtml(data?.reason || data?.status || "noma'lum sabab")}`);
-        return true;
-      }
-    } catch {
-      rpcFailed = true;
-    }
-
-    // 4. Fallback (faqat RPC ishlamasa): avval holatni atomar almashtiramiz, keyin pul qo'shamiz
-    if (!approveData && rpcFailed) {
-      const { data: claimed } = await db
-        .from('payments')
-        .update({ status: 'manual_approved', verified_by: 'admin' })
-        .eq('id', paymentId)
-        .in('status', ['pending', 'pending_manual'])
-        .select('*');
-      const pay = Array.isArray(claimed) ? claimed[0] : null;
-      if (!pay) {
-        await tgSend(chatId, `ℹ️ Bu to'lov allaqachon ko'rib chiqilgan. Qayta tasdiqlanmadi.`);
-        return true;
-      }
-      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
-      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
-      const cleanKey = cleanId(studentKey);
-      const { data: usr } = await db.from('users').select('*')
-        .or(`id.eq.${studentKey},id.eq.tg_${cleanKey},telegram_id.eq.${cleanKey}`)
-        .limit(1).maybeSingle();
-      if (usr) {
-        const newBal = Number(usr.balance ?? 0) + amount;
-        await db.from('users').update({ balance: newBal, wallet_balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
-      }
-      try {
-        await db.from('wallet_transactions').insert({ user_id: studentKey, type: 'deposit', amount, ref: paymentId, note: `Admin (${adminId}) tasdiqladi` });
-      } catch {}
-      approveData = { ok: true, amount, user_id: cleanKey };
-    }
-
-    const amtStr = Number(approveData.amount || amount).toLocaleString('uz-UZ');
-    await tgSend(chatId, `✅ Tasdiqlandi: +${amtStr} so'm (To'lov ID: <code>${paymentId}</code>)`);
-    await tgSend(approveData.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amtStr} so'm qo'shildi.`);
-    return true;
-  } catch (err: any) {
-    await tgSend(chatId, `❌ Xatolik: ${err?.message || 'noma\'lum'}`);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_REPLY_AMOUNT) {
+    await tgSend(
+      chatId,
+      `⚠️ Summa ${Number(amount || 0).toLocaleString('uz-UZ')} so'm. Bu juda katta yoki noto'g'ri, tasdiqlanmadi. ` +
+        `Raqamni tekshirib qayta yozing (chegara: ${MAX_REPLY_AMOUNT.toLocaleString('uz-UZ')} so'm).`
+    );
     return true;
   }
+  const { data, error } = await db.rpc('approve_payment_with_amount', {
+    p_payment_id: paymentId,
+    p_amount: amount,
+    p_actor: String(adminId || 'admin'),
+  });
+  if (error) {
+    console.error('approve_payment_with_amount error:', error.message);
+    await tgSend(
+      chatId,
+      "❌ Tasdiqlab bo'lmadi. Supabase'da <code>20261010_security_lockdown.sql</code> migratsiyasi ishga tushirilganini tekshiring."
+    );
+    return true;
+  }
+  if (!data?.ok) {
+    await tgSend(chatId, `ℹ️ Tasdiqlanmadi: ${escapeHtml(rpcReasonText(data))}`);
+    return true;
+  }
+  const amtStr = Number(data.amount || amount).toLocaleString('uz-UZ');
+  await tgSend(chatId, `✅ Tasdiqlandi: +${amtStr} so'm (To'lov ID: <code>${escapeHtml(paymentId)}</code>)`);
+  await tgSend(data.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amtStr} so'm qo'shildi.`);
+  return true;
 }
 
 async function handleAdminCallback(cq: any) {
@@ -247,217 +217,78 @@ async function handleAdminCallback(cq: any) {
     return;
   }
 
+  // Pul amallari faqat atomar RPC orqali bajariladi (fallback yo'q):
+  // holat RPC ichida qulf bilan tekshiriladi, shuning uchun ikki marta bosilsa
+  // yoki ikki admin bir vaqtda bossa ham pul faqat bir marta qo'shiladi/ayiriladi.
   if (kind === 'approve') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
 
-    // Agar admin aniq summani bosgan bo'lsa, payments jadvalidagi summani yangilash
-    if (customAmount && customAmount > 0) {
-      try {
-        await db.from('payments').update({ amount: customAmount }).eq('id', arg);
-      } catch {}
+    const { data, error } =
+      customAmount && customAmount > 0
+        ? await db.rpc('approve_payment_with_amount', {
+            p_payment_id: arg,
+            p_amount: customAmount,
+            p_actor: fromId,
+          })
+        : await db.rpc('approve_payment', {
+            p_payment_id: arg,
+            p_actor: fromId,
+            p_status: 'manual_approved',
+          });
+
+    if (error) {
+      console.error('approve RPC error:', error.message);
+      return void (await answerCallback(cq.id, "Server xatosi: tasdiqlanmadi. Qayta urinib ko'ring.", true));
+    }
+    if (!data?.ok) {
+      if (data?.reason === 'already_processed') await markHandled(chatId, messageId, `Avval ko'rib chiqilgan (${data?.status || '-'})`);
+      return void (await answerCallback(cq.id, rpcReasonText(data), true));
     }
 
-    let approveData: any = null;
-    try {
-      const { data, error } = await db.rpc('approve_payment', {
-        p_payment_id: arg,
-        p_actor: fromId,
-        p_status: 'manual_approved',
-      });
-      if (!error && data?.ok) {
-        approveData = data;
-      } else if (data?.reason === 'already_processed') {
-        return void (await answerCallback(cq.id, `Bu to'lov allaqachon ko'rib chiqilgan (${data?.status || 'tasdiqlangan'})`, true));
-      } else {
-        console.warn('approve_payment RPC returned error or not ok, proceeding to direct DB update:', error?.message);
-      }
-    } catch (rpcErr) {
-      console.warn('approve_payment RPC exception:', rpcErr);
-    }
-
-    // Direct database update fallback agar RPC ishlamasa
-    if (!approveData) {
-      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
-      if (!pay) {
-        return void (await answerCallback(cq.id, "To'lov bazadan topilmadi", true));
-      }
-      if (pay.status === 'manual_approved' || pay.status === 'auto_approved') {
-        return void (await answerCallback(cq.id, `Bu to'lov allaqachon tasdiqlangan (${pay.status})`, true));
-      }
-
-      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
-      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
-      const cleanUserKey = cleanId(studentKey);
-      const amt = Number(pay.amount || 0);
-
-      // 1. Foydalanuvchi balansini yangilash
-      try {
-        const { data: usr } = await db
-          .from('users')
-          .select('*')
-          .or(`id.eq.${studentKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (usr) {
-          const curBal = Number(usr.balance ?? 0);
-          const newBal = curBal + amt;
-          await db.from('users').update({
-            balance: newBal,
-            updated_at: new Date().toISOString(),
-          }).eq('id', usr.id);
-        }
-      } catch (uErr) {
-        console.warn('users update warning:', uErr);
-      }
-
-      // 2. To'lov maqomini yangilash
-      await db.from('payments').update({
-        status: 'manual_approved',
-        verified_by: 'admin',
-      }).eq('id', arg);
-
-      // 3. Tranzaksiya tarixiga kiritish
-      try {
-        await db.from('wallet_transactions').insert({
-          user_id: studentKey,
-          type: 'deposit',
-          amount: amt,
-          ref: arg,
-          note: `Admin tomonidan tasdiqlangan (${fromId})`,
-        });
-      } catch {}
-
-      // 4. Test paketlari muallif balansini yangilash
-      try {
-        const { data: pkg } = await db.from('test_packages')
-          .select('author_wallet_balance')
-          .or(`id.eq.lead_${studentKey},id.eq.lead_${cleanUserKey}`)
-          .maybeSingle();
-        const curPkgBal = Number(pkg?.author_wallet_balance || 0);
-        await db.from('test_packages')
-          .update({ author_wallet_balance: curPkgBal + amt })
-          .or(`id.eq.lead_${studentKey},id.eq.lead_${cleanUserKey}`);
-      } catch {}
-
-      approveData = {
-        ok: true,
-        amount: amt,
-        user_id: cleanUserKey,
-      };
-    }
-
-    const amount = Number(approveData.amount).toLocaleString('uz-UZ');
+    const amount = Number(data.amount).toLocaleString('uz-UZ');
     await answerCallback(cq.id, `Tasdiqlandi: +${amount} so'm`, true);
     await markHandled(chatId, messageId, `Tasdiqlandi (+${amount} so'm)`);
-    await tgSend(approveData.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amount} so'm qo'shildi.`);
+    await tgSend(data.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amount} so'm qo'shildi.`);
     return;
   }
 
   if (kind === 'reject') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
 
-    let rejectData: any = null;
-    try {
-      const { data, error } = await db.rpc('reject_payment', { p_payment_id: arg, p_actor: fromId });
-      if (!error && data?.ok) {
-        rejectData = data;
-      } else if (data?.reason === 'already_processed') {
-        return void (await answerCallback(cq.id, `Allaqachon ko'rib chiqilgan (${data?.status || 'rad etilgan'})`, true));
-      }
-    } catch (rpcErr) {
-      console.warn('reject_payment RPC exception:', rpcErr);
+    const { data, error } = await db.rpc('reject_payment', { p_payment_id: arg, p_actor: fromId });
+    if (error) {
+      console.error('reject_payment RPC error:', error.message);
+      return void (await answerCallback(cq.id, "Server xatosi: rad etilmadi. Qayta urinib ko'ring.", true));
     }
-
-    // Direct database update fallback
-    if (!rejectData) {
-      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
-      if (!pay) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
-      if (pay.status === 'rejected' || pay.status === 'manual_rejected') {
-        return void (await answerCallback(cq.id, `Allaqachon rad etilgan (${pay.status})`, true));
-      }
-
-      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
-      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
-
-      await db.from('payments').update({
-        status: 'manual_rejected',
-        verified_by: 'admin',
-      }).eq('id', arg);
-
-      rejectData = {
-        ok: true,
-        user_id: cleanId(studentKey),
-      };
+    if (!data?.ok) {
+      if (data?.reason === 'already_processed') await markHandled(chatId, messageId, `Avval ko'rib chiqilgan (${data?.status || '-'})`);
+      return void (await answerCallback(cq.id, rpcReasonText(data), true));
     }
 
     await answerCallback(cq.id, 'Kvitansiya rad etildi', true);
     await markHandled(chatId, messageId, 'Rad etildi');
-    await tgSend(rejectData.user_id, "Siz yuborgan to'lov kvitansiyasi tasdiqlanmadi. Iltimos, haqiqiy chekni yuklang.");
+    await tgSend(data.user_id, "Siz yuborgan to'lov kvitansiyasi tasdiqlanmadi. Iltimos, haqiqiy chekni yuklang.");
     return;
   }
 
   if (kind === 'reverse') {
     if (!arg) return void (await answerCallback(cq.id, "To'lov ID topilmadi", true));
 
-    let reverseData: any = null;
-    try {
-      const { data, error } = await db.rpc('reverse_payment', { p_payment_id: arg, p_actor: fromId });
-      if (!error && data?.ok) {
-        reverseData = data;
-      }
-    } catch (rpcErr) {
-      console.warn('reverse_payment RPC exception:', rpcErr);
+    const { data, error } = await db.rpc('reverse_payment', { p_payment_id: arg, p_actor: fromId });
+    if (error) {
+      console.error('reverse_payment RPC error:', error.message);
+      return void (await answerCallback(cq.id, "Server xatosi: qaytarilmadi. Qayta urinib ko'ring.", true));
+    }
+    if (!data?.ok) {
+      if (data?.reason === 'not_credited') await markHandled(chatId, messageId, `Avval ko'rib chiqilgan (${data?.status || '-'})`);
+      return void (await answerCallback(cq.id, rpcReasonText(data), true));
     }
 
-    if (!reverseData) {
-      const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
-      if (!pay) return void (await answerCallback(cq.id, "To'lov topilmadi", true));
-
-      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
-      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
-      const cleanUserKey = cleanId(studentKey);
-      const amt = Number(pay.amount || 0);
-
-      try {
-        const { data: usr } = await db
-          .from('users')
-          .select('*')
-          .or(`id.eq.${studentKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
-          .maybeSingle();
-
-        if (usr) {
-          const curBal = Number(usr.balance ?? 0);
-          const newBal = Math.max(0, curBal - amt);
-          await db.from('users').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
-        }
-      } catch {}
-
-      await db.from('payments').update({ status: 'manual_rejected', verified_by: 'admin' }).eq('id', arg);
-
-      try {
-        await db.from('wallet_transactions').insert({
-          user_id: studentKey,
-          type: 'withdraw',
-          amount: amt,
-          ref: arg,
-          note: `Soxta to'lov bekor qilindi (${fromId})`,
-        });
-      } catch {}
-
-      reverseData = {
-        ok: true,
-        reversed: amt,
-        user_id: cleanUserKey,
-      };
-    }
-
-    const back = Number(reverseData.reversed).toLocaleString('uz-UZ');
+    const back = Number(data.reversed).toLocaleString('uz-UZ');
     await answerCallback(cq.id, `Ogohlantirildi, ${back} so'm qaytarildi`, true);
     await markHandled(chatId, messageId, `Ogohlantirildi (-${back} so'm)`);
     await tgSend(
-      reverseData.user_id,
+      data.user_id,
       "Diqqat: yuborgan chekingizda qoidabuzarlik aniqlandi va summa hisobingizdan qaytarildi. Takrorlansa hisobingiz bloklanadi."
     );
     return;
@@ -530,12 +361,19 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
 
   // Reply orqali faqat raqam yozilgan holat (summa kiritish xabariga reply)
   if (msg.reply_to_message) {
-    const replyText = msg.reply_to_message.text || '';
+    // Summa kiritish xabariga yoki chek rasmining izohiga (caption) reply qilinishi mumkin
+    const replyText = msg.reply_to_message.text || msg.reply_to_message.caption || '';
     const uuidMatch = replyText.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-    const isAmountReply = uuidMatch && /^\d+$/.test(text.replace(/[\s,]/g, ''));
+    // "32 400", "32.400", "32,400 so'm", "35 000.00" -> 32400 / 35000 (tiyinlar olib tashlanadi)
+    const normalized = text
+      .replace(/\s*(so'?m|сум|sum|uzs)\s*$/i, '')
+      .trim()
+      .replace(/[.,]\d{1,2}$/, '')
+      .replace(/[\s,.']/g, '');
+    const isAmountReply = uuidMatch && /^\d+$/.test(normalized);
     if (isAmountReply) {
       const paymentId = uuidMatch[1];
-      const amount = parseInt(text.replace(/[\s,]/g, ''), 10);
+      const amount = parseInt(normalized, 10);
       if (amount > 0) {
         return await approveWithAmount(db, chatId, paymentId, amount, msg.from?.id);
       }

@@ -28,9 +28,11 @@ import {
   validateTestAttempt,
   isUserAdmin,
   cleanTelegramId,
+  useAdminSession,
 } from '../utils/security';
 import { soundFX, triggerHaptic, setVibrationEnabled, getInitialUserId } from '../utils/telegram';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
+import { localDateKey } from '../utils/date';
 import { calculateUserRatingStats } from '../utils/ratingUtils';
 
 import { Language } from '../i18n/translations';
@@ -39,9 +41,14 @@ import { getGenderSafeAvatar } from '../constants/avatars';
 
 export { isUserAdmin };
 
+// Admin huquqi faqat server (/api/admin whoami) tasdiqlaganda true bo'ladi
 export function useIsAdmin(): boolean {
   const profileId = useQuizStore((state) => state.profile?.id);
-  return isUserAdmin(profileId);
+  const verified = useAdminSession((s) => s.verified);
+  const adminId = useAdminSession((s) => s.adminId);
+  if (!verified) return false;
+  if (!adminId || !profileId) return true;
+  return cleanTelegramId(profileId) === cleanTelegramId(adminId);
 }
 
 export function useUserBalanceRealtime(): void {
@@ -260,7 +267,7 @@ const DEFAULT_PROFILE: UserProfile = {
   avatar: '/avatars/avatar_3.png',
   coins: 0, // Unearned coins strictly zeroed out at start!
   streak: 1,
-  lastLoginDate: new Date().toISOString().split('T')[0],
+  lastLoginDate: localDateKey(),
   completedTestsCount: 0,
   isRegistered: false,
   acceptedOferta: false,
@@ -358,7 +365,7 @@ export const useQuizStore = create<QuizState>()(
 
       addAnnouncement: (item) => {
         const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+        const dateStr = localDateKey(now);
         const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
         const newAnn: Announcement = {
           ...item,
@@ -389,7 +396,7 @@ export const useQuizStore = create<QuizState>()(
         const { profile, announcements } = get();
         const ann = (announcements || []).find((a) => a.id === announcementId);
         const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+        const dateStr = localDateKey(now);
         const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
 
         const newReply: AnnouncementReply = {
@@ -414,7 +421,7 @@ export const useQuizStore = create<QuizState>()(
 
       replyToUserMessage: (replyId: string, adminMessage: string) => {
         const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+        const dateStr = localDateKey(now);
         const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
 
         const updatedReplies = (get().announcementReplies || []).map((r) => {
@@ -548,7 +555,6 @@ export const useQuizStore = create<QuizState>()(
       // Directly sync latest user data (balance, is_blocked, voucher_claimed, subscription) from Supabase
       syncUser: async () => {
         const supabase = getSupabase();
-        if (!supabase) return null;
 
         // 1. Telegram WebApp dan foydalanuvchi ID sini aniq olish
         const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
@@ -561,258 +567,144 @@ export const useQuizStore = create<QuizState>()(
 
         if (!resolvedId) return null;
 
-        console.log('🔍 Foydalanuvchi qidirilmoqda, Telegram ID:', currentTelegramId || resolvedId);
-
         const tgPrefixed = `tg_${resolvedId}`;
 
         try {
-          // 2. Supabase users jadvalidan universal qidiruv
-          const { data: dbUser, error } = await supabase
-            .from('users')
-            .select('*')
-            .or(`telegram_id.eq.${resolvedId},id.eq.${resolvedId},id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,id.eq.${rawId},telegram_id.eq.${rawId}` : ''}`)
-            .order('created_at', { ascending: true })
-            .limit(1)
-            .maybeSingle();
+          // Balans, obuna va blok holati FAQAT serverdan olinadi.
+          // Telefondagi qiymat, test_packages yoki to'lovlar yig'indisi hisobga olinmaydi.
+          let srvBalance = 0;
+          let isBlocked = false;
+          let voucherClaimed = Boolean(currentProfile.voucher_claimed);
+          let referralCount: number = currentProfile.referralCount || 0;
+          let srvTgId: string | undefined = currentTelegramId || cleanId || undefined;
+          let subEnd: string | null = null;
+          let subPlan: string | null = null;
+          let gotData = false;
 
-          console.log("📦 Supabase qaytargan foydalanuvchi ma'lumoti:", dbUser, 'Xato:', error);
-
-          // 3. subscriptions jadvalidan faol obunani parallel tekshirish (status columniga tayanmasdan)
-          let subData: any = null;
-          try {
-            const { data: foundSubs, error: subErr } = await supabase
-              .from('subscriptions')
-              .select('*')
-              .or(`user_id.eq.${resolvedId},user_id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,user_id.eq.${rawId}` : ''}`)
-              .order('created_at', { ascending: false })
-              .limit(5);
-
-            if (!subErr && foundSubs && foundSubs.length > 0) {
-              const activeSub = foundSubs.find(
-                (s: any) => s.expires_at && new Date(s.expires_at) > new Date()
-              );
-              if (activeSub) {
-                subData = activeSub;
-                console.log('💎 subscriptions jadvalidagi faol obuna:', subData);
-              }
-            }
-          } catch (subQueryErr) {
-            console.debug('subscriptions table check notice:', subQueryErr);
-          }
-
-          // 4. test_packages jadvalidan foydalanuvchi ma'lumotlarini tekshirish
-          let leadPkgUser: any = null;
-          let leadPkgBal = 0;
-          try {
-            const { data: lp } = await supabase
-              .from('test_packages')
-              .select('id, author_wallet_balance, blocks')
-              .or(`id.eq.lead_${resolvedId},id.eq.lead_${cleanId},id.eq.lead_user-${cleanId},author_id.eq.${resolvedId},author_id.eq.${cleanId}`)
-              .limit(1)
-              .maybeSingle();
-
-            if (lp) {
-              const b0 = Array.isArray(lp.blocks) && lp.blocks[0] ? lp.blocks[0] : null;
-              leadPkgUser = b0;
-              leadPkgBal = Math.max(
-                Number(lp.author_wallet_balance || 0),
-                Number(b0?.wallet_balance || 0),
-                Number(b0?.balance || 0)
-              );
-            }
-          } catch (lpErr) {
-            console.debug('test_packages check notice:', lpErr);
-          }
-
-          // 5. payments jadvalidan tasdiqlangan to'lovlarni jamlash
-          let approvedPaymentsSum = 0;
-          try {
-            const { data: userPays } = await supabase
-              .from('payments')
-              .select('amount')
-              .or(`user_id.eq.${resolvedId},user_id.eq.${cleanId},user_id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,user_id.eq.${rawId}` : ''}`)
-              .in('status', ['approved', 'auto_approved', 'manual_approved']);
-
-            if (userPays && userPays.length > 0) {
-              approvedPaymentsSum = userPays.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
-            }
-          } catch (payErr) {
-            console.debug('payments check notice:', payErr);
-          }
-
-          // 6. AdminCredit paketlarini tekshirish
-          let adminCreditBal = 0;
-          let adminCreditExpiry: string | null = null;
-          let adminCreditPlan: string | null = null;
-          try {
-            const { data: creds } = await supabase
-              .from('test_packages')
-              .select('author_wallet_balance, blocks')
-              .eq('category', 'AdminCredit')
-              .or(`author_id.eq.${resolvedId},author_id.eq.${cleanId},author_id.eq.${rawId}`)
-              .order('created_at', { ascending: false });
-
-            if (creds && creds.length > 0) {
-              for (const c of creds) {
-                const b0 = Array.isArray(c.blocks) && c.blocks[0] ? c.blocks[0] : {};
-                const cBal = Number(c.author_wallet_balance || b0.amount || 0);
-                if (cBal > adminCreditBal) adminCreditBal = cBal;
-                if (b0.plan && b0.expiry && new Date(b0.expiry) > new Date()) {
-                  adminCreditExpiry = b0.expiry;
-                  adminCreditPlan = b0.plan;
-                }
-              }
-            }
-          } catch {}
-
-          // Admin belgilagan narxlar hamma talabaga bir xil ko'rinadi
-          try {
-            const { data: settings } = await supabase
-              .from('app_settings')
-              .select('key, value')
-              .in('key', ['price_3_months', 'price_6_months', 'price_1_year']);
-            if (settings && settings.length) {
-              const m: Record<string, number> = {};
-              settings.forEach((r: any) => (m[r.key] = Number(r.value)));
-              const cur = get().subscriptionPrices || DEFAULT_SUBSCRIPTION_PRICES;
+          const r = await apiPost('/api/wallet', { action: 'me' });
+          if (r.ok && r.data?.ok) {
+            const d: any = r.data;
+            gotData = true;
+            srvBalance = Number(d.balance || 0);
+            isBlocked = Boolean(d.isBlocked);
+            voucherClaimed = Boolean(d.voucherClaimed);
+            referralCount = Number(d.referralCount || 0);
+            srvTgId = d.telegramId || srvTgId;
+            subEnd = d.subscription?.active ? d.subscription?.end || null : null;
+            subPlan = d.subscription?.active ? d.subscription?.plan || null : null;
+            if (d.prices) {
               set({
                 subscriptionPrices: {
-                  '3_months': m.price_3_months || cur['3_months'],
-                  '6_months': m.price_6_months || cur['6_months'],
-                  '1_year': m.price_1_year || cur['1_year'],
+                  '3_months': Number(d.prices['3_months']) || DEFAULT_SUBSCRIPTION_PRICES['3_months'],
+                  '6_months': Number(d.prices['6_months']) || DEFAULT_SUBSCRIPTION_PRICES['6_months'],
+                  '1_year': Number(d.prices['1_year']) || DEFAULT_SUBSCRIPTION_PRICES['1_year'],
                 },
               });
             }
-          } catch {
-            /* narxlar olinmasa joriy narxlar qoladi */
+          } else if (r.data?.reason === 'blocked') {
+            gotData = true;
+            isBlocked = true;
+            srvBalance = Number(currentProfile.walletBalance || 0);
+          } else if (supabase) {
+            // Telegram tashqarisida (brauzer): users jadvalini faqat o'qiymiz.
+            // Bu ustunlarni brauzer o'zgartira olmaydi (bazadagi himoya trigger'i).
+            const { data: dbUser } = await supabase
+              .from('users')
+              .select('balance, wallet_balance, is_blocked, voucher_claimed, referral_count, telegram_id, subscription_end, paid_until, subscription_tier')
+              .or(`telegram_id.eq.${resolvedId},id.eq.${resolvedId},id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,id.eq.${rawId}` : ''}`)
+              .order('created_at', { ascending: true })
+              .limit(1)
+              .maybeSingle();
+            if (dbUser) {
+              gotData = true;
+              srvBalance = Number(dbUser.balance ?? dbUser.wallet_balance ?? 0);
+              isBlocked = Boolean(dbUser.is_blocked);
+              voucherClaimed = Boolean(dbUser.voucher_claimed);
+              referralCount = Number(dbUser.referral_count || 0);
+              srvTgId = dbUser.telegram_id || srvTgId;
+              const end = dbUser.subscription_end || dbUser.paid_until || null;
+              if (end && new Date(end) > new Date()) {
+                subEnd = end;
+                subPlan = dbUser.subscription_tier || null;
+              }
+            }
           }
 
-          if (dbUser || subData || leadPkgUser || approvedPaymentsSum > 0 || adminCreditBal > 0) {
-            // Authoritative server balance resolution
-            let numBalance = 0;
-            if (leadPkgUser && typeof leadPkgUser.wallet_balance === 'number') {
-              numBalance = Number(leadPkgUser.wallet_balance);
-            } else if (typeof leadPkgBal === 'number' && leadPkgBal > 0) {
-              numBalance = leadPkgBal;
-            } else if (dbUser && typeof (dbUser.balance ?? dbUser.wallet_balance) === 'number') {
-              numBalance = Number(dbUser.balance ?? dbUser.wallet_balance);
-            } else {
-              numBalance = Number(currentProfile.walletBalance || 0);
-            }
+          if (!gotData) return null;
 
-            if (approvedPaymentsSum > numBalance) {
-              numBalance = approvedPaymentsSum;
-            }
+          const numBalance = srvBalance;
+          const isSubscribed = Boolean(subEnd && new Date(subEnd) > new Date());
+          const activeTier: any = isSubscribed ? subPlan || '3_months' : 'none';
+          const activeEnd = isSubscribed ? subEnd : undefined;
 
-            const isBlocked = Boolean(dbUser?.is_blocked);
-            const voucherClaimed = Boolean(dbUser?.voucher_claimed || currentProfile.voucher_claimed);
-
-            // Obuna tekshiruvi: muddat, is_subscribed bayrog'i, has_paid yoki subscription_tier bo'yicha
-            const rawSubEnd =
-              leadPkgUser?.subscription_end ||
-              leadPkgUser?.paid_until ||
-              dbUser?.subscription_end ||
-              dbUser?.paid_until ||
-              subData?.expires_at ||
-              adminCreditExpiry;
-
-            const isSubscribed = Boolean(
-              (rawSubEnd && new Date(rawSubEnd) > new Date()) ||
-              leadPkgUser?.is_subscribed === true ||
-              leadPkgUser?.has_paid === true ||
-              dbUser?.is_subscribed === true ||
-              dbUser?.has_paid === true ||
-              (dbUser?.subscription_tier && dbUser?.subscription_tier !== 'none' && dbUser?.subscription_tier !== 'free') ||
-              (dbUser?.subscription_plan && dbUser?.subscription_plan !== 'none' && dbUser?.subscription_plan !== 'free') ||
-              Boolean(subData?.expires_at && new Date(subData.expires_at) > new Date()) ||
-              Boolean(adminCreditPlan)
-            );
-
-            const activeTier: any =
-              leadPkgUser?.subscription_tier ||
-              dbUser?.subscription_tier ||
-              dbUser?.subscription_plan ||
-              subData?.plan_name ||
-              subData?.plan ||
-              adminCreditPlan ||
-              (isSubscribed ? (currentProfile.subscriptionPlan || '3_months') : 'none');
-
-            const activeEnd =
-              rawSubEnd ||
-              (isSubscribed ? currentProfile.subscriptionEnd || currentProfile.paid_until || new Date(Date.now() + 90 * 86400000).toISOString() : undefined);
-
-            // 10 kunlik obuna tugashi eslatmasi (in-app bildirishnoma)
-            if (activeEnd && isSubscribed) {
-              const expDate = new Date(activeEnd);
-              if (!isNaN(expDate.getTime())) {
-                const remainingDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                if (remainingDays <= 10 && remainingDays > 0) {
-                  const todayStr = new Date().toISOString().split('T')[0];
-                  const existingAnn = (get().announcements || []).find(
-                    (a) => a.tag === 'eslatma' && a.title.includes('Obuna') && a.date === todayStr
-                  );
-                  if (!existingAnn) {
-                    get().addAnnouncement({
-                      title: `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`,
-                      message: `Hurmatli talaba, sizning VIP Premium obunangiz tugashiga ${remainingDays} kun qoldi. Testlarni cheklovlarsiz ishlashda davom etish uchun hamyoningiz orqali obunani yangilashingiz mumkin.`,
-                      tag: 'eslatma',
-                      targetType: 'user',
-                      targetValue: resolvedId,
-                      targetLabel: 'Talabaga',
-                    });
-                  }
+          // 10 kunlik obuna tugashi eslatmasi (in-app bildirishnoma)
+          if (activeEnd && isSubscribed) {
+            const expDate = new Date(activeEnd);
+            if (!isNaN(expDate.getTime())) {
+              const remainingDays = Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              if (remainingDays <= 10 && remainingDays > 0) {
+                const todayStr = localDateKey();
+                const existingAnn = (get().announcements || []).find(
+                  (a) => a.tag === 'eslatma' && a.title.includes('Obuna') && a.date === todayStr
+                );
+                if (!existingAnn) {
+                  get().addAnnouncement({
+                    title: `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`,
+                    message: `Hurmatli talaba, sizning VIP Premium obunangiz tugashiga ${remainingDays} kun qoldi. Testlarni cheklovlarsiz ishlashda davom etish uchun hamyoningiz orqali obunani yangilashingiz mumkin.`,
+                    tag: 'eslatma',
+                    targetType: 'user',
+                    targetValue: resolvedId,
+                    targetLabel: 'Talabaga',
+                  });
                 }
               }
             }
-
-            console.log('⚡ Yangilangan state: Balans =', numBalance, 'Obuna =', isSubscribed, activeTier, activeEnd);
-
-            const curProfile = get().profile;
-            const nextPlan = isSubscribed ? activeTier : 'none';
-            const nextExpiry = activeEnd ? String(activeEnd).split('T')[0] : undefined;
-            const nextEnd = activeEnd ? String(activeEnd) : undefined;
-            const nextRef = typeof dbUser?.referral_count === 'number' ? Number(dbUser.referral_count) : (curProfile.referralCount || 0);
-            const nextTgId = dbUser?.telegram_id || currentTelegramId || cleanId || curProfile.telegram_id;
-
-            const isIdentical =
-              curProfile.balance === numBalance &&
-              curProfile.walletBalance === numBalance &&
-              curProfile.is_blocked === isBlocked &&
-              curProfile.voucher_claimed === voucherClaimed &&
-              curProfile.isSubscribed === isSubscribed &&
-              curProfile.has_paid === isSubscribed &&
-              curProfile.subscriptionPlan === nextPlan &&
-              curProfile.subscriptionTier === nextPlan &&
-              curProfile.subscriptionExpiry === nextExpiry &&
-              curProfile.subscriptionEnd === nextEnd &&
-              curProfile.referralCount === nextRef &&
-              curProfile.telegram_id === nextTgId;
-
-            if (!isIdentical) {
-              set((state) => ({
-                profile: {
-                  ...state.profile,
-                  balance: numBalance,
-                  walletBalance: numBalance,
-                  is_blocked: isBlocked,
-                  isBlocked: isBlocked,
-                  voucher_claimed: voucherClaimed,
-                  voucherClaimed: voucherClaimed,
-                  isSubscribed: isSubscribed,
-                  has_paid: isSubscribed,
-                  subscriptionPlan: nextPlan,
-                  subscriptionTier: nextPlan,
-                  subscriptionExpiry: nextExpiry,
-                  subscriptionEnd: nextEnd,
-                  paid_until: nextEnd,
-                  referralCount: nextRef,
-                  telegram_id: nextTgId,
-                },
-              }));
-            }
-
-            return numBalance;
           }
+
+          const curProfile = get().profile;
+          const nextPlan = isSubscribed ? activeTier : 'none';
+          const nextExpiry = activeEnd ? String(activeEnd).split('T')[0] : undefined;
+          const nextEnd = activeEnd ? String(activeEnd) : undefined;
+          const nextTgId = srvTgId || curProfile.telegram_id;
+
+          const isIdentical =
+            curProfile.balance === numBalance &&
+            curProfile.walletBalance === numBalance &&
+            curProfile.is_blocked === isBlocked &&
+            curProfile.voucher_claimed === voucherClaimed &&
+            curProfile.isSubscribed === isSubscribed &&
+            curProfile.has_paid === isSubscribed &&
+            curProfile.subscriptionPlan === nextPlan &&
+            curProfile.subscriptionTier === nextPlan &&
+            curProfile.subscriptionExpiry === nextExpiry &&
+            curProfile.subscriptionEnd === nextEnd &&
+            curProfile.referralCount === referralCount &&
+            curProfile.telegram_id === nextTgId;
+
+          if (!isIdentical) {
+            set((state) => ({
+              profile: {
+                ...state.profile,
+                balance: numBalance,
+                walletBalance: numBalance,
+                is_blocked: isBlocked,
+                isBlocked: isBlocked,
+                voucher_claimed: voucherClaimed,
+                voucherClaimed: voucherClaimed,
+                isSubscribed: isSubscribed,
+                has_paid: isSubscribed,
+                subscriptionPlan: nextPlan,
+                subscriptionTier: nextPlan,
+                subscriptionExpiry: nextExpiry,
+                subscriptionEnd: nextEnd,
+                paid_until: nextEnd,
+                referralCount,
+                telegram_id: nextTgId,
+              },
+            }));
+          }
+
+          return numBalance;
         } catch (err) {
           console.error('syncUser exception:', err);
         }
@@ -1097,7 +989,7 @@ export const useQuizStore = create<QuizState>()(
 
       registerUser: (data) => {
         const current = get().profile;
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateKey();
         const vFirst = validateAndSanitizeName(data.firstName || '');
         const vLast = validateAndSanitizeName(data.lastName || '');
 
@@ -1173,7 +1065,7 @@ export const useQuizStore = create<QuizState>()(
 
       checkDailyStreak: () => {
         const { profile } = get();
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateKey();
         const lastClaimed = profile.lastClaimedDailyDate;
 
         if (lastClaimed === today) {
@@ -1182,7 +1074,7 @@ export const useQuizStore = create<QuizState>()(
 
         let newStreak = 1;
         if (lastClaimed) {
-          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          const yesterday = localDateKey(new Date(Date.now() - 86400000));
           if (lastClaimed === yesterday) {
             newStreak = (profile.streak || 0) + 1;
           }
@@ -1667,101 +1559,19 @@ export const useQuizStore = create<QuizState>()(
           };
         }
 
-        let serverSuccess = false;
-        let serverData: any = null;
-
-        // 1. Server API orqali sinab ko'rish
-        try {
-          const r = await apiPost('/api/wallet', { action: 'purchase', plan });
-          if (r.ok && r.data?.ok) {
-            serverSuccess = true;
-            serverData = r.data;
-          }
-        } catch (serverErr) {
-          console.debug('Server purchase notice:', serverErr);
+        // Obuna faqat server orqali sotib olinadi: balans va muddatni server hisoblaydi.
+        // Server rad etsa, telefonda hech narsa o'zgarmaydi.
+        const r = await apiPost('/api/wallet', { action: 'purchase', plan });
+        if (!r.ok || !r.data?.ok) {
+          triggerHaptic('error');
+          // Server balansini qayta o'qib, ekrandagi raqamni to'g'rilaymiz
+          get().syncUser().catch(() => {});
+          return { success: false, message: apiErrorText(r, "Obunani faollashtirib bo'lmadi. Qayta urinib ko'ring.") };
         }
-
-        const newBalance = serverSuccess && typeof serverData?.new_balance === 'number'
-          ? Number(serverData.new_balance)
-          : Math.max(0, currentBalance - planPrice);
-
-        const months = plan === '1_year' ? 12 : plan === '6_months' ? 6 : 3;
-        let expiryDate = new Date();
-        const curEnd = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
-        if (curEnd && new Date(curEnd) > expiryDate) {
-          expiryDate = new Date(curEnd);
-        }
-        expiryDate.setMonth(expiryDate.getMonth() + months);
-        const endIso = serverSuccess && serverData?.subscription_end
-          ? String(serverData.subscription_end)
-          : expiryDate.toISOString();
-
-        // 2. Supabase test_packages va subscriptions ga sinxronlashtirish
-        try {
-          const supabase = getSupabase();
-          if (supabase) {
-            const rawId = String(profile.id || '').trim();
-            const cleanId = cleanTelegramId(rawId);
-            const targetId = rawId || cleanId;
-
-            // A. test_packages LeaderboardUser yangilash
-            const leadPkgIds = [
-              `lead_${targetId}`,
-              `lead_${cleanId}`,
-              `lead_user-${cleanId}`,
-              `lead_tg_${cleanId}`,
-            ];
-            for (const lId of leadPkgIds) {
-              try {
-                const { data: curLead } = await supabase
-                  .from('test_packages')
-                  .select('id, blocks')
-                  .eq('id', lId)
-                  .maybeSingle();
-                if (curLead) {
-                  const b0 = Array.isArray(curLead.blocks) && curLead.blocks[0] ? { ...curLead.blocks[0] } : {};
-                  b0.wallet_balance = newBalance;
-                  b0.balance = newBalance;
-                  b0.has_paid = true;
-                  b0.is_subscribed = true;
-                  b0.subscription_tier = plan;
-                  b0.subscription_end = endIso;
-                  b0.paid_until = endIso;
-                  await supabase.from('test_packages').update({
-                    author_wallet_balance: newBalance,
-                    blocks: [b0],
-                  }).eq('id', lId);
-                }
-              } catch {}
-            }
-
-            // B. subscriptions jadvaliga yozish
-            try {
-              await supabase.from('subscriptions').insert({
-                user_id: targetId,
-                plan_name: plan,
-                price: planPrice,
-                expires_at: endIso,
-                created_at: new Date().toISOString(),
-              });
-            } catch {}
-
-            // C. users jadvaliga yozish
-            try {
-              await supabase.from('users').update({
-                balance: newBalance,
-                has_paid: true,
-                paid_until: endIso,
-                is_subscribed: true,
-                subscription_end: endIso,
-                subscription_tier: plan,
-                updated_at: new Date().toISOString(),
-              }).eq('id', targetId);
-            } catch {}
-          }
-        } catch (syncErr) {
-          console.warn('Subscription cloud sync notice:', syncErr);
-        }
+        const serverData: any = r.data;
+        const newBalance = Number(serverData.new_balance ?? Math.max(0, currentBalance - planPrice));
+        const endIso = String(serverData.subscription_end || new Date().toISOString());
+        const paidPrice = Number(serverData.price || planPrice);
 
         const planLabel = plan === '3_months' ? '3 oylik' : plan === '6_months' ? '6 oylik' : '1 yillik';
 
@@ -1796,14 +1606,14 @@ export const useQuizStore = create<QuizState>()(
         get().addTransaction({
           type: 'deposit',
           title: `${planLabel} Premium obuna to'lovi (Hamyondan)`,
-          amount: planPrice,
+          amount: paidPrice,
           unit: "so'm",
           isPositive: false,
         });
 
         return {
           success: true,
-          message: `Hisobingizdan ${planPrice.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
+          message: `Hisobingizdan ${paidPrice.toLocaleString('uz-UZ')} so'm yechildi. ${planLabel} Premium obuna muvaffaqiyatli faollashtirildi!`,
         };
       },
 
@@ -2069,25 +1879,9 @@ export const useQuizStore = create<QuizState>()(
           }
         }
 
-        // Clean unearned simulated referral bonuses, fake deposit simulator entries, and unauthorized subscriptions
+        // Balans va obuna serverdan sinxronlanadi (syncUser). Bu yerda haqiqiy to'lov
+        // tarixi o'chirilmaydi va balans nolga tushirilmaydi.
         if (state.profile) {
-          if (state.transactions) {
-            state.transactions = state.transactions.filter(
-              (tx: any) =>
-                !(tx.type === 'referral' && (tx.title?.includes("Do'st") || tx.amount === 1000)) &&
-                !(tx.type === 'deposit' && tx.title?.includes("Hisob to'ldirildi"))
-            );
-          }
-          const hasActivePromocodeActivation = (state.transactions || []).some(
-            (tx: any) => tx.type === 'deposit' && tx.title?.includes('Promokod')
-          );
-          if (!hasActivePromocodeActivation && (state.profile.authorEarnings || 0) === 0) {
-            state.profile.walletBalance = 0;
-            state.profile.referralCount = 0;
-            state.profile.subscriptionPlan = 'none';
-            state.profile.subscriptionExpiry = undefined;
-          }
-
           // Yangi siyosat: yangi foydalanuvchilarga vaucher berilmaydi. Eski berilganlar saqlanadi.
           if (state.profile.voucherBalance === 35000 || state.profile.voucherBalance === undefined) {
             state.profile.voucherBalance = 0;
@@ -2210,7 +2004,9 @@ export const useQuizStore = create<QuizState>()(
             console.warn('YuksalQuiz Security Alert: State tampering detected! Re-sanitizing profile.');
             state.tamperDetected = true;
             state.profile.coins = Math.min(Math.max(p.coins, 0), 10);
-            state.profile.walletBalance = Math.min(Math.max(p.walletBalance || 0, 0), 50000);
+            // Balans ishonchsiz: serverdan qayta olinmaguncha 0 ko'rsatiladi
+            state.profile.walletBalance = 0;
+            state.profile.balance = 0;
             state.profile.voucherBalance = Math.min(Math.max(p.voucherBalance ?? 0, 0), 20000);
             state.profile.checksum = generateIntegritySignature({
               userId: p.id,

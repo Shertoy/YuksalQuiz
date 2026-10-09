@@ -31,7 +31,6 @@ import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import {
   uploadReceiptToStorage,
   recordReceiptPayment,
-  fetchLatestUserBalance,
   fetchUserLatestPendingPayment,
   checkPaymentStatus,
 } from '../services/receiptService';
@@ -64,9 +63,7 @@ export const WalletView: React.FC = () => {
   useEffect(() => {
     initialBalanceRef.current = profile.walletBalance || profile.balance || 0;
     refreshBalance();
-    useQuizStore.getState().syncUserWithDatabase();
     if (profile.id) {
-      fetchLatestUserBalance(profile.id);
       fetchUserLatestPendingPayment(profile.id).then((pending) => {
         if (pending?.id && !celebratedRef.current) {
           setPendingPaymentId(pending.id);
@@ -81,8 +78,13 @@ export const WalletView: React.FC = () => {
     if (!pendingPaymentId) return;
 
     let isMounted = true;
+    let inFlight = false;
     const interval = setInterval(async () => {
-      // 1. Supabase'dan eng so'nggi balansni to'g'ridan-to'g'ri yangilash
+      // Oldingi tekshiruv tugamagan bo'lsa yangisini boshlamaymiz (sekin internetda so'rovlar to'planmasin)
+      if (inFlight) return;
+      inFlight = true;
+      try {
+      // 1. Serverdan eng so'nggi balansni yangilash
       const freshBal = await refreshBalance();
 
       // 2. To'lov ID orqali holatni tekshirish
@@ -153,7 +155,10 @@ export const WalletView: React.FC = () => {
           });
         }
       }
-    }, 3000);
+      } finally {
+        inFlight = false;
+      }
+    }, 5000);
 
     return () => {
       isMounted = false;
@@ -945,7 +950,7 @@ export const WalletView: React.FC = () => {
          ========================================================================= */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+          <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">

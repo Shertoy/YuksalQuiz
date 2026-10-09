@@ -41,7 +41,7 @@ export function getTargetTelegramIds(
   for (const user of users) {
     const rawId = user.id;
     const clean = cleanTelegramId(rawId);
-    // Valid Telegram IDs are purely digits (e.g. 6219808382, 123456789)
+    // Valid Telegram IDs are purely digits (e.g. 123456789)
     if (!clean || !/^\d+$/.test(clean)) continue;
 
     if (targetType === 'all') {

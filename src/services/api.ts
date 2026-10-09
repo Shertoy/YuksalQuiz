@@ -1,3 +1,5 @@
+import { getStoredAdminBrowserKey } from '../utils/security';
+
 /**
  * Server API bilan xavfsiz muloqot.
  * Har bir so'rovga Telegram initData qo'shiladi. Server uni imzo bo'yicha tekshiradi,
@@ -19,35 +21,16 @@ export interface ApiResult<T = any> {
 
 export async function apiPost<T = any>(path: string, body: Record<string, any> = {}): Promise<ApiResult<T>> {
   try {
-    const adminId =
-      typeof window !== 'undefined'
-        ? (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id ||
-          localStorage.getItem('yuksal_admin_id') ||
-          sessionStorage.getItem('yuksal_admin_id') ||
-          ''
-        : '';
-
-    const adminKey =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('yuksal_admin_key') ||
-          sessionStorage.getItem('yuksal_admin_key') ||
-          ''
-        : '';
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Telegram-Init-Data': getTelegramInitData(),
     };
-    if (adminId) {
-      headers['X-Admin-Id'] = String(adminId);
-    }
-    if (adminKey) {
-      headers['X-Admin-Key'] = String(adminKey);
-    }
+    // Brauzer rejimidagi admin kaliti (faqat admin o'z qurilmasida kiritgan bo'lsa).
+    // Server uni o'zidagi ADMIN_SECRET_KEY bilan solishtiradi.
+    const adminKey = getTelegramInitData() ? '' : getStoredAdminBrowserKey();
+    if (adminKey) headers['X-Admin-Key'] = adminKey;
 
     const payload: Record<string, any> = { ...body };
-    if (adminId && !payload.adminId) payload.adminId = String(adminId);
-    if (adminKey && !payload.adminKey) payload.adminKey = String(adminKey);
 
     const res = await fetch(path, {
       method: 'POST',

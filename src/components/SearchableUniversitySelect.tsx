@@ -199,7 +199,7 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
           onClick={handleClose}
         >
           <div
-            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] sm:max-h-[82vh] overflow-hidden select-none"
+            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] supports-[height:100dvh]:max-h-[88dvh] sm:max-h-[82vh] overflow-hidden select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Top Drag Indicator */}

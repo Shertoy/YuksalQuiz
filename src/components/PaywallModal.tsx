@@ -50,7 +50,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full max-h-[85vh] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col text-slate-900 dark:text-white">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col text-slate-900 dark:text-white">
         
         {/* Glowing Orange and Emerald Accent Blur Orbs */}
         <div className="absolute -top-10 -right-10 w-36 h-36 bg-orange-500/20 rounded-full blur-2xl pointer-events-none" />

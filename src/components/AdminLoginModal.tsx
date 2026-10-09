@@ -20,10 +20,11 @@ import { triggerHaptic } from '../utils/telegram';
 import { useQuizStore } from '../store/useQuizStore';
 import {
   setAdminSessionAuthenticated,
-  verifyAdminCredentials,
   checkAdminRateLimit,
   recordAdminFailedAttempt,
   resetAdminRateLimit,
+  storeAdminBrowserKey,
+  clearAdminSession,
 } from '../utils/security';
 import { apiPost } from '../services/api';
 
@@ -35,7 +36,7 @@ interface AdminLoginModalProps {
 
 /**
  * Zamonaviy va universal Admin Kirish Modali.
- * - Brauzer orqali: Maxfiy kalit (parol) yoki tasdiqlangan Admin Telegram ID orqali kirish
+ * - Brauzer orqali: serverdagi ADMIN_SECRET_KEY bilan kirish (Telegram ID parol emas)
  * - Telegram orqali: 1-klikli avtomatik tekshiruv
  * - "Eslab qolish" imkoniyati brauzerda qayta-qayta parol so'ramasligi uchun
  * - Brute-force himoyasi (Rate Limiting)
@@ -67,15 +68,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         setError(`Xavfsizlik blokirovkasi: Iltimos, ${Math.ceil(rl.remainingSeconds / 60)} daqiqadan so'ng qayta urining.`);
       }
 
-      // Check if already in browser with saved credentials
-      const savedKey = localStorage.getItem('yuksal_admin_key') || localStorage.getItem('yuksal_admin_id');
-      setCredentials(savedKey || '');
+      setCredentials('');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // 1. Brauzer orqali parol / Telegram ID bilan kirish
+  // 1. Brauzer orqali maxfiy kalit bilan kirish
   const handleBrowserLogin = async (eOrVal?: React.FormEvent | string) => {
     let targetInput = credentials;
     if (typeof eOrVal === 'string') {
@@ -97,65 +96,26 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     const trimmed = (targetInput || credentials || '').trim();
     if (!trimmed) {
       triggerHaptic('warning');
-      setError("Iltimos, admin paroli yoki Telegram ID sini kiriting.");
+      setError("Iltimos, admin maxfiy kalitini kiriting.");
       return;
     }
 
     setLoading(true);
     setError('');
 
-    // Mahalliy xavfsizlik tekshiruvi (Master kalitlar yoki ID)
-    const localCheck = verifyAdminCredentials(trimmed);
-    const isId = /^\d+$/.test(trimmed);
-    const adminIdVal = isId ? trimmed : '';
-    const adminKeyVal = isId ? '' : trimmed;
-
-    // 1. Agar mahalliy master parol yoki tasdiqlangan ID mos kelsa - darhol tasdiqlash
-    if (localCheck.isValid) {
-      resetAdminRateLimit();
-      triggerHaptic('success');
-      setSuccessMsg("Muvaffaqiyatli tasdiqlandi! Admin panel ochilmoqda...");
-
-      if (rememberMe) {
-        try {
-          localStorage.setItem('yuksal_admin_id', adminIdVal);
-          localStorage.setItem('yuksal_admin_key', adminKeyVal);
-        } catch {}
-      } else {
-        try {
-          sessionStorage.setItem('yuksal_admin_id', adminIdVal);
-          sessionStorage.setItem('yuksal_admin_key', adminKeyVal);
-        } catch {}
-      }
-      setAdminSessionAuthenticated(true, rememberMe);
-
-      setTimeout(() => {
-        setLoading(false);
-        onSuccess();
-      }, 250);
-      return;
-    }
-
-    // 2. Aks holda server orqali tekshirish
+    // Kalit faqat serverda tekshiriladi (frontendda hech qanday parol saqlanmaydi)
     try {
-      const r = await apiPost('/api/admin', {
-        action: 'whoami',
-        adminId: adminIdVal,
-        adminKey: adminKeyVal,
-      });
+      // Eski versiyadan qolgan kalitlarni tozalab, faqat hozir yozilgan kalit yuboriladi
+      clearAdminSession();
+      storeAdminBrowserKey(trimmed, false);
+      const r = await apiPost('/api/admin', { action: 'whoami' });
 
       if (r.ok && r.data?.admin) {
         resetAdminRateLimit();
         triggerHaptic('success');
         setSuccessMsg("Server orqali tasdiqlandi! Admin panel ochilmoqda...");
-
-        if (rememberMe) {
-          try {
-            localStorage.setItem('yuksal_admin_id', adminIdVal);
-            localStorage.setItem('yuksal_admin_key', adminKeyVal);
-          } catch {}
-        }
-        setAdminSessionAuthenticated(true, rememberMe);
+        if (rememberMe) storeAdminBrowserKey(trimmed, true);
+        setAdminSessionAuthenticated(true, rememberMe, r.data?.id || null);
 
         setTimeout(() => {
           setLoading(false);
@@ -164,19 +124,21 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         return;
       }
 
+      clearAdminSession();
       const record = recordAdminFailedAttempt();
       setAttemptsLeft(record.attemptsLeft);
       triggerHaptic('error');
       if (record.isLocked) {
         setError(`Urinishlar soni tugadi. ${Math.ceil(record.remainingSeconds / 60)} daqiqaga bloklandi.`);
       } else {
-        setError(`Noto'g'ri maxfiy kalit yoki Telegram ID. Qolgan urinishlar: ${record.attemptsLeft} ta.`);
+        setError(`Noto'g'ri maxfiy kalit. Qolgan urinishlar: ${record.attemptsLeft} ta.`);
       }
     } catch {
+      clearAdminSession();
       const record = recordAdminFailedAttempt();
       setAttemptsLeft(record.attemptsLeft);
       triggerHaptic('error');
-      setError("Noto'g'ri maxfiy kalit yoki Telegram ID.");
+      setError("Noto'g'ri maxfiy kalit.");
     } finally {
       setLoading(false);
     }
@@ -190,7 +152,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     setLoading(false);
     if (r.ok && r.data?.admin) {
       triggerHaptic('success');
-      setAdminSessionAuthenticated(true, true);
+      setAdminSessionAuthenticated(true, true, r.data?.id || null);
       onSuccess();
       return;
     }
@@ -311,7 +273,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Admin Maxfiy Kaliti yoki Telegram ID</span>
+                  <span>Admin maxfiy kaliti</span>
                 </label>
                 <button
                   type="button"
@@ -328,7 +290,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                   type={showPassword ? 'text' : 'password'}
                   value={credentials}
                   onChange={(e) => setCredentials(e.target.value)}
-                  placeholder="Maxfiy kalit yoki Telegram ID..."
+                  placeholder="Maxfiy kalit..."
                   autoFocus
                   disabled={loading}
                   className="w-full px-3.5 py-3 pr-10 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -355,7 +317,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                   <span>Admin kirish ma'lumotlari:</span>
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Admin maxfiy kaliti yoki tasdiqlangan Telegram ID si kerak. Agar bilmasangiz, tizim administratori bilan bog'laning.
+                  Kalit Vercel'dagi ADMIN_SECRET_KEY qiymati. Telegram ichida bo'lsangiz, Telegram orqali kirish tugmasidan foydalaning.
                 </p>
               </div>
             )}

@@ -59,7 +59,28 @@ export const TestList: React.FC<TestListProps> = ({
   const { t } = useTranslation();
   const isAdmin = useIsAdmin();
 
-  const [selectedUniversity, setSelectedUniversity] = useState<string | null>(null);
+  // Oxirgi tanlangan (yoki profildagi) universitet eslab qolinadi: har testdan keyin qayta tanlash shart emas
+  const [selectedUniversity, setSelectedUniversityState] = useState<string | null>(() => {
+    const hasTests = (name?: string | null) => {
+      if (!name) return false;
+      const key = normalizeUniversityKey(name);
+      return (testPackages || []).some((p) => normalizeUniversityKey(p.university || '') === key);
+    };
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem('yuksal_last_university');
+    } catch {}
+    if (hasTests(last)) return last;
+    if (hasTests(profile?.university)) return profile.university as string;
+    return null;
+  });
+  const setSelectedUniversity = (name: string | null) => {
+    setSelectedUniversityState(name);
+    try {
+      if (name) localStorage.setItem('yuksal_last_university', name);
+      else localStorage.removeItem('yuksal_last_university');
+    } catch {}
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyTests, setOnlyMyTests] = useState(false);
   const [adminEditingQuiz, setAdminEditingQuiz] = useState<TestPackage | null>(null);
@@ -484,7 +505,7 @@ export const TestList: React.FC<TestListProps> = ({
                   {isLocked ? (
                     <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" strokeWidth={1.75} />
                   ) : isLimitReached ? (
-                    <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5 shrink-0">
+                    <span className="px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 text-[9px] font-black border border-orange-200 dark:border-orange-800 flex items-center gap-0.5 shrink-0">
                       <Lock className="w-2.5 h-2.5" strokeWidth={1.75} /> {todayAttempts}/{DAILY_FREE_TEST_LIMIT}
                     </span>
                   ) : isPassed ? (

@@ -617,9 +617,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yuksal_admin_id', '7847500525');
-      }
       loadUsers();
       loadPayments();
       refreshAdminWhitelist();
@@ -883,15 +880,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     addAuthorizedAdminTelegramId(clean);
     setNewAdminIdInput('');
     refreshAdminWhitelist();
-    triggerHaptic('success');
-    showNotification(`Admin Telegram ID (${clean}) qo'shildi!`);
+    triggerHaptic('warning');
+    showNotification(`Yangi admin qo'shish uchun Vercel'dagi ADMIN_TELEGRAM_IDS ga ${clean} ni vergul bilan qo'shing.`);
   };
 
   const handleRemoveAdminId = (id: string) => {
     removeAuthorizedAdminTelegramId(id);
     refreshAdminWhitelist();
-    triggerHaptic('light');
-    showNotification(`Admin Telegram ID (${id}) o'chirildi!`);
+    triggerHaptic('warning');
+    showNotification(`Adminni o'chirish uchun Vercel'dagi ADMIN_TELEGRAM_IDS dan ${id} ni olib tashlang.`);
   };
 
   const handleSendAdminReply = (replyId: string) => {
@@ -1035,7 +1032,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200 ${
         isFullscreen
           ? 'w-full h-full rounded-none'
-          : 'rounded-3xl max-w-6xl xl:max-w-7xl w-full max-h-[95vh] h-full'
+          : 'rounded-3xl max-w-6xl xl:max-w-7xl w-full max-h-[95vh] supports-[height:100dvh]:max-h-[95dvh] h-full'
       }`}>
         {/* Header */}
         <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
@@ -2101,7 +2098,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         type="text"
                         value={manualUserId}
                         onChange={(e) => setManualUserId(e.target.value)}
-                        placeholder="Masalan: 117932388 yoki user-k31dje7"
+                        placeholder="Masalan: 123456789 yoki user-k31dje7"
                         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                         required
                       />
@@ -2601,7 +2598,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   onClick={() => setSelectedReceiptImage(null)}
                 >
                   <div
-                    className="relative max-w-2xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl p-2 border border-slate-800 flex flex-col items-center animate-in zoom-in-95"
+                    className="relative max-w-2xl max-h-[90vh] supports-[height:100dvh]:max-h-[90dvh] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl p-2 border border-slate-800 flex flex-col items-center animate-in zoom-in-95"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="w-full flex items-center justify-between p-2 pb-3 text-white">
@@ -2631,7 +2628,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <img
                       src={selectedReceiptImage}
                       alt="Chek rasmi"
-                      className="max-h-[78vh] w-auto object-contain rounded-2xl"
+                      className="max-h-[78vh] supports-[height:100dvh]:max-h-[78dvh] w-auto object-contain rounded-2xl"
                     />
                   </div>
                 </div>
@@ -3038,7 +3035,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                             required
                             value={newsTargetUser}
                             onChange={(e) => setNewsTargetUser(e.target.value)}
-                            placeholder="Masalan: 6219808382 yoki user-qjhlguo..."
+                            placeholder="Masalan: 123456789 yoki user-qjhlguo..."
                             className="w-full px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono"
                           />
                         </div>
@@ -4455,7 +4452,7 @@ END $$;`}</pre>
                     required
                     value={newAdminIdInput}
                     onChange={(e) => setNewAdminIdInput(e.target.value)}
-                    placeholder="Yangi Admin Telegram ID (masalan: 6219808382)..."
+                    placeholder="Yangi Admin Telegram ID (masalan: 123456789)..."
                     className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <button
@@ -4479,7 +4476,7 @@ END $$;`}</pre>
                         <span className="font-mono font-bold text-slate-900 dark:text-white">
                           Telegram ID: {id}
                         </span>
-                        {id === '6219808382' && (
+                        {false && (
                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                             Bosh Administrator
                           </span>
@@ -4499,7 +4496,7 @@ END $$;`}</pre>
                         >
                           <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
                         </button>
-                        {authorizedAdminIds.length > 1 && id !== '6219808382' && (
+                        {authorizedAdminIds.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveAdminId(id)}
