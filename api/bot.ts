@@ -162,11 +162,23 @@ function parseAction(data: string): { kind: string; arg: string; customAmount?: 
 // Summani o'rnatib to'lovni tasdiqlash (admin reply yoki /setamount orqali)
 async function approveWithAmount(db: any, chatId: any, paymentId: string, amount: number, adminId?: any): Promise<boolean> {
   try {
-    // Summani yangilash
-    await db.from('payments').update({ amount }).eq('id', paymentId);
+    // 1. Holatni tekshirish: faqat kutilayotgan to'lovga summa kiritiladi (ikki marta tushishining oldini oladi)
+    const { data: cur } = await db.from('payments').select('id,status').eq('id', paymentId).maybeSingle();
+    if (!cur) {
+      await tgSend(chatId, `❌ To'lov topilmadi: <code>${paymentId}</code>`);
+      return true;
+    }
+    if (!['pending', 'pending_manual'].includes(String(cur.status))) {
+      await tgSend(chatId, `ℹ️ Bu to'lov allaqachon ko'rib chiqilgan (holati: <b>${escapeHtml(cur.status)}</b>). Qayta tasdiqlanmadi.`);
+      return true;
+    }
 
-    // approve_payment RPC chaqirish
+    // 2. Summani faqat kutilayotgan holatda yangilash
+    await db.from('payments').update({ amount }).eq('id', paymentId).in('status', ['pending', 'pending_manual']);
+
+    // 3. approve_payment RPC chaqirish
     let approveData: any = null;
+    let rpcFailed = false;
     try {
       const { data, error } = await db.rpc('approve_payment', {
         p_payment_id: paymentId,
@@ -174,13 +186,26 @@ async function approveWithAmount(db: any, chatId: any, paymentId: string, amount
         p_status: 'manual_approved',
       });
       if (!error && data?.ok) approveData = data;
-    } catch {}
+      else if (error) rpcFailed = true;
+      else {
+        await tgSend(chatId, `ℹ️ Tasdiqlanmadi: ${escapeHtml(data?.reason || data?.status || "noma'lum sabab")}`);
+        return true;
+      }
+    } catch {
+      rpcFailed = true;
+    }
 
-    // Fallback: to'g'ridan-to'g'ri DB yangilash
-    if (!approveData) {
-      const { data: pay } = await db.from('payments').select('*').eq('id', paymentId).maybeSingle();
+    // 4. Fallback (faqat RPC ishlamasa): avval holatni atomar almashtiramiz, keyin pul qo'shamiz
+    if (!approveData && rpcFailed) {
+      const { data: claimed } = await db
+        .from('payments')
+        .update({ status: 'manual_approved', verified_by: 'admin' })
+        .eq('id', paymentId)
+        .in('status', ['pending', 'pending_manual'])
+        .select('*');
+      const pay = Array.isArray(claimed) ? claimed[0] : null;
       if (!pay) {
-        await tgSend(chatId, `❌ To'lov topilmadi: <code>${paymentId}</code>`);
+        await tgSend(chatId, `ℹ️ Bu to'lov allaqachon ko'rib chiqilgan. Qayta tasdiqlanmadi.`);
         return true;
       }
       const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
@@ -191,9 +216,8 @@ async function approveWithAmount(db: any, chatId: any, paymentId: string, amount
         .limit(1).maybeSingle();
       if (usr) {
         const newBal = Number(usr.balance ?? 0) + amount;
-        await db.from('users').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
+        await db.from('users').update({ balance: newBal, wallet_balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
       }
-      await db.from('payments').update({ status: 'manual_approved', verified_by: 'admin' }).eq('id', paymentId);
       try {
         await db.from('wallet_transactions').insert({ user_id: studentKey, type: 'deposit', amount, ref: paymentId, note: `Admin (${adminId}) tasdiqladi` });
       } catch {}
@@ -535,7 +559,6 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
   }
   if (!targetUserId || !replyBody) return false;
 
-  const db = getServiceClient();
   try {
     await db.from('support_messages').insert({
       user_id: targetUserId,
