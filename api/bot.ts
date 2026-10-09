@@ -307,7 +307,12 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return res.status(200).send('YuksalQuiz Telegram Bot Webhook Active');
+    const me = await tgCall('getMe', {});
+    return res.status(200).json({
+      status: 'active',
+      bot_username: me?.result?.username || 'YuksalQuizBot',
+      bot_name: me?.result?.first_name || 'Yuksal Quiz',
+    });
   }
 
   try {
