@@ -377,7 +377,12 @@ export const App: React.FC = () => {
     if (activeTab !== 'home') return () => setActiveTab('home');
     return null;
   })();
-  useTelegramBackButton(backAction);
+  // Ochiq oyna bo'lsa ustuvorlik yuqori (2): avval oyna yopiladi, keyin ichki bo'limlar (1), keyin bo'lim (0)
+  const anyModalOpen =
+    isAdminLoginOpen || isReceiptModalOpen || isSubscriptionModalOpen || isPaywallModalOpen ||
+    isEditProfileOpen || isNotificationsOpen || isCreateModalOpen || Boolean(editingTestPkg) ||
+    isAdminModalOpen || Boolean(reviewState);
+  useTelegramBackButton(backAction, anyModalOpen ? 2 : 0);
 
   // 4. Bloklangan foydalanuvchilar himoyasi
   if (profile.is_blocked || profile.isBlocked) {

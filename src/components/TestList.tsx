@@ -18,9 +18,11 @@ import {
   RefreshCw,
   BookOpen,
   ArrowLeft,
+  GraduationCap,
 } from 'lucide-react';
 import { TestPackage, TestBlock } from '../types';
-import { triggerHaptic } from '../utils/telegram';
+import { triggerHaptic, useTelegramBackButton } from '../utils/telegram';
+import { groupByFaculty, facultyKey, getPackageFaculty } from '../utils/faculty';
 import { getUnlockRequirementsMessage } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
@@ -76,9 +78,28 @@ export const TestList: React.FC<TestListProps> = ({
   });
   const setSelectedUniversity = (name: string | null) => {
     setSelectedUniversityState(name);
+    // Boshqa universitetga o'tilganda yo'nalish tanlovi tozalanadi
+    setSelectedFacultyState(null);
     try {
       if (name) localStorage.setItem('yuksal_last_university', name);
       else localStorage.removeItem('yuksal_last_university');
+      localStorage.removeItem('yuksal_last_faculty');
+    } catch {}
+  };
+
+  // Tanlangan yo'nalish (fakultet) kaliti. Oxirgi tanlov eslab qolinadi.
+  const [selectedFaculty, setSelectedFacultyState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('yuksal_last_faculty');
+    } catch {
+      return null;
+    }
+  });
+  const setSelectedFaculty = (key: string | null) => {
+    setSelectedFacultyState(key);
+    try {
+      if (key) localStorage.setItem('yuksal_last_faculty', key);
+      else localStorage.removeItem('yuksal_last_faculty');
     } catch {}
   };
   const [searchQuery, setSearchQuery] = useState('');
@@ -278,6 +299,46 @@ export const TestList: React.FC<TestListProps> = ({
       return true;
     });
   }, [testPackages, selectedUniversity, searchQuery]);
+
+  // Tanlangan OTM testlari yo'nalishlar bo'yicha (qidiruvsiz, to'liq ro'yxat asosida)
+  const facultyGroups = useMemo(() => {
+    if (!selectedUniversity) return [];
+    const targetNorm = normalizeUniversityKey(selectedUniversity);
+    return groupByFaculty(
+      testPackages.filter(
+        (pkg) => normalizeUniversityKey(pkg.university || 'Boshqa OTM') === targetNorm
+      )
+    );
+  }, [testPackages, selectedUniversity]);
+
+  const activeFaculty = useMemo(
+    () => (selectedFaculty ? facultyGroups.find((g) => g.key === selectedFaculty) || null : null),
+    [facultyGroups, selectedFaculty]
+  );
+
+  // Yo'nalishlar ro'yxatini ko'rsatish kerakmi: 2 va undan ko'p yo'nalish bo'lsa va qidiruv bo'lmasa.
+  // Bitta yo'nalish bo'lsa testlar to'g'ridan-to'g'ri ochiladi (ortiqcha bosish shart emas).
+  const showFacultyList = Boolean(
+    selectedUniversity && !searchQuery.trim() && facultyGroups.length > 1 && !activeFaculty
+  );
+
+  // Ekranda ko'rinadigan testlar: yo'nalish tanlangan bo'lsa faqat o'sha yo'nalish
+  const visibleUniTests = useMemo(() => {
+    if (!activeFaculty || searchQuery.trim()) return testsForSelectedUni;
+    return testsForSelectedUni.filter((pkg) => facultyKey(getPackageFaculty(pkg)) === activeFaculty.key);
+  }, [testsForSelectedUni, activeFaculty, searchQuery]);
+
+  // Telegram "Orqaga" tugmasi: avval yo'nalishdan, keyin universitetdan chiqadi
+  useTelegramBackButton(
+    !onlyMyTests && selectedUniversity
+      ? () => {
+          triggerHaptic('light');
+          if (activeFaculty && facultyGroups.length > 1) setSelectedFaculty(null);
+          else setSelectedUniversity(null);
+        }
+      : null,
+    1
+  );
 
   const handleTestClick = (pkg: TestPackage, block: TestBlock) => {
     const isPaid = isPaidUser(profile);
@@ -552,7 +613,13 @@ export const TestList: React.FC<TestListProps> = ({
             {selectedUniversity ? decodeHtmlEntities(selectedUniversity) : t.navTests}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {selectedUniversity ? 'Fanlar va test bloklari' : 'OTMlar katalogi'}
+            {!selectedUniversity
+              ? 'OTMlar katalogi'
+              : activeFaculty
+              ? activeFaculty.name
+              : facultyGroups.length > 1
+              ? "Yo'nalishni tanlang"
+              : 'Fanlar va test bloklari'}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -776,15 +843,20 @@ export const TestList: React.FC<TestListProps> = ({
               type="button"
               onClick={() => {
                 triggerHaptic('light');
-                setSelectedUniversity(null);
+                if (activeFaculty && facultyGroups.length > 1 && !searchQuery.trim()) setSelectedFaculty(null);
+                else setSelectedUniversity(null);
               }}
-              className="px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all active:scale-95 shadow-xs"
+              className="px-3 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all active:scale-95 shadow-xs"
             >
-              <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-              <span>Barcha OTMlar</span>
+              <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+              <span>
+                {activeFaculty && facultyGroups.length > 1 && !searchQuery.trim() ? "Yo'nalishlar" : 'Barcha OTMlar'}
+              </span>
             </button>
             <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400">
-              {testsForSelectedUni.length} ta test
+              {showFacultyList
+                ? `${facultyGroups.length} ta yo'nalish`
+                : `${visibleUniTests.length} ta test`}
             </span>
           </div>
 
@@ -797,8 +869,12 @@ export const TestList: React.FC<TestListProps> = ({
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
                 {decodeHtmlEntities(selectedUniversity)}
               </h3>
-              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                Fanlar va test bloklari
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                {activeFaculty && !searchQuery.trim()
+                  ? activeFaculty.name
+                  : showFacultyList
+                  ? "Yo'nalishni tanlang"
+                  : 'Fanlar va test bloklari'}
               </p>
             </div>
           </div>
@@ -826,8 +902,36 @@ export const TestList: React.FC<TestListProps> = ({
                 <span>{t.createTestBtn}</span>
               </button>
             </div>
+          ) : showFacultyList ? (
+            /* Yo'nalishlar (fakultetlar) ro'yxati */
+            <div className="grid grid-cols-1 gap-2.5">
+              {facultyGroups.map((g) => (
+                <button
+                  type="button"
+                  key={g.key}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setSelectedFaculty(g.key);
+                  }}
+                  className="w-full text-left p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 flex items-center justify-between gap-3 active:scale-[0.99] transition-all shadow-xs"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/70 dark:border-emerald-800/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <GraduationCap className="w-5 h-5" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{g.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                        {g.testCount} ta test
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" strokeWidth={1.75} />
+                </button>
+              ))}
+            </div>
           ) : (
-            testsForSelectedUni.map((pkg) => renderTestCard(pkg))
+            visibleUniTests.map((pkg) => renderTestCard(pkg))
           )}
         </div>
       )}

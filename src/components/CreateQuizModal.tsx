@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { useQuizStore } from '../store/useQuizStore';
+import { useQuizStore, normalizeUniversityKey } from '../store/useQuizStore';
+import { groupByFaculty, facultyKey, OTHER_FACULTY } from '../utils/faculty';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   TOP_UNIVERSITIES,
@@ -62,7 +63,7 @@ type BulkSubMode = 'text' | 'file'; // 'text' (Matn orqali) | 'file' (Fayl orqal
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editPackage }) => {
-  const { profile, addCustomUniversity, customUniversities, universities } = useQuizStore();
+  const { profile, addCustomUniversity, customUniversities, universities, testPackages } = useQuizStore();
   const { t } = useTranslation();
 
   const isEditing = Boolean(editPackage);
@@ -105,6 +106,18 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   );
   const [isCustomUni, setIsCustomUni] = useState(initialIsCustomUni);
   const [customUniName, setCustomUniName] = useState(initialIsCustomUni && editPackage ? editPackage.university : '');
+
+  // Shu OTMda mavjud yo'nalishlar: bir xil yo'nalish turlicha yozilmasligi uchun tanlab qo'yish mumkin
+  const existingFaculties = useMemo(() => {
+    const uniName = (isCustomUni ? customUniName : university) || '';
+    if (!uniName.trim()) return [] as string[];
+    const target = normalizeUniversityKey(uniName);
+    return groupByFaculty(
+      (testPackages || []).filter((p) => normalizeUniversityKey(p.university || '') === target)
+    )
+      .map((g) => g.name)
+      .filter((n) => n !== OTHER_FACULTY);
+  }, [testPackages, isCustomUni, customUniName, university]);
 
   // Ta'lim shakli (Kunduzgi, Sirtqi [5-kurs], Kechki, Masofaviy)
   const [studyType, setStudyType] = useState<StudyType>(
@@ -782,6 +795,36 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               />
               {errors.faculty && (
                 <p className="text-[11px] text-rose-500 mt-1 font-semibold">Yo'nalish yoki fakultet nomini kiriting</p>
+              )}
+              {existingFaculties.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+                    Bu OTMdagi mavjud yo'nalishlar (tanlang yoki yangisini yozing):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {existingFaculties.map((name) => {
+                      const isActive = facultyKey(name) === facultyKey(faculty);
+                      return (
+                        <button
+                          type="button"
+                          key={name}
+                          onClick={() => {
+                            triggerHaptic('selection');
+                            setFaculty(name);
+                            if (errors.faculty) setErrors((prev) => ({ ...prev, faculty: false }));
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                            isActive
+                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
 

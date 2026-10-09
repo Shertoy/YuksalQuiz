@@ -437,8 +437,13 @@ export const soundFX = new SoundEffectsManager();
 // -------------------------------------------------------------
 // Telegram "Orqaga" tugmasi (Android tizim tugmasi ham shu orqali ishlaydi)
 // -------------------------------------------------------------
-// Bir nechta komponent tugmani so'rashi mumkin: oxirgi faollashgani ishlaydi.
-const backHandlerStack: Array<{ current: (() => void) | null }> = [];
+// Bir nechta komponent tugmani so'rashi mumkin. Eng yuqori ustuvorlikdagi (priority) ishlaydi,
+// tenglarida esa oxirgi faollashgani. Masalan: ochiq oyna (2) > yo'nalish/universitet (1) > bo'lim (0).
+interface BackEntry {
+  handler: { current: (() => void) | null };
+  priority: { current: number };
+}
+const backHandlerStack: BackEntry[] = [];
 let backClickBound = false;
 
 function syncTelegramBackButton(): void {
@@ -446,8 +451,11 @@ function syncTelegramBackButton(): void {
   if (!tg?.BackButton) return;
   if (!backClickBound) {
     tg.BackButton.onClick(() => {
-      const top = backHandlerStack[backHandlerStack.length - 1];
-      top?.current?.();
+      let top: BackEntry | null = null;
+      for (const e of backHandlerStack) {
+        if (!top || e.priority.current >= top.priority.current) top = e;
+      }
+      top?.handler.current?.();
     });
     backClickBound = true;
   }
@@ -458,14 +466,17 @@ function syncTelegramBackButton(): void {
 /**
  * handler berilsa Telegram "Orqaga" tugmasi ko'rinadi va bosilganda shu handler ishlaydi.
  * handler null bo'lsa tugma yashiriladi (ilova yopilishi o'rniga).
+ * priority: bir vaqtda bir nechta handler bo'lsa, kattasi ishlaydi.
  */
-export function useTelegramBackButton(handler: (() => void) | null): void {
+export function useTelegramBackButton(handler: (() => void) | null, priority = 0): void {
   const ref = useRef<(() => void) | null>(handler);
   ref.current = handler;
+  const prioRef = useRef(priority);
+  prioRef.current = priority;
   const active = Boolean(handler);
   useEffect(() => {
     if (!active) return;
-    const entry = ref;
+    const entry: BackEntry = { handler: ref, priority: prioRef };
     backHandlerStack.push(entry);
     syncTelegramBackButton();
     return () => {

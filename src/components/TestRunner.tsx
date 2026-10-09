@@ -170,7 +170,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   }, []);
 
   // Telegram "Orqaga" tugmasi: chiqishni tasdiqlash oynasi; oyna ochiq bo'lsa uni yopadi
-  useTelegramBackButton(() => setShowConfirmCancel((v) => !v));
+  useTelegramBackButton(() => setShowConfirmCancel((v) => !v), 3);
   useTestClosingConfirmation();
 
   // Option selection with instant feedback + 700ms pause + auto-advance
