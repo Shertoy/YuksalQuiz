@@ -69,7 +69,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
       // Check if already in browser with saved credentials, or prefill standard master key
       const savedKey = localStorage.getItem('yuksal_admin_key') || localStorage.getItem('yuksal_admin_id');
-      setCredentials(savedKey || 'yuksal2026admin');
+      setCredentials(savedKey || '');
     }
   }, [isOpen]);
 
@@ -107,9 +107,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     // Mahalliy xavfsizlik tekshiruvi (Master kalitlar yoki ID)
     const localCheck = verifyAdminCredentials(trimmed);
     const isId = /^\d+$/.test(trimmed);
-    const adminIdVal = isId ? trimmed : '7847500525';
-    const adminKeyVal = isId ? 'yuksal2026admin' : trimmed;
-
+    const adminIdVal = isId ? trimmed : '';
+const adminKeyVal = isId ? '' : trimmed;
+    
     // 1. Agar mahalliy master parol yoki tasdiqlangan ID mos kelsa - darhol tasdiqlash
     if (localCheck.isValid) {
       resetAdminRateLimit();
