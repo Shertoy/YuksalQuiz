@@ -209,7 +209,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   useEffect(() => {
     setActiveNavCategory(getCategoryForTab(activeTab));
   }, [activeTab]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const isInsideTelegram = typeof window !== 'undefined' && Boolean((window as any).Telegram?.WebApp?.initData);
   const [searchQuery, setSearchQuery] = useState('');
@@ -612,9 +612,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yuksal_admin_id', '7847500525');
-      }
       loadUsers();
       loadPayments();
       refreshAdminWhitelist();
