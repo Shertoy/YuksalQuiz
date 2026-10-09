@@ -67,7 +67,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         setError(`Xavfsizlik blokirovkasi: Iltimos, ${Math.ceil(rl.remainingSeconds / 60)} daqiqadan so'ng qayta urining.`);
       }
 
-      // Check if already in browser with saved credentials, or prefill standard master key
+      // Check if already in browser with saved credentials
       const savedKey = localStorage.getItem('yuksal_admin_key') || localStorage.getItem('yuksal_admin_id');
       setCredentials(savedKey || '');
     }
@@ -108,8 +108,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     const localCheck = verifyAdminCredentials(trimmed);
     const isId = /^\d+$/.test(trimmed);
     const adminIdVal = isId ? trimmed : '';
-const adminKeyVal = isId ? '' : trimmed;
-    
+    const adminKeyVal = isId ? '' : trimmed;
+
     // 1. Agar mahalliy master parol yoki tasdiqlangan ID mos kelsa - darhol tasdiqlash
     if (localCheck.isValid) {
       resetAdminRateLimit();
@@ -328,7 +328,7 @@ const adminKeyVal = isId ? '' : trimmed;
                   type={showPassword ? 'text' : 'password'}
                   value={credentials}
                   onChange={(e) => setCredentials(e.target.value)}
-                  placeholder="Maxfiy kalit yoki 7847500525..."
+                  placeholder="Maxfiy kalit yoki Telegram ID..."
                   autoFocus
                   disabled={loading}
                   className="w-full px-3.5 py-3 pr-10 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -355,24 +355,10 @@ const adminKeyVal = isId ? '' : trimmed;
                   <span>Admin kirish ma'lumotlari:</span>
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  • Standart master parol: <code className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded font-mono font-bold text-slate-900 dark:text-white">yuksal2026admin</code>
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  • Yoki tasdiqlangan Admin Telegram ID: <code className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded font-mono font-bold text-slate-900 dark:text-white">7847500525</code>
+                  Admin maxfiy kaliti yoki tasdiqlangan Telegram ID si kerak. Agar bilmasangiz, tizim administratori bilan bog'laning.
                 </p>
               </div>
             )}
-
-            {/* 1-Click Quick Login Button */}
-            <button
-              type="button"
-              onClick={() => handleBrowserLogin('yuksal2026admin')}
-              disabled={loading}
-              className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            >
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>⚡ 1-bosishda tezkor kirish (Standart master parol)</span>
-            </button>
 
             {/* Remember Me Checkbox */}
             <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs text-slate-600 dark:text-slate-400">
