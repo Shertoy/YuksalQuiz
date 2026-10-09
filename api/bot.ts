@@ -310,7 +310,7 @@ export default async function handler(req: any, res: any) {
     const me = await tgCall('getMe', {});
     return res.status(200).json({
       status: 'active',
-      bot_username: me?.result?.username || 'YuksalQuizBot',
+      bot_username: me?.result?.username || 'YuksalQuiz_bot',
       bot_name: me?.result?.first_name || 'Yuksal Quiz',
     });
   }
@@ -414,8 +414,25 @@ export default async function handler(req: any, res: any) {
 
         const startParam = text.split(/\s+/)[1] || '';
         const quizId = startParam.startsWith('quiz_') ? startParam.replace('quiz_', '').trim() : '';
+        const refId = startParam.startsWith('ref_') ? startParam.replace('ref_', '').trim() : '';
         const c = MESSAGES[lang] || MESSAGES.uz;
-        const url = quizId ? `${WEBAPP_URL}?quiz_id=${encodeURIComponent(quizId)}` : WEBAPP_URL;
+
+        let url = WEBAPP_URL;
+        if (quizId) {
+          url = `${WEBAPP_URL}?quiz_id=${encodeURIComponent(quizId)}`;
+        } else if (refId) {
+          url = `${WEBAPP_URL}?ref=${encodeURIComponent(refId)}`;
+        }
+
+        let welcomeText = c.welcome;
+        if (quizId) {
+          welcomeText = c.deepText;
+        } else if (refId) {
+          welcomeText =
+            lang === 'ru'
+              ? 'Здравствуйте! Добро пожаловать в платформу Yuksal Quiz по приглашению друга! 🎁\n\nРазвивайте свои знания день за днем с помощью тестов.'
+              : "Assalomu alaykum! Do'stingiz taklifi bilan Yuksal Quiz platformasiga xush kelibsiz! 🎁\n\nKundan-kunga test orqali ilmingizni rivojlantiring.";
+        }
 
         // 1-QADAM: Foydalanuvchi ekranidagi eski pastki ulkan tugmani (ReplyKeyboardMarkup) to'liq yo'qotish
         try {
@@ -439,7 +456,7 @@ export default async function handler(req: any, res: any) {
         const sendPayload = {
           chat_id: chatId,
           parse_mode: 'HTML',
-          text: quizId ? c.deepText : c.welcome,
+          text: welcomeText,
           reply_markup: {
             inline_keyboard: [[{ text: quizId ? c.deepLink : c.button, web_app: { url } }]],
           },
@@ -452,7 +469,7 @@ export default async function handler(req: any, res: any) {
           console.warn('HTML sendMessage failed, trying plain text fallback:', sendRes?.description);
           await tgCall('sendMessage', {
             chat_id: chatId,
-            text: (quizId ? c.deepText : c.welcome).replace(/<[^>]*>/g, ''),
+            text: welcomeText.replace(/<[^>]*>/g, ''),
             reply_markup: {
               inline_keyboard: [[{ text: quizId ? c.deepLink : c.button, web_app: { url } }]],
             },

@@ -166,6 +166,7 @@ export const DEPARTMENTS: DepartmentType[] = [
 ];
 
 export const TOP_UNIVERSITIES = [
+  "OTM talabasi emasman (Maktab / Abituriyent / Boshqa)",
   "Abu Ali Ibn Sino nomidagi Buxoro Davlat Tibbiyot Instituti (BuxDTI)",
   "Abu Rayhon Beruniy nomidagi Urganch Davlat Universiteti (UrDU)",
   "Ajiniyoz nomidagi Nukus Davlat Pedagogika Instituti",

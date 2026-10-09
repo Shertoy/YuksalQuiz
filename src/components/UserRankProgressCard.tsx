@@ -129,7 +129,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   const fullName = `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim();
   const locationText = `${t.uzbekistanCountry || "O'zbekiston"} — ${profile.region}`;
-  const universityName = profile.university || "Toshkent Axborot Texnologiyalari Universiteti (TATU)";
+  const universityName = profile.university || "OTM talabasi emas";
 
   return (
     <div

@@ -124,7 +124,7 @@ export function initTelegramApp(): void {
 // -------------------------------------------------------------
 // Referral & Telegram Native Share System
 // -------------------------------------------------------------
-export const BOT_USERNAME = 'YuksalQuizBot';
+export const BOT_USERNAME = 'YuksalQuiz_bot';
 
 export const REFERRAL_SHARE_TEXT =
   "HEMIS va fan testlariga tayyorlanish uchun zo'r ilova topdim! Hoziroq kirib testlarni yechishni boshla:";

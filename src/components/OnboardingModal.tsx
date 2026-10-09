@@ -3,8 +3,9 @@ import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { UZBEKISTAN_REGIONS, Region, StudyType, AcademicYear, Gender, getAvailableAcademicYears } from '../types';
 import { getTelegramWebApp, triggerHaptic } from '../utils/telegram';
-import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle, Globe } from 'lucide-react';
+import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle, Globe, GraduationCap, BookOpen } from 'lucide-react';
 import { PublicOfferModal } from './PublicOfferModal';
+import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 import { validateAndSanitizeName } from '../utils/security';
@@ -16,6 +17,8 @@ export const OnboardingModal: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [region, setRegion] = useState<Region>('Toshkent shahri');
+  const [isStudent, setIsStudent] = useState(true);
+  const [university, setUniversity] = useState('');
   const [birthDate, setBirthDate] = useState('2004-01-01');
   const [gender, setGender] = useState<Gender>('male');
   const [studyType, setStudyType] = useState<StudyType>('Kunduzgi');
@@ -30,6 +33,7 @@ export const OnboardingModal: React.FC = () => {
     firstName?: string;
     lastName?: string;
     birthDate?: string;
+    university?: string;
     oferta?: string;
   }>({});
 
@@ -88,6 +92,10 @@ export const OnboardingModal: React.FC = () => {
       errors.lastName = vLast.error;
     }
 
+    if (isStudent && !university.trim()) {
+      errors.university = t.selectUniError || "Iltimos, ro'yxatdan OTMni tanlang";
+    }
+
     if (!birthDate) {
       errors.birthDate = getRequiredMsg();
     }
@@ -106,17 +114,54 @@ export const OnboardingModal: React.FC = () => {
     }
 
     setFieldErrors({});
+    const finalUniversity = isStudent ? university.trim() : 'OTM talabasi emas';
     registerUser({
       firstName: vFirst.sanitized,
       lastName: vLast.sanitized,
       region,
+      university: finalUniversity,
       birthDate,
       gender,
-      studyType,
-      academicYear,
+      studyType: isStudent ? studyType : 'Kunduzgi',
+      academicYear: isStudent ? academicYear : 1,
       avatar,
       acceptedOferta: true,
     });
+
+    // Agar foydalanuvchi referal havola orqali kelgan bo'lsa, taklif qiluvchiga +1000 so'm yozish
+    try {
+      const storedRef =
+        (typeof window !== 'undefined'
+          ? sessionStorage.getItem('yuksalquiz_referrer_id') ||
+            localStorage.getItem('yuksalquiz_referrer_id') ||
+            new URLSearchParams(window.location.search).get('ref')
+          : null);
+
+      if (storedRef) {
+        const tg = getTelegramWebApp();
+        fetch('/api/wallet', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(tg?.initData ? { 'X-Telegram-Init-Data': tg.initData } : {}),
+          },
+          body: JSON.stringify({
+            action: 'process_referral',
+            referrerId: storedRef,
+            newUserId: profile.id,
+            initData: tg?.initData || '',
+          }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d?.ok) {
+              sessionStorage.removeItem('yuksalquiz_referrer_id');
+              localStorage.removeItem('yuksalquiz_referrer_id');
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {}
   };
 
   const availableYears = getAvailableAcademicYears(studyType);
@@ -342,6 +387,135 @@ export const OnboardingModal: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Student Status: OTM talabasi vs Talaba emasman */}
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    {t.studentStatus}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        setIsStudent(true);
+                        if (university === 'OTM talabasi emas') setUniversity('');
+                        if (fieldErrors.university) {
+                          setFieldErrors({ ...fieldErrors, university: undefined });
+                        }
+                      }}
+                      className={`p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                        isStudent
+                          ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 ring-2 ring-emerald-500/30 text-emerald-900 dark:text-emerald-100 font-bold'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        isStudent ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                      }`}>
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs truncate">{t.statusStudent}</div>
+                        <div className="text-[10px] opacity-75 font-normal truncate">Universitet / Institut</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        setIsStudent(false);
+                        setUniversity('OTM talabasi emas');
+                        if (fieldErrors.university) {
+                          setFieldErrors({ ...fieldErrors, university: undefined });
+                        }
+                      }}
+                      className={`p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                        !isStudent
+                          ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 ring-2 ring-teal-500/30 text-teal-900 dark:text-teal-100 font-bold'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        !isStudent ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                      }`}>
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs truncate">{t.statusNotStudent}</div>
+                        <div className="text-[10px] opacity-75 font-normal truncate">{t.statusNotStudentSub}</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Conditional University and Course section */}
+                {isStudent ? (
+                  <>
+                    {/* Searchable University Selector */}
+                    <div>
+                      <SearchableUniversitySelect
+                        label={t.universityLabel || "OTM / Ta'lim muassasasi:"}
+                        value={university}
+                        onChange={(val) => {
+                          setUniversity(val);
+                          if (fieldErrors.university) {
+                            setFieldErrors({ ...fieldErrors, university: undefined });
+                          }
+                        }}
+                        error={fieldErrors.university}
+                        allowCustom={false}
+                      />
+                    </div>
+
+                    {/* Educational Mode & Dynamic Academic Years */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          {t.studyType}:
+                        </label>
+                        <select
+                          value={studyType}
+                          onChange={(e) => handleStudyTypeChange(e.target.value as StudyType)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                        >
+                          <option value="Kunduzgi">{t.studyKunduzgi}</option>
+                          <option value="Sirtqi">{t.studySirtqi} (5 yil)</option>
+                          <option value="Kechki">{t.studyKechki}</option>
+                          <option value="Tibbiyot">{t.studyTibbiyot} (6 yil)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          {t.academicYear}:
+                        </label>
+                        <select
+                          value={academicYear}
+                          onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                        >
+                          {availableYears.map((yr) => (
+                            <option key={yr} value={yr}>
+                              {yr}{t.courseUnit}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Informative card for non-students */
+                  <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 text-teal-800 dark:text-teal-200">
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                      <span>{t.statusNotStudent} ({t.statusNotStudentSub})</span>
+                    </div>
+                    <p className="text-[11px] mt-1.5 text-teal-700 dark:text-teal-300 leading-relaxed">
+                      {t.nonStudentNote}
+                    </p>
+                  </div>
+                )}
+
                 {/* Birth Date & Gender */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
@@ -402,41 +576,6 @@ export const OnboardingModal: React.FC = () => {
                         {t.genderFemale}
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* Educational Mode & Dynamic Academic Years */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t.studyType}:
-                    </label>
-                    <select
-                      value={studyType}
-                      onChange={(e) => handleStudyTypeChange(e.target.value as StudyType)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    >
-                      <option value="Kunduzgi">{t.studyKunduzgi}</option>
-                      <option value="Sirtqi">{t.studySirtqi} (5 yil)</option>
-                      <option value="Kechki">{t.studyKechki}</option>
-                      <option value="Tibbiyot">{t.studyTibbiyot} (6 yil)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t.academicYear}:
-                    </label>
-                    <select
-                      value={academicYear}
-                      onChange={(e) => setAcademicYear(Number(e.target.value) as AcademicYear)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    >
-                      {availableYears.map((yr) => (
-                        <option key={yr} value={yr}>
-                          {yr}{t.courseUnit}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 

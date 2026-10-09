@@ -1476,7 +1476,7 @@ export async function syncUserProfileToCloud(
   if (!supabase || !profile || !profile.id) return;
 
   const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
-  const university = profile.university || 'Toshkent Axborot Texnologiyalari Universiteti (TATU)';
+  const university = (profile.university || '').trim() || 'OTM talabasi emas';
   const region = profile.region || 'Toshkent shahri';
 
   const userRatingObject = {

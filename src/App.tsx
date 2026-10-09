@@ -209,13 +209,29 @@ export const App: React.FC = () => {
     syncTelegramTheme(theme);
   }, [theme]);
 
-  // Deep Link handler: auto-open test when start=quiz_{quiz_id} or ?quiz_id=... is present
+  // Deep Link handler: auto-open test when start=quiz_{quiz_id} or ?quiz_id=... is present,
+  // and capture referral start=ref_{ref_id} or ?ref=...
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
+    const startParam = String((window as any).Telegram?.WebApp?.initDataUnsafe?.start_param || '').trim();
+
+    // 1. Referral param capturing
+    const refParam =
+      urlParams.get('ref') ||
+      (startParam.startsWith('ref_') ? startParam.replace('ref_', '').trim() : '');
+
+    if (refParam) {
+      try {
+        sessionStorage.setItem('yuksalquiz_referrer_id', refParam);
+        localStorage.setItem('yuksalquiz_referrer_id', refParam);
+      } catch {}
+    }
+
+    // 2. Quiz auto-open ONLY if quiz_ prefix is present
     const rawQuizId =
       urlParams.get('quiz_id') ||
-      (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param?.replace('quiz_', '');
+      (startParam.startsWith('quiz_') ? startParam.replace('quiz_', '').trim() : '');
 
     if (rawQuizId && testPackages && testPackages.length > 0 && !activeTestPkg) {
       const targetPkg = testPackages.find((p) => p.id === rawQuizId);

@@ -2949,7 +2949,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           type="url"
                           value={newsLink}
                           onChange={(e) => setNewsLink(e.target.value)}
-                          placeholder="https://t.me/YuksalQuizBot yoki https://..."
+                          placeholder="https://t.me/YuksalQuiz_bot yoki https://..."
                           className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>

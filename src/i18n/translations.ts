@@ -25,6 +25,12 @@ export interface Translations {
   ofertaConsent: string;
   ofertaLink: string;
   completeRegistration: string;
+  studentStatus: string;
+  statusStudent: string;
+  statusNotStudent: string;
+  statusNotStudentSub: string;
+  selectUniError: string;
+  nonStudentNote: string;
   saveProfile: string;
   editProfile: string;
   cancel: string;
@@ -369,6 +375,12 @@ export const translations: Record<Language, Translations> = {
     ofertaConsent: 'Men Ommaviy oferta shartlariga roziman (Virtual vaucher va bonuslar kartaga yechib olinmaydi)',
     ofertaLink: 'Ommaviy oferta',
     completeRegistration: "Ro'yxatdan o'tish",
+    studentStatus: "Sizning maqomingiz:",
+    statusStudent: "🎓 OTM talabasi",
+    statusNotStudent: "📚 Talaba emasman",
+    statusNotStudentSub: "Maktab, abituriyent yoki boshqa",
+    selectUniError: "Iltimos, ro'yxatdan OTMni tanlang",
+    nonStudentNote: "Barcha xalqaro sertifikatlar, abituriyent va umumiy fan testlari siz uchun ochiq! 🚀",
     saveProfile: 'Saqlash',
     editProfile: 'Tahrirlash',
     cancel: 'Bekor qilish',
@@ -702,6 +714,12 @@ export const translations: Record<Language, Translations> = {
     ofertaConsent: 'Я принимаю условия Публичной оферты (Виртуальный ваучер и бонусы не подлежат выводу на карту)',
     ofertaLink: 'Публичная оферта',
     completeRegistration: 'Завершить регистрацию',
+    studentStatus: 'Ваш статус:',
+    statusStudent: '🎓 Студент вуза',
+    statusNotStudent: '📚 Не студент',
+    statusNotStudentSub: 'Школа, абитуриент или другое',
+    selectUniError: 'Пожалуйста, выберите вуз из списка',
+    nonStudentNote: 'Все тесты по международным сертификатам, абитуриентам и школьным предметам открыты для вас! 🚀',
     saveProfile: 'Сохранить',
     editProfile: 'Редактировать',
     cancel: 'Отмена',
@@ -1035,6 +1053,12 @@ export const translations: Record<Language, Translations> = {
     ofertaConsent: 'I agree to the Public Offer terms (Virtual vouchers and bonuses cannot be withdrawn to cards)',
     ofertaLink: 'Public Offer',
     completeRegistration: 'Complete Registration',
+    studentStatus: 'Your status:',
+    statusStudent: '🎓 University student',
+    statusNotStudent: '📚 Not a student',
+    statusNotStudentSub: 'School, applicant or other',
+    selectUniError: 'Please select a university from the list',
+    nonStudentNote: 'All international certificate, applicant, and school subject tests are open for you! 🚀',
     saveProfile: 'Save',
     editProfile: 'Edit',
     cancel: 'Cancel',
