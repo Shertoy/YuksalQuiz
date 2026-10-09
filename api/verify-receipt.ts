@@ -25,7 +25,7 @@ const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
+  '';
 
 let cachedDb: any = null;
 function getServiceClient(): any {
@@ -38,7 +38,7 @@ function getServiceClient(): any {
 }
 
 function getAdminIds(): string[] {
-  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''},7847500525,6219808382,117932388`;
+  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''}`;
   return raw
     .split(',')
     .map((s) => s.trim())
@@ -97,7 +97,7 @@ const MAX_RECEIPT_AGE_HOURS = Number(process.env.MAX_RECEIPT_AGE_HOURS || 48);
 
 const GEMINI_MODELS = (
   process.env.GEMINI_MODELS ||
-  'gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash'
+  'gemini-2.5-flash,gemini-2.0-flash'
 )
   .split(',')
   .map((m) => m.trim())
@@ -180,17 +180,11 @@ function verifyRequestUser(req: any) {
   // Admin kalit tekshiruvi
   const adminIdHeader = String(req.headers?.['x-admin-id'] || req.body?.adminId || '').replace(/^tg_/, '').trim();
   const adminKey = String(req.headers?.['x-admin-key'] || req.body?.adminKey || '').trim();
-  const validSecretKey = process.env.ADMIN_SECRET_KEY || process.env.VITE_ADMIN_SECRET_KEY || 'yuksal2026admin';
+  const validSecretKey = process.env.ADMIN_SECRET_KEY || process.env.VITE_ADMIN_SECRET_KEY || '';
 
-  if (
-    adminKey &&
-    (adminKey === validSecretKey ||
-      adminKey === 'yuksal2026admin' ||
-      adminKey === 'admin2026' ||
-      adminKey === '7847500525')
-  ) {
+  if (adminKey && validSecretKey && adminKey === validSecretKey) {
     return {
-      id: adminIdHeader || '7847500525',
+      id: adminIdHeader || 'admin',
       firstName: 'Admin',
       lastName: '',
       username: 'admin',
@@ -723,7 +717,8 @@ export default async function handler(req: any, res: any) {
         `💰 Summa: <b>${amountLabel}</b>\n` +
         `🧾 Tranzaksiya: <code>${escapeHtml(txId)}</code>\n` +
         `🏦 Tizim: ${escapeHtml(ai?.detected_bank || "Noma'lum")}\n` +
-        `⚠️ Sabab / AI xulosasi: ${escapeHtml(reasonText)}`,
+        `⚠️ Sabab / AI xulosasi: ${escapeHtml(reasonText)}\n\n` +
+        `💡 <i>Summani tasdiqlash uchun: shu xabarga Reply bosib faqat raqam yozing (masalan: <code>32400</code>)</i>`,
       keyboard: pendingAmount > 0
         ? [
             [
@@ -736,19 +731,13 @@ export default async function handler(req: any, res: any) {
             ],
           ]
         : [
+            // Summa noma'lum — admin shu xabarga reply qilib faqat raqam yozadi
             [
-              { text: "✅ 15 000 so'm", callback_data: `pa15000:${pend.id}` },
-              { text: "✅ 35 000 so'm", callback_data: `pa35000:${pend.id}` },
-            ],
-            [
-              { text: "✅ 60 000 so'm", callback_data: `pa60000:${pend.id}` },
-              { text: "✅ 100 000 so'm", callback_data: `pa100000:${pend.id}` },
+              { text: "✏️ Summani kiritish (reply qiling)", callback_data: `ask_amount:${pend.id}` },
             ],
             [
               { text: '❌ Rad etish', callback_data: `pr:${pend.id}` },
               { text: '💬 Talabaga yozish', callback_data: `reply_support:${user.id}` },
-            ],
-            [
               { text: '🚫 Bloklash', callback_data: `ban:${user.id}` },
             ],
           ],
