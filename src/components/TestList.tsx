@@ -172,16 +172,18 @@ export const TestList: React.FC<TestListProps> = ({
     if (!deletingPkg || isDeleting) return;
     const targetId = deletingPkg.id;
 
+    setIsDeleting(true);
     triggerHaptic('medium');
     deleteTestPackage(targetId);
-    setDeletingPkg(null);
-    setIsDeleting(false);
-    triggerHaptic('success');
 
     try {
       await deleteTestFromCloud(targetId);
     } catch (err) {
       console.warn('Cloud delete error:', err);
+    } finally {
+      setDeletingPkg(null);
+      setIsDeleting(false);
+      triggerHaptic('success');
     }
   };
 

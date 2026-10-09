@@ -958,19 +958,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     const targetId = deletingTestPkg.id;
     const targetTitle = deletingTestPkg.title;
 
+    setIsDeletingTest(true);
     triggerHaptic('medium');
+
     // 1. Immediately delete from local store & log in deletedPackageIds (instant UI update)
     deleteTestPackage(targetId);
-    setDeletingTestPkg(null);
-    setIsDeletingTest(false);
-    triggerHaptic('success');
-    showNotification(`"${targetTitle}" testi muvaffaqiyatli o'chirildi!`);
 
-    // 2. Delete from cloud database in background
+    // 2. Delete from cloud database and update cloud deleted registry
     try {
-      await deleteTestFromCloud(targetId);
+      const res = await deleteTestFromCloud(targetId);
+      if (!res.success) {
+        console.warn('Admin cloud delete warning:', res.message);
+      }
     } catch (err) {
       console.warn('Admin cloud delete error:', err);
+    } finally {
+      setDeletingTestPkg(null);
+      setIsDeletingTest(false);
+      triggerHaptic('success');
+      showNotification(`"${targetTitle}" testi butunlay o'chirildi!`);
     }
   };
 
@@ -980,11 +986,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
     // 1. Immediately clear local store & record all deleted package IDs
     clearAllTests();
-    showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
+    showNotification("Barcha testlar tozalanmoqda...");
 
     // 2. Clear from Supabase cloud database
     try {
-      await clearAllTestsFromCloud();
+      const res = await clearAllTestsFromCloud();
+      if (res.success) {
+        showNotification("Barcha testlar muvaffaqiyatli tozalandi!");
+      }
     } catch (err) {
       console.warn('Error clearing cloud tests:', err);
     }

@@ -136,10 +136,30 @@ export async function fetchCloudTests(): Promise<{
       return { success: false, count: 0, message: error.message };
     }
 
-    const { testPackages, universities, deletedPackageIds, deletedUniversities, profile, testAttempts } = useQuizStore.getState();
-    const deletedSet = new Set(deletedPackageIds || []);
+    const { testPackages, universities, deletedPackageIds, deletedUniversities, profile, testAttempts, mistakes } = useQuizStore.getState();
+
+    // 1. Extract cloud-wide deleted test IDs from __system_deleted_tests__ registry
+    const deletedRegistryRow = (data || []).find((r: any) => r.id === '__system_deleted_tests__');
+    let cloudDeletedIds: string[] = [];
+    if (deletedRegistryRow?.blocks) {
+      if (Array.isArray(deletedRegistryRow.blocks)) {
+        cloudDeletedIds = deletedRegistryRow.blocks.map(String);
+      } else if (typeof deletedRegistryRow.blocks === 'string') {
+        try {
+          const parsed = JSON.parse(deletedRegistryRow.blocks);
+          if (Array.isArray(parsed)) cloudDeletedIds = parsed.map(String);
+        } catch {}
+      }
+    }
+
+    const combinedDeletedIds = Array.from(new Set([...(deletedPackageIds || []), ...cloudDeletedIds]));
+    const deletedSet = new Set(combinedDeletedIds);
     const deletedUniSet = new Set((deletedUniversities || []).map((u) => normalizeUniversityKey(u)));
     const existingUnisSet = new Set((universities || []).map((u) => normalizeUniversityKey(u)));
+
+    if (combinedDeletedIds.length !== (deletedPackageIds || []).length) {
+      useQuizStore.setState({ deletedPackageIds: combinedDeletedIds });
+    }
 
     if (!data || data.length === 0) {
       // Cloud has 0 tests. The database is empty or all tests have been cleared.
@@ -160,11 +180,15 @@ export async function fetchCloudTests(): Promise<{
         (row: any) =>
           !row.id?.startsWith('__system_') &&
           !row.id?.startsWith('lead_') &&
-          row.category !== 'LeaderboardUser'
+          !row.id?.startsWith('adm_') &&
+          row.category !== 'LeaderboardUser' &&
+          row.category !== 'System' &&
+          row.category !== 'AdminCredit' &&
+          !deletedSet.has(row.id)
       )
       .map(mapRowToTestPackage);
 
-    // Filter out any packages that have been deleted locally
+    // Filter out any packages that have been deleted locally or in cloud
     const validCloudPackages = cloudPackages.filter((cp) => !deletedSet.has(cp.id));
 
     // Cloud packages are the authoritative source of truth for questions.
@@ -174,16 +198,17 @@ export async function fetchCloudTests(): Promise<{
       reconcilePackageWithProgress(cp, localPkgMap.get(cp.id), testAttempts || [])
     );
 
-    // Retain non-deleted local packages not yet returned from cloud
+    // Retain ONLY non-synced offline drafts created by THIS user on THIS device.
+    // NEVER treat previously downloaded cloud packages as local drafts, and NEVER auto-reupload deleted tests!
     const localDrafts = (testPackages || []).filter(
       (localPkg: any) =>
-        !localPkg.id?.startsWith('lead_') &&
-        !localPkg.id?.startsWith('__system_') &&
+        localPkg.authorId === profile?.id &&
+        localPkg._isPendingSync === true &&
         !deletedSet.has(localPkg.id) &&
         !validCloudPackages.some((cp) => cp.id === localPkg.id)
     );
 
-    // Automatically push local draft packages to Supabase cloud in the background
+    // Automatically push legitimate user drafts to Supabase cloud in the background
     if (localDrafts.length > 0) {
       Promise.all(
         localDrafts.map((pkg) => publishTestToCloud(pkg).catch(() => {}))
@@ -191,6 +216,14 @@ export async function fetchCloudTests(): Promise<{
     }
 
     const mergedPackages: TestPackage[] = [...reconciledValidCloudPackages, ...localDrafts];
+
+    // Clean up attempts and mistakes belonging to deleted tests
+    const currentAttempts = testAttempts || [];
+    const currentMistakes = mistakes || [];
+    const cleanedAttempts = currentAttempts.filter((a) => !deletedSet.has(a.testPackageId));
+    const cleanedMistakes = currentMistakes.filter((m) => !deletedSet.has(m.testPackageId));
+    const attemptsChanged = cleanedAttempts.length !== currentAttempts.length;
+    const mistakesChanged = cleanedMistakes.length !== currentMistakes.length;
 
     // Also extract all universities from cloud test packages and merge into store
     const cloudPackageUnis = validCloudPackages.map((p) => p.university?.trim()).filter(Boolean);
@@ -207,6 +240,8 @@ export async function fetchCloudTests(): Promise<{
 
     useQuizStore.setState({
       testPackages: mergedPackages,
+      ...(attemptsChanged ? { testAttempts: cleanedAttempts } : {}),
+      ...(mistakesChanged ? { mistakes: cleanedMistakes } : {}),
       ...(unisChanged ? { universities: deduplicateUniversities(updatedUnis) } : {}),
     });
 
@@ -243,7 +278,46 @@ export async function publishTestToCloud(pkg: TestPackage): Promise<{
     };
   }
 
+  // Guard against re-uploading deleted tests
+  const { deletedPackageIds } = useQuizStore.getState();
+  if ((deletedPackageIds || []).includes(pkg.id)) {
+    return {
+      success: false,
+      message: "O'chirilgan testni qayta yuklash mumkin emas.",
+    };
+  }
+
   try {
+    // Also check cloud-wide deleted tests registry
+    const { data: regRow } = await supabase
+      .from('test_packages')
+      .select('blocks')
+      .eq('id', '__system_deleted_tests__')
+      .maybeSingle();
+
+    if (regRow?.blocks) {
+      let cloudDeleted: string[] = [];
+      if (Array.isArray(regRow.blocks)) {
+        cloudDeleted = regRow.blocks.map(String);
+      } else if (typeof regRow.blocks === 'string') {
+        try {
+          const parsed = JSON.parse(regRow.blocks);
+          if (Array.isArray(parsed)) cloudDeleted = parsed.map(String);
+        } catch {}
+      }
+      if (cloudDeleted.includes(pkg.id)) {
+        // Also add to local deletedPackageIds to prevent future attempts
+        const curr = useQuizStore.getState().deletedPackageIds || [];
+        if (!curr.includes(pkg.id)) {
+          useQuizStore.setState({ deletedPackageIds: [...curr, pkg.id] });
+        }
+        return {
+          success: false,
+          message: "Ushbu test tizimdan o'chirilgan.",
+        };
+      }
+    }
+
     const row = mapTestPackageToRow(pkg);
     const { error } = await supabase.from('test_packages').upsert(row, { onConflict: 'id' });
 
@@ -418,18 +492,57 @@ export async function deleteTestFromCloud(id: string): Promise<{
 }> {
   const supabase = getSupabase();
   if (!supabase) {
+    // Even if Supabase is not configured, clean local store
+    useQuizStore.getState().deleteTestPackage(id);
     return { success: false, message: 'Supabase ulanmagan' };
   }
 
   try {
-    // Delete from questions and quizzes tables first if present
-    await supabase.from('questions').delete().eq('quiz_id', id);
-    await supabase.from('quizzes').delete().eq('id', id);
-    const { error } = await supabase.from('test_packages').delete().eq('id', id);
-    if (error) {
-      return { success: false, message: error.message };
+    // 1. Immediately delete row from Supabase test_packages
+    const { error: delError } = await supabase.from('test_packages').delete().eq('id', id);
+    if (delError) {
+      console.warn('Supabase test delete error:', delError.message);
     }
-    return { success: true, message: "Test bulutli bazadan o'chirildi." };
+
+    // 2. Register ID into __system_deleted_tests__ so all other devices and syncs prune it permanently
+    try {
+      const { data: regRow } = await supabase
+        .from('test_packages')
+        .select('blocks')
+        .eq('id', '__system_deleted_tests__')
+        .maybeSingle();
+
+      let currentDeleted: string[] = [];
+      if (regRow?.blocks) {
+        if (Array.isArray(regRow.blocks)) {
+          currentDeleted = regRow.blocks.map(String);
+        } else if (typeof regRow.blocks === 'string') {
+          try {
+            currentDeleted = JSON.parse(regRow.blocks);
+          } catch {}
+        }
+      }
+
+      if (!currentDeleted.includes(id)) {
+        currentDeleted.push(id);
+        await supabase.from('test_packages').upsert({
+          id: '__system_deleted_tests__',
+          title: 'Deleted Tests Registry',
+          category: 'System',
+          university: 'System',
+          department: 'System',
+          blocks: currentDeleted,
+          created_at: new Date().toISOString(),
+        });
+      }
+    } catch (regErr) {
+      console.warn('Failed to register deleted test ID in registry:', regErr);
+    }
+
+    // 3. Ensure local store deletes package, testAttempts, mistakes and adds to deletedPackageIds
+    useQuizStore.getState().deleteTestPackage(id);
+
+    return { success: true, message: "Test bulutli bazadan butunlay o'chirildi." };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Xatolik' };
   }
@@ -675,21 +788,77 @@ export async function clearAllTestsFromCloud(): Promise<{
 }> {
   const supabase = getSupabase();
   if (!supabase) {
+    useQuizStore.getState().clearAllTests();
     return { success: false, message: 'Supabase ulanmagan' };
   }
 
   try {
+    // 1. Fetch IDs of all tests being cleared
+    const { data: allRows } = await supabase
+      .from('test_packages')
+      .select('id')
+      .neq('category', 'LeaderboardUser')
+      .neq('category', 'System')
+      .neq('category', 'AdminCredit')
+      .not('id', 'like', 'lead_%')
+      .not('id', 'like', '__system_%')
+      .not('id', 'like', 'adm_%');
+
+    const idsToClear = (allRows || []).map((r: any) => r.id);
+
+    // 2. Delete test packages from Supabase
     const { error } = await supabase
       .from('test_packages')
       .delete()
       .neq('category', 'LeaderboardUser')
       .neq('category', 'System')
+      .neq('category', 'AdminCredit')
       .not('id', 'like', 'lead_%')
-      .not('id', 'like', '__system_%');
+      .not('id', 'like', '__system_%')
+      .not('id', 'like', 'adm_%');
+
     if (error) {
       console.warn('Supabase clear all error:', error.message);
       return { success: false, message: error.message };
     }
+
+    // 3. Record all cleared IDs in the registry
+    if (idsToClear.length > 0) {
+      try {
+        const { data: regRow } = await supabase
+          .from('test_packages')
+          .select('blocks')
+          .eq('id', '__system_deleted_tests__')
+          .maybeSingle();
+
+        let currentDeleted: string[] = [];
+        if (regRow?.blocks) {
+          if (Array.isArray(regRow.blocks)) {
+            currentDeleted = regRow.blocks.map(String);
+          } else if (typeof regRow.blocks === 'string') {
+            try {
+              currentDeleted = JSON.parse(regRow.blocks);
+            } catch {}
+          }
+        }
+        const updatedDeleted = Array.from(new Set([...currentDeleted, ...idsToClear]));
+
+        await supabase.from('test_packages').upsert({
+          id: '__system_deleted_tests__',
+          title: 'Deleted Tests Registry',
+          category: 'System',
+          university: 'System',
+          department: 'System',
+          blocks: updatedDeleted,
+          created_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('Clear all registry error:', e);
+      }
+    }
+
+    useQuizStore.getState().clearAllTests();
+
     return { success: true, message: "Barcha testlar bulutli bazadan tozalandi." };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Xatolik' };
@@ -985,6 +1154,15 @@ export function setupRealtimeTestSubscription(
         async (payload: any) => {
           if (payload?.eventType === 'DELETE' && payload?.old?.id) {
             useQuizStore.getState().deleteTestPackage(payload.old.id);
+            onUpdate?.();
+          }
+          if (
+            payload?.new?.id === '__system_deleted_tests__' ||
+            payload?.old?.id === '__system_deleted_tests__'
+          ) {
+            await fetchCloudTests();
+            onUpdate?.();
+            return;
           }
           if (
             payload?.new?.category === 'Announcement' ||

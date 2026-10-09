@@ -967,14 +967,18 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
                         disabled={isDeleting}
                         onClick={async () => {
                           const targetId = editPackage.id;
+                          setIsDeleting(true);
                           triggerHaptic('medium');
                           deleteTestPackage(targetId);
-                          triggerHaptic('success');
-                          onClose();
                           try {
                             await deleteTestFromCloud(targetId);
                           } catch (err) {
                             console.warn('Cloud delete error:', err);
+                          } finally {
+                            setIsDeleting(false);
+                            setShowDeleteConfirm(false);
+                            triggerHaptic('success');
+                            onClose();
                           }
                         }}
                         className="flex-1 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1"
