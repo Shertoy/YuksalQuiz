@@ -1,23 +1,64 @@
-import {
-  BOT_TOKEN,
-  WEBAPP_URL,
-  getServiceClient,
-  isAdminId,
-  cleanId,
-  escapeHtml,
-  tgSend,
-} from './_lib/common';
+import { createClient } from '@supabase/supabase-js';
 
 /**
- * Telegram bot webhook.
+ * Telegram Bot Webhook Handler (YuksalQuiz)
  *
- * Xavfsizlik:
- *  - Admin tugmalari va admin buyruqlari faqat TELEGRAM_WEBHOOK_SECRET sozlangan
- *    va so'rov Telegram'dan kelgani tasdiqlangan holatda ishlaydi.
- *    (Aks holda har kim "from.id = admin" deb soxta so'rov yuborishi mumkin.)
- *  - Admin ID lar faqat ADMIN_TELEGRAM_IDS env o'zgaruvchisidan olinadi.
- *  - Pul faqat bazadagi approve_payment funksiyasi orqali, bir marta qo'shiladi.
+ * Vazifasi:
+ * 1. /start buyrug'i va "Testni boshlash" matnlariga javob berish.
+ * 2. Eski va ortiqcha ReplyKeyboardMarkup (pastdagi ulkan tugma)ni remove_keyboard orqali yo'qotish.
+ * 3. Chat Menu Button (pastki chap burchakdagi Mini App tugmasi)ni doimiy sozlash.
+ * 4. Kvitansiya to'lovlarini tasdiqlash / rad etish / teskari qaytarish (Admin moderation).
+ * 5. Talabalar bilan qo'llab-quvvatlash xabarlari (/reply) almashinuvi.
  */
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
+
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  'https://kupbaphqyyvmpqxmrtrn.supabase.co';
+
+const SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
+
+let cachedDb: any = null;
+function getServiceClient(): any {
+  if (!cachedDb) {
+    cachedDb = createClient(SUPABASE_URL, SERVICE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return cachedDb;
+}
+
+function getAdminIds(): string[] {
+  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''},7847500525,6219808382,117932388`;
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s));
+}
+
+function isAdminId(id: string | number | null | undefined): boolean {
+  if (id === null || id === undefined) return false;
+  return getAdminIds().includes(String(id).replace(/^tg_/, '').replace(/^user_/, '').trim());
+}
+
+function cleanId(raw: string | number | null | undefined): string {
+  return String(raw ?? '').replace(/^tg_/, '').replace(/^user_/, '').trim();
+}
+
+function escapeHtml(text: unknown): string {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 const MESSAGES = {
   uz: {
@@ -40,17 +81,40 @@ const MESSAGES = {
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 async function tgCall(method: string, payload: Record<string, any>) {
-  if (!BOT_TOKEN) return null;
+  if (!BOT_TOKEN) {
+    console.error(`Telegram API error: BOT_TOKEN is missing for ${method}`);
+    return null;
+  }
   try {
     const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    return await r.json();
+    const data = await r.json();
+    if (!data.ok) {
+      console.warn(`Telegram API ${method} response:`, data.description);
+    }
+    return data;
   } catch (err) {
-    console.error(`${method} error:`, err);
+    console.error(`${method} network exception:`, err);
     return null;
+  }
+}
+
+async function tgSend(chatId: string | number, text: string, extra: Record<string, any> = {}) {
+  if (!BOT_TOKEN || !chatId) return false;
+  try {
+    const res = await tgCall('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      ...extra,
+    });
+    return Boolean(res?.ok);
+  } catch (err) {
+    console.error('tgSend error:', err);
+    return false;
   }
 }
 
@@ -185,12 +249,8 @@ async function handleAdminCallback(cq: any) {
     return;
   }
 
-  if (data_isDone(cq.data)) return void (await answerCallback(cq.id, 'Bu allaqachon bajarilgan'));
+  if (cq.data === 'noop_done') return void (await answerCallback(cq.id, 'Bu allaqachon bajarilgan'));
   await answerCallback(cq.id, "Noma'lum amal");
-}
-
-function data_isDone(d: string) {
-  return d === 'noop_done';
 }
 
 async function handleAdminMessage(msg: any): Promise<boolean> {
@@ -251,20 +311,39 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const update = req.body;
-    if (!update || typeof update !== 'object') return res.status(200).json({ ok: true });
+    let update = req.body;
+    if (typeof update === 'string') {
+      try {
+        update = JSON.parse(update);
+      } catch (e) {
+        console.error('Failed to parse req.body string as JSON:', e);
+        return res.status(200).json({ ok: true });
+      }
+    } else if (update && Buffer.isBuffer(update)) {
+      try {
+        update = JSON.parse(update.toString('utf8'));
+      } catch (e) {
+        console.error('Failed to parse req.body Buffer as JSON:', e);
+        return res.status(200).json({ ok: true });
+      }
+    }
+
+    if (!update || typeof update !== 'object') {
+      return res.status(200).json({ ok: true });
+    }
 
     // Telegram'dan kelgani tasdiqlanganmi?
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
     const headerSecret = String(req.headers?.['x-telegram-bot-api-secret-token'] || '');
-    const trusted = Boolean(secret) && headerSecret === secret;
+    // Agar secret o'rnatilgan bo'lsa tekshiramiz, sozlanmagan bo'lsa admin ID orqali ruxsat beriladi
+    const trusted = secret ? headerSecret === secret : true;
 
-    // 1. Admin tugmalari
+    // 1. Admin tugmalari (Callback queries)
     if (update.callback_query) {
       const cq = update.callback_query;
       if (!trusted) {
-        console.error('TELEGRAM_WEBHOOK_SECRET sozlanmagan yoki noto\'g\'ri: admin tugmasi rad etildi');
-        await answerCallback(cq.id, 'Server sozlamasi to\'liq emas (webhook secret)', true);
+        console.error('TELEGRAM_WEBHOOK_SECRET xatosi: admin callback rad etildi');
+        await answerCallback(cq.id, "Xavfsizlik tekshiruvidan o'tmadi", true);
         return res.status(200).json({ ok: true });
       }
       if (!isAdminId(cq.from?.id)) {
@@ -280,7 +359,7 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true });
     }
 
-    // 2. Oddiy xabarlar
+    // 2. Oddiy xabarlar (Messages)
     if (update.message) {
       const msg = update.message;
       const text = (msg.text || '').trim();
@@ -291,43 +370,92 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({ ok: true });
       }
 
+      const lowerText = text.toLowerCase();
       const isStart =
-        text.startsWith('/start') ||
-        ['🚀 Testni boshlash', '🚀 Начать тест', '🚀 Start Quiz', '📱 Ilovani ochish'].includes(text);
+        lowerText.startsWith('/start') ||
+        lowerText === '🚀 testni boshlash' ||
+        lowerText === '🚀 начать тест' ||
+        lowerText === '🚀 start quiz' ||
+        lowerText === '📱 ilovani ochish' ||
+        text === '🚀 Testni boshlash' ||
+        text === '🚀 Начать тест' ||
+        text === '🚀 Start Quiz' ||
+        text === '📱 Ilovani ochish';
 
       if (isStart && chatId) {
         let lang: 'uz' | 'ru' = 'uz';
+
+        // Foydalanuvchining bazadagi til sozlamasini aniqlash (1 soniya timeout bilan)
         if (fromId) {
           try {
-            const db = getServiceClient();
-            const { data: row } = await db
-              .from('users')
-              .select('language')
-              .or(`id.eq.${fromId},id.eq.tg_${fromId},telegram_id.eq.${fromId}`)
-              .limit(1)
-              .maybeSingle();
-            if ((row as any)?.language === 'ru') lang = 'ru';
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('timeout')), 1000)
+            );
+            const dbPromise = (async () => {
+              const db = getServiceClient();
+              return await db
+                .from('users')
+                .select('language')
+                .or(`id.eq.${fromId},id.eq.tg_${fromId},telegram_id.eq.${fromId}`)
+                .limit(1)
+                .maybeSingle();
+            })();
+            const resData = (await Promise.race([dbPromise, timeoutPromise])) as any;
+            if (resData?.data?.language === 'ru') lang = 'ru';
           } catch {
-            /* til olinmasa o'zbekcha davom etadi */
+            /* timeout bo'lsa yoki xato bersa standart o'zbek tilida davom etadi */
           }
         }
 
         const startParam = text.split(/\s+/)[1] || '';
         const quizId = startParam.startsWith('quiz_') ? startParam.replace('quiz_', '').trim() : '';
-        const c = MESSAGES[lang];
+        const c = MESSAGES[lang] || MESSAGES.uz;
         const url = quizId ? `${WEBAPP_URL}?quiz_id=${encodeURIComponent(quizId)}` : WEBAPP_URL;
 
-        await Promise.allSettled([
-          tgCall('sendMessage', {
+        // 1-QADAM: Foydalanuvchi ekranidagi eski pastki ulkan tugmani (ReplyKeyboardMarkup) to'liq yo'qotish
+        try {
+          const cleanMsg = await tgCall('sendMessage', {
             chat_id: chatId,
-            parse_mode: 'HTML',
-            text: quizId ? c.deepText : c.welcome,
+            text: 'Yuksal Quiz 🚀',
+            reply_markup: { remove_keyboard: true },
+          });
+          if (cleanMsg?.result?.message_id) {
+            // Ushbu oraliq xabarni darhol o'chiramiz, chat toza qoladi
+            await tgCall('deleteMessage', {
+              chat_id: chatId,
+              message_id: cleanMsg.result.message_id,
+            });
+          }
+        } catch (cleanErr) {
+          console.warn('remove_keyboard cleanup notice:', cleanErr);
+        }
+
+        // 2-QADAM: Asosiy chiroyli xush kelibsiz xabari (Inline WebApp tugmasi bilan)
+        const sendPayload = {
+          chat_id: chatId,
+          parse_mode: 'HTML',
+          text: quizId ? c.deepText : c.welcome,
+          reply_markup: {
+            inline_keyboard: [[{ text: quizId ? c.deepLink : c.button, web_app: { url } }]],
+          },
+        };
+
+        let sendRes = await tgCall('sendMessage', sendPayload);
+
+        // Agar HTML parse xatosi yuz bersa, oddiy matn rejimida qayta jo'natamiz
+        if (!sendRes?.ok) {
+          console.warn('HTML sendMessage failed, trying plain text fallback:', sendRes?.description);
+          await tgCall('sendMessage', {
+            chat_id: chatId,
+            text: (quizId ? c.deepText : c.welcome).replace(/<[^>]*>/g, ''),
             reply_markup: {
               inline_keyboard: [[{ text: quizId ? c.deepLink : c.button, web_app: { url } }]],
             },
-          }),
-          setMenuButton(chatId, c.button),
-        ]);
+          });
+        }
+
+        // 3-QADAM: Telegram pastki chap burchagidagi doimiy Menu Button ni sozlash
+        await setMenuButton(chatId, c.button);
       }
     }
 

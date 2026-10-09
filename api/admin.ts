@@ -5,7 +5,7 @@ import {
   isAdminId,
   cleanId,
   tgSend,
-} from './_lib/common';
+} from './_lib/common.ts';
 
 /**
  * Admin paneli uchun xavfsiz API. Faqat ADMIN_TELEGRAM_IDS ichidagi,

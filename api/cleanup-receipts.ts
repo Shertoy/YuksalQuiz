@@ -1,4 +1,4 @@
-import { getServiceClient, verifyRequestUser, isAdminId } from './_lib/common';
+import { getServiceClient, verifyRequestUser, isAdminId } from './_lib/common.ts';
 
 /**
  * Extracts the storage relative path (e.g. "userId/123456_receipt.jpg")

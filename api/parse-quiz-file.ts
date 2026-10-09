@@ -1,4 +1,4 @@
-import { GEMINI_MODELS } from './_lib/common';
+import { GEMINI_MODELS } from './_lib/common.ts';
 // @ts-ignore
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

@@ -1,4 +1,4 @@
-import { getServiceClient, setCors, verifyRequestUser, findUserRow } from './_lib/common';
+import { getServiceClient, setCors, verifyRequestUser, findUserRow } from './_lib/common.ts';
 
 /**
  * Talaba hamyoni uchun xavfsiz API.

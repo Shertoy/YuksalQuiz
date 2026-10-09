@@ -7,7 +7,7 @@ import {
   findUserRow,
   escapeHtml,
   GEMINI_MODELS,
-} from './_lib/common';
+} from './_lib/common.ts';
 
 /**
  * Chek (kvitansiya) tekshiruvi.

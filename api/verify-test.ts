@@ -1,4 +1,44 @@
-import { validateTelegramInitData } from './validate-telegram';
+import crypto from 'crypto';
+
+interface TelegramValidationResult {
+  isValid: boolean;
+  user?: {
+    id: number;
+    first_name: string;
+    last_name?: string;
+    username?: string;
+  };
+  authDate?: number;
+  error?: string;
+}
+
+function validateTelegramInitData(initData: string, botToken: string): TelegramValidationResult {
+  if (!initData || typeof initData !== 'string') return { isValid: false, error: 'Missing initData' };
+  if (!botToken) return { isValid: false, error: 'Missing bot token' };
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get('hash');
+    if (!hash) return { isValid: false, error: 'Missing hash' };
+    params.delete('hash');
+    const sorted = Array.from(params.keys()).sort();
+    const dataCheck = sorted.map((k) => `${k}=${params.get(k)}`).join('\n');
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+    const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheck).digest('hex');
+    const calcBuf = Buffer.from(calcHash, 'utf-8');
+    const hashBuf = Buffer.from(hash, 'utf-8');
+    if (calcBuf.length !== hashBuf.length || !crypto.timingSafeEqual(calcBuf, hashBuf)) {
+      return { isValid: false, error: 'Invalid HMAC signature' };
+    }
+    const userStr = params.get('user');
+    let user;
+    if (userStr) {
+      try { user = JSON.parse(userStr); } catch {}
+    }
+    return { isValid: true, user };
+  } catch (err: any) {
+    return { isValid: false, error: err?.message || 'Verification exception' };
+  }
+}
 
 // In-memory rate limiting map for serverless execution: userId/IP -> timestamp
 const userLastAttemptMap = new Map<string, number>();

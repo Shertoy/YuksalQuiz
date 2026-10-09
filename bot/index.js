@@ -178,15 +178,6 @@ export function createStartPayload(chatId, langCode) {
           },
         ],
       ],
-      keyboard: [
-        [
-          {
-            text: content.button,
-            web_app: { url: WEBAPP_URL },
-          },
-        ],
-      ],
-      resize_keyboard: true,
     },
   };
 }
@@ -224,6 +215,26 @@ export async function handleUpdate(update) {
   ) {
     const lang = getLanguage(langCode);
     const content = MESSAGES[lang] || MESSAGES.uz;
+
+    // 1. Foydalanuvchi ekranidagi eski pastki ulkan tugmani (ReplyKeyboardMarkup) to'liq yo'qotish
+    try {
+      const clean = await sendMessage({
+        chat_id: chatId,
+        text: 'Yuksal Quiz 🚀',
+        reply_markup: { remove_keyboard: true },
+      });
+      if (clean?.result?.message_id && BOT_TOKEN) {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: clean.result.message_id }),
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.debug('remove_keyboard cleanup notice:', err);
+    }
+
+    // 2. Inline WebApp tugmali xabar
     const payload = createStartPayload(chatId, langCode);
 
     await Promise.allSettled([

@@ -1,5 +1,74 @@
 import { createClient } from '@supabase/supabase-js';
-import { validateTelegramInitData } from '../validate-telegram';
+import crypto from 'crypto';
+
+export interface TelegramValidationResult {
+  isValid: boolean;
+  user?: {
+    id: number;
+    first_name: string;
+    last_name?: string;
+    username?: string;
+    language_code?: string;
+    is_premium?: boolean;
+    photo_url?: string;
+  };
+  authDate?: number;
+  error?: string;
+}
+
+export function validateTelegramInitData(initData: string, botToken: string): TelegramValidationResult {
+  if (!initData || typeof initData !== 'string') {
+    return { isValid: false, error: 'Missing or invalid initData' };
+  }
+  if (!botToken) {
+    return { isValid: false, error: 'Server configuration error: TELEGRAM_BOT_TOKEN missing' };
+  }
+
+  try {
+    const searchParams = new URLSearchParams(initData);
+    const hash = searchParams.get('hash');
+    if (!hash) {
+      return { isValid: false, error: 'Missing hash parameter in initData' };
+    }
+
+    searchParams.delete('hash');
+    const sortedKeys = Array.from(searchParams.keys()).sort();
+    const dataCheckArr: string[] = [];
+    for (const key of sortedKeys) {
+      dataCheckArr.push(`${key}=${searchParams.get(key)}`);
+    }
+    const dataCheckString = dataCheckArr.join('\n');
+
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+    const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+    const calculatedBuffer = Buffer.from(calculatedHash, 'utf-8');
+    const hashBuffer = Buffer.from(hash, 'utf-8');
+
+    if (calculatedBuffer.length !== hashBuffer.length || !crypto.timingSafeEqual(calculatedBuffer, hashBuffer)) {
+      return { isValid: false, error: 'Invalid HMAC-SHA256 signature. Verification failed.' };
+    }
+
+    const authDateStr = searchParams.get('auth_date');
+    const authDate = authDateStr ? parseInt(authDateStr, 10) : 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (!authDate || now - authDate > 86400) {
+      return { isValid: false, error: 'initData has expired (max 24 hours allowed)' };
+    }
+
+    const userStr = searchParams.get('user');
+    let user;
+    if (userStr) {
+      try {
+        user = JSON.parse(userStr);
+      } catch {}
+    }
+
+    return { isValid: true, user, authDate };
+  } catch (err: any) {
+    return { isValid: false, error: err?.message || 'Verification exception' };
+  }
+}
 
 /**
  * Server tomoni uchun umumiy yordamchilar.
