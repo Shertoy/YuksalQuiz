@@ -42,11 +42,49 @@ import {
 
 // Og'ir oynalar (admin panel, test yaratish) faqat ochilganda yuklanadi:
 // talabalar ularning kodini har safar yuklab olmaydi.
-const AdminPanelModal = lazy(() =>
-  import('./components/AdminPanelModal').then((m) => ({ default: m.AdminPanelModal }))
+//
+// Muhim: yangi deploydan keyin Telegram ochiq turgan eski sahifa eski fayl nomlarini
+// so'raydi va ular endi serverda yo'q. Shunda oyna ochilmay qolardi. Yuklab bo'lmasa,
+// sahifa bir marta yangilanadi (yangi fayllar bilan) va oyna avtomatik qayta ochiladi.
+const CHUNK_RELOAD_KEY = 'yq_chunk_reload_once';
+const REOPEN_KEY = 'yq_reopen_after_reload';
+
+function lazyWithReload<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+  reopenTarget: string
+) {
+  return lazy(async () => {
+    try {
+      const mod = await factory();
+      try {
+        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      } catch {}
+      return mod;
+    } catch (err) {
+      let alreadyReloaded = false;
+      try {
+        alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1';
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+          sessionStorage.setItem(REOPEN_KEY, reopenTarget);
+        }
+      } catch {}
+      if (!alreadyReloaded) {
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw err;
+    }
+  });
+}
+
+const AdminPanelModal = lazyWithReload(
+  () => import('./components/AdminPanelModal').then((m) => ({ default: m.AdminPanelModal })),
+  'admin'
 );
-const CreateQuizModal = lazy(() =>
-  import('./components/CreateQuizModal').then((m) => ({ default: m.CreateQuizModal }))
+const CreateQuizModal = lazyWithReload(
+  () => import('./components/CreateQuizModal').then((m) => ({ default: m.CreateQuizModal })),
+  'create'
 );
 
 export const App: React.FC = () => {
@@ -142,6 +180,22 @@ export const App: React.FC = () => {
       return false;
     };
     const adminCheckPromise = verifyAdminSilently().catch(() => false);
+
+    // Yangi versiya uchun sahifa yangilangan bo'lsa, foydalanuvchi ochmoqchi bo'lgan oynani qayta ochamiz
+    let reopenTarget: string | null = null;
+    try {
+      reopenTarget = sessionStorage.getItem(REOPEN_KEY);
+      sessionStorage.removeItem(REOPEN_KEY);
+    } catch {}
+    if (reopenTarget === 'create') {
+      setIsCreateModalOpen(true);
+    } else if (reopenTarget === 'admin') {
+      adminCheckPromise.then((ok) => {
+        if (adminCheckCancelled) return;
+        if (ok) setIsAdminModalOpen(true);
+        else setIsAdminLoginOpen(true);
+      });
+    }
 
     // Brauzerda admin sahifasini ochish: ?admin, #admin yoki /admin (faqat kirish oynasini ochadi)
     const checkAdminRoute = () => {
