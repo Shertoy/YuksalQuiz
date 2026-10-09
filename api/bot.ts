@@ -24,7 +24,7 @@ const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cGJhcGhxeXl2bXBxeG1ydHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDgwMDYsImV4cCI6MjEwNjQ4NDAwNn0.ieqSwohIUgfAwQ2EUF1CWSr-TT46SiLOSGDxYoFY2OE';
+  '';
 
 let cachedDb: any = null;
 function getServiceClient(): any {
@@ -37,7 +37,7 @@ function getServiceClient(): any {
 }
 
 function getAdminIds(): string[] {
-  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''},7847500525,6219808382,117932388`;
+  const raw = `${process.env.ADMIN_TELEGRAM_IDS || ''},${process.env.ADMIN_TELEGRAM_ID || ''},${process.env.VITE_ADMIN_TELEGRAM_ID || ''}`;
   return raw
     .split(',')
     .map((s) => s.trim())
@@ -155,7 +155,59 @@ function parseAction(data: string): { kind: string; arg: string; customAmount?: 
   if (data.startsWith('ban_user:')) return { kind: 'ban', arg: cleanId(data.slice(9)) };
   if (data.startsWith('reply_support:')) return { kind: 'reply', arg: cleanId(data.slice(14)) };
   if (data === 'noop_archive') return { kind: 'archive', arg: '' };
+  if (data.startsWith('ask_amount:')) return { kind: 'ask_amount', arg: uuid };
   return { kind: 'unknown', arg: '' };
+}
+
+// Summani o'rnatib to'lovni tasdiqlash (admin reply yoki /setamount orqali)
+async function approveWithAmount(db: any, chatId: any, paymentId: string, amount: number, adminId?: any): Promise<boolean> {
+  try {
+    // Summani yangilash
+    await db.from('payments').update({ amount }).eq('id', paymentId);
+
+    // approve_payment RPC chaqirish
+    let approveData: any = null;
+    try {
+      const { data, error } = await db.rpc('approve_payment', {
+        p_payment_id: paymentId,
+        p_actor: String(adminId || 'admin'),
+        p_status: 'manual_approved',
+      });
+      if (!error && data?.ok) approveData = data;
+    } catch {}
+
+    // Fallback: to'g'ridan-to'g'ri DB yangilash
+    if (!approveData) {
+      const { data: pay } = await db.from('payments').select('*').eq('id', paymentId).maybeSingle();
+      if (!pay) {
+        await tgSend(chatId, `❌ To'lov topilmadi: <code>${paymentId}</code>`);
+        return true;
+      }
+      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
+      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
+      const cleanKey = cleanId(studentKey);
+      const { data: usr } = await db.from('users').select('*')
+        .or(`id.eq.${studentKey},id.eq.tg_${cleanKey},telegram_id.eq.${cleanKey}`)
+        .limit(1).maybeSingle();
+      if (usr) {
+        const newBal = Number(usr.balance ?? 0) + amount;
+        await db.from('users').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
+      }
+      await db.from('payments').update({ status: 'manual_approved', verified_by: 'admin' }).eq('id', paymentId);
+      try {
+        await db.from('wallet_transactions').insert({ user_id: studentKey, type: 'deposit', amount, ref: paymentId, note: `Admin (${adminId}) tasdiqladi` });
+      } catch {}
+      approveData = { ok: true, amount, user_id: cleanKey };
+    }
+
+    const amtStr = Number(approveData.amount || amount).toLocaleString('uz-UZ');
+    await tgSend(chatId, `✅ Tasdiqlandi: +${amtStr} so'm (To'lov ID: <code>${paymentId}</code>)`);
+    await tgSend(approveData.user_id, `To'lovingiz tasdiqlandi. Hisobingizga ${amtStr} so'm qo'shildi.`);
+    return true;
+  } catch (err: any) {
+    await tgSend(chatId, `❌ Xatolik: ${err?.message || 'noma\'lum'}`);
+    return true;
+  }
 }
 
 async function handleAdminCallback(cq: any) {
@@ -399,6 +451,23 @@ async function handleAdminCallback(cq: any) {
     return;
   }
 
+  if (kind === 'ask_amount') {
+    await answerCallback(cq.id, "Shu xabarga Reply bosib faqat summani yozing (masalan: 32400)");
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+      reply_to_message_id: messageId,
+      text:
+        `✏️ <b>Summa kiritish</b>\n\n` +
+        `To'lov ID: <code>${escapeHtml(arg)}</code>\n\n` +
+        `Shu xabarga <b>Reply</b> bosing va faqat <b>raqam</b> yozing:\n` +
+        `Masalan: <code>32400</code>\n\n` +
+        `Yoki: <code>/setamount ${escapeHtml(arg)} 32400</code>`,
+      reply_markup: { force_reply: true, selective: true },
+    });
+    return;
+  }
+
   if (kind === 'reply') {
     await answerCallback(cq.id, 'Javob yozish ochildi');
     await tgCall('sendMessage', {
@@ -420,6 +489,34 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
   const text = (msg.text || '').trim();
   const chatId = msg.chat?.id;
   if (!text) return false;
+
+  const db = getServiceClient();
+
+  // /setamount PAYMENT_UUID SUMMA — AI o'qiy olmagan chekga summa kiritish
+  if (text.startsWith('/setamount ')) {
+    const parts = text.split(/\s+/);
+    const paymentId = parts[1] || '';
+    const amount = parseInt(parts[2] || '', 10);
+    if (!paymentId || !amount || amount <= 0) {
+      await tgSend(chatId, "❌ Format: <code>/setamount PAYMENT_ID SUMMA</code>\nMasalan: <code>/setamount abc-123 32400</code>");
+      return true;
+    }
+    return await approveWithAmount(db, chatId, paymentId, amount, msg.from?.id);
+  }
+
+  // Reply orqali faqat raqam yozilgan holat (summa kiritish xabariga reply)
+  if (msg.reply_to_message) {
+    const replyText = msg.reply_to_message.text || '';
+    const uuidMatch = replyText.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    const isAmountReply = uuidMatch && /^\d+$/.test(text.replace(/[\s,]/g, ''));
+    if (isAmountReply) {
+      const paymentId = uuidMatch[1];
+      const amount = parseInt(text.replace(/[\s,]/g, ''), 10);
+      if (amount > 0) {
+        return await approveWithAmount(db, chatId, paymentId, amount, msg.from?.id);
+      }
+    }
+  }
 
   let targetUserId = '';
   let replyBody = '';
