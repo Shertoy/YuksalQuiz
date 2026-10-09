@@ -58,6 +58,7 @@ export const WalletView: React.FC = () => {
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const [successPopupMessage, setSuccessPopupMessage] = useState<string | null>(null);
   const initialBalanceRef = useRef(profile.walletBalance || profile.balance || 0);
+  const celebratedRef = useRef(false);
 
   // 1. Hamyon sahifasi ochilganda Supabase'dan joriy balans va obunani majburiy darhol yangilash
   useEffect(() => {
@@ -67,12 +68,12 @@ export const WalletView: React.FC = () => {
     if (profile.id) {
       fetchLatestUserBalance(profile.id);
       fetchUserLatestPendingPayment(profile.id).then((pending) => {
-        if (pending?.id) {
+        if (pending?.id && !celebratedRef.current) {
           setPendingPaymentId(pending.id);
         }
       });
     }
-  }, [profile.id, refreshBalance]);
+  }, [profile.id]);
 
   // 2. Agar to'lov kutilayotgan holatda bo'lsa yoki hozirgina chek yuborilgan bo'lsa:
   // har 3 soniyada payments va users.balance tekshirilsin (Realtime/polling)
@@ -94,19 +95,24 @@ export const WalletView: React.FC = () => {
         ) {
           if (!isMounted) return;
           setPendingPaymentId(null);
-          await refreshBalance();
-          triggerHaptic('success');
-          soundFX.playSuccess();
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-          });
-          setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
-          setFeedback({
-            type: 'success',
-            message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
-          });
+          if (freshBal !== null) {
+            initialBalanceRef.current = freshBal;
+          }
+          if (!celebratedRef.current) {
+            celebratedRef.current = true;
+            triggerHaptic('success');
+            soundFX.playSuccess();
+            confetti({
+              particleCount: 80,
+              spread: 60,
+              origin: { y: 0.6 },
+            });
+            setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
+            setFeedback({
+              type: 'success',
+              message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
+            });
+          }
           return;
         }
 
@@ -130,18 +136,22 @@ export const WalletView: React.FC = () => {
       if (freshBal !== null && freshBal > initialBalanceRef.current) {
         if (!isMounted) return;
         setPendingPaymentId(null);
-        triggerHaptic('success');
-        soundFX.playSuccess();
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-        });
-        setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
-        setFeedback({
-          type: 'success',
-          message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
-        });
+        initialBalanceRef.current = freshBal;
+        if (!celebratedRef.current) {
+          celebratedRef.current = true;
+          triggerHaptic('success');
+          soundFX.playSuccess();
+          confetti({
+            particleCount: 80,
+            spread: 60,
+            origin: { y: 0.6 },
+          });
+          setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
+          setFeedback({
+            type: 'success',
+            message: "✅ Hisobingiz muvaffaqiyatli to'ldirildi!",
+          });
+        }
       }
     }, 3000);
 
@@ -149,7 +159,7 @@ export const WalletView: React.FC = () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [pendingPaymentId, refreshBalance]);
+  }, [pendingPaymentId]);
 
   // Receipt Upload State (Section C)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -369,6 +379,7 @@ export const WalletView: React.FC = () => {
 
         handleClearSelectedFile();
       } else if (data.status === 'pending') {
+        celebratedRef.current = false;
         initialBalanceRef.current = profile.walletBalance || 0;
         setPendingPaymentId(data.paymentId || 'latest');
         triggerHaptic('warning');

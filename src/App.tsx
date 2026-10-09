@@ -100,14 +100,16 @@ export const App: React.FC = () => {
     initTelegramApp();
 
     const tg = getTelegramWebApp();
-    if (tg?.colorScheme) {
+    const currentTheme = useQuizStore.getState().theme;
+    if (tg?.colorScheme && tg.colorScheme !== currentTheme) {
       setTheme(tg.colorScheme);
     }
 
-    // Listen for Telegram live theme switch (Light / Dark)
+    // Listen for Telegram live theme switch (Light / Dark) safely
+    let handleThemeChange: (() => void) | null = null;
     if (tg && typeof (tg as any).onEvent === 'function') {
-      const handleThemeChange = () => {
-        if (tg.colorScheme) {
+      handleThemeChange = () => {
+        if (tg.colorScheme && tg.colorScheme !== useQuizStore.getState().theme) {
           setTheme(tg.colorScheme);
         }
       };
@@ -194,6 +196,9 @@ export const App: React.FC = () => {
     return () => {
       clearTimeout(loaderTimer);
       unsubRealtime?.();
+      if (tg && handleThemeChange && typeof (tg as any).offEvent === 'function') {
+        (tg as any).offEvent('themeChanged', handleThemeChange);
+      }
     };
   }, []);
 

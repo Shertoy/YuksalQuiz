@@ -767,26 +767,49 @@ export const useQuizStore = create<QuizState>()(
 
             console.log('⚡ Yangilangan state: Balans =', numBalance, 'Obuna =', isSubscribed, activeTier, activeEnd);
 
-            set((state) => ({
-              profile: {
-                ...state.profile,
-                balance: numBalance,
-                walletBalance: numBalance,
-                is_blocked: isBlocked,
-                isBlocked: isBlocked,
-                voucher_claimed: voucherClaimed,
-                voucherClaimed: voucherClaimed,
-                isSubscribed: isSubscribed,
-                has_paid: isSubscribed,
-                subscriptionPlan: isSubscribed ? activeTier : 'none',
-                subscriptionTier: isSubscribed ? activeTier : 'none',
-                subscriptionExpiry: activeEnd ? String(activeEnd).split('T')[0] : undefined,
-                subscriptionEnd: activeEnd ? String(activeEnd) : undefined,
-                paid_until: activeEnd ? String(activeEnd) : undefined,
-                referralCount: typeof dbUser?.referral_count === 'number' ? Number(dbUser.referral_count) : (state.profile.referralCount || 0),
-                telegram_id: dbUser?.telegram_id || currentTelegramId || cleanId || state.profile.telegram_id,
-              },
-            }));
+            const curProfile = get().profile;
+            const nextPlan = isSubscribed ? activeTier : 'none';
+            const nextExpiry = activeEnd ? String(activeEnd).split('T')[0] : undefined;
+            const nextEnd = activeEnd ? String(activeEnd) : undefined;
+            const nextRef = typeof dbUser?.referral_count === 'number' ? Number(dbUser.referral_count) : (curProfile.referralCount || 0);
+            const nextTgId = dbUser?.telegram_id || currentTelegramId || cleanId || curProfile.telegram_id;
+
+            const isIdentical =
+              curProfile.balance === numBalance &&
+              curProfile.walletBalance === numBalance &&
+              curProfile.is_blocked === isBlocked &&
+              curProfile.voucher_claimed === voucherClaimed &&
+              curProfile.isSubscribed === isSubscribed &&
+              curProfile.has_paid === isSubscribed &&
+              curProfile.subscriptionPlan === nextPlan &&
+              curProfile.subscriptionTier === nextPlan &&
+              curProfile.subscriptionExpiry === nextExpiry &&
+              curProfile.subscriptionEnd === nextEnd &&
+              curProfile.referralCount === nextRef &&
+              curProfile.telegram_id === nextTgId;
+
+            if (!isIdentical) {
+              set((state) => ({
+                profile: {
+                  ...state.profile,
+                  balance: numBalance,
+                  walletBalance: numBalance,
+                  is_blocked: isBlocked,
+                  isBlocked: isBlocked,
+                  voucher_claimed: voucherClaimed,
+                  voucherClaimed: voucherClaimed,
+                  isSubscribed: isSubscribed,
+                  has_paid: isSubscribed,
+                  subscriptionPlan: nextPlan,
+                  subscriptionTier: nextPlan,
+                  subscriptionExpiry: nextExpiry,
+                  subscriptionEnd: nextEnd,
+                  paid_until: nextEnd,
+                  referralCount: nextRef,
+                  telegram_id: nextTgId,
+                },
+              }));
+            }
 
             return numBalance;
           }

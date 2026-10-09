@@ -89,11 +89,16 @@ export function isTelegramEnvironment(): boolean {
   return Boolean(tg && tg.initData);
 }
 
+let lastSyncedTelegramHex: string | null = null;
+
 export function syncTelegramTheme(theme: 'dark' | 'light'): void {
   const tg = getTelegramWebApp();
   if (tg) {
     const isDark = theme === 'dark';
     const hex = isDark ? '#020617' : '#f8fafc';
+    if (lastSyncedTelegramHex === hex) {
+      return; // Already synchronized, do not trigger redundant native events
+    }
     try {
       if (typeof tg.setBackgroundColor === 'function') {
         tg.setBackgroundColor(hex);
@@ -101,6 +106,7 @@ export function syncTelegramTheme(theme: 'dark' | 'light'): void {
       if (typeof tg.setHeaderColor === 'function') {
         tg.setHeaderColor(hex);
       }
+      lastSyncedTelegramHex = hex;
     } catch (e) {
       console.debug('Telegram theme sync error:', e);
     }
@@ -114,7 +120,6 @@ export function initTelegramApp(): void {
       tg.ready();
       tg.expand();
       tg.enableClosingConfirmation();
-      syncTelegramTheme('dark');
     } catch (e) {
       console.warn('Telegram WebApp init notice:', e);
     }

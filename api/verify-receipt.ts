@@ -610,6 +610,8 @@ export default async function handler(req: any, res: any) {
         mime,
         receiptUrl,
         caption:
+          `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
+          `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
           `✅ <b>To'lov AI tomonidan tasdiqlandi (+${paid.toLocaleString('uz-UZ')} so'm)</b>\n\n` +
           `👤 Talaba: ${safeName} (@${safeUser})\n` +
           `🆔 Telegram ID: <code>${user.id}</code>\n` +
@@ -713,6 +715,8 @@ export default async function handler(req: any, res: any) {
       mime,
       receiptUrl,
       caption:
+        `👮‍♂️ <b>[ADMIN NAZORAT PANELI]</b>\n` +
+        `<i>⚠️ Faqat bot administratori uchun xabar (boshqa talabalarga yuborilmaydi)</i>\n\n` +
         `⏳ <b>Kvitansiyani ko'rib chiqish kerak (Qo'lda tekshirish)</b>\n\n` +
         `👤 Talaba: ${safeName} (@${safeUser})\n` +
         `🆔 Telegram ID: <code>${user.id}</code>\n` +

@@ -332,7 +332,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="space-y-2">
           {/* 10-day Expiration Warning Banner */}
           {remainingDays !== null && remainingDays <= 10 && remainingDays > 0 && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/70 flex items-center justify-between gap-3 shadow-sm animate-pulse">
+            <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/70 flex items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-500/30 shrink-0">
                   <Clock className="w-5 h-5 text-white" />
