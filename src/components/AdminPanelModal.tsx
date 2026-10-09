@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
 import {
   ShieldCheck,
@@ -205,9 +205,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [activeNavCategory, setActiveNavCategory] = useState<NavCategoryId>(() => getCategoryForTab('users'));
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setActiveNavCategory(getCategoryForTab(activeTab));
+    // Tab o'zgarganda content yuqoriga scroll qilish
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
   }, [activeTab]);
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -612,6 +617,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('yuksal_admin_id', '7847500525');
+      }
       loadUsers();
       loadPayments();
       refreshAdminWhitelist();
@@ -1303,7 +1311,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           </aside>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-20 sm:pb-8 space-y-4">
+          <div ref={contentRef} className="flex-1 overflow-y-auto p-3 sm:p-5 pb-20 sm:pb-8 space-y-4">
           {/* USERS STATISTICS & FILTERING TAB */}
           {activeTab === 'users' && (
             <div className="space-y-4 animate-in fade-in">
