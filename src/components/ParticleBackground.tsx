@@ -67,32 +67,6 @@ export const ParticleBackground: React.FC = () => {
     resize();
     window.addEventListener('resize', resize, { passive: true });
 
-    // Interactive pointer coordinates
-    let mouseX = -1000;
-    let mouseY = -1000;
-    let lastMouseMoveTime = 0;
-
-    const onPointerMove = (e: MouseEvent | TouchEvent) => {
-      lastMouseMoveTime = performance.now();
-      if ('touches' in e && e.touches.length > 0) {
-        mouseX = e.touches[0].clientX;
-        mouseY = e.touches[0].clientY;
-      } else if ('clientX' in e) {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-      }
-    };
-
-    const onPointerLeave = () => {
-      mouseX = -1000;
-      mouseY = -1000;
-    };
-
-    window.addEventListener('mousemove', onPointerMove, { passive: true });
-    window.addEventListener('touchmove', onPointerMove, { passive: true });
-    window.addEventListener('mouseleave', onPointerLeave, { passive: true });
-    window.addEventListener('touchend', onPointerLeave, { passive: true });
-
     // Create particles based on screen size (35 on mobile, 55 on desktop)
     const particleCount = width < 640 ? 36 : 58;
     const particles: Particle[] = [];
@@ -149,41 +123,14 @@ export const ParticleBackground: React.FC = () => {
       },
     ];
 
-    let isRunning = true;
-
-    const render = () => {
-      if (!isRunning) return;
-
-      const now = performance.now();
-      // Decay interactive pointer if inactive for > 1.8s
-      if (now - lastMouseMoveTime > 1800) {
-        mouseX = -1000;
-        mouseY = -1000;
-      }
-
+    // Fon BIR MARTA chiziladi (animatsiyasiz). Har kadrda qayta chizish ustidagi
+    // backdrop-blur qatlamlari bilan birga Android Telegram'da ekranni pirpiratardi.
+    const draw = () => {
       const isDark = document.documentElement.classList.contains('dark');
-
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Draw large subtle ambient orbs
       ambientOrbs.forEach((orb) => {
-        orb.x += orb.vx;
-        orb.y += orb.vy;
-
-        if (orb.x < -orb.radius) orb.x = width + orb.radius;
-        if (orb.x > width + orb.radius) orb.x = -orb.radius;
-        if (orb.y < -orb.radius) orb.y = height + orb.radius;
-        if (orb.y > height + orb.radius) orb.y = -orb.radius;
-
-        const gradient = ctx.createRadialGradient(
-          orb.x,
-          orb.y,
-          0,
-          orb.x,
-          orb.y,
-          orb.radius
-        );
-
+        const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
         if (orb.colorType === 'emerald') {
           const alpha = isDark ? 0.065 : 0.035;
           gradient.addColorStop(0, `rgba(16, 185, 129, ${alpha})`);
@@ -197,133 +144,57 @@ export const ParticleBackground: React.FC = () => {
           gradient.addColorStop(0, `rgba(45, 212, 191, ${alpha})`);
           gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
         }
-
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // 2. Draw star-like floating circular particles
-      const interactionRadius = 90;
-      const interactionRadiusSq = interactionRadius * interactionRadius;
-
       particles.forEach((p) => {
-        // Natural gentle drift
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Interactive gentle repulsion/reaction when touch/pointer is near
-        if (mouseX > -500 && mouseY > -500) {
-          const dx = p.x - mouseX;
-          const dy = p.y - mouseY;
-          const distSq = dx * dx + dy * dy;
-
-          if (distSq < interactionRadiusSq && distSq > 0) {
-            const dist = Math.sqrt(distSq);
-            const force = (1 - dist / interactionRadius) * 1.8;
-            p.x += (dx / dist) * force;
-            p.y += (dy / dist) * force;
-          }
-        }
-
-        // Screen wrap
-        if (p.x < -10) p.x = width + 10;
-        if (p.x > width + 10) p.x = -10;
-        if (p.y < -10) p.y = height + 10;
-        if (p.y > height + 10) p.y = -10;
-
-        // Star twinkling calculation: sine cycle on opacity and size
-        p.twinklePhase += p.twinkleSpeed;
-        const twinkleFactor = Math.sin(p.twinklePhase);
-        const currentAlpha = Math.max(
-          0.12,
-          Math.min(0.9, p.baseAlpha + twinkleFactor * 0.28)
-        );
-        const currentRadius = Math.max(0.8, p.radius + twinkleFactor * 0.45);
-
-        // Color palette based on theme (Soft Emerald/Mint, Clean Orange, Starry White)
+        const alpha = Math.max(0.12, Math.min(0.75, p.baseAlpha));
         let fillColor: string;
         let haloColor: string;
-
         if (p.colorType === 'emerald') {
-          fillColor = isDark
-            ? `rgba(16, 185, 129, ${currentAlpha})`
-            : `rgba(5, 150, 105, ${currentAlpha * 0.85})`;
-          haloColor = isDark
-            ? `rgba(16, 185, 129, ${currentAlpha * 0.25})`
-            : `rgba(5, 150, 105, ${currentAlpha * 0.18})`;
+          fillColor = isDark ? `rgba(16, 185, 129, ${alpha})` : `rgba(5, 150, 105, ${alpha * 0.85})`;
+          haloColor = isDark ? `rgba(16, 185, 129, ${alpha * 0.25})` : `rgba(5, 150, 105, ${alpha * 0.18})`;
         } else if (p.colorType === 'mint') {
-          fillColor = isDark
-            ? `rgba(52, 211, 153, ${currentAlpha})`
-            : `rgba(16, 185, 129, ${currentAlpha * 0.8})`;
-          haloColor = isDark
-            ? `rgba(52, 211, 153, ${currentAlpha * 0.25})`
-            : `rgba(16, 185, 129, ${currentAlpha * 0.15})`;
+          fillColor = isDark ? `rgba(52, 211, 153, ${alpha})` : `rgba(16, 185, 129, ${alpha * 0.8})`;
+          haloColor = isDark ? `rgba(52, 211, 153, ${alpha * 0.25})` : `rgba(16, 185, 129, ${alpha * 0.15})`;
         } else if (p.colorType === 'orange') {
-          fillColor = isDark
-            ? `rgba(249, 115, 22, ${currentAlpha})`
-            : `rgba(234, 88, 12, ${currentAlpha * 0.85})`;
-          haloColor = isDark
-            ? `rgba(249, 115, 22, ${currentAlpha * 0.25})`
-            : `rgba(234, 88, 12, ${currentAlpha * 0.18})`;
+          fillColor = isDark ? `rgba(249, 115, 22, ${alpha})` : `rgba(234, 88, 12, ${alpha * 0.85})`;
+          haloColor = isDark ? `rgba(249, 115, 22, ${alpha * 0.25})` : `rgba(234, 88, 12, ${alpha * 0.18})`;
         } else {
-          fillColor = isDark
-            ? `rgba(255, 255, 255, ${currentAlpha * 0.9})`
-            : `rgba(100, 116, 139, ${currentAlpha * 0.45})`;
-          haloColor = isDark
-            ? `rgba(255, 255, 255, ${currentAlpha * 0.2})`
-            : `rgba(148, 163, 184, ${currentAlpha * 0.12})`;
+          fillColor = isDark ? `rgba(255, 255, 255, ${alpha * 0.8})` : `rgba(100, 116, 139, ${alpha * 0.45})`;
+          haloColor = isDark ? `rgba(255, 255, 255, ${alpha * 0.18})` : `rgba(148, 163, 184, ${alpha * 0.12})`;
         }
-
-        // Draw soft outer halo for special star particles
         if (p.hasHalo) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, currentRadius * 2.8, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.radius * 2.8, 0, Math.PI * 2);
           ctx.fillStyle = haloColor;
           ctx.fill();
         }
-
-        // Draw star core
         ctx.beginPath();
-        ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = fillColor;
         ctx.fill();
       });
-
-      animationFrameId = requestAnimationFrame(render);
     };
 
-    // Start loop
-    animationFrameId = requestAnimationFrame(render);
+    draw();
 
-    let isDisposed = false;
-
-    // Pause animation when tab or Telegram is backgrounded to save 100% battery
-    const onVisibilityChange = () => {
-      if (isDisposed) return;
-      if (document.hidden) {
-        isRunning = false;
-        cancelAnimationFrame(animationFrameId);
-      } else if (!isRunning) {
-        isRunning = true;
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = requestAnimationFrame(render);
-      }
+    // Ekran o'lchami o'zgarsa yoki tema (yorug'/qorong'i) almashsa qayta chiziladi
+    const onResize = () => {
+      resize();
+      draw();
     };
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('resize', resize);
+    window.addEventListener('resize', onResize, { passive: true });
+    const themeObserver = new MutationObserver(() => draw());
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return () => {
-      isDisposed = true;
-      isRunning = false;
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', onPointerMove);
-      window.removeEventListener('touchmove', onPointerMove);
-      window.removeEventListener('mouseleave', onPointerLeave);
-      window.removeEventListener('touchend', onPointerLeave);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('resize', onResize);
+      themeObserver.disconnect();
     };
   }, []);
 
@@ -331,7 +202,7 @@ export const ParticleBackground: React.FC = () => {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700 ease-out"
+      className="fixed inset-0 pointer-events-none z-0"
       style={{
         width: '100%',
         height: '100%',
