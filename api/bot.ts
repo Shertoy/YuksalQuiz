@@ -209,60 +209,66 @@ async function handleAdminCallback(cq: any) {
         return void (await answerCallback(cq.id, `Bu to'lov allaqachon tasdiqlangan (${pay.status})`, true));
       }
 
-      const userKey = pay.user_id;
-      const cleanUserKey = cleanId(userKey);
-      const { data: usr } = await db
-        .from('users')
-        .select('*')
-        .or(`id.eq.${userKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (!usr) {
-        return void (await answerCallback(cq.id, "Talaba bazadan topilmadi", true));
-      }
-
+      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
+      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
+      const cleanUserKey = cleanId(studentKey);
       const amt = Number(pay.amount || 0);
-      const curBal = Number(usr.balance ?? usr.wallet_balance ?? 0);
-      const newBal = curBal + amt;
 
       // 1. Foydalanuvchi balansini yangilash
-      await db.from('users').update({
-        balance: newBal,
-        wallet_balance: newBal,
-        updated_at: new Date().toISOString(),
-      }).eq('id', usr.id);
+      try {
+        const { data: usr } = await db
+          .from('users')
+          .select('*')
+          .or(`id.eq.${studentKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (usr) {
+          const curBal = Number(usr.balance ?? 0);
+          const newBal = curBal + amt;
+          await db.from('users').update({
+            balance: newBal,
+            updated_at: new Date().toISOString(),
+          }).eq('id', usr.id);
+        }
+      } catch (uErr) {
+        console.warn('users update warning:', uErr);
+      }
 
       // 2. To'lov maqomini yangilash
       await db.from('payments').update({
         status: 'manual_approved',
-        verified_by: fromId,
-        notes: `Admin tasdiqladi (${fromId}): ${new Date().toISOString()}`,
+        verified_by: 'admin',
       }).eq('id', arg);
 
       // 3. Tranzaksiya tarixiga kiritish
-      await db.from('wallet_transactions').insert({
-        user_id: usr.id,
-        type: 'deposit',
-        amount: amt,
-        balance_after: newBal,
-        ref: arg,
-        note: `Admin tomonidan tasdiqlangan (${fromId})`,
-      });
+      try {
+        await db.from('wallet_transactions').insert({
+          user_id: studentKey,
+          type: 'deposit',
+          amount: amt,
+          ref: arg,
+          note: `Admin tomonidan tasdiqlangan (${fromId})`,
+        });
+      } catch {}
 
       // 4. Test paketlari muallif balansini yangilash
       try {
+        const { data: pkg } = await db.from('test_packages')
+          .select('author_wallet_balance')
+          .or(`id.eq.lead_${studentKey},id.eq.lead_${cleanUserKey}`)
+          .maybeSingle();
+        const curPkgBal = Number(pkg?.author_wallet_balance || 0);
         await db.from('test_packages')
-          .update({ author_wallet_balance: newBal })
-          .or(`id.eq.lead_${usr.id},id.eq.lead_${cleanUserKey}`);
+          .update({ author_wallet_balance: curPkgBal + amt })
+          .or(`id.eq.lead_${studentKey},id.eq.lead_${cleanUserKey}`);
       } catch {}
 
       approveData = {
         ok: true,
         amount: amt,
-        user_id: cleanId(usr.telegram_id || usr.id),
-        new_balance: newBal,
+        user_id: cleanUserKey,
       };
     }
 
@@ -296,15 +302,17 @@ async function handleAdminCallback(cq: any) {
         return void (await answerCallback(cq.id, `Allaqachon rad etilgan (${pay.status})`, true));
       }
 
+      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
+      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
+
       await db.from('payments').update({
         status: 'manual_rejected',
-        verified_by: fromId,
-        notes: `Admin rad etdi (${fromId}): ${new Date().toISOString()}`,
+        verified_by: 'admin',
       }).eq('id', arg);
 
       rejectData = {
         ok: true,
-        user_id: cleanId(pay.user_id),
+        user_id: cleanId(studentKey),
       };
     }
 
@@ -331,33 +339,41 @@ async function handleAdminCallback(cq: any) {
       const { data: pay } = await db.from('payments').select('*').eq('id', arg).maybeSingle();
       if (!pay) return void (await answerCallback(cq.id, "To'lov topilmadi", true));
 
-      const userKey = pay.user_id;
-      const cleanUserKey = cleanId(userKey);
-      const { data: usr } = await db
-        .from('users')
-        .select('*')
-        .or(`id.eq.${userKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
-        .maybeSingle();
-
+      const studentMatch = pay.sender_card?.match(/student:([^\s|]+)/);
+      const studentKey = studentMatch ? studentMatch[1] : pay.user_id;
+      const cleanUserKey = cleanId(studentKey);
       const amt = Number(pay.amount || 0);
-      if (usr) {
-        const curBal = Number(usr.balance ?? usr.wallet_balance ?? 0);
-        const newBal = Math.max(0, curBal - amt);
-        await db.from('users').update({ balance: newBal, wallet_balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
-        await db.from('payments').update({ status: 'reversed', verified_by: fromId }).eq('id', arg);
+
+      try {
+        const { data: usr } = await db
+          .from('users')
+          .select('*')
+          .or(`id.eq.${studentKey},id.eq.tg_${cleanUserKey},telegram_id.eq.${cleanUserKey}`)
+          .maybeSingle();
+
+        if (usr) {
+          const curBal = Number(usr.balance ?? 0);
+          const newBal = Math.max(0, curBal - amt);
+          await db.from('users').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('id', usr.id);
+        }
+      } catch {}
+
+      await db.from('payments').update({ status: 'manual_rejected', verified_by: 'admin' }).eq('id', arg);
+
+      try {
         await db.from('wallet_transactions').insert({
-          user_id: usr.id,
+          user_id: studentKey,
           type: 'withdraw',
           amount: amt,
-          balance_after: newBal,
           ref: arg,
           note: `Soxta to'lov bekor qilindi (${fromId})`,
         });
-      }
+      } catch {}
+
       reverseData = {
         ok: true,
         reversed: amt,
-        user_id: usr ? cleanId(usr.telegram_id || usr.id) : cleanUserKey,
+        user_id: cleanUserKey,
       };
     }
 
