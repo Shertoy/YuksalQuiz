@@ -27,7 +27,7 @@ export async function apiPost<T = any>(path: string, body: Record<string, any> =
     };
     // Brauzer rejimidagi admin kaliti (faqat admin o'z qurilmasida kiritgan bo'lsa).
     // Server uni o'zidagi ADMIN_SECRET_KEY bilan solishtiradi.
-    const adminKey = getTelegramInitData() ? '' : getStoredAdminBrowserKey();
+    const adminKey = getStoredAdminBrowserKey();
     if (adminKey) headers['X-Admin-Key'] = adminKey;
 
     const payload: Record<string, any> = { ...body };

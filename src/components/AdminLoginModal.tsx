@@ -125,13 +125,22 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
       }
 
       clearAdminSession();
-      const record = recordAdminFailedAttempt();
-      setAttemptsLeft(record.attemptsLeft);
       triggerHaptic('error');
-      if (record.isLocked) {
-        setError(`Urinishlar soni tugadi. ${Math.ceil(record.remainingSeconds / 60)} daqiqaga bloklandi.`);
+      // Server sozlamasi bilan bog'liq muammo bo'lsa, urinishlar hisoblanmaydi va sababi ko'rsatiladi
+      const serverMsg = String(r.data?.error || '');
+      const isConfigIssue = /sozlanmagan|16 belgidan|ro'yxatida yo'q|Redeploy/i.test(serverMsg);
+      if (r.status === 0) {
+        setError(serverMsg || "Server bilan aloqa yo'q. Internetni tekshiring.");
+      } else if (isConfigIssue) {
+        setError(serverMsg);
       } else {
-        setError(`Noto'g'ri maxfiy kalit. Qolgan urinishlar: ${record.attemptsLeft} ta.`);
+        const record = recordAdminFailedAttempt();
+        setAttemptsLeft(record.attemptsLeft);
+        if (record.isLocked) {
+          setError(`Urinishlar soni tugadi. ${Math.ceil(record.remainingSeconds / 60)} daqiqaga bloklandi.`);
+        } else {
+          setError(`${serverMsg || "Noto'g'ri maxfiy kalit."} Qolgan urinishlar: ${record.attemptsLeft} ta.`);
+        }
       }
     } catch {
       clearAdminSession();
@@ -161,7 +170,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
       setError("Ilova Telegram ichida ochilmagan. Yuqoridan 'Brauzer orqali kirish' bo'limini tanlang.");
       setActiveMode('browser');
     } else if (r.status === 403) {
-      setError("Ushbu Telegram akkauntiga admin huquqi berilmagan. Brauzer orqali maxfiy kalit bilan kiring.");
+      setError(String(r.data?.error || "Ushbu Telegram akkauntiga admin huquqi berilmagan. Maxfiy kalit bilan kiring."));
+      setActiveMode('browser');
     } else {
       setError(r.data?.error || "Tekshirib bo'lmadi. Brauzer rejimidan foydalaning.");
     }

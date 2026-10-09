@@ -3,6 +3,7 @@ import {
   setCors,
   verifyRequestUser,
   isAdminId,
+  adminAccessProblem,
   cleanId,
   tgSend,
 } from './_lib/common.ts';
@@ -21,10 +22,10 @@ export default async function handler(req: any, res: any) {
 
   const caller = verifyRequestUser(req);
   if (!caller) {
-    return res.status(401).json({ ok: false, reason: 'unauthorized', error: 'Telegram orqali kiring' });
+    return res.status(401).json({ ok: false, reason: 'unauthorized', error: adminAccessProblem(req, null) });
   }
   if (!isAdminId(caller.id)) {
-    return res.status(403).json({ ok: false, reason: 'forbidden', error: "Sizda admin huquqi yo'q" });
+    return res.status(403).json({ ok: false, reason: 'forbidden', error: adminAccessProblem(req, caller) });
   }
 
   const action = String(req.body?.action || '');

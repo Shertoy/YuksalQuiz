@@ -166,20 +166,52 @@ export function verifyRequestUser(req: any): VerifiedUser | null {
   const initData: string =
     (req.headers?.['x-telegram-init-data'] as string) || req.body?.initData || '';
 
-  if (!initData) return verifyAdminBrowserKey(req);
-  if (!BOT_TOKEN) return null;
+  let tgUser: VerifiedUser | null = null;
+  if (initData && BOT_TOKEN) {
+    const result = validateTelegramInitData(initData, BOT_TOKEN);
+    if (result.isValid && result.user?.id) {
+      const userId = String(result.user.id);
+      tgUser = {
+        id: userId,
+        firstName: result.user.first_name || '',
+        lastName: result.user.last_name || '',
+        username: result.user.username || '',
+        isAdmin: isAdminId(userId),
+      };
+    }
+  }
 
-  const result = validateTelegramInitData(initData, BOT_TOKEN);
-  if (!result.isValid || !result.user?.id) return null;
+  // Telegram foydalanuvchisi admin bo'lsa yoki kalit yuborilmagan bo'lsa — Telegram identifikatsiyasi
+  if (tgUser && (tgUser.isAdmin || !req.headers?.['x-admin-key'])) return tgUser;
 
-  const userId = String(result.user.id);
-  return {
-    id: userId,
-    firstName: result.user.first_name || '',
-    lastName: result.user.last_name || '',
-    username: result.user.username || '',
-    isAdmin: isAdminId(userId),
-  };
+  // Admin maxfiy kalit bilan kirgan bo'lsa (brauzerda yoki Telegram ichida parol bilan)
+  const byKey = verifyAdminBrowserKey(req);
+  if (byKey) return byKey;
+
+  return tgUser;
+}
+
+/**
+ * Admin kirishi nima uchun muvaffaqiyatsiz bo'lganini tushunarli tilda qaytaradi.
+ * Maxfiy qiymatlarning o'zi hech qachon qaytarilmaydi.
+ */
+export function adminAccessProblem(req: any, caller: VerifiedUser | null): string {
+  const given = String(req.headers?.['x-admin-key'] || '');
+  const serverKey = String(process.env.ADMIN_SECRET_KEY || '');
+  if (!getAdminIds().length) {
+    return "Serverda ADMIN_TELEGRAM_IDS sozlanmagan. Vercel'da qo'shing va Redeploy qiling.";
+  }
+  if (given) {
+    if (!serverKey) return "Serverda ADMIN_SECRET_KEY sozlanmagan. Vercel'da qo'shing va Redeploy qiling.";
+    if (serverKey.length < 16) {
+      return "Vercel'dagi ADMIN_SECRET_KEY 16 belgidan qisqa. Uzunroq kalit qo'ying va Redeploy qiling.";
+    }
+    return "Maxfiy kalit noto'g'ri. Vercel'dagi ADMIN_SECRET_KEY qiymatini aynan kiriting.";
+  }
+  if (caller) {
+    return `Telegram ID ingiz (${caller.id}) adminlar ro'yxatida yo'q. Vercel'dagi ADMIN_TELEGRAM_IDS ga qo'shing.`;
+  }
+  return "Telegram orqali kiring yoki admin maxfiy kalitini kiriting.";
 }
 
 export async function tgSend(chatId: string | number, text: string, extra: Record<string, any> = {}) {
