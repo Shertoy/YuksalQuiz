@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 /**
  * Telegram Bot Webhook Handler (YuksalQuiz)
@@ -11,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
  * 5. Talabalar bilan qo'llab-quvvatlash xabarlari (/reply) almashinuvi.
  */
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '').trim();
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://yuksalquiz.vercel.app';
 
 const SUPABASE_URL =
@@ -428,6 +429,42 @@ async function handleAdminMessage(msg: any): Promise<boolean> {
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
+    // Webhookni maxfiy kalit bilan ulash: /api/bot?setup=<TELEGRAM_WEBHOOK_SECRET>
+    // Token qo'lda yozilmaydi, server o'zidagi qiymatlardan foydalanadi.
+    const setupKey = String(req.query?.setup || '');
+    if (setupKey) {
+      const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+      const a = crypto.createHash('sha256').update(setupKey).digest();
+      const b = crypto.createHash('sha256').update(secret).digest();
+      if (!secret || !crypto.timingSafeEqual(a, b)) {
+        return res.status(403).json({
+          ok: false,
+          error: secret
+            ? "Kalit mos kelmadi. Vercel'dagi TELEGRAM_WEBHOOK_SECRET qiymatini aynan yozing."
+            : "Vercel'da TELEGRAM_WEBHOOK_SECRET o'rnatilmagan yoki deploydan keyin qo'shilgan (Redeploy qiling).",
+        });
+      }
+      if (!/^[A-Za-z0-9_-]{1,256}$/.test(secret)) {
+        return res.status(400).json({
+          ok: false,
+          error: "TELEGRAM_WEBHOOK_SECRET da faqat lotin harflari, raqamlar, _ va - bo'lishi mumkin. Vercel'da o'zgartiring.",
+        });
+      }
+      const base = (WEBAPP_URL || 'https://yuksalquiz.vercel.app').replace(/\/+$/, '');
+      const set = await tgCall('setWebhook', {
+        url: `${base}/api/bot`,
+        secret_token: secret,
+        allowed_updates: ['message', 'callback_query'],
+      });
+      const info = await tgCall('getWebhookInfo', {});
+      return res.status(200).json({
+        ok: Boolean(set?.ok),
+        natija: set?.ok ? 'Webhook maxfiy kalit bilan ulandi' : set?.description || 'Telegram xatosi',
+        webhook_url: info?.result?.url || null,
+        oxirgi_xato: info?.result?.last_error_message || null,
+      });
+    }
+
     const me = await tgCall('getMe', {});
     return res.status(200).json({
       status: 'active',
