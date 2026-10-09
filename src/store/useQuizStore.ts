@@ -2223,6 +2223,15 @@ export const useQuizStore = create<QuizState>()(
             });
           }
         }
+
+        // Dark mode persistence fix: re-apply DOM class after hydration
+        if (typeof document !== 'undefined') {
+          if (state.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
       },
     }
   )
