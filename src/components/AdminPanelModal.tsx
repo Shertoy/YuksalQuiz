@@ -973,16 +973,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     // 2. Delete from cloud database and update cloud deleted registry
     try {
       const res = await deleteTestFromCloud(targetId);
-      if (!res.success) {
-        console.warn('Admin cloud delete warning:', res.message);
+      if (res.success) {
+        showNotification(`"${targetTitle}" testi butunlay o'chirildi!`);
+      } else {
+        showNotification(`"${targetTitle}" bulutdan o'chmadi: ${res.message}`);
       }
     } catch (err) {
       console.warn('Admin cloud delete error:', err);
+      showNotification("Bulutdan o'chirishda xatolik.");
     } finally {
       setDeletingTestPkg(null);
       setIsDeletingTest(false);
       triggerHaptic('success');
-      showNotification(`"${targetTitle}" testi butunlay o'chirildi!`);
     }
   };
 

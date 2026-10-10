@@ -5,6 +5,7 @@ import { decodeHtmlEntities, cleanTelegramId } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { UserRatingStats } from '../utils/ratingUtils';
 import { getGenderSafeAvatar } from '../constants/avatars';
+import { apiPost, apiErrorText } from './api';
 
 /**
  * Maps Supabase DB row to application TestPackage model
@@ -263,21 +264,23 @@ export async function fetchCloudTests(): Promise<{
   }
 }
 
+/** quizzes + questions jadvallari uchun nusxa (tahrirlash oynasi shulardan o'qiydi) */
+export interface QuizMirror {
+  quiz: { faculty?: string; course_year?: number; semester?: number; study_type?: string };
+  questions: { id?: string; question: string; options: string[]; correct_answer: string; explanation?: string | null }[];
+}
+
 /**
- * Uploads a newly created or updated test package to Supabase cloud.
+ * Yangi yoki tahrirlangan testni bulutga yozish.
+ * Yozuv server (/api/content) orqali o'tadi: server muallifni va ruxsatni tekshiradi.
  */
-export async function publishTestToCloud(pkg: TestPackage): Promise<{
+export async function publishTestToCloud(
+  pkg: TestPackage,
+  mirror?: QuizMirror
+): Promise<{
   success: boolean;
   message: string;
 }> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return {
-      success: false,
-      message: "Supabase sozlanmagan. Test faqat lokal saqlandi.",
-    };
-  }
-
   // Guard against re-uploading deleted tests
   const { deletedPackageIds } = useQuizStore.getState();
   if ((deletedPackageIds || []).includes(pkg.id)) {
@@ -288,45 +291,34 @@ export async function publishTestToCloud(pkg: TestPackage): Promise<{
   }
 
   try {
-    // Also check cloud-wide deleted tests registry
-    const { data: regRow } = await supabase
-      .from('test_packages')
-      .select('blocks')
-      .eq('id', '__system_deleted_tests__')
-      .maybeSingle();
+    const row = mapTestPackageToRow(pkg);
+    const r = await apiPost('/api/content', { action: 'save_test', row, ...(mirror ? { mirror } : {}) });
 
-    if (regRow?.blocks) {
-      let cloudDeleted: string[] = [];
-      if (Array.isArray(regRow.blocks)) {
-        cloudDeleted = regRow.blocks.map(String);
-      } else if (typeof regRow.blocks === 'string') {
-        try {
-          const parsed = JSON.parse(regRow.blocks);
-          if (Array.isArray(parsed)) cloudDeleted = parsed.map(String);
-        } catch {}
+    if (r.data?.reason === 'deleted') {
+      const curr = useQuizStore.getState().deletedPackageIds || [];
+      if (!curr.includes(pkg.id)) {
+        useQuizStore.setState({ deletedPackageIds: [...curr, pkg.id] });
       }
-      if (cloudDeleted.includes(pkg.id)) {
-        // Also add to local deletedPackageIds to prevent future attempts
-        const curr = useQuizStore.getState().deletedPackageIds || [];
-        if (!curr.includes(pkg.id)) {
-          useQuizStore.setState({ deletedPackageIds: [...curr, pkg.id] });
-        }
-        return {
-          success: false,
-          message: "Ushbu test tizimdan o'chirilgan.",
-        };
-      }
+      return { success: false, message: "Ushbu test tizimdan o'chirilgan." };
     }
 
-    const row = mapTestPackageToRow(pkg);
-    const { error } = await supabase.from('test_packages').upsert(row, { onConflict: 'id' });
+    if (!r.ok) {
+      const message = apiErrorText(r, "Bulutga yuklab bo'lmadi");
+      console.warn('Test upload error:', message);
+      return { success: false, message };
+    }
 
-    if (error) {
-      console.error('Supabase upload error:', error);
-      return {
-        success: false,
-        message: `Bulutga yuklashda xatolik: ${error.message}`,
-      };
+    // Saqlangan test endi "yuborilmagan qoralama" emas
+    const pkgs = useQuizStore.getState().testPackages || [];
+    if (pkgs.some((t: any) => t.id === pkg.id && t._isPendingSync)) {
+      useQuizStore.setState({
+        testPackages: pkgs.map((t: any) => {
+          if (t.id !== pkg.id) return t;
+          const copy = { ...t };
+          delete copy._isPendingSync;
+          return copy;
+        }),
+      });
     }
 
     return {
@@ -334,7 +326,7 @@ export async function publishTestToCloud(pkg: TestPackage): Promise<{
       message: "Test bulutli bazaga muvaffaqiyatli yuklandi va barcha foydalanuvchilarga ko'rinadi!",
     };
   } catch (err: any) {
-    console.error('Failed to upload test to Supabase:', err);
+    console.error('Failed to upload test:', err);
     return {
       success: false,
       message: err?.message || "Bulutga yuklashda kutilmagan xatolik yuz berdi.",
@@ -371,62 +363,10 @@ export async function saveQuizWithQuestions(params: {
   studyType?: StudyType;
   study_type?: StudyType;
 }): Promise<{ success: boolean; quizId: string; message: string }> {
-  const supabase = getSupabase();
   const isPublicFlag = params.is_public !== undefined ? params.is_public : params.visibility !== 'unlisted';
   const finalCategory = params.category || 'Oliy Ta\'lim (HEMIS)';
   const finalVisibility = isPublicFlag ? 'public' : 'unlisted';
   const finalStudyType = params.study_type || params.studyType || 'Kunduzgi';
-
-  // 1. Try writing to Supabase `quizzes` and `questions` tables
-  if (supabase) {
-    try {
-      const quizPayload: Record<string, any> = {
-        id: params.quizId,
-        title: params.title,
-        university: params.university || null,
-        faculty: params.faculty || params.department || null,
-        course_year: params.course_year || (params.semester ? Math.ceil(params.semester / 2) : 1),
-        semester: params.semester || 1,
-        creator_id: params.creatorId,
-        creator_name: params.creatorName || 'Talaba',
-        is_public: isPublicFlag,
-        visibility: finalVisibility,
-        category: finalCategory,
-        total_questions: params.questions.length,
-        updated_at: new Date().toISOString(),
-        study_type: finalStudyType,
-      };
-
-      const { error: quizErr } = await supabase.from('quizzes').upsert(
-        quizPayload,
-        { onConflict: 'id' }
-      );
-
-      if (!quizErr) {
-        // Delete existing questions if overwriting
-        await supabase.from('questions').delete().eq('quiz_id', params.quizId);
-
-        const questionRows = params.questions.map((q, idx) => ({
-          quiz_id: params.quizId,
-          question: q.question,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          explanation: q.explanation || null,
-          order_index: idx,
-          created_at: new Date().toISOString(),
-        }));
-
-        const { error: qErr } = await supabase.from('questions').insert(questionRows);
-        if (qErr) {
-          console.warn('Questions table insert warning:', qErr.message);
-        }
-      } else {
-        console.warn('Quizzes table upsert warning:', quizErr.message);
-      }
-    } catch (dbErr) {
-      console.warn('Direct quizzes/questions DB exception:', dbErr);
-    }
-  }
 
   // 2. Also map to standard TestPackage and save to `test_packages` & store
   const { splitQuestionsIntoBlocks } = await import('../utils/testSplitter');
@@ -469,7 +409,20 @@ export async function saveQuizWithQuestions(params: {
   };
 
   useQuizStore.getState().createTestPackage(testPackage);
-  const cloudRes = await publishTestToCloud(testPackage);
+  const cloudRes = await publishTestToCloud(testPackage, {
+    quiz: {
+      faculty: params.faculty || params.department || '',
+      course_year: testPackage.course_year,
+      semester: params.semester || 1,
+      study_type: finalStudyType,
+    },
+    questions: params.questions.map((q) => ({
+      question: q.question,
+      options: q.options,
+      correct_answer: q.correct_answer,
+      explanation: q.explanation || null,
+    })),
+  });
   if (!cloudRes.success) {
     console.warn('publishTestToCloud notice:', cloudRes.message);
   }
@@ -484,64 +437,19 @@ export async function saveQuizWithQuestions(params: {
 }
 
 /**
- * Deletes a test package from Supabase cloud database.
+ * Testni bulutdan o'chirish (server muallif yoki adminligini tekshiradi).
  */
 export async function deleteTestFromCloud(id: string): Promise<{
   success: boolean;
   message: string;
 }> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    // Even if Supabase is not configured, clean local store
-    useQuizStore.getState().deleteTestPackage(id);
-    return { success: false, message: 'Supabase ulanmagan' };
-  }
-
+  // Lokal xotiradan darhol o'chiriladi (avvalgidek)
+  useQuizStore.getState().deleteTestPackage(id);
   try {
-    // 1. Immediately delete row from Supabase test_packages
-    const { error: delError } = await supabase.from('test_packages').delete().eq('id', id);
-    if (delError) {
-      console.warn('Supabase test delete error:', delError.message);
+    const r = await apiPost('/api/content', { action: 'delete_test', id });
+    if (!r.ok) {
+      return { success: false, message: apiErrorText(r, "Bulutdan o'chirib bo'lmadi") };
     }
-
-    // 2. Register ID into __system_deleted_tests__ so all other devices and syncs prune it permanently
-    try {
-      const { data: regRow } = await supabase
-        .from('test_packages')
-        .select('blocks')
-        .eq('id', '__system_deleted_tests__')
-        .maybeSingle();
-
-      let currentDeleted: string[] = [];
-      if (regRow?.blocks) {
-        if (Array.isArray(regRow.blocks)) {
-          currentDeleted = regRow.blocks.map(String);
-        } else if (typeof regRow.blocks === 'string') {
-          try {
-            currentDeleted = JSON.parse(regRow.blocks);
-          } catch {}
-        }
-      }
-
-      if (!currentDeleted.includes(id)) {
-        currentDeleted.push(id);
-        await supabase.from('test_packages').upsert({
-          id: '__system_deleted_tests__',
-          title: 'Deleted Tests Registry',
-          category: 'System',
-          university: 'System',
-          department: 'System',
-          blocks: currentDeleted,
-          created_at: new Date().toISOString(),
-        });
-      }
-    } catch (regErr) {
-      console.warn('Failed to register deleted test ID in registry:', regErr);
-    }
-
-    // 3. Ensure local store deletes package, testAttempts, mistakes and adds to deletedPackageIds
-    useQuizStore.getState().deleteTestPackage(id);
-
     return { success: true, message: "Test bulutli bazadan butunlay o'chirildi." };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Xatolik' };
@@ -659,7 +567,6 @@ export async function updateQuizWithQuestions(
   quizData: QuizPassportData,
   questions: EditableQuestionItem[]
 ): Promise<{ success: boolean; message: string }> {
-  const supabase = getSupabase();
   const title = (quizData.title || '').trim();
   const university = (quizData.university || '').trim();
   const faculty = (quizData.faculty || '').trim();
@@ -678,54 +585,6 @@ export async function updateQuizWithQuestions(
   }
   if (!questions || questions.length === 0) {
     return { success: false, message: "Kamida 1 ta savol bo'lishi kerak." };
-  }
-
-  // 1. Update in Supabase `quizzes` and `questions` tables
-  if (supabase) {
-    try {
-      const { error: quizErr } = await supabase.from('quizzes').upsert(
-        {
-          id: quizId,
-          title,
-          university: university || null,
-          faculty: faculty || null,
-          course_year: courseYear,
-          semester,
-          is_public: isPublic,
-          visibility: isPublic ? 'public' : 'unlisted',
-          category,
-          total_questions: questions.length,
-          updated_at: new Date().toISOString(),
-          study_type: studyType,
-        },
-        { onConflict: 'id' }
-      );
-
-      if (quizErr) {
-        console.warn('Quizzes table update warning:', quizErr.message);
-      }
-
-      // Re-sync questions: delete existing questions and insert updated set
-      await supabase.from('questions').delete().eq('quiz_id', quizId);
-
-      const questionRows = questions.map((q, idx) => ({
-        id: q.id || `q_${quizId}_${idx + 1}_${Math.random().toString(36).substring(2, 7)}`,
-        quiz_id: quizId,
-        question: q.question.trim(),
-        options: q.options.map((opt) => opt.trim()),
-        correct_answer: q.correct_answer.trim(),
-        explanation: q.explanation?.trim() || null,
-        order_index: idx,
-        created_at: new Date().toISOString(),
-      }));
-
-      const { error: qErr } = await supabase.from('questions').insert(questionRows);
-      if (qErr) {
-        console.warn('Questions table insert warning:', qErr.message);
-      }
-    } catch (dbErr) {
-      console.warn('Supabase DB error during updateQuizWithQuestions:', dbErr);
-    }
   }
 
   // 2. Map to TestPackage format and update Zustand store + test_packages table
@@ -769,7 +628,16 @@ export async function updateQuizWithQuestions(
   };
 
   useQuizStore.getState().updateTestPackage(updatedPkg);
-  const cloudRes = await publishTestToCloud(updatedPkg);
+  const cloudRes = await publishTestToCloud(updatedPkg, {
+    quiz: { faculty, course_year: courseYear, semester, study_type: String(studyType) },
+    questions: questions.map((q) => ({
+      id: q.id,
+      question: q.question.trim(),
+      options: q.options.map((opt) => opt.trim()),
+      correct_answer: q.correct_answer.trim(),
+      explanation: q.explanation?.trim() || null,
+    })),
+  });
 
   return {
     success: true,
@@ -780,85 +648,16 @@ export async function updateQuizWithQuestions(
 }
 
 /**
- * Deletes ALL test packages from Supabase cloud database.
+ * Barcha testlarni bulutdan o'chirish (faqat admin, server orqali).
  */
 export async function clearAllTestsFromCloud(): Promise<{
   success: boolean;
   message: string;
 }> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    useQuizStore.getState().clearAllTests();
-    return { success: false, message: 'Supabase ulanmagan' };
-  }
-
+  useQuizStore.getState().clearAllTests();
   try {
-    // 1. Fetch IDs of all tests being cleared
-    const { data: allRows } = await supabase
-      .from('test_packages')
-      .select('id')
-      .neq('category', 'LeaderboardUser')
-      .neq('category', 'System')
-      .neq('category', 'AdminCredit')
-      .not('id', 'like', 'lead_%')
-      .not('id', 'like', '__system_%')
-      .not('id', 'like', 'adm_%');
-
-    const idsToClear = (allRows || []).map((r: any) => r.id);
-
-    // 2. Delete test packages from Supabase
-    const { error } = await supabase
-      .from('test_packages')
-      .delete()
-      .neq('category', 'LeaderboardUser')
-      .neq('category', 'System')
-      .neq('category', 'AdminCredit')
-      .not('id', 'like', 'lead_%')
-      .not('id', 'like', '__system_%')
-      .not('id', 'like', 'adm_%');
-
-    if (error) {
-      console.warn('Supabase clear all error:', error.message);
-      return { success: false, message: error.message };
-    }
-
-    // 3. Record all cleared IDs in the registry
-    if (idsToClear.length > 0) {
-      try {
-        const { data: regRow } = await supabase
-          .from('test_packages')
-          .select('blocks')
-          .eq('id', '__system_deleted_tests__')
-          .maybeSingle();
-
-        let currentDeleted: string[] = [];
-        if (regRow?.blocks) {
-          if (Array.isArray(regRow.blocks)) {
-            currentDeleted = regRow.blocks.map(String);
-          } else if (typeof regRow.blocks === 'string') {
-            try {
-              currentDeleted = JSON.parse(regRow.blocks);
-            } catch {}
-          }
-        }
-        const updatedDeleted = Array.from(new Set([...currentDeleted, ...idsToClear]));
-
-        await supabase.from('test_packages').upsert({
-          id: '__system_deleted_tests__',
-          title: 'Deleted Tests Registry',
-          category: 'System',
-          university: 'System',
-          department: 'System',
-          blocks: updatedDeleted,
-          created_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.warn('Clear all registry error:', e);
-      }
-    }
-
-    useQuizStore.getState().clearAllTests();
-
+    const r = await apiPost('/api/content', { action: 'clear_all_tests' });
+    if (!r.ok) return { success: false, message: apiErrorText(r, "Tozalab bo'lmadi") };
     return { success: true, message: "Barcha testlar bulutli bazadan tozalandi." };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Xatolik' };
@@ -925,24 +724,12 @@ export async function syncAllTestsWithCloud(): Promise<{
     );
 
     let uploadedCount = 0;
-    if (testsToUpload.length > 0) {
-      const rowsToInsert = testsToUpload.map(mapTestPackageToRow);
-      const { error: insertError } = await supabase
-        .from('test_packages')
-        .upsert(rowsToInsert, { onConflict: 'id' });
-
-      if (!insertError) {
-        uploadedCount = testsToUpload.length;
-        // Clear pending flag on uploaded tests
-        const updatedPackages = (testPackages || []).map((t: any) => {
-          if (testsToUpload.some((u) => u.id === t.id)) {
-            const copy = { ...t };
-            delete copy._isPendingSync;
-            return copy;
-          }
-          return t;
-        });
-        useQuizStore.setState({ testPackages: updatedPackages });
+    const uploadedIds = new Set<string>();
+    for (const t of testsToUpload) {
+      const r = await publishTestToCloud(t);
+      if (r.success) {
+        uploadedCount += 1;
+        uploadedIds.add(t.id);
       }
     }
 
@@ -971,6 +758,7 @@ export async function syncAllTestsWithCloud(): Promise<{
       (localT: any) =>
         localT.authorId === profile?.id &&
         localT._isPendingSync === true &&
+        !uploadedIds.has(localT.id) &&
         !deletedSet.has(localT.id) &&
         !validRemoteTests.some((m) => m.id === localT.id)
     );
@@ -1059,7 +847,7 @@ export async function fetchCloudUniversities(): Promise<{
 }
 
 /**
- * Uploads a newly added university to Supabase cloud.
+ * Yangi OTMni bulutga yozish (faqat admin, server orqali).
  */
 export async function publishUniversityToCloud(name: string): Promise<{
   success: boolean;
@@ -1067,43 +855,21 @@ export async function publishUniversityToCloud(name: string): Promise<{
 }> {
   const trimmed = name.trim();
   if (!trimmed) return { success: false, message: 'OTM nomi bo\'sh' };
-
-  const supabase = getSupabase();
-  if (!supabase) return { success: false, message: 'Supabase sozlanmagan' };
-
-  try {
-    const { error } = await supabase
-      .from('universities')
-      .upsert({ name: trimmed, created_at: new Date().toISOString() }, { onConflict: 'name' });
-
-    if (error) {
-      console.warn('Could not push university to cloud table:', error.message);
-      return { success: false, message: error.message };
-    }
-
-    return { success: true, message: `"${trimmed}" bulutli bazaga saqlandi!` };
-  } catch (err: any) {
-    return { success: false, message: err?.message || 'Xatolik' };
-  }
+  const r = await apiPost('/api/content', { action: 'upsert_universities', names: [trimmed] });
+  if (!r.ok) return { success: false, message: apiErrorText(r, 'Xatolik') };
+  return { success: true, message: `"${trimmed}" bulutli bazaga saqlandi!` };
 }
 
 /**
- * Deletes a university from Supabase cloud.
+ * OTMni bulutdan o'chirish (faqat admin, server orqali).
  */
 export async function deleteUniversityFromCloud(name: string): Promise<{
   success: boolean;
   message: string;
 }> {
-  const supabase = getSupabase();
-  if (!supabase) return { success: false, message: 'Supabase ulanmagan' };
-
-  try {
-    const { error } = await supabase.from('universities').delete().eq('name', name.trim());
-    if (error) return { success: false, message: error.message };
-    return { success: true, message: `"${name}" bulutdan o'chirildi.` };
-  } catch (err: any) {
-    return { success: false, message: err?.message || 'Xatolik' };
-  }
+  const r = await apiPost('/api/content', { action: 'delete_universities', names: [name.trim()] });
+  if (!r.ok) return { success: false, message: apiErrorText(r, 'Xatolik') };
+  return { success: true, message: `"${name}" bulutdan o'chirildi.` };
 }
 
 /**
@@ -1121,13 +887,11 @@ export async function syncAllUniversitiesWithCloud(): Promise<void> {
     );
     if (!validUnis || validUnis.length === 0) return;
 
-    // Push local universities to cloud
-    const rows = validUnis.map((name) => ({
-      name: name.trim(),
-      created_at: new Date().toISOString(),
-    }));
-
-    await supabase.from('universities').upsert(rows, { onConflict: 'name' });
+    // Push local universities to cloud (faqat admin uchun server qabul qiladi)
+    await apiPost('/api/content', {
+      action: 'upsert_universities',
+      names: validUnis.map((name) => name.trim()),
+    });
 
     // Pull any cloud universities
     await fetchCloudUniversities();
@@ -1538,69 +1302,12 @@ export async function syncUserProfileToCloud(
     console.warn('users table upsert warning:', err);
   }
 
-  // 2. Dedicated row in test_packages to prevent race conditions
-  const userRow = {
-    id: `lead_${profile.id}`,
-    title: fullName,
-    category: 'LeaderboardUser',
-    university,
-    department: region,
-    author_id: profile.id,
-    author_name: fullName,
-    total_questions: Number(stats.scorePoints) || 0,
-    blocks: [userRatingObject],
-    is_public: false,
-    is_community_created: false,
-  };
-
+  // 2. Reyting qatorlari (test_packages lead_, leaderboard_users) — server orqali
   try {
-    await supabase.from('test_packages').upsert(userRow, { onConflict: 'id' });
+    await apiPost('/api/content', { action: 'sync_profile', rating: userRatingObject });
   } catch (err) {
-    console.warn('Dedicated leaderboard user row upsert warning:', err);
+    console.warn('sync_profile warning:', err);
   }
-
-  // 3. Fallback: leaderboard_users table if available
-  try {
-    await supabase.from('leaderboard_users').upsert(userRatingObject, { onConflict: 'id' });
-  } catch {}
-
-  // 4. Legacy __system_leaderboard_sync__
-  try {
-    const { data: cur } = await supabase
-      .from('test_packages')
-      .select('blocks')
-      .eq('id', '__system_leaderboard_sync__')
-      .maybeSingle();
-
-    let list = Array.isArray(cur?.blocks) ? [...cur.blocks] : [];
-    const existingIdx = list.findIndex((u: any) => u.id === userRatingObject.id);
-    if (existingIdx >= 0) {
-      list[existingIdx] = userRatingObject;
-    } else {
-      list.push(userRatingObject);
-    }
-
-    list.sort((a: any, b: any) => {
-      const pDiff = (b.score_points || 0) - (a.score_points || 0);
-      if (pDiff !== 0) return pDiff;
-      return (a.total_time_spent_seconds || 180) - (b.total_time_spent_seconds || 180);
-    });
-    list = list.slice(0, 100);
-
-    await supabase.from('test_packages').upsert(
-      {
-        id: '__system_leaderboard_sync__',
-        title: 'Leaderboard Sync Store',
-        category: 'System',
-        university: 'YuksalQuiz System',
-        department: 'Leaderboard',
-        is_public: false,
-        blocks: list,
-        author_id: 'system',
-      },
-      { onConflict: 'id' }
-    );
-  } catch {}
 }
 
 /**
@@ -1912,28 +1619,8 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
                 existing.name = decodeHtmlEntities(pkgName);
               }
             }
-            // test_packages LeaderboardUser qatori admin to'g'irlashlari uchun asosiy manba
-            if (typeof pkg.author_wallet_balance === 'number' || typeof blockUser?.wallet_balance === 'number') {
-              existing.walletBalance = pkgBal;
-              existing.balance = pkgBal;
-            } else if (pkgBal > (existing.walletBalance || 0)) {
-              existing.walletBalance = pkgBal;
-              existing.balance = pkgBal;
-            }
-
-            if (blockUser && typeof blockUser.has_paid === 'boolean') {
-              existing.has_paid = blockUser.has_paid;
-              existing.isSubscribed = Boolean(blockUser.is_subscribed || blockUser.has_paid);
-              existing.paid_until = pkgEnd;
-              existing.subscriptionEnd = pkgEnd;
-              if (blockUser.subscription_tier) existing.subscriptionTier = blockUser.subscription_tier;
-            } else if (pkgPaid) {
-              existing.has_paid = true;
-              existing.isSubscribed = true;
-              existing.paid_until = pkgEnd;
-              existing.subscriptionEnd = pkgEnd;
-              if (blockUser?.subscription_tier) existing.subscriptionTier = blockUser.subscription_tier;
-            }
+            // Balans va obuna users jadvalidan olinadi (server boshqaradi).
+            // Reyting qatoridagi eski qiymatlar ularni almashtirmaydi.
           }
         }
       }
@@ -1956,11 +1643,6 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
           const cId = String(c.author_id || b0.user_id || '').replace(/^tg_/, '').replace(/^user_/, '');
           const u = userMap.get(cId) || userMap.get(`user-${cId}`) || userMap.get(`tg_${cId}`);
           if (u) {
-            const cBal = Number(c.author_wallet_balance || b0.amount || 0);
-            if (cBal > (u.walletBalance || 0)) {
-              u.walletBalance = cBal;
-              u.balance = cBal;
-            }
             if (b0.plan && b0.expiry && new Date(b0.expiry) > new Date()) {
               u.has_paid = true;
               u.isSubscribed = true;
@@ -2130,46 +1812,19 @@ export async function fetchCloudAnnouncements(): Promise<Announcement[]> {
 }
 
 /**
- * Uploads an announcement to Supabase cloud
+ * E'lonni bulutga yozish (faqat admin, server orqali)
  */
 export async function publishAnnouncementToCloud(ann: Announcement): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase || !ann || !ann.id) return;
-
-  const annRow = {
-    id: `ann_${ann.id}`,
-    title: ann.title,
-    category: 'Announcement',
-    university: ann.targetValue || '',
-    department: ann.targetType || 'all',
-    author_id: 'admin',
-    author_name: 'Admin',
-    total_questions: 0,
-    blocks: [ann],
-    is_public: true,
-    is_community_created: false,
-  };
-
-  try {
-    await supabase.from('test_packages').upsert(annRow, { onConflict: 'id' });
-  } catch (err) {
-    console.warn('publishAnnouncementToCloud error:', err);
-  }
+  if (!ann || !ann.id) return;
+  const r = await apiPost('/api/content', { action: 'save_announcement', announcement: ann });
+  if (!r.ok) console.warn('publishAnnouncementToCloud error:', apiErrorText(r));
 }
 
 /**
- * Deletes an announcement from Supabase cloud
+ * E'lonni bulutdan o'chirish (faqat admin, server orqali)
  */
 export async function deleteAnnouncementFromCloud(annId: string): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase || !annId) return;
-
-  try {
-    const cleanId = annId.startsWith('ann_') ? annId : `ann_${annId}`;
-    await supabase.from('test_packages').delete().eq('id', cleanId);
-  } catch (err) {
-    console.warn('deleteAnnouncementFromCloud error:', err);
-  }
+  if (!annId) return;
+  const r = await apiPost('/api/content', { action: 'delete_announcement', id: annId });
+  if (!r.ok) console.warn('deleteAnnouncementFromCloud error:', apiErrorText(r));
 }
-
-
