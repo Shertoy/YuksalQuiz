@@ -264,7 +264,7 @@ const DEFAULT_PROFILE: UserProfile = {
   gender: 'male',
   studyType: 'Kunduzgi',
   academicYear: 1,
-  avatar: '/avatars/avatar_3.png',
+  avatar: '/avatars/avatar_7.png',
   coins: 0, // Unearned coins strictly zeroed out at start!
   streak: 1,
   lastLoginDate: localDateKey(),
@@ -1770,6 +1770,11 @@ export const useQuizStore = create<QuizState>()(
 
         if (!state.deletedPackageIds) {
           state.deletedPackageIds = [];
+        }
+
+        // Ilgari erkaklarga standart qilib qiz rasmi (avatar_3) qo'yilgan — yigit rasmiga almashtiramiz
+        if (state.profile && state.profile.gender !== 'female' && state.profile.avatar === '/avatars/avatar_3.png') {
+          state.profile = { ...state.profile, avatar: '/avatars/avatar_7.png' };
         }
 
         // Clear out any old pre-seeded mock tests and locally deleted tests

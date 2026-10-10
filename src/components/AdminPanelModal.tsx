@@ -1660,7 +1660,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                         {filteredUsers.map((student, idx) => {
                           const isFemale = student.gender === 'female' || (student.gender as string) === 'ayol';
                           const safeAvatar = getGenderSafeAvatar(student.avatar, student.gender);
-                          const fallbackAvatar = isFemale ? '/avatars/avatar_1.png' : '/avatars/avatar_3.png';
+                          const fallbackAvatar = isFemale ? '/avatars/avatar_1.png' : '/avatars/avatar_7.png';
                           const rawName = student.name || '';
                           const displayName =
                             rawName && rawName.toLowerCase() !== 'talaba' && !rawName.startsWith('Talaba #')

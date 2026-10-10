@@ -1,5 +1,8 @@
-import type { TestPackage } from '../types';
+import { DEPARTMENTS, type TestPackage } from '../types';
+import { isFacultyInList } from '../services/facultyService';
 import { decodeHtmlEntities } from './security';
+
+const GENERIC_DEPARTMENT_KEYS = new Set<string>(DEPARTMENTS.map((d) => facultyKey(d)));
 
 /** Yo'nalishi ko'rsatilmagan testlar shu nom ostida guruhlanadi */
 export const OTHER_FACULTY = "Boshqa yo'nalish";
@@ -10,7 +13,15 @@ export const OTHER_FACULTY = "Boshqa yo'nalish";
  * u bo'lmasa eski testlardagi department ishlatiladi.
  */
 export function getPackageFaculty(pkg: TestPackage): string {
-  const raw = String((pkg as any).faculty || pkg.department || '').trim();
+  const faculty = String((pkg as any).faculty || '').trim();
+  let raw = faculty;
+  if (!raw) {
+    // Eski testlar: department ko'pincha umumiy toifa ("Menejment va Boshqaruv" kabi), haqiqiy yo'nalish emas.
+    // Umumiy toifa shu OTM ro'yxatida bo'lmasa, yo'nalish sifatida ko'rsatilmaydi.
+    const dep = String(pkg.department || '').trim();
+    const isGeneric = GENERIC_DEPARTMENT_KEYS.has(facultyKey(dep));
+    if (dep && (!isGeneric || isFacultyInList(pkg.university || '', dep))) raw = dep;
+  }
   const clean = decodeHtmlEntities(raw).replace(/\s+/g, ' ').trim();
   if (!clean || clean.toLowerCase() === 'system') return OTHER_FACULTY;
   return clean.charAt(0).toUpperCase() + clean.slice(1);

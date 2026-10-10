@@ -49,9 +49,17 @@ export function isImageAvatar(avatar?: string): boolean {
   );
 }
 
+/** Rasmlar: avatar_1..avatar_5 — qizlar, avatar_6..avatar_10 — yigitlar */
+export const FEMALE_DEFAULT_AVATAR = '/avatars/avatar_1.png';
+export const MALE_DEFAULT_AVATAR = '/avatars/avatar_7.png';
+
+// Eski standart qiymatlar: ilgari erkaklarga avatar_3 (qiz rasmi) standart qo'yilgan edi,
+// bazadagi ustun esa avatar_1 bilan to'lgan. Erkak uchun bular o'zi tanlagan rasm emas.
+const LEGACY_DEFAULTS = new Set(['/avatars/avatar_1.png', '/avatars/avatar_2.png', '/avatars/avatar_3.png']);
+
 /**
- * Returns a gender-appropriate avatar.
- * Guarantees that male users NEVER get a female hijab avatar (avatar_1, avatar_2) by default.
+ * Jinsga mos avatar. Foydalanuvchi o'zi tanlagan rasm saqlanadi,
+ * faqat bo'sh yoki eski standart qiymat bo'lsa jinsga mos standart rasm qo'yiladi.
  */
 export function getGenderSafeAvatar(
   avatar?: string | null,
@@ -59,26 +67,15 @@ export function getGenderSafeAvatar(
 ): string {
   const isFemale = gender === 'female' || gender === 'ayol';
   const clean = (avatar || '').trim();
-
-  // Erkak foydalanuvchilar uchun: hech qachon ayol hijob rasmi (avatar_1 / avatar_2) chiqmasin
   if (!isFemale) {
-    if (!clean || clean === '/avatars/avatar_1.png' || clean === '/avatars/avatar_2.png') {
-      return '/avatars/avatar_3.png'; // Standart erkak talaba rasmi
-    }
+    if (!clean || LEGACY_DEFAULTS.has(clean)) return MALE_DEFAULT_AVATAR;
     return clean;
   }
-
-  // Ayol foydalanuvchilar uchun:
-  if (!clean) {
-    return '/avatars/avatar_1.png'; // Standart ayol talaba rasmi
-  }
-  return clean;
+  return clean || FEMALE_DEFAULT_AVATAR;
 }
 
-/**
- * Returns the default avatar path for a given gender.
- */
+/** Jinsga mos standart avatar */
 export function getDefaultAvatar(gender?: 'male' | 'female' | string | null): string {
   const isFemale = gender === 'female' || gender === 'ayol';
-  return isFemale ? '/avatars/avatar_1.png' : '/avatars/avatar_3.png';
+  return isFemale ? FEMALE_DEFAULT_AVATAR : MALE_DEFAULT_AVATAR;
 }

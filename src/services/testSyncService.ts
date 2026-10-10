@@ -1382,6 +1382,9 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
     }
   }
 
+  // Tanlangan rasm users.avatar_url da saqlanadi; users.avatar ustuni standart (avatar_1) bilan to'lgan bo'lishi mumkin
+  const rowAvatar: string = String(row.avatar_url || row.avatar || '').trim();
+
   // 2. Jinsni to'g'ri aniqlash (Default ayol qilib qo'yish xatosini oldini olish)
   let resolvedGender: Gender = 'male';
   const gStr = String(row.gender || '').toLowerCase().trim();
@@ -1398,7 +1401,7 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
       nameLow.endsWith('ova') ||
       nameLow.endsWith('yeva') ||
       nameLow.endsWith('eva');
-    if (isFemaleName || row.avatar === '/avatars/avatar_2.png') {
+    if (isFemaleName || rowAvatar === '/avatars/avatar_2.png') {
       resolvedGender = 'female';
     } else {
       resolvedGender = 'male';
@@ -1406,7 +1409,7 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
   }
 
   // 3. Avatarni jinsga moslash (Erkaklar uchun hech qachon ayol hijob rasmi chiqmasin)
-  const resolvedAvatar = getGenderSafeAvatar(row.avatar, resolvedGender);
+  const resolvedAvatar = getGenderSafeAvatar(rowAvatar, resolvedGender);
 
   const totalSeconds = Number(
     row.total_time ??
@@ -1522,7 +1525,15 @@ export async function syncUserProfileToCloud(
   };
 
   try {
-    await supabase.from('users').upsert(userRowForUsersTable, { onConflict: 'id' });
+    // avatar va gender ustunlari ham yoziladi (admin ro'yxati to'g'ri rasm va jinsni ko'rsatishi uchun).
+    // Eski bazada bu ustunlar bo'lmasa, avvalgi ko'rinishda qayta yoziladi.
+    const { error: fullErr } = await supabase.from('users').upsert(
+      { ...userRowForUsersTable, avatar: userRowForUsersTable.avatar_url, gender: profile.gender || 'male' },
+      { onConflict: 'id' }
+    );
+    if (fullErr) {
+      await supabase.from('users').upsert(userRowForUsersTable, { onConflict: 'id' });
+    }
   } catch (err) {
     console.warn('users table upsert warning:', err);
   }
