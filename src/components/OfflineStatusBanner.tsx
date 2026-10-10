@@ -78,7 +78,7 @@ export const OfflineStatusBanner: React.FC = () => {
             triggerHaptic('light');
             setShowDetailsModal(true);
           }}
-          className="sticky top-0 z-50 bg-amber-500/95 dark:bg-amber-600/95 backdrop-blur-md text-amber-950 dark:text-white px-3 py-1.5 text-xs font-bold flex items-center justify-between shadow-md cursor-pointer transition-all animate-in slide-in-from-top duration-300"
+          className="sticky top-0 z-50 bg-amber-500 dark:bg-amber-600 text-amber-950 dark:text-white px-3 py-1.5 text-xs font-bold flex items-center justify-between shadow-md cursor-pointer transition-all animate-in slide-in-from-top duration-300"
         >
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuizStore, DEFAULT_SUBSCRIPTION_PRICES } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
+import { CardNumberRow } from './CardNumberRow';
 import {
   Wallet,
   Ticket,
@@ -558,29 +559,31 @@ export const WalletView: React.FC = () => {
         )}
 
         {/* Small Referral Row: "Takliflar: {ref_count} ta • {ref_earnings} so'm" */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1.5 truncate">
-              <span>{tr('Takliflar', 'Приглашения', 'Invites')}: {refCount} · {refEarnings.toLocaleString('uz-UZ')} {SOM}</span>
+        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1 basis-[150px]">
+            <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">
+              {tr('Takliflar', 'Приглашения', 'Invites')}: {refCount} ·{' '}
+              <span className="whitespace-nowrap">{refEarnings.toLocaleString('uz-UZ')} {SOM}</span>
             </div>
             <span className="text-[12px] text-slate-500 dark:text-slate-400 block mt-0.5">
-              {tr("Har bir do'st uchun 1 000 so'm", 'За каждого друга 1 000 сум', '1,000 UZS per friend')}
+              {tr("Har bir do'st uchun", 'За каждого друга', 'Per friend:')}{' '}
+              <span className="whitespace-nowrap">1&nbsp;000&nbsp;{SOM}</span>
             </span>
           </div>
 
           <button
             type="button"
             onClick={handleCopyReferral}
-            className="min-h-[36px] px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-[13px] flex items-center gap-1.5 active:bg-slate-50 dark:active:bg-slate-800 shrink-0"
+            className="min-h-[40px] px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-[13px] flex items-center gap-1.5 active:bg-slate-50 dark:active:bg-slate-800 shrink-0 whitespace-nowrap"
           >
             {copiedRef ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
                 <span>{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <Copy className="w-4 h-4" strokeWidth={1.75} />
                 <span>{tr('Havolani nusxalash', 'Копировать ссылку', 'Copy link')}</span>
               </>
             )}
@@ -826,9 +829,9 @@ export const WalletView: React.FC = () => {
           </h3>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
           {/* Card Info Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
               <span className="text-slate-500 dark:text-slate-400 font-medium">
                 {t.walletCardHolderLabel} <b className="text-slate-900 dark:text-white">{CARD_HOLDER}</b>
@@ -838,24 +841,7 @@ export const WalletView: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-2 pl-3.5 pr-1.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-              <span className="font-mono font-semibold text-[16px] min-[360px]:text-[17px] tracking-[0.02em] tabular-nums whitespace-nowrap text-slate-900 dark:text-white select-all">
-                {CARD_FORMATTED}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyCard}
-                aria-label={copiedCard ? t.walletCardCopied : t.walletCopyCardBtn}
-                title={copiedCard ? t.walletCardCopied : t.walletCopyCardBtn}
-                className="w-11 h-11 rounded-lg text-emerald-700 dark:text-emerald-300 active:bg-emerald-50 dark:active:bg-emerald-950 flex items-center justify-center transition-colors shrink-0"
-              >
-                {copiedCard ? (
-                  <Check className="w-5 h-5" strokeWidth={2.25} />
-                ) : (
-                  <Copy className="w-5 h-5" strokeWidth={1.75} />
-                )}
-              </button>
-            </div>
+            <CardNumberRow number={CARD_FORMATTED} copied={copiedCard} onCopy={handleCopyCard} />
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
               {t.walletP2PDesc}

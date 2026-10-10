@@ -371,7 +371,7 @@ export const Leaderboard: React.FC = () => {
                   {/* 1st Place (Gold, Tallest + Crown) */}
                   <div className="w-1/3 flex flex-col items-center text-center justify-end px-0.5 relative -mt-4">
                     <div className="relative mb-2">
-                      <Crown className="w-5 h-5 text-amber-500 absolute -top-4 left-1/2 -translate-x-1/2" strokeWidth={1.75} />
+                      <Crown aria-hidden="true" className="w-5 h-5 text-amber-500 absolute -top-4 left-1/2 -translate-x-1/2 animate-crown-float" strokeWidth={1.75} />
                       <UserAvatar
                         avatar={first.avatar}
                         alt={first.name}

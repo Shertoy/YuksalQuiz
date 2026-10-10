@@ -315,7 +315,7 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
   const optionLetters = ['A', 'B', 'C', 'D'];
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-950/85 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
         
         {/* Header */}

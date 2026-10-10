@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
+import { CardNumberRow } from './CardNumberRow';
 import {
   CreditCard,
   Upload,
@@ -431,42 +432,20 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {result?.status !== 'approved' && (
             <>
               {/* Official Card Requisites */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                   <span className="text-slate-500 dark:text-slate-400 text-[13px]">{tr("To'lov uchun karta (Humo)", 'Карта для оплаты (Humo)', 'Card for payment (Humo)')}</span>
                   <span className="text-[12px] font-medium text-emerald-700 dark:text-emerald-300">
                     {tr('0% komissiya', '0% комиссии', '0% fee')}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                  <div>
-                    <span className="font-mono font-semibold text-[16px] tracking-[0.02em] select-all block text-slate-900 dark:text-slate-50 tabular-nums">
-                      {CARD_NUMBER_FORMATTED}
-                    </span>
-                    <span className="text-[13px] text-slate-500 dark:text-slate-400">
-                      {CARD_HOLDER}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyCard}
-                    className="min-h-[36px] px-3 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white text-[13px] font-semibold flex items-center gap-1 shrink-0"
-                  >
-                    {copiedCard ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span className="text-[11px]">{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" strokeWidth={2} />
-                        <span className="text-[11px]">{tr('Nusxalash', 'Копировать', 'Copy')}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                <CardNumberRow
+                  number={CARD_NUMBER_FORMATTED}
+                  holder={CARD_HOLDER}
+                  copied={copiedCard}
+                  onCopy={handleCopyCard}
+                />
               </div>
 
               {/* Amount Selection Section */}
@@ -502,17 +481,17 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder={tr('Boshqa summa (masalan: 30000)', 'Другая сумма (например: 30000)', 'Other amount (e.g. 30000)')}
+                      placeholder={tr('Boshqa summa', 'Другая сумма', 'Other amount')}
                       value={customAmountStr}
                       onChange={handleCustomAmountChange}
                       onFocus={() => setIsCustomMode(true)}
-                      className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all ${
+                      className={`w-full min-h-[44px] py-2.5 pl-3 pr-16 rounded-xl border text-[16px] font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all ${
  isCustomMode
  ? 'border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ring-2 ring-emerald-500/20'
  : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
  }`}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-slate-400 pointer-events-none">
                       {SOM}
                     </span>
                   </div>
@@ -571,7 +550,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
                       {/* Scanner animation overlay when active */}
                       {isVerifying && (
-                        <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
+                        <div className="absolute inset-0 bg-emerald-950/60 flex flex-col items-center justify-center gap-3">
                           <div className="w-full h-1 absolute top-1/2 -translate-y-1/2 shadow-lg" />
                           <div className="p-3 rounded-2xl bg-slate-900/90 text-white border border-emerald-500/50 flex items-center gap-2.5 shadow-lg z-10">
                             <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />

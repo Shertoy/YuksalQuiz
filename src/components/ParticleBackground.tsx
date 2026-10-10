@@ -33,7 +33,7 @@ export function shouldReduceBackgroundMotion(): boolean {
   } catch {}
   const cores = (navigator as any)?.hardwareConcurrency || 8;
   const memory = (navigator as any)?.deviceMemory || 8;
-  return cores <= 4 || memory <= 2;
+  return cores <= 2 || memory <= 2;
 }
 
 export const ParticleBackground: React.FC = () => {
@@ -123,76 +123,146 @@ export const ParticleBackground: React.FC = () => {
       },
     ];
 
-    // Fon BIR MARTA chiziladi (animatsiyasiz). Har kadrda qayta chizish ustidagi
-    // backdrop-blur qatlamlari bilan birga Android Telegram'da ekranni pirpiratardi.
-    const draw = () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      ctx.clearRect(0, 0, width, height);
+    // Katta yorug' dog'lar (orb) har kadrda emas, bir marta alohida qatlamga chiziladi —
+    // har kadrda faqat tayyor rasm ko'chiriladi va mayda zarralar suriladi (arzon).
+    const orbLayer = document.createElement('canvas');
+    const orbCtx = orbLayer.getContext('2d');
+    let isDark = document.documentElement.classList.contains('dark');
 
+    const paintOrbs = () => {
+      if (!orbCtx) return;
+      orbLayer.width = Math.round(width * dpr);
+      orbLayer.height = Math.round(height * dpr);
+      orbCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      orbCtx.clearRect(0, 0, width, height);
       ambientOrbs.forEach((orb) => {
-        const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
-        if (orb.colorType === 'emerald') {
-          const alpha = isDark ? 0.065 : 0.035;
-          gradient.addColorStop(0, `rgba(16, 185, 129, ${alpha})`);
-          gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-        } else if (orb.colorType === 'orange') {
-          const alpha = isDark ? 0.055 : 0.028;
-          gradient.addColorStop(0, `rgba(249, 115, 22, ${alpha})`);
-          gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
-        } else {
-          const alpha = isDark ? 0.05 : 0.025;
-          gradient.addColorStop(0, `rgba(45, 212, 191, ${alpha})`);
-          gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
-        }
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
-        ctx.fill();
+        const gradient = orbCtx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
+        const [r, g, bl, a] =
+          orb.colorType === 'emerald'
+            ? [16, 185, 129, isDark ? 0.065 : 0.035]
+            : orb.colorType === 'orange'
+            ? [249, 115, 22, isDark ? 0.055 : 0.028]
+            : [45, 212, 191, isDark ? 0.05 : 0.025];
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${bl}, ${a})`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${bl}, 0)`);
+        orbCtx.fillStyle = gradient;
+        orbCtx.beginPath();
+        orbCtx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+        orbCtx.fill();
       });
+    };
 
-      particles.forEach((p) => {
-        const alpha = Math.max(0.12, Math.min(0.75, p.baseAlpha));
-        let fillColor: string;
-        let haloColor: string;
-        if (p.colorType === 'emerald') {
-          fillColor = isDark ? `rgba(16, 185, 129, ${alpha})` : `rgba(5, 150, 105, ${alpha * 0.85})`;
-          haloColor = isDark ? `rgba(16, 185, 129, ${alpha * 0.25})` : `rgba(5, 150, 105, ${alpha * 0.18})`;
-        } else if (p.colorType === 'mint') {
-          fillColor = isDark ? `rgba(52, 211, 153, ${alpha})` : `rgba(16, 185, 129, ${alpha * 0.8})`;
-          haloColor = isDark ? `rgba(52, 211, 153, ${alpha * 0.25})` : `rgba(16, 185, 129, ${alpha * 0.15})`;
-        } else if (p.colorType === 'orange') {
-          fillColor = isDark ? `rgba(249, 115, 22, ${alpha})` : `rgba(234, 88, 12, ${alpha * 0.85})`;
-          haloColor = isDark ? `rgba(249, 115, 22, ${alpha * 0.25})` : `rgba(234, 88, 12, ${alpha * 0.18})`;
-        } else {
-          fillColor = isDark ? `rgba(255, 255, 255, ${alpha * 0.8})` : `rgba(100, 116, 139, ${alpha * 0.45})`;
-          haloColor = isDark ? `rgba(255, 255, 255, ${alpha * 0.18})` : `rgba(148, 163, 184, ${alpha * 0.12})`;
-        }
+    // Zarralar sekin yuqoriga "suzadi" (antigravity), yonga yengil tebranadi va miltillaydi
+    particles.forEach((p) => {
+      p.vy = -(Math.random() * 0.22 + 0.08);
+      p.vx = (Math.random() - 0.5) * 0.12;
+    });
+
+    const colorFor = (p: Particle, alpha: number): [string, string] => {
+      if (p.colorType === 'emerald')
+        return isDark
+          ? [`rgba(16, 185, 129, ${alpha})`, `rgba(16, 185, 129, ${alpha * 0.25})`]
+          : [`rgba(5, 150, 105, ${alpha * 0.85})`, `rgba(5, 150, 105, ${alpha * 0.18})`];
+      if (p.colorType === 'mint')
+        return isDark
+          ? [`rgba(52, 211, 153, ${alpha})`, `rgba(52, 211, 153, ${alpha * 0.25})`]
+          : [`rgba(16, 185, 129, ${alpha * 0.8})`, `rgba(16, 185, 129, ${alpha * 0.15})`];
+      if (p.colorType === 'orange')
+        return isDark
+          ? [`rgba(249, 115, 22, ${alpha})`, `rgba(249, 115, 22, ${alpha * 0.25})`]
+          : [`rgba(234, 88, 12, ${alpha * 0.85})`, `rgba(234, 88, 12, ${alpha * 0.18})`];
+      return isDark
+        ? [`rgba(255, 255, 255, ${alpha * 0.8})`, `rgba(255, 255, 255, ${alpha * 0.18})`]
+        : [`rgba(100, 116, 139, ${alpha * 0.45})`, `rgba(148, 163, 184, ${alpha * 0.12})`];
+    };
+
+    const drawFrame = (time: number) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(orbLayer, 0, 0, width, height);
+      const t = time / 1000;
+      for (const p of particles) {
+        const twinkle = 0.75 + 0.25 * Math.sin(t * p.twinkleSpeed * 60 + p.twinklePhase);
+        const alpha = Math.max(0.1, Math.min(0.75, p.baseAlpha * twinkle));
+        const [fill, halo] = colorFor(p, alpha);
         if (p.hasHalo) {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.radius * 2.8, 0, Math.PI * 2);
-          ctx.fillStyle = haloColor;
+          ctx.fillStyle = halo;
           ctx.fill();
         }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = fillColor;
+        ctx.fillStyle = fill;
         ctx.fill();
-      });
+      }
     };
 
-    draw();
+    const step = (dt: number, time: number) => {
+      const k = dt / 16.67; // 60fps ga nisbatan
+      const t = time / 1000;
+      for (const p of particles) {
+        p.x += (p.vx + Math.sin(t * 0.6 + p.twinklePhase) * 0.06) * k;
+        p.y += p.vy * k;
+        if (p.y < -10) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        if (p.x < -10) p.x = width + 10;
+        else if (p.x > width + 10) p.x = -10;
+      }
+    };
 
-    // Ekran o'lchami o'zgarsa yoki tema (yorug'/qorong'i) almashsa qayta chiziladi
+    // ~30 kadr/s: ko'z uchun silliq, batareya uchun tejamkor. Ilova yashirilganda to'xtaydi.
+    const FRAME_MS = 1000 / 30;
+    let last = 0;
+    let running = true;
+    const loop = (time: number) => {
+      if (!running) return;
+      animationFrameId = requestAnimationFrame(loop);
+      if (!last) last = time;
+      const dt = time - last;
+      if (dt < FRAME_MS) return;
+      last = time;
+      step(Math.min(dt, 100), time);
+      drawFrame(time);
+    };
+
+    paintOrbs();
+    drawFrame(performance.now());
+    animationFrameId = requestAnimationFrame(loop);
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        running = false;
+        cancelAnimationFrame(animationFrameId);
+      } else if (!running) {
+        running = true;
+        last = 0;
+        animationFrameId = requestAnimationFrame(loop);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Ekran o'lchami yoki tema (yorug'/qorong'i) o'zgarsa fon qatlami qayta chiziladi
     const onResize = () => {
       resize();
-      draw();
+      paintOrbs();
     };
     window.removeEventListener('resize', resize);
     window.addEventListener('resize', onResize, { passive: true });
-    const themeObserver = new MutationObserver(() => draw());
+    const themeObserver = new MutationObserver(() => {
+      const nextDark = document.documentElement.classList.contains('dark');
+      if (nextDark !== isDark) {
+        isDark = nextDark;
+        paintOrbs();
+      }
+    });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return () => {
+      running = false;
+      cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', onResize);
       themeObserver.disconnect();
     };

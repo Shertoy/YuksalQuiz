@@ -273,6 +273,21 @@
   animation: loaderBar 3s linear forwards;
 }
 
+/* 1-o'rin toji: sekin ko'tarilib-tushadi */
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(-4deg); }
+}
+
+.animate-crown-float {
+  animation: crownFloat 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-crown-float { animation: none; }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
