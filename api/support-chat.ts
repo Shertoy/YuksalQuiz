@@ -1,4 +1,4 @@
-import { BOT_TOKEN, getServiceClient, getPrimaryAdminId, GEMINI_MODELS } from './_lib/common.ts';
+import { BOT_TOKEN, getServiceClient, getPrimaryAdminId, GEMINI_MODELS } from './_lib/common.js';
 
 const ADMIN_TELEGRAM_ID = getPrimaryAdminId();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';

@@ -6,7 +6,7 @@ import {
   adminAccessProblem,
   cleanId,
   tgSend,
-} from './_lib/common.ts';
+} from './_lib/common.js';
 
 /**
  * Admin paneli uchun xavfsiz API. Faqat ADMIN_TELEGRAM_IDS ichidagi,

@@ -1,4 +1,4 @@
-import { BOT_TOKEN, WEBAPP_URL, verifyRequestUser, isAdminId } from './_lib/common.ts';
+import { BOT_TOKEN, WEBAPP_URL, verifyRequestUser, isAdminId } from './_lib/common.js';
 
 function escapeHtml(text: string): string {
   if (!text) return '';

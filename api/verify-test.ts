@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { validateTelegramInitData, getServiceClient, cleanId, findUserRow } from './_lib/common.ts';
+import { validateTelegramInitData, getServiceClient, cleanId, findUserRow } from './_lib/common.js';
 
 /**
  * Test natijasini tekshirish va coin berish.

@@ -6,7 +6,7 @@ import {
   tgSend,
   findUserRow,
   BOT_TOKEN,
-} from './_lib/common.ts';
+} from './_lib/common.js';
 
 /**
  * Talaba hamyoni va referal tizimi uchun xavfsiz API (YuksalQuiz).
