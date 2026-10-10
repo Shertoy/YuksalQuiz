@@ -169,7 +169,7 @@ export const OnboardingModal: React.FC = () => {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-        <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 my-8 animate-in fade-in zoom-in-95 duration-200">
+        <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 p-6 my-8 animate-in fade-in zoom-in-95 duration-200">
           {step === 'welcome' ? (
             /* Welcome & Gratitude Screen */
             <div className="text-center py-4">
@@ -193,10 +193,10 @@ export const OnboardingModal: React.FC = () => {
                         setLanguage(langItem.code);
                       }}
                       className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all ${
-                        isSelected
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                      }`}
+ isSelected
+ ? 'bg-emerald-600 text-white shadow-xs'
+ : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ }`}
                     >
                       {langItem.label}
                     </button>
@@ -204,7 +204,7 @@ export const OnboardingModal: React.FC = () => {
                 })}
               </div>
 
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-4xl shadow-xl shadow-emerald-500/30 mb-5 animate-soft-pulse">
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-600 flex items-center justify-center text-4xl shadow-md mb-5 animate-soft-pulse">
                 <Sparkles className="w-10 h-10 text-white" strokeWidth={1.75} />
               </div>
 
@@ -213,7 +213,7 @@ export const OnboardingModal: React.FC = () => {
                 <span>YuksalQuiz Platformasi</span>
               </div>
 
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">
                 YuksalQuiz
               </h2>
 
@@ -242,7 +242,7 @@ export const OnboardingModal: React.FC = () => {
                   triggerHaptic('medium');
                   setStep('form');
                 }}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all transform active:scale-95"
+                className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95"
               >
                 <span>{t.onboardingTitle}</span>
                 <span>&rarr;</span>
@@ -253,7 +253,7 @@ export const OnboardingModal: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                     {t.onboardingTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -272,7 +272,7 @@ export const OnboardingModal: React.FC = () => {
                     <label className="block font-semibold text-slate-700 dark:text-slate-300">
                       {t.selectAvatar}:
                     </label>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
                       {t.customAvatarsCount}
                     </span>
                   </div>
@@ -288,10 +288,10 @@ export const OnboardingModal: React.FC = () => {
                             setAvatar(av.src);
                           }}
                           className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
-                            isSelected
-                              ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md shadow-emerald-500/25 z-10'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
-                          }`}
+ isSelected
+ ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md z-10'
+ : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:scale-102 opacity-85 hover:opacity-100'
+ }`}
                           title={av.alt}
                         >
                           <img
@@ -328,13 +328,13 @@ export const OnboardingModal: React.FC = () => {
                       }}
                       placeholder={language === 'ru' ? 'Иван' : language === 'en' ? 'John' : 'Ali'}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
-                        fieldErrors.firstName
-                          ? 'border-orange-500 focus:ring-orange-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
-                      }`}
+ fieldErrors.firstName
+ ? 'border-orange-500 focus:ring-orange-500'
+ : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+ }`}
                     />
                     {fieldErrors.firstName && (
-                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.firstName}</span>
                       </p>
@@ -355,13 +355,13 @@ export const OnboardingModal: React.FC = () => {
                       }}
                       placeholder={language === 'ru' ? 'Иванов' : language === 'en' ? 'Doe' : 'Valiyev'}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
-                        fieldErrors.lastName
-                          ? 'border-orange-500 focus:ring-orange-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
-                      }`}
+ fieldErrors.lastName
+ ? 'border-orange-500 focus:ring-orange-500'
+ : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+ }`}
                     />
                     {fieldErrors.lastName && (
-                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.lastName}</span>
                       </p>
@@ -404,19 +404,19 @@ export const OnboardingModal: React.FC = () => {
                         }
                       }}
                       className={`p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
-                        isStudent
-                          ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 ring-2 ring-emerald-500/30 text-emerald-900 dark:text-emerald-100 font-bold'
-                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
-                      }`}
+ isStudent
+ ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 ring-2 ring-emerald-500/30 text-emerald-900 dark:text-emerald-100 font-bold'
+ : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+ }`}
                     >
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                        isStudent ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
-                      }`}>
+ isStudent ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+ }`}>
                         <GraduationCap className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs truncate">{t.statusStudent}</div>
-                        <div className="text-[10px] opacity-75 font-normal truncate">Universitet / Institut</div>
+                        <div className="text-[11px] opacity-75 font-normal truncate">Universitet / Institut</div>
                       </div>
                     </button>
 
@@ -431,19 +431,19 @@ export const OnboardingModal: React.FC = () => {
                         }
                       }}
                       className={`p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
-                        !isStudent
-                          ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 ring-2 ring-teal-500/30 text-teal-900 dark:text-teal-100 font-bold'
-                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
-                      }`}
+ !isStudent
+ ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 ring-2 ring-teal-500/30 text-teal-900 dark:text-teal-100 font-bold'
+ : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+ }`}
                     >
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                        !isStudent ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
-                      }`}>
+ !isStudent ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+ }`}>
                         <BookOpen className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs truncate">{t.statusNotStudent}</div>
-                        <div className="text-[10px] opacity-75 font-normal truncate">{t.statusNotStudentSub}</div>
+                        <div className="text-[11px] opacity-75 font-normal truncate">{t.statusNotStudentSub}</div>
                       </div>
                     </button>
                   </div>
@@ -530,13 +530,13 @@ export const OnboardingModal: React.FC = () => {
                         if (fieldErrors.birthDate) setFieldErrors({ ...fieldErrors, birthDate: undefined });
                       }}
                       className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 font-medium transition-colors ${
-                        fieldErrors.birthDate
-                          ? 'border-orange-500 focus:ring-orange-500'
-                          : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
-                      }`}
+ fieldErrors.birthDate
+ ? 'border-orange-500 focus:ring-orange-500'
+ : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+ }`}
                     />
                     {fieldErrors.birthDate && (
-                      <p className="text-[10px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-orange-500 font-semibold mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                         <span>{fieldErrors.birthDate}</span>
                       </p>
@@ -554,10 +554,10 @@ export const OnboardingModal: React.FC = () => {
                           setGender('male');
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
-                          gender === 'male'
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                        }`}
+ gender === 'male'
+ ? 'bg-emerald-600 text-white border-emerald-600'
+ : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+ }`}
                       >
                         {t.genderMale}
                       </button>
@@ -568,10 +568,10 @@ export const OnboardingModal: React.FC = () => {
                           setGender('female');
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
-                          gender === 'female'
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                        }`}
+ gender === 'female'
+ ? 'bg-emerald-600 text-white border-emerald-600'
+ : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+ }`}
                       >
                         {t.genderFemale}
                       </button>
@@ -582,10 +582,10 @@ export const OnboardingModal: React.FC = () => {
                 {/* Mandatory Public Offer (Oferta) Checkbox */}
                 <div className="pt-2 pb-1">
                   <div className={`p-3 rounded-2xl border transition-colors ${
-                    fieldErrors.oferta
-                      ? 'bg-orange-50/70 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800'
-                      : 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60'
-                  } flex items-start gap-2.5`}>
+ fieldErrors.oferta
+ ? 'bg-orange-50/70 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800'
+ : 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60'
+ } flex items-start gap-2.5`}>
                     <input
                       type="checkbox"
                       id="ofertaCheckbox"
@@ -616,7 +616,7 @@ export const OnboardingModal: React.FC = () => {
                     </label>
                   </div>
                   {fieldErrors.oferta && (
-                    <p className="text-[10px] text-orange-500 font-semibold mt-1 px-1 flex items-center gap-1">
+                    <p className="text-[11px] text-orange-500 font-semibold mt-1 px-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                       <span>{fieldErrors.oferta}</span>
                     </p>
@@ -628,7 +628,7 @@ export const OnboardingModal: React.FC = () => {
                   <button
                     type="submit"
                     disabled={!acceptedOferta}
-                    className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                    className="w-full py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     <Check className="w-5 h-5 text-white" strokeWidth={2} />
                     <span>{t.completeRegistration}</span>

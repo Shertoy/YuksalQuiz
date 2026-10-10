@@ -174,7 +174,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full h-[88vh] supports-[height:100dvh]:h-[88dvh] max-h-[700px] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full h-[88vh] supports-[height:100dvh]:h-[88dvh] max-h-[700px] flex flex-col shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -186,10 +186,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               )}
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>{activeTab === 'announcements' ? 'Bildirishnomalar' : 'AI Yordam & Maslahatchi'}</span>
                 {activeTab === 'support' && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 )}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -238,10 +238,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 setActiveTab('announcements');
               }}
               className={`py-2 rounded-xl transition-all flex items-center justify-center leading-none gap-1.5 ${
-                activeTab === 'announcements'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+ activeTab === 'announcements'
+ ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+ : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+ }`}
             >
               <Bell className="w-3.5 h-3.5" />
               <span>E'lonlar ({userAnnouncements.length})</span>
@@ -254,10 +254,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 setActiveTab('support');
               }}
               className={`py-2 rounded-xl transition-all flex items-center justify-center leading-none gap-1.5 ${
-                activeTab === 'support'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+ activeTab === 'support'
+ ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+ : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+ }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Yordam & Savol</span>
@@ -287,24 +287,24 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span
-                        className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase ${
-                          item.tag === 'muhim'
-                            ? 'bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400'
-                            : item.tag === 'eslatma'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
-                            : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                        }`}
+                        className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+ item.tag === 'muhim'
+ ? 'bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400'
+ : item.tag === 'eslatma'
+ ? 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
+ : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+ }`}
                       >
                         {item.tag || 'yangilik'}
                       </span>
 
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                      <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center gap-1">
                         {getTargetIcon(item.targetType)}
                         <span>{item.targetLabel || 'Barchaga'}</span>
                       </span>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 shrink-0">
+                    <div className="text-[11px] text-slate-400 font-semibold flex items-center gap-1 shrink-0">
                       <Calendar className="w-2.5 h-2.5" strokeWidth={1.75} />
                       <span>{item.date}</span>
                       {item.time && (
@@ -319,7 +319,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
                   {/* Title & Body */}
                   <div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white mb-1">
+                    <h4 className="font-semibold text-xs text-slate-900 dark:text-white mb-1">
                       {item.title}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
@@ -370,7 +370,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   <Bot className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div className="text-xs space-y-1">
-                  <h4 className="font-extrabold text-slate-900 dark:text-white">
+                  <h4 className="font-semibold text-slate-900 dark:text-white">
                     Yuksal Quiz AI Maslahatchisi
                   </h4>
                   <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
@@ -382,7 +382,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               {/* Suggestions chips when chat has few messages */}
               {chatMessages.length === 0 && (
                 <div className="space-y-1.5 pt-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
+                  <p className="text-[11px] font-bold text-slate-400 px-1">
                     Tezkor savollar:
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -417,7 +417,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   <div className="flex justify-end">
                     <div className="max-w-[85%] p-3 rounded-2xl rounded-tr-xs bg-emerald-600 text-white text-xs shadow-sm space-y-1">
                       <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.message}</p>
-                      <div className="text-[9px] text-emerald-100 text-right opacity-80">
+                      <div className="text-[11px] text-emerald-100 text-right opacity-80">
                         {new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
@@ -428,7 +428,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                     <div className="flex justify-start">
                       <div className="max-w-[88%] p-3 rounded-2xl rounded-tl-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs shadow-sm border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
                         <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
-                          <span className="flex items-center gap-1 font-bold text-[10px]">
+                          <span className="flex items-center gap-1 font-bold text-[11px]">
                             {msg.status === 'replied_by_admin' || msg.sender === 'admin' ? (
                               <>
                                 <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
@@ -443,7 +443,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                           </span>
 
                           {msg.status === 'forwarded_to_admin' && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 text-[9px] font-bold flex items-center gap-1 border border-amber-200/60 dark:border-amber-800/60">
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 text-[11px] font-bold flex items-center gap-1 border border-amber-200/60 dark:border-amber-800/60">
                               <Clock className="w-2.5 h-2.5" />
                               <span>Adminga yo'naltirildi</span>
                             </span>
@@ -454,7 +454,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                           {msg.reply}
                         </p>
 
-                        <div className="text-[9px] text-slate-400 text-right font-medium">
+                        <div className="text-[11px] text-slate-400 text-right font-medium">
                           {new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
@@ -470,9 +470,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                     <Bot className="w-4 h-4" />
                   </div>
                   <div className="p-3 rounded-2xl rounded-tl-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 shadow-xs">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animationDelay: '300ms' }} />
                     <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 ml-1">
                       AI maslahatchi tahlil qilmoqda...
                     </span>
@@ -504,14 +504,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || isSending}
-                  className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all shadow-md shadow-emerald-600/20 active:scale-95 shrink-0"
+                  className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all shadow-md active:scale-95 shrink-0"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Yuborish</span>
                 </button>
               </form>
 
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center">
                 💡 To'lov va ma'muriy masalalar avtomatik adminga yo'naltiriladi.
               </p>
             </div>

@@ -73,10 +73,10 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
                   onChange(name);
                 }}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95 text-left flex items-center gap-1 ${
-                  active
-                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                }`}
+ active
+ ? 'bg-emerald-600 border-emerald-600 text-white'
+ : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+ }`}
               >
                 {active && <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />}
                 <span>{name}</span>
@@ -102,10 +102,10 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
               if (inList) onChange('');
             }}
             className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 flex items-center gap-1.5 ${
-              manualMode
-                ? 'bg-rose-600 border-rose-600 text-white'
-                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-700 dark:text-rose-300'
-            }`}
+ manualMode
+ ? 'bg-rose-600 border-rose-600 text-white'
+ : 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-700 dark:text-rose-300'
+ }`}
           >
             <PenLine className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
             <span>Ro'yxatda yo'q — qo'lda yozish</span>
@@ -129,8 +129,8 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
               onChange={(e) => onChange(e.target.value)}
               placeholder="Yo'nalish nomini aniq yozing, masalan: Tarix"
               className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30 ${
-                hasError ? 'border-rose-500' : 'border-rose-300 dark:border-rose-800'
-              }`}
+ hasError ? 'border-rose-500' : 'border-rose-300 dark:border-rose-800'
+ }`}
             />
           </div>
           {value.trim() && !inList && (

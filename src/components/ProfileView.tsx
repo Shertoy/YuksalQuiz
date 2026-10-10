@@ -56,7 +56,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-black text-slate-900 dark:text-white">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {t.profileTitle}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -78,7 +78,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Main Profile Card (Compact Horizontal Layout) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3.5">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3.5">
         <div className="flex items-center gap-3.5">
           {/* Avatar on the Left (w-16 h-16 rounded-2xl) */}
           <div
@@ -99,7 +99,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           {/* User Name, University, Course on the Right (Horizontal) */}
           <div className="min-w-0 flex-1">
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white truncate leading-snug">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white truncate leading-snug">
               {profile.firstName || 'Talaba'} {profile.lastName || ''}
             </h3>
             <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
@@ -114,27 +114,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
-            <div className="flex items-center justify-center gap-1 text-amber-500 font-black text-sm">
+            <div className="flex items-center justify-center gap-1 text-amber-500 font-bold text-sm">
               <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.75} />
               <span>{profile.coins}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.coins}</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{t.coins}</p>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
-            <div className="flex items-center justify-center gap-1 text-orange-500 font-black text-sm">
+            <div className="flex items-center justify-center gap-1 text-orange-500 font-bold text-sm">
               <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" strokeWidth={1.75} />
               <span>{profile.streak} {t.daysUnit || 'kun'}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.streak}</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{t.streak}</p>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
-            <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-sm">
+            <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
               <BookOpen className="w-3.5 h-3.5 shrink-0" />
               <span>{profile.completedTestsCount}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{t.testsCompleted}</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{t.testsCompleted}</p>
           </div>
         </div>
 
@@ -145,10 +145,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Wallet className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 Hisobingiz:
               </div>
-              <div className="font-black text-sm text-slate-900 dark:text-white truncate">
+              <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
                 {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
               </div>
             </div>
@@ -190,14 +190,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           triggerHaptic('light');
           setActiveTab('results');
         }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
       >
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <CheckSquare className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+            <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
               {t.myResultsCardTitle}
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -213,12 +213,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Settings (Ovoz va Vibratsiya) Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex items-center gap-2 mb-1 px-1">
           <div className="w-7 h-7 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <SlidersHorizontal className="w-4 h-4" strokeWidth={1.75} />
           </div>
-          <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+          <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
             {t.settingsTitle}
           </h4>
         </div>
@@ -233,7 +233,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="font-bold text-xs text-slate-900 dark:text-white">
                 {t.languageTitle}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {t.languageDesc}
               </div>
             </div>
@@ -257,10 +257,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     setLanguage(langItem.code);
                   }}
                   className={`py-2 px-1 text-center rounded-xl font-bold text-xs transition-all ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50'
-                  }`}
+ isSelected
+ ? 'bg-emerald-600 text-white shadow-sm'
+ : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50'
+ }`}
                 >
                   {langItem.label}
                 </button>
@@ -273,10 +273,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-              soundEnabled
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
-            }`}>
+ soundEnabled
+ ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+ : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
+ }`}>
               {soundEnabled ? (
                 <Volume2 className="w-4 h-4" strokeWidth={1.75} />
               ) : (
@@ -287,7 +287,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="font-bold text-xs text-slate-900 dark:text-white">
                 {t.soundEffectsTitle}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {t.soundEffectsDesc}
               </div>
             </div>
@@ -301,13 +301,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               toggleSound();
             }}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              soundEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
-            }`}
+ soundEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+ }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                soundEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
+ soundEnabled ? 'translate-x-5' : 'translate-x-0'
+ }`}
             />
           </button>
         </div>
@@ -316,17 +316,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-              vibrationEnabled
-                ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
-                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
-            }`}>
+ vibrationEnabled
+ ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+ : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500'
+ }`}>
               <Vibrate className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div>
               <div className="font-bold text-xs text-slate-900 dark:text-white">
                 {t.vibrationTitle}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {t.vibrationDesc}
               </div>
             </div>
@@ -340,13 +340,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               toggleVibration();
             }}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              vibrationEnabled ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
-            }`}
+ vibrationEnabled ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
+ }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                vibrationEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
+ vibrationEnabled ? 'translate-x-5' : 'translate-x-0'
+ }`}
             />
           </button>
         </div>
@@ -355,10 +355,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-              theme === 'dark'
-                ? 'bg-amber-500/15 text-amber-500'
-                : 'bg-emerald-500/15 text-emerald-600'
-            }`}>
+ theme === 'dark'
+ ? 'bg-amber-500/15 text-amber-500'
+ : 'bg-emerald-500/15 text-emerald-600'
+ }`}>
               {theme === 'dark' ? (
                 <Moon className="w-4 h-4" strokeWidth={1.75} />
               ) : (
@@ -369,7 +369,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="font-bold text-xs text-slate-900 dark:text-white">
                 {theme === 'dark' ? t.themeDark : t.themeLight}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {t.themeDesc}
               </div>
             </div>
@@ -384,20 +384,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               setTheme(theme === 'dark' ? 'light' : 'dark');
             }}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              theme === 'dark' ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
-            }`}
+ theme === 'dark' ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+ }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
-              }`}
+ theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
+ }`}
             />
           </button>
         </div>
       </div>
 
       {/* Public Offer Link Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 flex items-center justify-center">
             <ScrollText className="w-4 h-4" />
@@ -439,14 +439,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <Lock className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
             <span>{t.adminLoginBtn}</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">{t.adminControlPanel}</span>
+          <span className="text-[11px] text-slate-400 font-medium">{t.adminControlPanel}</span>
         </button>
       </div>
 
       {/* App Version Stamp */}
       <div className="pt-2 text-center">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>{t.officialVersion}</span>
         </div>
       </div>

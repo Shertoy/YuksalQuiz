@@ -128,8 +128,8 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
   return (
     <div
       className={`fixed inset-0 z-50 flex flex-col justify-between p-6 bg-slate-50 dark:bg-[#0c0a09] text-slate-900 dark:text-white transition-opacity duration-500 ease-in-out ${
-        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
+ isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+ }`}
     >
       {/* Subtle Ambient Background Gradients */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -138,17 +138,17 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
       {/* Top Header: Brand Left & Minimalist Spinner Top-Right */}
       <div className="relative z-10 flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
+          <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md">
             <Sparkles className="w-4 h-4 text-orange-200" />
           </div>
-          <span className="font-black text-sm tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-orange-500 bg-clip-text text-transparent dark:from-emerald-400 dark:via-teal-300 dark:to-orange-400">
+          <span className="font-bold text-sm tracking-tight bg-emerald-600 bg-clip-text text-transparent dark:bg-emerald-400">
             YuksalQuiz
           </span>
         </div>
 
         {/* Minimalist Top-Right Modern Dual-Ring Spinner */}
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
             {language === 'ru' ? 'Загрузка...' : language === 'en' ? 'Loading...' : 'Yuklanmoqda...'}
           </span>
           <div className="relative w-7 h-7 flex items-center justify-center">
@@ -157,7 +157,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
             {/* Sleek rotating gradient arc */}
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-emerald-500 border-r-orange-500 animate-spin"></div>
             {/* Center glowing micro-dot */}
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-xs"></div>
           </div>
         </div>
       </div>
@@ -166,10 +166,10 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
       <div className="relative z-10 max-w-sm mx-auto text-center px-4 my-auto">
         <div
           className={`transition-all duration-350 ease-out transform ${
-            isVisible
-              ? 'opacity-100 translate-y-0 scale-100'
-              : 'opacity-0 translate-y-2 scale-98'
-          }`}
+ isVisible
+ ? 'opacity-100 translate-y-0 scale-100'
+ : 'opacity-0 translate-y-2 scale-98'
+ }`}
         >
           {/* Quote Icon Bubble */}
           <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
@@ -182,7 +182,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
           </blockquote>
 
           {/* Author Badge */}
-          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 shadow-xs">
+          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-emerald-600 dark:text-emerald-400 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
             <span>{currentItem.author}</span>
           </div>
@@ -192,7 +192,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
         <div className="w-24 h-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-full mx-auto mt-6 overflow-hidden">
           <div
             key={currentIndex}
-            className="h-full bg-gradient-to-r from-emerald-500 to-orange-400 rounded-full animate-loader-bar"
+            className="h-full bg-emerald-500 rounded-full animate-loader-bar"
           />
         </div>
       </div>

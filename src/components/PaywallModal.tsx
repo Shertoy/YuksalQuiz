@@ -50,7 +50,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col text-slate-900 dark:text-white">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 flex flex-col text-slate-900 dark:text-white">
         
         {/* Glowing Orange and Emerald Accent Blur Orbs */}
         <div className="absolute -top-10 -right-10 w-36 h-36 bg-orange-500/20 rounded-full blur-2xl pointer-events-none" />
@@ -72,14 +72,14 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* Vibrant Lock & Sparkle Center Badge */}
         <div className="relative z-10 text-center -mt-2">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500 via-orange-500 to-emerald-500 p-0.5 shadow-xl shadow-orange-500/25 mx-auto ring-4 ring-orange-500/15 flex items-center justify-center animate-bounce">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500 p-0.5 shadow-md mx-auto ring-4 ring-orange-500/15 flex items-center justify-center">
             <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[22px] flex items-center justify-center">
               <Lock className="w-7 h-7 text-orange-500 dark:text-orange-400" strokeWidth={2} />
             </div>
           </div>
 
           {/* Sarlavha */}
-          <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-4 tracking-tight">
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-4 tracking-tight">
             Kunlik bepul limit tugadi
           </h3>
 
@@ -97,23 +97,23 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         </div>
 
         {/* Limit Stats Card (Green & Orange Accent) */}
-        <div className="relative z-10 mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-emerald-500/10 border border-orange-500/20 dark:border-orange-500/30">
+        <div className="relative z-10 mt-4 p-3.5 rounded-2xl bg-orange-500/10 border border-orange-500/20 dark:border-orange-500/30">
           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
             <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-orange-500" />
               Bugungi urinishlar:
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-400 font-black text-[11px] border border-orange-200 dark:border-orange-800">
+            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-400 font-bold text-[11px] border border-orange-200 dark:border-orange-800">
               1 / 1 (Tugagan)
             </span>
           </div>
 
           {/* Progress bar */}
           <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-            <div className="h-full w-full bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 rounded-full" />
+            <div className="h-full w-full bg-orange-500 rounded-full" />
           </div>
 
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-center">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center">
             Har bir test uchun bepul limit ertaga soat 00:00 da avtomatik yangilanadi.
           </p>
         </div>
@@ -140,7 +140,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <Wallet className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
             Hamyon balansingiz:
           </span>
-          <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
+          <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
             {currentBalance.toLocaleString('uz-UZ')} so'm
           </span>
         </div>
@@ -151,7 +151,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <button
             type="button"
             onClick={handleTopUpClick}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-400/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base shadow-md ring-2 ring-emerald-400/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
             <CreditCard className="w-5 h-5 text-white" strokeWidth={1.75} />
             <span>Hisobni to'ldirish</span>

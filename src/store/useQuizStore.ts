@@ -1331,10 +1331,16 @@ export const useQuizStore = create<QuizState>()(
               }
 
               if (isCorrect) verifiedScore++;
+              // Variantlar aralashtirilgan: to'g'ri javob indeksini foydalanuvchi ko'rgan tartib bo'yicha topamiz
+              const correctText = q.options?.[q.correctOptionIndex];
+              const shownIdx =
+                correctText !== undefined && Array.isArray(ans.options)
+                  ? ans.options.findIndex((o) => String(o).trim() === String(correctText).trim())
+                  : -1;
               return {
                 ...ans,
                 isCorrect,
-                correctOptionIndex: q.correctOptionIndex,
+                correctOptionIndex: shownIdx >= 0 ? shownIdx : ans.correctOptionIndex,
               };
             }
             if (ans.isCorrect) verifiedScore++;

@@ -97,20 +97,20 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/80 dark:border-emerald-500 shadow-2xl shadow-emerald-500/20 animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/80 dark:border-emerald-500 shadow-lg animate-in zoom-in-95 duration-200">
         {/* Header with Visual Editing Mode Status */}
         <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
               <Edit3 className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-sm text-slate-900 dark:text-white truncate">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                   {t.editDataTitle || 'Profilni tahrirlash'}
                 </h3>
-                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
                   <span>Faol rejim</span>
                 </span>
               </div>
@@ -142,14 +142,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
                 {t.updateAvatarLabel || 'Avatarni tanlang:'}
               </label>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-100/70 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md">
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-100/70 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md">
                 {t.customAvatarsCount || '10 ta maxsus avatar'}
               </span>
             </div>
 
             {/* Central Animated Active Preview */}
             <div className="relative inline-block mx-auto mb-3.5">
-              <div className="w-16 h-16 rounded-2xl ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 overflow-hidden shadow-lg shadow-emerald-500/25 p-0.5 bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center transition-all duration-300">
+              <div className="w-16 h-16 rounded-2xl ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 overflow-hidden shadow-lg p-0.5 bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center transition-all duration-300">
                 <UserAvatar avatar={avatar} />
               </div>
               <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
@@ -170,10 +170,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                       setAvatar(av.src);
                     }}
                     className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all duration-200 flex items-center justify-center bg-white dark:bg-slate-900 border ${
-                      isSelected
-                        ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md shadow-emerald-500/30 z-10'
-                        : 'border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 hover:scale-102 opacity-80 hover:opacity-100'
-                    }`}
+ isSelected
+ ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105 shadow-md z-10'
+ : 'border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 hover:scale-102 opacity-80 hover:opacity-100'
+ }`}
                     title={av.alt}
                   >
                     <img
@@ -210,14 +210,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   if (formErrors.firstName) setFormErrors({ ...formErrors, firstName: undefined });
                 }}
                 className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border ${
-                  formErrors.firstName
-                    ? 'border-orange-500 focus:ring-orange-500'
-                    : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
-                } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
+ formErrors.firstName
+ ? 'border-orange-500 focus:ring-orange-500'
+ : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+ } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
                 placeholder="Ismingiz (2-25 belgi)"
               />
               {formErrors.firstName && (
-                <p className="text-[10px] text-orange-500 font-semibold mt-1">
+                <p className="text-[11px] text-orange-500 font-semibold mt-1">
                   {formErrors.firstName}
                 </p>
               )}
@@ -237,14 +237,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   if (formErrors.lastName) setFormErrors({ ...formErrors, lastName: undefined });
                 }}
                 className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border ${
-                  formErrors.lastName
-                    ? 'border-orange-500 focus:ring-orange-500'
-                    : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
-                } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
+ formErrors.lastName
+ ? 'border-orange-500 focus:ring-orange-500'
+ : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
+ } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
                 placeholder="Familiyangiz (2-25 belgi)"
               />
               {formErrors.lastName && (
-                <p className="text-[10px] text-orange-500 font-semibold mt-1">
+                <p className="text-[11px] text-orange-500 font-semibold mt-1">
                   {formErrors.lastName}
                 </p>
               )}
@@ -330,7 +330,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </button>
           <button
             type="submit"
-            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
+            className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all active:scale-95"
           >
             <Check className="w-5 h-5 text-white" strokeWidth={2} />
             <span>{t.saveChangesBtn || "O'zgarishlarni saqlash"}</span>

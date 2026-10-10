@@ -53,7 +53,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
   const referralEarnings = referralCount * 1000;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/25 text-white p-5 shadow-xl shadow-emerald-950/40 space-y-4">
+    <div className="relative overflow-hidden rounded-2xl bg-slate-900 border border-emerald-500/25 text-white p-5 shadow-md space-y-4">
       {/* Background glow ornaments */}
       <div className="absolute top-0 right-0 -mr-8 -mt-8 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-orange-400/10 blur-xl pointer-events-none" />
@@ -65,19 +65,19 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
             <Gift className="w-5 h-5 text-emerald-400" strokeWidth={1.75} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-extrabold text-sm tracking-tight leading-tight">
+            <h3 className="font-semibold text-sm tracking-tight leading-tight">
               Telegram Referal Tizimi
             </h3>
             <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
               Har bir taklif uchun{' '}
-              <span className="font-extrabold text-orange-400 whitespace-nowrap">
+              <span className="font-semibold text-orange-400 whitespace-nowrap">
                 +1 000 so'm
               </span>
             </p>
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center px-2 py-0.5 rounded-full bg-orange-500 text-white font-black text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
+        <div className="shrink-0 flex items-center px-2 py-0.5 rounded-full bg-orange-500 text-white font-bold text-[11px] tracking-wide whitespace-nowrap shadow-sm">
           <span>+1 000 UZS</span>
         </div>
       </div>
@@ -92,21 +92,21 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
       {/* Live Stats Counters */}
       <div className="grid grid-cols-2 gap-2.5 bg-black/30 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-center">
         <div>
-          <div className="flex items-center justify-center gap-1.5 text-base font-black text-white whitespace-nowrap">
+          <div className="flex items-center justify-center gap-1.5 text-base font-bold text-white whitespace-nowrap">
             <Users className="w-4 h-4 text-emerald-400 shrink-0" strokeWidth={1.75} />
             <span>{referralCount} ta</span>
           </div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mt-0.5">
+          <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
             Taklif qilingan do'stlar soni
           </p>
         </div>
 
         <div>
-          <div className="flex items-center justify-center gap-1 text-base font-black text-amber-400 whitespace-nowrap">
+          <div className="flex items-center justify-center gap-1 text-base font-bold text-amber-400 whitespace-nowrap">
             <Coins className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={1.75} />
             <span className="whitespace-nowrap">{referralEarnings.toLocaleString('uz-UZ')} so'm</span>
           </div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mt-0.5">
+          <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
             Referaldan ishlangan mablag'
           </p>
         </div>
@@ -147,7 +147,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
         <button
           type="button"
           onClick={handleNativeShare}
-          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
+          className="w-full py-3.5 px-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
         >
           <Share2 className="w-4 h-4 text-white" strokeWidth={1.75} />
           <span>Do'stlarni taklif qilish (+1 000 so'm)</span>
@@ -155,7 +155,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
       </div>
 
       {/* Informative footer */}
-      <div className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1 opacity-90">
+      <div className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1 opacity-90">
         <Sparkles className="w-3 h-3 text-orange-400" strokeWidth={1.75} />
         <span>Do'stlaringiz ilovaga qo'shilganda hisobingizga avtomatik +1 000 so'm qo'shiladi!</span>
       </div>

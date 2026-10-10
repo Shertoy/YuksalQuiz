@@ -413,7 +413,7 @@ export const WalletView: React.FC = () => {
       {/* Top Header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-500 shrink-0" strokeWidth={1.75} />
             <span>{t.walletTitle || 'Hamyon'}</span>
           </h2>
@@ -439,10 +439,10 @@ export const WalletView: React.FC = () => {
       {feedback && (
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold shadow-lg animate-in fade-in zoom-in-95 flex items-start gap-2.5 ${
-            feedback.type === 'success'
-              ? 'bg-emerald-500 text-white'
-              : 'bg-orange-500 text-white'
-          }`}
+ feedback.type === 'success'
+ ? 'bg-emerald-500 text-white'
+ : 'bg-orange-500 text-white'
+ }`}
         >
           {feedback.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={1.75} />
@@ -461,7 +461,7 @@ export const WalletView: React.FC = () => {
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 animate-ping" />
             <div className="min-w-0">
-              <p className="font-extrabold truncate">Kvitansiya tekshirilmoqda...</p>
+              <p className="font-semibold truncate">Kvitansiya tekshirilmoqda...</p>
               <p className="text-[11px] opacity-80 truncate">Administrator tasdiqlashi kutilmoqda (har 4 soniyada tekshirilmoqda)</p>
             </div>
           </div>
@@ -472,16 +472,16 @@ export const WalletView: React.FC = () => {
       {/* =========================================================================
           1. BALANS BLOKI (BALANCE BLOCK)
          ========================================================================= */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 border border-emerald-500/25 text-white rounded-3xl p-5 shadow-xl shadow-emerald-950/30 relative overflow-hidden space-y-4">
+      <div className="bg-slate-900 border border-emerald-500/25 text-white rounded-2xl p-5 shadow-md relative overflow-hidden space-y-4">
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
 
         {/* Balance Title & Amount */}
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <span className="text-emerald-300 text-xs font-bold uppercase tracking-wider block mb-1">
+            <span className="text-emerald-300 text-xs font-bold block mb-1">
               {t.walletBalanceTitle}
             </span>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight text-white font-mono">
+            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-mono">
               {currentBalance.toLocaleString('uz-UZ')} so'm
             </div>
           </div>
@@ -496,15 +496,15 @@ export const WalletView: React.FC = () => {
             <div className="flex items-center gap-2 min-w-0">
               <Crown className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={2} />
               <div className="min-w-0">
-                <p className="text-xs font-extrabold text-white truncate">
+                <p className="text-xs font-semibold text-white truncate">
                   {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                 </p>
-                <p className="text-[10px] text-amber-200">
+                <p className="text-[11px] text-amber-200">
                   Amal qilish muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")} gacha
                 </p>
               </div>
             </div>
-            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase shrink-0">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 shrink-0">
               Faol
             </span>
           </div>
@@ -513,15 +513,15 @@ export const WalletView: React.FC = () => {
         {/* Starting Voucher Indicator (20 000 UZS starting gift) */}
         {hasVoucher && (
           <div className="relative z-10 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-black shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-sm">
               <Ticket className="w-4 h-4 text-slate-950" strokeWidth={1.75} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-black text-white">
+                <span className="text-xs font-bold text-white">
                   {t.walletVoucherActiveBanner}
                 </span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase">
+                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950">
                   Faol
                 </span>
               </div>
@@ -538,7 +538,7 @@ export const WalletView: React.FC = () => {
             <div className="text-emerald-200 font-bold flex items-center gap-1.5 truncate">
               <span>Takliflar: {refCount} ta • {refEarnings.toLocaleString('uz-UZ')} so'm</span>
             </div>
-            <span className="text-[10px] text-emerald-300/70 block mt-0.5">
+            <span className="text-[11px] text-emerald-300/70 block mt-0.5">
               Har bir do'st uchun 1 000 so'm
             </span>
           </div>
@@ -567,17 +567,17 @@ export const WalletView: React.FC = () => {
           2. TARIFLAR BLOKI (3 TA KARTA)
          ========================================================================= */}
       {isPaidUser(profile) && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/80 border-2 border-amber-500/60 rounded-3xl p-5 text-white shadow-xl space-y-4">
+        <div className="bg-slate-900 border-2 border-amber-500/60 rounded-2xl p-5 text-white shadow-md space-y-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/30 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold shadow-lg shrink-0">
               <Star className="w-6 h-6 fill-slate-950 text-slate-950" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-extrabold text-sm sm:text-base text-white">
+                <h4 className="font-semibold text-sm sm:text-base text-white">
                   {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
                 </h4>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 uppercase tracking-wider">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950">
                   Faol
                 </span>
               </div>
@@ -593,7 +593,7 @@ export const WalletView: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-500/60 flex items-start gap-2.5 text-xs text-amber-200 animate-in fade-in">
               <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
-                <span className="font-extrabold text-amber-300 block text-sm">
+                <span className="font-semibold text-amber-300 block text-sm">
                   ⚠️ Obunangiz tugashiga {remainingDays} kun qoldi!
                 </span>
                 <span className="text-[11px] text-amber-100/90 mt-0.5 block">
@@ -628,25 +628,25 @@ export const WalletView: React.FC = () => {
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-            <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
               {isPaidUser(profile) ? "Obunani Uzaytirish Tariflari" : "Obuna Tariflari"}
             </h3>
           </div>
           {hasVoucher && (
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
               -20 000 vaucher chegirmasi bilan
             </span>
           )}
         </div>
 
         {/* CARD 1: 3 Oylik (asl 35 000 -> vaucher bilan 15 000) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs relative overflow-hidden transition-all">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                 {isPaidUser(profile) ? "3 Oylik (+90 kun qo'shiladi)" : "3 Oylik Reja"}
               </span>
-              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-white mt-1">
                 3 oylik Premium
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -660,7 +660,7 @@ export const WalletView: React.FC = () => {
                   {price3M.toLocaleString('uz-UZ')} so'm
                 </span>
               )}
-              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                 {cost3M.toLocaleString('uz-UZ')} so'm
               </span>
             </div>
@@ -671,7 +671,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSubscribe('3_months')}
-                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
                 <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost3M.toLocaleString('uz-UZ')} so'm)</span>
@@ -680,7 +680,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleScrollToRequisites(deficit3M)}
-                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" strokeWidth={1.75} />
                 <span>Hisobni to'ldirish (yana {deficit3M.toLocaleString('uz-UZ')} so'm)</span>
@@ -690,13 +690,13 @@ export const WalletView: React.FC = () => {
         </div>
 
         {/* CARD 2: 6 Oylik (Tavsiya etiladi - asl 60 000 -> vaucher bilan 40 000) */}
-        <div className="bg-white dark:bg-slate-900 border-2 border-amber-500/70 rounded-3xl p-4 shadow-sm relative overflow-hidden transition-all">
+        <div className="bg-white dark:bg-slate-900 border-2 border-amber-500/70 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
                 {isPaidUser(profile) ? "Tavsiya etiladi (+180 kun qo'shiladi)" : "Tavsiya etiladi (6 oy)"}
               </span>
-              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-white mt-1">
                 6 oylik Premium
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -710,7 +710,7 @@ export const WalletView: React.FC = () => {
                   {price6M.toLocaleString('uz-UZ')} so'm
                 </span>
               )}
-              <span className="text-base font-black text-amber-600 dark:text-amber-400">
+              <span className="text-base font-bold text-amber-600 dark:text-amber-400">
                 {cost6M.toLocaleString('uz-UZ')} so'm
               </span>
             </div>
@@ -721,7 +721,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSubscribe('6_months')}
-                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-3 px-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
                 <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost6M.toLocaleString('uz-UZ')} so'm)</span>
@@ -730,7 +730,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleScrollToRequisites(deficit6M)}
-                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 text-amber-400 dark:text-amber-600 shrink-0" strokeWidth={1.75} />
                 <span>Hisobni to'ldirish (yana {deficit6M.toLocaleString('uz-UZ')} so'm)</span>
@@ -740,13 +740,13 @@ export const WalletView: React.FC = () => {
         </div>
 
         {/* CARD 3: 1 Yillik (asl 100 000 -> vaucher bilan 80 000) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs relative overflow-hidden transition-all">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                 {isPaidUser(profile) ? "1 Yil (+365 kun qo'shiladi)" : "To'liq 1 Yil (365 kun)"}
               </span>
-              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-white mt-1">
                 1 yillik Premium
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -760,7 +760,7 @@ export const WalletView: React.FC = () => {
                   {price1Y.toLocaleString('uz-UZ')} so'm
                 </span>
               )}
-              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                 {cost1Y.toLocaleString('uz-UZ')} so'm
               </span>
             </div>
@@ -771,7 +771,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSubscribe('1_year')}
-                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
               >
                 <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
                 <span className="text-[11px] opacity-80">({cost1Y.toLocaleString('uz-UZ')} so'm)</span>
@@ -780,7 +780,7 @@ export const WalletView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleScrollToRequisites(deficit1Y)}
-                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs sm:text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" strokeWidth={1.75} />
                 <span>Hisobni to'ldirish (yana {deficit1Y.toLocaleString('uz-UZ')} so'm)</span>
@@ -797,25 +797,25 @@ export const WalletView: React.FC = () => {
       <div ref={requisitesRef} className="space-y-3 pt-2">
         <div className="flex items-center gap-2 px-1">
           <span className="w-1.5 h-4 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-          <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+          <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
             {t.walletP2PTitle}
           </h3>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
           {/* Card Info Box */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-500 dark:text-slate-400 font-medium">
                 {t.walletCardHolderLabel} <b className="text-slate-900 dark:text-white">{CARD_HOLDER}</b>
               </span>
-              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
                 Humo • {t.walletZeroCommission}
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
-              <span className="font-mono font-black text-base sm:text-lg tracking-wider text-slate-900 dark:text-white select-all truncate">
+              <span className="font-mono font-bold text-base sm:text-lg text-slate-900 dark:text-white select-all truncate">
                 {CARD_FORMATTED}
               </span>
               <button
@@ -928,7 +928,7 @@ export const WalletView: React.FC = () => {
             type="button"
             onClick={handleSendReceipt}
             disabled={!selectedFile || isVerifying || isCompressing}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {isVerifying ? (
               <>
@@ -950,7 +950,7 @@ export const WalletView: React.FC = () => {
          ========================================================================= */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+          <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
@@ -958,10 +958,10 @@ export const WalletView: React.FC = () => {
                   <History className="w-4 h-4" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                     Tranzaksiyalar Tarixi
                   </h3>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     Barcha to'lovlar va mukofotlar
                   </p>
                 </div>
@@ -994,10 +994,10 @@ export const WalletView: React.FC = () => {
                       setTxFilter(tab.id as any);
                     }}
                     className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
-                      isActive
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                    }`}
+ isActive
+ ? 'bg-emerald-600 text-white shadow-xs'
+ : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+ }`}
                   >
                     {tab.label}
                   </button>
@@ -1075,7 +1075,7 @@ export const WalletView: React.FC = () => {
                             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
                               {tx.title}
                             </h4>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-[11px] text-slate-400 mt-0.5">
                               {tx.date}
                             </p>
                           </div>
@@ -1083,11 +1083,11 @@ export const WalletView: React.FC = () => {
 
                         <div className="shrink-0 text-right">
                           <span
-                            className={`text-xs font-black px-2.5 py-1 rounded-lg inline-block ${
-                              tx.isPositive
-                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                            }`}
+                            className={`text-xs font-bold px-2.5 py-1 rounded-lg inline-block ${
+ tx.isPositive
+ ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+ : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+ }`}
                           >
                             {tx.isPositive ? '+' : '-'}
                             {tx.amount.toLocaleString('uz-UZ')} {tx.unit}
@@ -1117,12 +1117,12 @@ export const WalletView: React.FC = () => {
       {/* Pop-up: Hisob muvaffaqiyatli to'ldirildi */}
       {successPopupMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-md animate-bounce">
+          <div className="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-2xl p-6 max-w-sm w-full text-center shadow-lg space-y-4 animate-in zoom-in-95">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-md">
               <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
             </div>
             <div className="space-y-1.5">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 {successPopupMessage}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -1138,7 +1138,7 @@ export const WalletView: React.FC = () => {
                 triggerHaptic('light');
                 setSuccessPopupMessage(null);
               }}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95"
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md transition-all active:scale-95"
             >
               Ajoyib, tushunarli!
             </button>

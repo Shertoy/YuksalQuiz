@@ -17,7 +17,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 my-6 flex flex-col max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh]">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 p-5 my-6 flex flex-col max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh]">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -25,7 +25,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
               <ScrollText className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                 Ommaviy Oferta
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -45,7 +45,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
         {/* Scrollable Content */}
         <div className="overflow-y-auto py-4 space-y-4 text-xs pr-1 flex-1 leading-relaxed text-slate-700 dark:text-slate-300">
           <div className="text-center pb-2">
-            <h3 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <h3 className="font-semibold text-xs text-emerald-600 dark:text-emerald-400">
               {OFERTA_TITLE}
             </h3>
           </div>
@@ -93,7 +93,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
                   onAccept();
                   onClose();
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
               >
                 Roziman va qabul qilaman
               </button>
@@ -102,7 +102,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25"
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
             >
               Tushundim
             </button>

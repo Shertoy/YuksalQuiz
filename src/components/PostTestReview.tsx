@@ -67,278 +67,254 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
-    return `${m} daqiqa ${s} soniya`;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  return (
-    <div className="space-y-4 pb-28 select-none">
-      {/* Result Summary Card */}
-      <div
-        className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-xl ${
-          isPassed
-            ? 'bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 shadow-emerald-600/20'
-            : 'bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-slate-900/30'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-orange-500/20 text-orange-300 border border-orange-400/30'}`}>
-              {isPassed ? <Award className="w-5 h-5 text-emerald-300" strokeWidth={1.75} /> : <BookOpen className="w-5 h-5 text-orange-300" strokeWidth={1.75} />}
-            </div>
-            <div>
-              <span className="text-xs uppercase tracking-wider font-semibold opacity-80">
-                Natija xulosasi
-              </span>
-              <h2 className="text-lg font-black">{decodeHtmlEntities(attempt.testPackageTitle)}</h2>
-              <p className="text-xs opacity-90">{decodeHtmlEntities(attempt.blockTitle)}</p>
-            </div>
-          </div>
+  const card = 'rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
+  const total = attempt.userAnswers.length;
 
-          <div
-            className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1 ${
-              isPassed ? 'bg-emerald-400 text-slate-950' : 'bg-amber-400 text-slate-950'
+  return (
+    <div className="space-y-4 pb-28">
+      {/* Natija */}
+      <section className={`${card} p-5`}>
+        <div className="flex items-center gap-2">
+          {isPassed ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+          )}
+          <span
+            className={`text-[14px] font-semibold ${
+              isPassed ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'
             }`}
           >
-            {isPassed ? <Unlock className="w-3.5 h-3.5" strokeWidth={1.75} /> : <Lock className="w-3.5 h-3.5" strokeWidth={1.75} />}
-            <span>{isPassed ? 'O\'tdi' : 'Yetarli emas'}</span>
-          </div>
+            {isPassed ? "Blokdan o'tdingiz" : "O'tish uchun yetarli emas"}
+          </span>
         </div>
+        <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50">
+          {decodeHtmlEntities(attempt.testPackageTitle)}
+        </h2>
+        <p className="text-[13px] text-slate-500 dark:text-slate-400">{decodeHtmlEntities(attempt.blockTitle)}</p>
 
-        {/* Big Score Stats with 4-Point Rating */}
-        <div className="grid grid-cols-4 gap-2 bg-black/20 backdrop-blur-sm rounded-2xl p-3 text-center mb-3">
-          <div>
-            <div className="text-2xl font-black text-amber-300">
-              +{attempt.score * 4}
-            </div>
-            <p className="text-[10px] text-white/70 font-semibold uppercase">Ball</p>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-white">
-              {attempt.score}/{attempt.totalQuestions}
-            </div>
-            <p className="text-[10px] text-white/70 font-semibold uppercase">To'g'ri</p>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-orange-300">
-              {attempt.percentage}%
-            </div>
-            <p className="text-[10px] text-white/70 font-semibold uppercase">Foiz</p>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-emerald-300 flex items-center justify-center gap-1">
-              <Clock className="w-4 h-4" strokeWidth={1.75} />
-              <span>{Math.round(attempt.timeSpentSeconds / 60)}d</span>
-            </div>
-            <p className="text-[10px] text-white/70 font-semibold uppercase">Vaqt</p>
-          </div>
-        </div>
-
-        {/* Coin Rewards notice */}
-        {(isPerfect || isBonusPart) && (
-          <div className="bg-amber-400/20 border border-amber-300/30 rounded-2xl p-2.5 flex items-center gap-2 mb-3 text-amber-200 text-xs font-bold">
-            <Coins className="w-5 h-5 text-amber-400 animate-bounce" strokeWidth={1.75} />
-            <div>
-              {isPerfect && <div>+1 Tanga (Mukammal 100% natija)!</div>}
-              {isBonusPart && <div>+5 Bonus Tangalar (4-6 qism g'olibligi)!</div>}
-            </div>
-          </div>
-        )}
-
-        {/* Sequential unlock explanation */}
-        {!isPassed ? (
-          <div className="bg-amber-500/20 border border-amber-400/30 rounded-2xl p-3 text-xs text-amber-100 flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              {getUnlockRequirementsMessage(
-                attempt.blockTitle,
-                attempt.score,
-                passingScore,
-                nextBlockTitle
-              )}
-            </p>
-          </div>
-        ) : unlockedNext ? (
-          <div className="bg-emerald-500/20 border border-emerald-400/30 rounded-2xl p-3 text-xs text-emerald-100 flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-300 shrink-0" />
-            <p className="font-semibold">
-              Tabriklaymiz! '{nextBlockTitle || 'Keyingi test'}' muvaffaqiyatli ochildi!
-            </p>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Question Review Section with Navigation Icons: Left (<-), Circle (O), Right (->) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-            Savollarni tahlil qilish
-          </h3>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {reviewIndex + 1} / {attempt.userAnswers.length}
+        <div className="mt-5 flex items-end gap-3">
+          <span className="text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-slate-50 tabular-nums leading-none">
+            {attempt.score}
+            <span className="text-2xl text-slate-400 dark:text-slate-500">/{attempt.totalQuestions}</span>
+          </span>
+          <span className="pb-1 text-[15px] font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
+            {attempt.percentage}%
           </span>
         </div>
 
-        {/* Question Review Carousel Navigation: Left (<-), Circle (O), Right (->) */}
-        <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700/60 mb-4">
-          {/* Left Arrow (<-) */}
-          <button
-            disabled={reviewIndex === 0}
-            onClick={() => {
-              triggerHaptic('light');
-              setReviewIndex((prev) => Math.max(0, prev - 1));
-            }}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all flex items-center gap-1 text-xs font-bold"
-            title="Oldingi savol"
-          >
-            <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
-            <span className="hidden sm:inline">Oldingi</span>
-          </button>
-
-          {/* Circle (O) Status Indicator */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs border ${
-                currentAnswer.isCorrect
-                  ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-orange-50 dark:bg-orange-950/80 border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-300'
-              }`}
-            >
-              <Circle className="w-3.5 h-3.5" strokeWidth={1.75} />
-              <span>#{reviewIndex + 1}</span>
-              {currentAnswer.isCorrect ? (
-                <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-              ) : (
-                <XCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
-              )}
-            </div>
+        <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800 border-t border-slate-200 dark:border-slate-800 pt-3 text-center">
+          <div>
+            <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">+{attempt.score * 4}</div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">Ball</div>
           </div>
-
-          {/* Right Arrow (->) */}
-          <button
-            disabled={reviewIndex === attempt.userAnswers.length - 1}
-            onClick={() => {
-              triggerHaptic('light');
-              setReviewIndex((prev) => Math.min(attempt.userAnswers.length - 1, prev + 1));
-            }}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all flex items-center gap-1 text-xs font-bold"
-            title="Keyingi savol"
-          >
-            <span className="hidden sm:inline">Keyingi</span>
-            <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
-          </button>
+          <div>
+            <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">{passingScore}</div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">O'tish chegarasi</div>
+          </div>
+          <div>
+            <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
+              {formatTime(attempt.timeSpentSeconds)}
+            </div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">Vaqt</div>
+          </div>
         </div>
 
-        {/* Current Question Review Details */}
-        <div className="space-y-3">
-          <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-relaxed">
-            {decodeHtmlEntities(currentAnswer.questionText)}
-          </p>
-
-          <div className="space-y-2 text-xs">
-            {currentAnswer.options.map((opt, optIdx) => {
-              const isUserSelection = currentAnswer.selectedOption === optIdx;
-              const isCorrectAnswer = currentAnswer.correctOptionIndex === optIdx;
-
-              let style = 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400';
-              if (isCorrectAnswer) {
-                style = 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold';
-              } else if (isUserSelection && !currentAnswer.isCorrect) {
-                style = 'bg-orange-50 dark:bg-orange-950/80 border-orange-500 text-orange-900 dark:text-orange-200 font-bold';
-              }
-
-              return (
-                <div
-                  key={optIdx}
-                  className={`p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all ${style}`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-slate-300 dark:border-slate-600">
-                      {['A', 'B', 'C', 'D'][optIdx]}
-                    </span>
-                    <span>{decodeHtmlEntities(opt)}</span>
-                  </div>
-
-                  <div className="shrink-0 flex items-center gap-1">
-                    {isCorrectAnswer && (
-                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
-                        To'g'ri javob
-                      </span>
-                    )}
-                    {isUserSelection && !currentAnswer.isCorrect && (
-                      <span className="text-[10px] bg-orange-600 text-white px-2 py-0.5 rounded-full font-bold">
-                        Siz tanlagan
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {(isPerfect || isBonusPart) && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-950 px-3 py-2.5 text-[13px] font-medium text-amber-800 dark:text-amber-200">
+            <Coins className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+            <span>
+              {isPerfect && '+1 tanga: 100% natija. '}
+              {isBonusPart && "+5 tanga: 4–6-qism bonusi."}
+            </span>
           </div>
-
-          {/* Explanation if available */}
-          {currentAnswer.explanation && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-              <span className="font-bold block mb-1">Izoh va tushuntirish:</span>
-              <span>{decodeHtmlEntities(currentAnswer.explanation)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Retake, Start Next Block, and Done Actions */}
-      <div className="space-y-2.5">
-        {isPassed && nextBlock && (
-          <button
-            onClick={() => {
-              triggerHaptic('success');
-              if (onStartNextBlock) {
-                onStartNextBlock(nextBlock.id);
-              } else {
-                onDone();
-              }
-            }}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
-          >
-            <span>'{decodeHtmlEntities(nextBlock.title)}' ni boshlash</span>
-            <ArrowRight className="w-5 h-5 text-white" strokeWidth={2} />
-          </button>
         )}
 
-        <div className="flex items-center gap-3">
+        {!isPassed ? (
+          <p className="mt-4 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
+            {getUnlockRequirementsMessage(attempt.blockTitle, attempt.score, passingScore, nextBlockTitle)}
+          </p>
+        ) : unlockedNext ? (
+          <p className="mt-4 text-[13px] leading-relaxed text-emerald-700 dark:text-emerald-300 font-medium">
+            "{nextBlockTitle || 'Keyingi qism'}" ochildi.
+          </p>
+        ) : null}
+      </section>
+
+      {/* Harakatlar */}
+      <div className="space-y-2">
+        {isPassed && nextBlock ? (
           <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('success');
+              if (onStartNextBlock) onStartNextBlock(nextBlock.id);
+              else onDone();
+            }}
+            className="w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors"
+          >
+            <span>{decodeHtmlEntities(nextBlock.title)}ni boshlash</span>
+            <ArrowRight className="w-5 h-5" strokeWidth={2} />
+          </button>
+        ) : (
+          <button
+            type="button"
             onClick={() => {
               triggerHaptic('medium');
               onRetake();
             }}
-            className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+            className="w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors"
           >
-            <RotateCcw className="w-4 h-4" strokeWidth={1.75} />
-            <span>Qayta topshirish</span>
+            <RotateCcw className="w-5 h-5" strokeWidth={1.75} />
+            <span>Qayta yechish</span>
           </button>
-
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {isPassed && nextBlock && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('medium');
+                onRetake();
+              }}
+              className="min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-[14px] active:bg-slate-200 dark:active:bg-slate-700"
+            >
+              Qayta yechish
+            </button>
+          )}
           <button
+            type="button"
             onClick={() => {
               triggerHaptic('medium');
               onDone();
             }}
-            className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all active:scale-95"
+            className={`min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-[14px] active:bg-slate-200 dark:active:bg-slate-700 ${
+              isPassed && nextBlock ? '' : 'col-span-2'
+            }`}
           >
-            <span>Testlar ro'yxatiga qaytish</span>
+            Testlarga qaytish
           </button>
         </div>
-
         <button
+          type="button"
           onClick={() => {
             triggerHaptic('selection');
             setActiveTab('leaderboard');
             onDone();
           }}
-          className="w-full py-2.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+          className="w-full min-h-[44px] text-[14px] font-medium text-emerald-700 dark:text-emerald-300 inline-flex items-center justify-center gap-1.5"
         >
-          <Trophy className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
-          <span>Reytingdagi o'rningizni ko'rish</span>
+          <Trophy className="w-4 h-4" strokeWidth={1.75} />
+          <span>Reytingdagi o'rnim</span>
         </button>
       </div>
+
+      {/* Savollar tahlili */}
+      <section className={`${card} p-5`}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">Savollar tahlili</h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={reviewIndex === 0}
+              onClick={() => {
+                triggerHaptic('light');
+                setReviewIndex((prev) => Math.max(0, prev - 1));
+              }}
+              className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 disabled:opacity-30"
+              aria-label="Oldingi savol"
+            >
+              <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+            <span
+              className={`min-w-[64px] text-center text-[13px] font-semibold tabular-nums ${
+                currentAnswer.isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-orange-700 dark:text-orange-300'
+              }`}
+            >
+              {reviewIndex + 1} / {total}
+            </span>
+            <button
+              type="button"
+              disabled={reviewIndex === total - 1}
+              onClick={() => {
+                triggerHaptic('light');
+                setReviewIndex((prev) => Math.min(total - 1, prev + 1));
+              }}
+              className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 disabled:opacity-30"
+              aria-label="Keyingi savol"
+            >
+              <ArrowRight className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+          </div>
+        </div>
+
+        {/* Savollar xaritasi */}
+        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Savollar">
+          {attempt.userAnswers.map((ans, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setReviewIndex(i)}
+              aria-label={`${i + 1}-savol, ${ans.isCorrect ? "to'g'ri" : 'xato'}`}
+              className={`w-8 h-8 rounded-lg text-[12px] font-semibold tabular-nums transition-colors ${
+                i === reviewIndex
+                  ? 'bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900'
+                  : ans.isCorrect
+                  ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-4 text-[15px] font-semibold leading-relaxed text-slate-900 dark:text-slate-50">
+          {decodeHtmlEntities(currentAnswer.questionText)}
+        </p>
+
+        <div className="mt-3 space-y-2">
+          {currentAnswer.options.map((opt, optIdx) => {
+            const isUserSelection = currentAnswer.selectedOption === optIdx;
+            const isCorrectAnswer = currentAnswer.correctOptionIndex === optIdx;
+
+            let style = 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400';
+            if (isCorrectAnswer) {
+              style = 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 dark:border-emerald-400 text-emerald-950 dark:text-emerald-50';
+            } else if (isUserSelection && !currentAnswer.isCorrect) {
+              style = 'bg-orange-50 dark:bg-orange-950 border-orange-600 dark:border-orange-400 text-orange-950 dark:text-orange-50';
+            }
+
+            return (
+              <div key={optIdx} className={`px-3 py-2.5 rounded-xl border flex items-center gap-3 text-[14px] ${style}`}>
+                <span className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-semibold text-[12px] shrink-0">
+                  {['A', 'B', 'C', 'D', 'E', 'F'][optIdx]}
+                </span>
+                <span className="flex-1 leading-relaxed">{decodeHtmlEntities(opt)}</span>
+                {isCorrectAnswer && (
+                  <span className="shrink-0 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">To'g'ri</span>
+                )}
+                {isUserSelection && !currentAnswer.isCorrect && (
+                  <span className="shrink-0 text-[12px] font-semibold text-orange-700 dark:text-orange-300">Sizning javob</span>
+                )}
+              </div>
+            );
+          })}
+          {currentAnswer.selectedOption < 0 && (
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">Bu savolga javob berilmagan.</p>
+          )}
+        </div>
+
+        {currentAnswer.explanation && (
+          <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-[14px] leading-relaxed text-slate-700 dark:text-slate-200">
+            <span className="block text-[12px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Izoh</span>
+            {decodeHtmlEntities(currentAnswer.explanation)}
+          </div>
+        )}
+      </section>
     </div>
   );
 };

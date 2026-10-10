@@ -113,17 +113,17 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+            <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shrink-0">
               <Crown className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>{isSubscribed ? "Obunani Uzaytirish / Tariflar" : "Obuna Bo'lish / Tariflar"}</span>
-                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                   Premium
                 </span>
               </h3>
@@ -151,25 +151,25 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {isSubscribed && (
             <div
               className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-2.5 ${
-                isEndingSoon
-                  ? 'bg-amber-500/15 border-amber-500/50 text-amber-900 dark:text-amber-200'
-                  : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
-              }`}
+ isEndingSoon
+ ? 'bg-amber-500/15 border-amber-500/50 text-amber-900 dark:text-amber-200'
+ : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
+ }`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Crown className="w-4 h-4 shrink-0 text-amber-500" />
                 <div className="min-w-0">
-                  <span className="font-extrabold truncate block">
+                  <span className="font-semibold truncate block">
                     {isEndingSoon
                       ? `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`
                       : `Faol Premium (${remainingDays !== null ? `${remainingDays} kun qoldi` : 'Faol'})`}
                   </span>
-                  <span className="text-[10px] opacity-80 block truncate">
+                  <span className="text-[11px] opacity-80 block truncate">
                     Yangi tanlangan muddat joriy sanangizga qo'shiladi (+uzaytirish)
                   </span>
                 </div>
               </div>
-              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0">
                 VIP
               </span>
             </div>
@@ -182,10 +182,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 <Wallet className="w-4 h-4" strokeWidth={2} />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
                   Hisobingiz:
                 </span>
-                <span className="text-sm font-black text-slate-900 dark:text-white truncate">
+                <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
                   {currentBalance.toLocaleString('uz-UZ')} so'm
                 </span>
               </div>
@@ -208,10 +208,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {feedback && (
             <div
               className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in ${
-                feedback.type === 'success'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-orange-500 text-white'
-              }`}
+ feedback.type === 'success'
+ ? 'bg-emerald-500 text-white'
+ : 'bg-orange-500 text-white'
+ }`}
             >
               {feedback.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -235,27 +235,27 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 setSelectedPlan('3_months');
               }}
               className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                selectedPlan === '3_months'
-                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
-              }`}
+ selectedPlan === '3_months'
+ ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 shadow-sm'
+ : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
+ }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                  <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
                     3 Oylik Reja
                   </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     90 kunlik to'liq kirish
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
-                    <span className="line-through text-[10px] text-slate-400 font-semibold block">
+                    <span className="line-through text-[11px] text-slate-400 font-semibold block">
                       {price3M.toLocaleString('uz-UZ')} so'm
                     </span>
                   )}
-                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     {cost3Months.toLocaleString('uz-UZ')} so'm
                   </span>
                 </div>
@@ -269,30 +269,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 setSelectedPlan('6_months');
               }}
               className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all relative ${
-                selectedPlan === '6_months'
-                  ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/40 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
-              }`}
+ selectedPlan === '6_months'
+ ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/40 shadow-sm'
+ : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
+ }`}
             >
-              <span className="absolute -top-2 right-3 text-[9px] font-black px-2 py-0.2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white uppercase shadow-xs">
+              <span className="absolute -top-2 right-3 text-[11px] font-bold px-2 py-0.2 rounded-full bg-orange-500 text-white shadow-xs">
                 Tavsiya etiladi
               </span>
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                  <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
                     6 Oylik Reja (180 kun)
                   </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Eng ommabop va qulay tarif
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
-                    <span className="line-through text-[10px] text-slate-400 font-semibold block">
+                    <span className="line-through text-[11px] text-slate-400 font-semibold block">
                       {price6M.toLocaleString('uz-UZ')} so'm
                     </span>
                   )}
-                  <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
                     {cost6Months.toLocaleString('uz-UZ')} so'm
                   </span>
                 </div>
@@ -306,27 +306,27 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 setSelectedPlan('1_year');
               }}
               className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                selectedPlan === '1_year'
-                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
-              }`}
+ selectedPlan === '1_year'
+ ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 shadow-sm'
+ : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
+ }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                  <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
                     1 Yillik Reja (365 kun)
                   </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Butun o'quv yili uchun cheksiz kirish
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
-                    <span className="line-through text-[10px] text-slate-400 font-semibold block">
+                    <span className="line-through text-[11px] text-slate-400 font-semibold block">
                       {price1Y.toLocaleString('uz-UZ')} so'm
                     </span>
                   )}
-                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     {cost1Year.toLocaleString('uz-UZ')} so'm
                   </span>
                 </div>
@@ -350,7 +350,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <button
                 type="button"
                 onClick={handlePayFromBalance}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <Check className="w-5 h-5 text-white" strokeWidth={2} />
                 <span>
@@ -367,7 +367,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     triggerHaptic('medium');
                     onOpenDepositModal(deficit);
                   }}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                   <PlusCircle className="w-5 h-5 text-white" strokeWidth={2} />
                   <span>Hisobni to'ldirish (+{deficit.toLocaleString('uz-UZ')} so'm kerak)</span>

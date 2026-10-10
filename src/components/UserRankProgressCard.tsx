@@ -133,7 +133,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 text-white p-4 sm:p-5 shadow-xl border border-emerald-500/20 select-none ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-slate-900 text-white p-4 sm:p-5 shadow-md border border-emerald-500/20 select-none ${className}`}
     >
       {/* Background Glow Orbs */}
       <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
@@ -145,7 +145,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
         <div className="flex items-center gap-3 min-w-0">
           {/* Avatar with Neon/Gradient Border */}
           <div className="relative shrink-0">
-            <div className="w-13 h-13 p-0.5 rounded-2xl bg-gradient-to-tr from-emerald-400 via-teal-300 to-amber-400 shadow-md shadow-emerald-500/25">
+            <div className="w-13 h-13 p-0.5 rounded-2xl bg-emerald-400 shadow-md">
               <UserAvatar
                 avatar={profile.avatar}
                 alt={fullName}
@@ -153,14 +153,14 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
                 className="rounded-xl object-cover bg-slate-900"
               />
             </div>
-            <span className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] shadow-md border-2 border-slate-900">
+            <span className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[11px] shadow-md border-2 border-slate-900">
               {hasCurrentUserTakenTests ? `#${userRank}` : '-'}
             </span>
           </div>
 
           {/* User Details */}
           <div className="min-w-0">
-            <h3 className="font-black text-sm sm:text-base text-white truncate leading-tight">
+            <h3 className="font-bold text-sm sm:text-base text-white truncate leading-tight">
               {fullName}
             </h3>
 
@@ -168,12 +168,12 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
             <div className="text-[11px] text-slate-300 font-medium truncate flex items-center gap-1.5 mt-0.5">
               <span className="text-emerald-300 shrink-0">{locationText}</span>
             </div>
-            <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium max-w-[220px] sm:max-w-none">
+            <p className="text-[11px] text-slate-400 truncate mt-0.5 font-medium max-w-[220px] sm:max-w-none">
               {universityName}
             </p>
 
             {/* Registration Date */}
-            <p className="text-[10px] text-slate-400/90 font-normal mt-0.5">
+            <p className="text-[11px] text-slate-400/90 font-normal mt-0.5">
               {t.registeredDateLabel}: {formattedRegisteredDate}
             </p>
           </div>
@@ -181,7 +181,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
         {/* Right: Stats Block (Total correct tests solved + Total time spent) */}
         <div className="text-right shrink-0">
-          <div className="text-base sm:text-lg font-black text-amber-400 dark:text-amber-300 flex items-center justify-end gap-1">
+          <div className="text-base sm:text-lg font-bold text-amber-400 dark:text-amber-300 flex items-center justify-end gap-1">
             <span>{stats.totalCorrectAnswers} {t.testsCountSuffix || 'ta test'}</span>
           </div>
           <div className="text-[11px] text-slate-400 font-medium flex items-center justify-end gap-1 mt-0.5">
@@ -198,13 +198,13 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
             <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" strokeWidth={1.75} />
             <span className="truncate">{motivationText}</span>
           </span>
-          <span className="font-black text-white shrink-0 text-xs">
+          <span className="font-bold text-white shrink-0 text-xs">
             {progressPercent}%
           </span>
         </div>
         <div className="w-full h-2 bg-slate-800/90 rounded-full overflow-hidden p-0.5">
           <div
-            className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-sm shadow-emerald-500/50"
+            className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-sm"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

@@ -286,19 +286,19 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+      <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
               <Wallet className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                   Hisobni To'ldirish
                 </h3>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Zap className="w-2.5 h-2.5" strokeWidth={2} />
                   <span>Gemini AI</span>
                 </span>
@@ -328,19 +328,19 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Joriy hisobingiz:
             </span>
-            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
               {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
             </span>
           </div>
 
           {/* SUCCESS VIEW */}
           {result?.status === 'approved' && (
-            <div className="text-center py-6 px-4 space-y-3.5 bg-gradient-to-b from-emerald-500/10 to-transparent rounded-3xl border border-emerald-500/30">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30 animate-bounce">
+            <div className="text-center py-6 px-4 space-y-3.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/30">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
                 <CheckCircle2 className="w-8 h-8" strokeWidth={2} />
               </div>
               <div>
-                <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                <h4 className="text-lg font-bold text-slate-900 dark:text-white">
                   Hisobingiz Muvaffaqiyatli To'ldirildi!
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
@@ -352,7 +352,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">
                   Yangi balansingiz:
                 </span>
-                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                   {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
                 </span>
               </div>
@@ -366,7 +366,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               <button
                 type="button"
                 onClick={handleFinishAndContinue}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span>Davom Etish</span>
                 <ChevronRight className="w-4 h-4" />
@@ -376,13 +376,13 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
           {/* PENDING VIEW */}
           {result?.status === 'pending' && (
-            <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-slate-900 dark:text-white space-y-3">
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-slate-900 dark:text-white space-y-3">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
                   <Clock className="w-5 h-5" strokeWidth={2} />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-amber-700 dark:text-amber-400">
+                  <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400">
                     Kvitansiya Ko'rikka Yuborildi (Kutilmoqda)
                   </h4>
                   <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
@@ -430,17 +430,17 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {result?.status !== 'approved' && (
             <>
               {/* Official Card Requisites */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 text-white space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-emerald-500/30 text-white space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-slate-400 font-medium">To'lov uchun karta (Humo):</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                  <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
                     0% Komissiya
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15">
                   <div>
-                    <span className="font-mono font-black text-sm sm:text-base tracking-wider select-all block text-emerald-300">
+                    <span className="font-mono font-bold text-sm sm:text-base select-all block text-emerald-300">
                       {CARD_NUMBER_FORMATTED}
                     </span>
                     <span className="text-[11px] text-slate-300 font-bold">
@@ -456,12 +456,12 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     {copiedCard ? (
                       <>
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span className="text-[10px]">Nusxalandi</span>
+                        <span className="text-[11px]">Nusxalandi</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" strokeWidth={2} />
-                        <span className="text-[10px]">Nusxa olish</span>
+                        <span className="text-[11px]">Nusxa olish</span>
                       </>
                     )}
                   </button>
@@ -484,10 +484,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                         type="button"
                         onClick={() => handleSelectQuickAmount(amt)}
                         className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition-all border ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
-                        }`}
+ isSelected
+ ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102'
+ : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+ }`}
                       >
                         {amt.toLocaleString('uz-UZ')}
                       </button>
@@ -506,10 +506,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                       onChange={handleCustomAmountChange}
                       onFocus={() => setIsCustomMode(true)}
                       className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all ${
-                        isCustomMode
-                          ? 'border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ring-2 ring-emerald-500/20'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      }`}
+ isCustomMode
+ ? 'border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ring-2 ring-emerald-500/20'
+ : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+ }`}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
                       so'm
@@ -526,7 +526,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="text-[10px] text-red-500 hover:underline font-semibold"
+                      className="text-[11px] text-red-500 hover:underline font-semibold"
                     >
                       Boshqa rasm tanlash
                     </button>
@@ -545,7 +545,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 {!selectedFile ? (
                   <label
                     htmlFor="receipt-file-input"
-                    className="flex flex-col items-center justify-center p-6 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-800/40 cursor-pointer transition-all group"
+                    className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-800/40 cursor-pointer transition-all group"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-xs">
                       <Upload className="w-6 h-6" strokeWidth={1.75} />
@@ -553,7 +553,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     <span className="text-xs font-bold text-slate-900 dark:text-white">
                       Chek rasmini yuklash
                     </span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">
+                    <span className="text-[11px] text-slate-400 mt-0.5">
                       Galereyadan tanlang yoki kamerada rasmga oling (JPG, PNG)
                     </span>
                   </label>
@@ -571,8 +571,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                       {/* Scanner animation overlay when active */}
                       {isVerifying && (
                         <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
-                          <div className="w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse absolute top-1/2 -translate-y-1/2 shadow-lg shadow-emerald-400/80" />
-                          <div className="p-3 rounded-2xl bg-slate-900/90 text-white border border-emerald-500/50 flex items-center gap-2.5 shadow-2xl z-10">
+                          <div className="w-full h-1 absolute top-1/2 -translate-y-1/2 shadow-lg" />
+                          <div className="p-3 rounded-2xl bg-slate-900/90 text-white border border-emerald-500/50 flex items-center gap-2.5 shadow-lg z-10">
                             <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
                             <span className="text-xs font-bold">{verifyStepText}</span>
                           </div>
@@ -582,7 +582,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
                     {/* Compression indicator & file size badge */}
                     {isCompressing && (
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold animate-pulse">
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
                         <span>Rasm sifati saqlangan holda 300 KB gacha siqilmoqda...</span>
                       </div>
@@ -595,7 +595,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                           <span>Hajmi: <b>{formatBytes(compressedSizeBytes)}</b> (≤300 KB siqildi)</span>
                         </div>
                         {originalSizeBytes > compressedSizeBytes && (
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
                             Asl: {formatBytes(originalSizeBytes)} (-{Math.round((1 - compressedSizeBytes / originalSizeBytes) * 100)}%)
                           </span>
                         )}
@@ -613,7 +613,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               </div>
 
               {/* Anti-cheat Notice */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
                 <div className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                   <span>Avtomatik Anti-Cheat Tizimi:</span>
@@ -630,11 +630,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 type="button"
                 disabled={isVerifying || !selectedFile}
                 onClick={handleVerifyReceipt}
-                className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
-                  isVerifying || !selectedFile
-                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
-                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/25 active:scale-[0.98]'
-                }`}
+                className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+ isVerifying || !selectedFile
+ ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+ : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-[0.98]'
+ }`}
               >
                 {isVerifying ? (
                   <>

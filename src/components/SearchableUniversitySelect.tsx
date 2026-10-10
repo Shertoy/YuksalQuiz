@@ -164,21 +164,21 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
         disabled={disabled}
         onClick={handleOpen}
         className={`w-full px-3 py-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between gap-2.5 transition-all outline-none ${
-          disabled
-            ? 'opacity-60 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-            : error
-            ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400'
-            : 'bg-slate-50 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white active:scale-[0.99] focus:ring-2 focus:ring-emerald-500'
-        }`}
+ disabled
+ ? 'opacity-60 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+ : error
+ ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400'
+ : 'bg-slate-50 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white active:scale-[0.99] focus:ring-2 focus:ring-emerald-500'
+ }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <School className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
           <span
             className={`truncate ${
-              !value && !isCustomSelected
-                ? 'text-slate-400 dark:text-slate-500 font-normal'
-                : 'font-bold'
-            }`}
+ !value && !isCustomSelected
+ ? 'text-slate-400 dark:text-slate-500 font-normal'
+ : 'font-bold'
+ }`}
           >
             {displayValue}
           </span>
@@ -199,7 +199,7 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
           onClick={handleClose}
         >
           <div
-            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] supports-[height:100dvh]:max-h-[88dvh] sm:max-h-[82vh] overflow-hidden select-none"
+            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] supports-[height:100dvh]:max-h-[88dvh] sm:max-h-[82vh] overflow-hidden select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Top Drag Indicator */}
@@ -212,10 +212,10 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                     {t.selectUniModalTitle}
                   </h3>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     {t.alphabeticalOrderDesc} ({filteredUniversities.length} OTM)
                   </p>
                 </div>
@@ -266,10 +266,10 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
                   type="button"
                   onClick={handleChooseCustom}
                   className={`w-full p-3 rounded-2xl text-left text-xs font-bold flex items-center justify-between gap-2.5 border transition-all mb-1 ${
-                    isCustomSelected
-                      ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                      : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-dashed border-emerald-300 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                  }`}
+ isCustomSelected
+ ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm'
+ : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-dashed border-emerald-300 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+ }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -296,16 +296,16 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
                       type="button"
                       onClick={() => handleSelect(uni)}
                       className={`w-full p-3 rounded-2xl text-left text-xs font-semibold flex items-center justify-between gap-3 transition-colors active:scale-[0.99] ${
-                        isSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-100 font-bold shadow-sm'
-                          : 'bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-transparent'
-                      }`}
+ isSelected
+ ? 'bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-100 font-bold shadow-sm'
+ : 'bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-transparent'
+ }`}
                     >
                       <div className="flex items-start gap-2.5 min-w-0 flex-1">
                         <School
                           className={`w-4 h-4 mt-0.5 shrink-0 ${
-                            isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-                          }`}
+ isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+ }`}
                         />
                         <span className="leading-snug break-words">{uni}</span>
                       </div>
@@ -334,7 +334,7 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
                     <button
                       type="button"
                       onClick={handleChooseCustom}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md active:scale-95 transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{t.addAsCustomBtn}</span>

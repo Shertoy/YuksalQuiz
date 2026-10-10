@@ -443,18 +443,18 @@ export const App: React.FC = () => {
     return (
       <div className="min-h-screen w-full bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center select-none relative overflow-hidden font-sans">
         {/* Pulsing red background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-sm w-full space-y-6 animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-red-600/20 border-2 border-red-500/50 flex items-center justify-center text-red-500 shadow-2xl shadow-red-600/40 animate-bounce">
+          <div className="w-20 h-20 mx-auto rounded-2xl bg-red-600/20 border-2 border-red-500/50 flex items-center justify-center text-red-500 shadow-lg">
             <ShieldAlert className="w-10 h-10 stroke-[2.5]" />
           </div>
 
           <div className="space-y-2">
-            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
               Kirish Taqiqlangan
             </span>
-            <h1 className="text-xl sm:text-2xl font-black text-red-500 tracking-tight leading-snug">
+            <h1 className="text-xl sm:text-2xl font-bold text-red-500 tracking-tight leading-snug">
               Qoidabuzarlik sababli hisobingiz bloklangan
             </h1>
             <p className="text-xs text-slate-400 leading-relaxed pt-1">
@@ -485,13 +485,13 @@ export const App: React.FC = () => {
             href="https://t.me/Alisherasqadali"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-red-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" />
             <span>Administratorga murojaat qilish (@Alisherasqadali)</span>
           </a>
 
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[11px] text-slate-500">
             Agar bu xatolik deb hisoblasangiz, Telegram orqali administrator bilan bog'laning.
           </p>
         </div>
@@ -522,8 +522,8 @@ export const App: React.FC = () => {
 
       {/* Main Scrollable Container with Dynamic Safe Padding */}
       <main ref={mainRef} className={`flex-1 overflow-y-auto max-w-md w-full mx-auto px-4 pt-3 relative z-10 ${
-        activeTestPkg ? 'pb-4' : 'pb-32 scroll-smooth'
-      }`}>
+ activeTestPkg ? 'pb-4' : 'pb-32 scroll-smooth'
+ }`}>
         {/* Test Engine View */}
         {activeTestPkg ? (
           <TestRunner

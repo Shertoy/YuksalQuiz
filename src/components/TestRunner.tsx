@@ -245,128 +245,120 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
 
   return (
     <div className="flex flex-col flex-1 pb-2 select-none">
-      {/* Test Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm mb-3">
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowConfirmCancel(true)}
-              aria-label="Testdan chiqish"
-              className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            >
-              <X className="w-5 h-5" strokeWidth={1.75} />
-            </button>
-            <div>
-              <h3 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">
-                {testPackage.title}
-              </h3>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {block.title}
-              </p>
-            </div>
+      {/* Yuqori panel */}
+      <div className="mb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowConfirmCancel(true)}
+            aria-label="Testdan chiqish"
+            className="w-11 h-11 -ml-2 shrink-0 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800"
+          >
+            <X className="w-5 h-5" strokeWidth={1.75} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[14px] font-semibold text-slate-900 dark:text-slate-50 truncate">{testPackage.title}</h3>
+            <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{block.title}</p>
           </div>
-
-          {/* Uninterrupted Global Countdown Timer */}
           <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold transition-colors ${
-              secondsRemaining < 30
-                ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400 animate-pulse'
-                : secondsRemaining < 60
-                ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
-                : 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
+            role="timer"
+            aria-label="Qolgan vaqt"
+            className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-semibold tabular-nums ${
+              secondsRemaining < 60
+                ? 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
             }`}
           >
-            <Clock className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
+            <Clock className="w-4 h-4" strokeWidth={1.75} />
             <span>{formatTimer(secondsRemaining)}</span>
           </div>
         </div>
 
-        {/* Thin Top Progress Bar + Compact Counter */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
-            <span>
-              {t.questionNumber}: {currentIndex + 1} / {questions.length}
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
-              {progressPercentage}%
-            </span>
-          </div>
-
-          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-600 transition-all duration-300 rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
+        <div className="mt-3 flex items-center justify-between text-[12px] font-medium text-slate-500 dark:text-slate-400 tabular-nums">
+          <span>
+            {t.questionNumber} {currentIndex + 1} / {questions.length}
+          </span>
+          <span>{progressPercentage}%</span>
+        </div>
+        <div
+          className="mt-1.5 h-1 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={questions.length}
+          aria-valuenow={currentIndex + 1}
+        >
+          <div
+            className="h-full rounded-full bg-emerald-600 dark:bg-emerald-400 transition-[width] duration-300 ease-[var(--ease-out)]"
+            style={{ width: `${progressPercentage}%` }}
+          />
         </div>
       </div>
 
-      {/* Question Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex-1 flex flex-col justify-between">
+      {/* Savol */}
+      <div className="flex-1 flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
         <div>
-          <div className="inline-block px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] mb-3">
-            {t.questionNumber} #{currentIndex + 1}
-          </div>
-
-          <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-relaxed mb-5 min-h-[44px]">
+          <h3 className="text-[17px] font-semibold leading-relaxed text-slate-900 dark:text-slate-50 mb-5">
             {decodeHtmlEntities(currentQ.text)}
           </h3>
 
-          {/* Options */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5" role="radiogroup" aria-label="Javob variantlari">
             {currentQ.options.map((opt, optIdx) => {
               const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
               const isSelected = currentAnswer === optIdx;
               const isCorrectAnswer = currentQ.correctOptionIndex === optIdx;
               const isShaking = wrongShakeIndex === optIdx;
 
-              // Interactive styling during feedback (100% solid, opaque, no white bleed)
-              let cardStyle = 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600';
-              let badgeStyle = 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
+              let cardStyle =
+                'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 active:bg-slate-50 dark:active:bg-slate-800';
+              let badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300';
 
               if (currentAnswer !== undefined) {
                 if (isSelected && isCorrectAnswer) {
-                  // User selected correct answer
-                  cardStyle = 'bg-emerald-100 dark:bg-emerald-950 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold shadow-sm';
-                  badgeStyle = 'bg-emerald-600 text-white border-emerald-600';
+                  cardStyle = 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 dark:border-emerald-400 text-emerald-950 dark:text-emerald-50';
+                  badgeStyle = 'bg-emerald-600 text-white';
                 } else if (isSelected && !isCorrectAnswer) {
-                  // User selected wrong answer
-                  cardStyle = 'bg-orange-100 dark:bg-orange-950 border-orange-500 text-orange-950 dark:text-orange-100 font-bold';
-                  badgeStyle = 'bg-orange-500 text-white border-orange-500';
+                  cardStyle = 'bg-orange-50 dark:bg-orange-950 border-orange-600 dark:border-orange-400 text-orange-950 dark:text-orange-50';
+                  badgeStyle = 'bg-orange-600 text-white';
                 } else if (!isSelected && isCorrectAnswer) {
-                  // Reveal correct answer when user was wrong
-                  cardStyle = 'bg-emerald-50 dark:bg-emerald-950/90 border-emerald-400 text-emerald-900 dark:text-emerald-200 border-dashed';
-                  badgeStyle = 'bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border-emerald-400';
+                  cardStyle = 'bg-white dark:bg-slate-900 border-emerald-600 dark:border-emerald-400 border-dashed text-emerald-900 dark:text-emerald-100';
+                  badgeStyle = 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300';
                 } else {
-                  cardStyle = 'opacity-40 bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500';
-                  badgeStyle = 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800';
+                  cardStyle = 'opacity-50 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500';
+                  badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-400';
                 }
               }
 
               return (
                 <button
                   key={`q${currentIndex}-opt${optIdx}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
                   disabled={isTransitioning || currentAnswer !== undefined}
                   onClick={() => handleSelectOption(optIdx)}
-                  className={`w-full p-3.5 rounded-2xl border text-left text-sm font-semibold flex items-center gap-3 transition-colors duration-100 touch-manipulation ${
+                  className={`w-full min-h-[56px] px-3.5 py-3 rounded-xl border text-left text-[15px] font-medium flex items-center gap-3 transition-colors duration-150 touch-manipulation disabled:cursor-default ${
                     isShaking ? 'animate-wrong-shake' : ''
                   } ${cardStyle}`}
                 >
-                  <span
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${badgeStyle}`}
-                  >
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-[13px] shrink-0 ${badgeStyle}`}>
                     {letters[optIdx] || optIdx + 1}
                   </span>
                   <span className="leading-relaxed flex-1">{decodeHtmlEntities(opt)}</span>
+                  {currentAnswer !== undefined && isCorrectAnswer && (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={2} />
+                  )}
+                  {isSelected && !isCorrectAnswer && (
+                    <X className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" strokeWidth={2} />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Fixed Height Bottom Skip Bar - Completely eliminates layout shifting */}
-        <div className="flex justify-end pt-3 mt-4 border-t border-slate-200/60 dark:border-slate-800/60 min-h-[48px] items-center">
+        <div className="flex justify-end pt-4 mt-5 border-t border-slate-200 dark:border-slate-800 min-h-[56px] items-center">
           <button
+            type="button"
             disabled={isTransitioning || currentAnswer !== undefined}
             onClick={() => {
               triggerHaptic('light');
@@ -376,21 +368,21 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                 finishTestWithAnswers(selectedAnswers, totalSecondsSpent);
               }
             }}
-            className={`text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 flex items-center gap-1.5 px-4 py-2 rounded-xl active:scale-95 shadow-sm transition-opacity ${
+            className={`min-h-[44px] px-4 rounded-xl text-[14px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 inline-flex items-center gap-1.5 transition-opacity ${
               currentAnswer !== undefined ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
           >
             <span>{currentIndex < questions.length - 1 ? t.nextBtn : t.finishTest}</span>
-            <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
+            <ChevronRight className="w-4 h-4" strokeWidth={2} />
           </button>
         </div>
       </div>
 
       {/* Confirm Exit Modal */}
       {showConfirmCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-orange-50 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 animate-in fade-in">
+          <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-[0_12px_40px_rgba(12,10,9,0.18)] border border-slate-200 dark:border-slate-800 text-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-3">
               <X className="w-6 h-6" strokeWidth={1.75} />
             </div>
 
@@ -405,13 +397,13 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowConfirmCancel(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[14px]"
               >
                 {t.continueBtn}
               </button>
               <button
                 onClick={onCancel}
-                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20"
+                className="flex-1 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-orange-700 dark:text-orange-300 font-semibold text-[14px]"
               >
                 {t.exitBtn}
               </button>
