@@ -63,5 +63,8 @@ export function apiErrorText(r: ApiResult, fallback = 'Xatolik yuz berdi'): stri
     return `Hisobingizda mablag' yetarli emas. Yana ${miss.toLocaleString('uz-UZ')} so'm kerak.`;
   }
   if (d.reason === 'already_claimed') return 'Vaucher avval olingan.';
+  if (d.reason === 'user_not_found') return "Profilingiz serverda topilmadi. Ilovani yopib, qayta oching va yana urinib ko'ring.";
+  if (d.reason === 'bad_plan') return "Tarif noto'g'ri tanlandi. Qayta tanlab ko'ring.";
+  if (d.reason === 'price_not_set') return "Tarif narxi hali belgilanmagan. Adminga yozing.";
   return d.error || d.message || fallback;
 }

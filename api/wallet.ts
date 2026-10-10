@@ -268,7 +268,25 @@ export default async function handler(req: any, res: any) {
         p_user: userRow.id,
         p_plan: plan,
       });
-      if (error) throw error;
+      if (error) {
+        // Xarid bitta tranzaksiyada: xato bo'lsa pul yechilmaydi.
+        console.error('purchase_subscription error:', error.code, error.message);
+        const who = escapeHtml(userRow.full_name || userRow.name || userRow.id);
+        const text =
+          `⚠️ <b>Obuna yoqilmadi (server xatosi)</b>\n\n` +
+          `👤 ${who}\n📦 Tarif: ${escapeHtml(plan)}\n` +
+          `💳 Balans: ${Number(userRow.balance ?? userRow.wallet_balance ?? 0).toLocaleString('ru-RU')} so'm\n\n` +
+          `Baza xabari: <code>${escapeHtml(String(error.message || '').slice(0, 300))}</code>\n\n` +
+          `Pul yechilmadi. 20261012_fix_purchase_subscription.sql ni Supabase'da ishga tushiring.`;
+        for (const adminId of Array.from(new Set(getAdminIds()))) {
+          await tgSend(adminId, text);
+        }
+        return res.status(500).json({
+          ok: false,
+          reason: 'purchase_failed',
+          error: "Obunani yoqib bo'lmadi. Pulingiz yechilmadi. Admin xabardor qilindi, tez orada tuzatiladi.",
+        });
+      }
       return res.status(data?.ok ? 200 : 400).json(data);
     }
 
