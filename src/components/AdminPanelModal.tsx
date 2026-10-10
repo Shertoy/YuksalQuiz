@@ -904,9 +904,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     showNotification("Foydalanuvchiga javob muvaffaqiyatli yuborildi!");
   };
 
-  const handleCreateRecommendedTest = (e: React.FormEvent) => {
+  const handleCreateRecommendedTest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!testTitle.trim()) return;
+    if (!testTitle.trim()) {
+      showNotification('Fan / test nomini kiriting.');
+      return;
+    }
     if (!testFaculty.trim()) {
       showNotification("Yo'nalishni tanlang.");
       return;
@@ -952,10 +955,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     };
 
     createTestPackage(newPkg);
-    publishTestToCloud(newPkg).catch(() => {});
-    setTestTitle('');
-    triggerHaptic('success');
-    showNotification(`"${newPkg.title}" tavsiya etilgan test sifatida yaratildi va bulutga yuklandi!`);
+    const res = await publishTestToCloud(newPkg).catch((err) => ({
+      success: false,
+      message: err?.message || 'Tarmoq xatosi',
+    }));
+    if (res.success) {
+      setTestTitle('');
+      triggerHaptic('success');
+      showNotification(`"${newPkg.title}" tavsiya etilgan test sifatida yaratildi va bulutga yuklandi!`);
+    } else {
+      triggerHaptic('error');
+      showNotification(`Test bulutga saqlanmadi: ${res.message}`);
+    }
   };
 
   const handleDeleteTestByAdmin = (pkg: TestPackage) => {
