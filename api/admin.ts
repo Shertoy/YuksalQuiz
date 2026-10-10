@@ -220,6 +220,59 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true });
     }
 
+    // ---------------- OTM yo'nalishlari (fakultetlar) ----------------
+    const normName = (x: string) => String(x || '').toLowerCase().replace(/[ʻʼ‘’`']/g, "'").replace(/\s+/g, ' ').trim();
+    const loadSetting = async (key: string, fallback: any) => {
+      const { data } = await db.from('app_settings').select('value').eq('key', key).maybeSingle();
+      return data?.value ?? fallback;
+    };
+    const saveSetting = async (key: string, value: any) => {
+      const { error } = await db
+        .from('app_settings')
+        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+    };
+
+    if (action === 'set_faculties') {
+      const university = String(req.body?.university || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      const raw: any[] = Array.isArray(req.body?.faculties) ? req.body.faculties : [];
+      if (!university) return res.status(400).json({ ok: false, error: 'OTM nomi kerak' });
+      const seen = new Set<string>();
+      const faculties: string[] = [];
+      for (const f of raw) {
+        const name = String(f || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (name.length < 2 || seen.has(normName(name))) continue;
+        seen.add(normName(name));
+        faculties.push(name);
+      }
+      if (faculties.length > 80) return res.status(400).json({ ok: false, error: "Yo'nalishlar juda ko'p (80 tadan oshmasin)" });
+
+      const overrides: Record<string, string[]> = (await loadSetting('university_faculties', {})) || {};
+      // Shu OTMning eski yozuvlarini (nomi biroz boshqacha bo'lsa ham) almashtiramiz
+      for (const k of Object.keys(overrides)) {
+        if (normName(k) === normName(university)) delete overrides[k];
+      }
+      overrides[university] = faculties;
+      await saveSetting('university_faculties', overrides);
+
+      // Ro'yxatga qo'shilgan yo'nalishlar bo'yicha so'rovlarni yopamiz
+      const requests: any[] = (await loadSetting('faculty_requests', [])) || [];
+      const remaining = requests.filter(
+        (r: any) => !(normName(r.university) === normName(university) && seen.has(normName(r.faculty)))
+      );
+      if (remaining.length !== requests.length) await saveSetting('faculty_requests', remaining);
+
+      return res.status(200).json({ ok: true, overrides, requests: remaining });
+    }
+
+    if (action === 'dismiss_faculty_request') {
+      const id = String(req.body?.id || '');
+      const requests: any[] = (await loadSetting('faculty_requests', [])) || [];
+      const remaining = requests.filter((r: any) => r.id !== id);
+      await saveSetting('faculty_requests', remaining);
+      return res.status(200).json({ ok: true, requests: remaining });
+    }
+
     if (action === 'set_blocked') {
       const userId = cleanId(req.body?.userId);
       const blocked = Boolean(req.body?.blocked);

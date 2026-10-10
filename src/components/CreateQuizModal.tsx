@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { FacultyPicker } from './FacultyPicker';
+import { requestFaculty } from '../services/facultyService';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   TOP_UNIVERSITIES,
@@ -505,6 +506,8 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       });
 
       if (result.success) {
+        // Ro'yxatda yo'q yo'nalish qo'lda yozilgan bo'lsa, adminga so'rov ketadi
+        requestFaculty(finalUniversity, faculty.trim()).catch(() => {});
         setCreatedQuizId(quizId);
         setCurrentStep(4); // Success Share
         triggerHaptic('success');
@@ -769,31 +772,18 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 <span>Yo'nalish / Fakultet</span>
                 <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
-                value={faculty}
-                onChange={(e) => {
-                  setFaculty(e.target.value);
-                  if (errors.faculty) setErrors((prev) => ({ ...prev, faculty: false }));
-                }}
-                placeholder="Masalan: Dasturiy injiniring, Iqtisodiyot, Davolash ishi..."
-                className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
-                  errors.faculty
-                    ? 'border-rose-500'
-                    : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500/20 focus:border-emerald-500'
-                }`}
-              />
-              {errors.faculty && (
-                <p className="text-[11px] text-rose-500 mt-1 font-semibold">Yo'nalish yoki fakultet nomini kiriting</p>
-              )}
               <FacultyPicker
                 university={isCustomUni ? customUniName : university}
                 value={faculty}
+                hasError={Boolean(errors.faculty)}
                 onChange={(name) => {
                   setFaculty(name);
                   if (errors.faculty) setErrors((prev) => ({ ...prev, faculty: false }));
                 }}
               />
+              {errors.faculty && (
+                <p className="text-xs text-rose-500 mt-1 font-semibold">Yo'nalishni tanlang yoki qo'lda yozing</p>
+              )}
             </div>
 
             {/* Ta'lim shakli (Kunduzgi / Sirtqi / Kechki / Masofaviy) */}

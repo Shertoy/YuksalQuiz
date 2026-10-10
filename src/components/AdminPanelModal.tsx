@@ -114,6 +114,7 @@ import { getUserSubscriptionInfo, UserSubscriptionInfo } from '../utils/subscrip
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import { AdminEditQuizModal } from './AdminEditQuizModal';
+import { AdminFacultyManager } from './AdminFacultyManager';
 import { getGenderSafeAvatar } from '../constants/avatars';
 import {
   PaymentRecord,
@@ -2641,6 +2642,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
           {activeTab === 'universities' && (
             <>
+              {/* OTM yo'nalishlari: so'rovlar, qo'shish va o'chirish */}
+              <AdminFacultyManager notify={showNotification} />
+
               {/* Add New University Form */}
               <form onSubmit={handleAddUni} className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">

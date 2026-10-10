@@ -455,17 +455,11 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Yo'nalish / Fakultet
               </label>
-              <input
-                type="text"
-                value={faculty}
-                onChange={(e) => setFaculty(e.target.value)}
-                placeholder="Masalan: Dasturiy injiniring, Iqtisodiyot..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-              />
               <FacultyPicker
                 university={isOtherUni ? customUniInput : university}
                 value={faculty}
                 onChange={setFaculty}
+                manualHint="Bu yo'nalish ro'yxatda yo'q. Uni Admin panel → OTMlar → Yo'nalishlar bo'limida ro'yxatga qo'shishingiz mumkin."
               />
             </div>
 

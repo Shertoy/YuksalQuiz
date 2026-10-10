@@ -6,6 +6,8 @@ import {
   tgSend,
   findUserRow,
   BOT_TOKEN,
+  getAdminIds,
+  escapeHtml,
 } from './_lib/common.js';
 
 /**
@@ -134,6 +136,55 @@ export default async function handler(req: any, res: any) {
         referrer_id: referrerRow.id,
         new_referral_count: updatedRefCount,
       });
+    }
+
+    // ----------------------------------------------------------------
+    // faculty_request — ro'yxatda yo'q yo'nalish: adminga so'rov
+    // ----------------------------------------------------------------
+    if (action === 'faculty_request') {
+      const university = String(req.body?.university || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      const faculty = String(req.body?.faculty || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (!university || faculty.length < 2) {
+        return res.status(400).json({ ok: false, error: "OTM va yo'nalish nomi kerak" });
+      }
+      const norm = (x: string) => x.toLowerCase().replace(/[ʻʼ‘’`']/g, "'").replace(/\s+/g, ' ').trim();
+
+      const { data: row } = await db.from('app_settings').select('value').eq('key', 'faculty_requests').maybeSingle();
+      const list: any[] = Array.isArray(row?.value) ? row.value : [];
+      const existing = list.find((r: any) => norm(r.university) === norm(university) && norm(r.faculty) === norm(faculty));
+      let isNew = false;
+      if (existing) {
+        existing.count = Number(existing.count || 1) + 1;
+      } else {
+        isNew = true;
+        list.unshift({
+          id: `fr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          university,
+          faculty,
+          count: 1,
+          created_at: new Date().toISOString(),
+        });
+      }
+      const trimmed = list.slice(0, 300);
+      await db
+        .from('app_settings')
+        .upsert({ key: 'faculty_requests', value: trimmed, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+      // Spamdan himoya: bir soatda 20 tadan ko'p yangi so'rov bo'lsa, adminga xabar yuborilmaydi
+      const hourAgo = Date.now() - 3600_000;
+      const recentCount = trimmed.filter((r: any) => new Date(r.created_at).getTime() > hourAgo).length;
+      if (isNew && recentCount <= 20) {
+        const text =
+          `📝 <b>Yangi yo'nalish so'rovi</b>\n\n` +
+          `🏫 OTM: ${escapeHtml(university)}\n` +
+          `🎓 Yo'nalish: <b>${escapeHtml(faculty)}</b>\n\n` +
+          `Talaba test yaratishda bu yo'nalishni ro'yxatdan topa olmadi va qo'lda yozdi.\n` +
+          `Admin panel → OTMlar → Yo'nalishlar bo'limida qo'shing yoki rad eting.`;
+        for (const adminId of Array.from(new Set(getAdminIds()))) {
+          await tgSend(adminId, text);
+        }
+      }
+      return res.status(200).json({ ok: true });
     }
 
     // ----------------------------------------------------------------
