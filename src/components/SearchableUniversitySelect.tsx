@@ -195,7 +195,7 @@ export const SearchableUniversitySelect: React.FC<SearchableUniversitySelectProp
       {/* Searchable University Bottom Sheet / Modal (Fully Constrained to Viewport) */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80"
           onClick={handleClose}
         >
           <div

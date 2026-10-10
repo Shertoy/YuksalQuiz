@@ -16,7 +16,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 bg-slate-950/80 animate-in fade-in">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 p-5 my-6 flex flex-col max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh]">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">

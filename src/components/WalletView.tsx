@@ -944,7 +944,7 @@ export const WalletView: React.FC = () => {
           TRANSAKSIYALAR TARIXI MODALI
          ========================================================================= */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-in fade-in">
           <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
@@ -1111,7 +1111,7 @@ export const WalletView: React.FC = () => {
 
       {/* Pop-up: Hisob muvaffaqiyatli to'ldirildi */}
       {successPopupMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-2xl p-6 max-w-sm w-full text-center shadow-lg space-y-4 animate-in zoom-in-95">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-md">
               <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />

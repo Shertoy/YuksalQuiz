@@ -6,7 +6,7 @@ import { getTelegramWebApp, triggerHaptic } from '../utils/telegram';
 import { Sparkles, Check, HeartHandshake, ShieldCheck, Ticket, AlertCircle, Globe, GraduationCap, BookOpen } from 'lucide-react';
 import { PublicOfferModal } from './PublicOfferModal';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
-import { AVATAR_OPTIONS, DEFAULT_AVATAR, getAvatarUrl } from '../constants/avatars';
+import { AVATAR_OPTIONS, getAvatarUrl, getDefaultAvatar } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 import { validateAndSanitizeName } from '../utils/security';
 
@@ -23,7 +23,9 @@ export const OnboardingModal: React.FC = () => {
   const [gender, setGender] = useState<Gender>('male');
   const [studyType, setStudyType] = useState<StudyType>('Kunduzgi');
   const [academicYear, setAcademicYear] = useState<AcademicYear>(1);
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [avatar, setAvatar] = useState(getDefaultAvatar('male'));
+  // Foydalanuvchi o'zi rasm tanlamaguncha, jins o'zgarsa standart rasm ham mos ravishda almashadi
+  const [avatarPicked, setAvatarPicked] = useState(false);
   const [acceptedOferta, setAcceptedOferta] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
   const [step, setStep] = useState<'welcome' | 'form'>('welcome');
@@ -168,7 +170,7 @@ export const OnboardingModal: React.FC = () => {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 overflow-y-auto">
         <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 p-6 my-8 animate-in fade-in zoom-in-95 duration-200">
           {step === 'welcome' ? (
             /* Welcome & Gratitude Screen */
@@ -286,6 +288,7 @@ export const OnboardingModal: React.FC = () => {
                           onClick={() => {
                             triggerHaptic('selection');
                             setAvatar(av.src);
+                            setAvatarPicked(true);
                           }}
                           className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all flex items-center justify-center bg-white dark:bg-slate-900 border ${
  isSelected
@@ -552,6 +555,7 @@ export const OnboardingModal: React.FC = () => {
                         onClick={() => {
                           triggerHaptic('selection');
                           setGender('male');
+                          if (!avatarPicked) setAvatar(getDefaultAvatar('male'));
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
  gender === 'male'
@@ -566,6 +570,7 @@ export const OnboardingModal: React.FC = () => {
                         onClick={() => {
                           triggerHaptic('selection');
                           setGender('female');
+                          if (!avatarPicked) setAvatar(getDefaultAvatar('female'));
                         }}
                         className={`py-2 rounded-xl font-semibold border transition-all ${
  gender === 'female'

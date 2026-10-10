@@ -322,10 +322,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <section className={`${card} p-4 flex items-center gap-3`}>
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              remainingDays !== null && remainingDays <= 0
-                ? 'bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-300'
-                : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-            }`}
+ remainingDays !== null && remainingDays <= 0
+ ? 'bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-300'
+ : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+ }`}
           >
             {remainingDays !== null && remainingDays <= 10 ? (
               <Clock className="w-5 h-5" strokeWidth={1.75} />
@@ -382,8 +382,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {(!isClaimedToday || isDailyDisappearing) && (
           <div
             className={`flex items-center gap-3 px-4 min-h-[64px] transition-opacity duration-500 ${
-              isDailyDisappearing ? 'opacity-0' : 'opacity-100'
-            }`}
+ isDailyDisappearing ? 'opacity-0' : 'opacity-100'
+ }`}
           >
             <Flame className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
@@ -486,14 +486,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* 🎉 Voucher Congratulations Modal */}
       {showVoucherCongratsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 text-center p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-in fade-in">
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 text-center p-6 space-y-4">
             <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center mx-auto">
               <Gift className="w-7 h-7" strokeWidth={1.75} />
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
                 Tabriklaymiz!
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">

@@ -423,7 +423,7 @@ export const CreateTestModal: React.FC<CreateTestModalProps> = ({ onClose, editP
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center p-3 pb-44 sm:pb-32 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-40 flex items-start justify-center p-3 pb-44 sm:pb-32 bg-slate-950/75 overflow-y-auto">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 my-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">

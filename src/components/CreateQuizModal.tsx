@@ -547,7 +547,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center p-3 pb-24 sm:pb-28 bg-slate-950/80 backdrop-blur-md overflow-y-auto font-sans animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center p-3 pb-24 sm:pb-28 bg-slate-950/80 overflow-y-auto font-sans animate-in fade-in duration-200">
       <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 p-5 sm:p-6 my-4 transition-all">
         {/* Header */}
         <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800">

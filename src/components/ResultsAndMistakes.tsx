@@ -349,7 +349,7 @@ export const ResultsAndMistakes: React.FC = () => {
 
       {/* Mistakes Practice Modal */}
       {practiceSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-lg border border-slate-200 dark:border-slate-800">
             {!practiceSession.isFinished ? (
               <div>

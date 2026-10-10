@@ -544,18 +544,18 @@ export const TestList: React.FC<TestListProps> = ({
                 onClick={() => handleTestClick(pkg, block)}
                 aria-label={`${decodeHtmlEntities(block.title)}${isLocked ? `, ${t.lockedStatus}` : ''}`}
                 className={`min-h-[64px] px-3 py-2.5 rounded-xl border text-left flex flex-col justify-between gap-1 transition-colors ${
-                  isLocked
-                    ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                    : isPassed
-                    ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-900 active:bg-emerald-100 dark:active:bg-emerald-900'
-                    : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 active:bg-slate-50 dark:active:bg-slate-800'
-                }`}
+ isLocked
+ ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+ : isPassed
+ ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-900 active:bg-emerald-100 dark:active:bg-emerald-900'
+ : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 active:bg-slate-50 dark:active:bg-slate-800'
+ }`}
               >
                 <span className="flex items-center justify-between gap-2">
                   <span
                     className={`text-[14px] font-semibold ${
-                      isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-50'
-                    }`}
+ isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-50'
+ }`}
                   >
                     {decodeHtmlEntities(block.title)}
                   </span>
@@ -680,10 +680,10 @@ export const TestList: React.FC<TestListProps> = ({
                   setOnlyMyTests(tab.mine);
                 }}
                 className={`min-h-[40px] rounded-lg text-[13px] font-semibold transition-colors ${
-                  active
-                    ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
+ active
+ ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
+ : 'text-slate-500 dark:text-slate-400'
+ }`}
               >
                 {tab.label}
               </button>
@@ -812,23 +812,23 @@ export const TestList: React.FC<TestListProps> = ({
 
       {/* Lock Explanation Modal */}
       {lockExplanation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-lg border border-slate-200 dark:border-slate-800 text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
               <Lock className="w-7 h-7" />
             </div>
 
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white mb-2">
               {lockExplanation.blockTitle} ({t.lockedStatus})
             </h3>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-amber-50 dark:bg-amber-950/40 p-3 rounded-2xl border border-amber-200 dark:border-amber-900/50 mb-5">
+            <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
               {lockExplanation.message}
             </p>
 
             <button
               onClick={() => setLockExplanation(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs transition-all active:scale-95"
+              className="w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors"
             >
               {t.understandBtn}
             </button>
@@ -838,14 +838,14 @@ export const TestList: React.FC<TestListProps> = ({
 
       {/* Private Test Password Modal: prompts exact text required */}
       {passwordModalPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-lg border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                   {t.enterPasswordTitle}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
@@ -889,7 +889,7 @@ export const TestList: React.FC<TestListProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/25"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md"
                 >
                   {t.unlockBtn}
                 </button>
@@ -901,13 +901,13 @@ export const TestList: React.FC<TestListProps> = ({
 
       {/* Custom In-App Delete Confirmation Modal - 100% reliable across Telegram & Web */}
       {deletingPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-lg border border-slate-200 dark:border-slate-800 text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
               <Trash2 className="w-7 h-7" strokeWidth={1.75} />
             </div>
 
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white mb-2">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white mb-2">
               {t.deleteTestModalTitle}
             </h3>
 
@@ -928,7 +928,7 @@ export const TestList: React.FC<TestListProps> = ({
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/30 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 {isDeleting ? (
                   <span>{t.deletingStatus}</span>

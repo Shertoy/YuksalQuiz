@@ -20,7 +20,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { triggerHaptic, soundFX } from '../utils/telegram';
-import { AVATAR_OPTIONS, getAvatarUrl } from '../constants/avatars';
+import { AVATAR_OPTIONS, getAvatarUrl, getGenderSafeAvatar } from '../constants/avatars';
 import { UserAvatar } from './UserAvatar';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import { validateAndSanitizeName } from '../utils/security';
@@ -45,7 +45,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   );
   const [studyType, setStudyType] = useState<StudyType>(profile.studyType);
   const [academicYear, setAcademicYear] = useState<AcademicYear>(profile.academicYear);
-  const [avatar, setAvatar] = useState(profile.avatar);
+  const [avatar, setAvatar] = useState(getGenderSafeAvatar(profile.avatar, profile.gender));
   const [formErrors, setFormErrors] = useState<{ firstName?: string; lastName?: string }>({});
 
   // Sync state whenever modal opens
@@ -57,7 +57,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setUniversity(profile.university || universities[0] || 'TATU');
       setStudyType(profile.studyType);
       setAcademicYear(profile.academicYear);
-      setAvatar(profile.avatar);
+      setAvatar(getGenderSafeAvatar(profile.avatar, profile.gender));
     }
   }, [isOpen, profile, universities]);
 
@@ -96,7 +96,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-in fade-in duration-200">
       <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/80 dark:border-emerald-500 shadow-lg animate-in zoom-in-95 duration-200">
         {/* Header with Visual Editing Mode Status */}
         <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-center justify-between shrink-0">

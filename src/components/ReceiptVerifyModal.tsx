@@ -219,7 +219,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       setVerifyStepText("Kvitansiya tasviri tayyorlanmoqda...");
       const base64Data = compressedBase64 || (await convertFileToBase64(selectedFile));
 
-      setVerifyStepText("Gemini AI kvitansiyani tahlil qilmoqda...");
+      setVerifyStepText("Chek tekshirilmoqda...");
 
       // Server Telegram imzosi yoki foydalanuvchi ma'lumotlari orqali foydalanuvchini aniqlaydi
       const apiRes = await apiPost('/api/verify-receipt', {
@@ -285,7 +285,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-in fade-in">
       <div className="w-full max-w-md max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
@@ -295,13 +295,9 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                  Hisobni To'ldirish
+                <h3 className="font-semibold text-[16px] text-slate-900 dark:text-slate-50">
+                  Hisobni to'ldirish
                 </h3>
-                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Zap className="w-2.5 h-2.5" strokeWidth={2} />
-                  <span>Gemini AI</span>
-                </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 P2P chekni avtomatik tekshirish va balansni to'ldirish
@@ -344,7 +340,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                   Hisobingiz Muvaffaqiyatli To'ldirildi!
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  Gemini AI to'lov chekingizni haqiqiyligini tasdiqladi. Balansingizga +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} so'm qo'shildi!
+                  To'lovingiz tasdiqlandi. Balansingizga +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} so'm qo'shildi!
                 </p>
               </div>
 
@@ -430,20 +426,20 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {result?.status !== 'approved' && (
             <>
               {/* Official Card Requisites */}
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-emerald-500/30 text-white space-y-2">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-medium">To'lov uchun karta (Humo):</span>
-                  <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                  <span className="text-slate-500 dark:text-slate-400 text-[13px]">To'lov uchun karta (Humo)</span>
+                  <span className="text-[12px] font-medium text-emerald-700 dark:text-emerald-300">
                     0% Komissiya
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15">
+                <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                   <div>
-                    <span className="font-mono font-bold text-sm sm:text-base select-all block text-emerald-300">
+                    <span className="font-mono font-semibold text-[16px] tracking-[0.02em] select-all block text-slate-900 dark:text-slate-50 tabular-nums">
                       {CARD_NUMBER_FORMATTED}
                     </span>
-                    <span className="text-[11px] text-slate-300 font-bold">
+                    <span className="text-[13px] text-slate-500 dark:text-slate-400">
                       {CARD_HOLDER}
                     </span>
                   </div>
@@ -451,7 +447,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                   <button
                     type="button"
                     onClick={handleCopyCard}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shrink-0 shadow-sm"
+                    className="min-h-[36px] px-3 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white text-[13px] font-semibold flex items-center gap-1 shrink-0"
                   >
                     {copiedCard ? (
                       <>
@@ -616,7 +612,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
                 <div className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Avtomatik Anti-Cheat Tizimi:</span>
+                  <span>To'lov qanday tekshiriladi</span>
                 </div>
                 <p>
                   • Kvitansiya oxirgi 30 daqiqa ichida amalga oshirilgan bo'lishi shart.<br />
@@ -630,10 +626,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 type="button"
                 disabled={isVerifying || !selectedFile}
                 onClick={handleVerifyReceipt}
-                className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                className={`w-full min-h-[48px] px-4 rounded-xl font-semibold text-[15px] transition-colors flex items-center justify-center gap-2 ${
  isVerifying || !selectedFile
  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
- : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-[0.98]'
+ : 'bg-emerald-600 active:bg-emerald-700 text-white'
  }`}
               >
                 {isVerifying ? (
@@ -643,8 +639,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Kvitansiyani Tekshirish (Gemini AI bilan)</span>
+                    <span>Chekni yuborish</span>
                   </>
                 )}
               </button>

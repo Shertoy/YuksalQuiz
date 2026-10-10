@@ -105,7 +105,7 @@ export const OfflineStatusBanner: React.FC = () => {
 
       {/* Offline Details Modal */}
       {showDetailsModal && !isOnline && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-lg relative">
             <button
               onClick={() => setShowDetailsModal(false)}
