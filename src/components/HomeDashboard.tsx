@@ -217,433 +217,284 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     setIsVoucherClaiming(false);
   };
 
+  const balance = profile.walletBalance ?? profile.balance ?? 0;
+  const planLabel =
+    profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik';
+  const recommended = testPackages
+    // Parolli yopiq testlar va savolsiz paketlar tavsiyada ko'rsatilmaydi
+    .filter((pkg) => !(pkg.password && !pkg.isPublic) && (pkg.blocks?.[0]?.questions?.length || 0) > 0)
+    .slice(0, 3);
+
+  const card = 'rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
+  const rowBtn =
+    'w-full flex items-center gap-3 px-4 min-h-[64px] text-left transition-colors active:bg-slate-50 dark:active:bg-slate-800/60';
+
   return (
-    <div className="space-y-4 pb-4">
-      {/* Floating Animated Coin Particle */}
-      {isCoinFlying && (
-        <div className="fixed bottom-40 right-10 z-50 pointer-events-none animate-coin-fly flex items-center gap-1 bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-full shadow-2xl border border-white">
-          <Coins className="w-4 h-4 text-slate-950" strokeWidth={1.75} />
-          <span className="text-xs">+1 Coin</span>
+    <div className="space-y-5 pb-4">
+      {/* Salomlashish */}
+      <section className="flex items-center gap-3 pt-1">
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+          <UserAvatar avatar={profile.avatar} />
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-slate-500 dark:text-slate-400">{t.greeting}</p>
+          <h2 className="text-lg font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50 truncate">
+            {profile.firstName || 'Talaba'} {profile.lastName || ''}
+          </h2>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
+            {profile.academicYear}
+            {t.courseUnit}
+            {profile.university ? ` · ${profile.university}` : ''}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            onOpenEditProfile();
+          }}
+          className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800 transition-colors"
+          aria-label="Profilni tahrirlash"
+        >
+          <Edit3 className="w-5 h-5" strokeWidth={1.75} />
+        </button>
+      </section>
+
+      {/* Asosiy harakat */}
+      <section className={`${card} p-4`}>
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">Mashqni boshlang</h3>
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
+          OTM, yo'nalish va fanni tanlang. Har blokda 25 ta savol, javob darhol ko'rsatiladi.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            setActiveTab('tests');
+          }}
+          className="mt-4 w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors"
+        >
+          <BookOpen className="w-5 h-5" strokeWidth={1.75} />
+          <span>Testlarni ko'rish</span>
+        </button>
+      </section>
+
+      {/* Natijalar */}
+      <section className={`${card} p-4`}>
+        <div className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800 text-center">
+          <div className="px-1">
+            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+              {hasCurrentUserTakenTests ? `#${userRank}` : '—'}
+            </div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">Reytingdagi o'rin</div>
+          </div>
+          <div className="px-1">
+            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+              {stats.totalCorrectAnswers}
+            </div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">To'g'ri javob</div>
+          </div>
+          <div className="px-1">
+            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+              {bestAttemptScore > 0 ? `${bestAttemptScore}/25` : '—'}
+            </div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">Eng yaxshi natija</div>
+          </div>
+        </div>
+        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[13px] text-slate-600 dark:text-slate-300">{motivationText}</p>
+            <span className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-300 tabular-nums shrink-0">
+              {progressPercent}%
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-emerald-600 dark:bg-emerald-400 transition-[width] duration-500 ease-[var(--ease-out)]"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Obuna holati */}
+      {isPaidUser(profile) && (
+        <section className={`${card} p-4 flex items-center gap-3`}>
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              remainingDays !== null && remainingDays <= 0
+                ? 'bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-300'
+                : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+            }`}
+          >
+            {remainingDays !== null && remainingDays <= 10 ? (
+              <Clock className="w-5 h-5" strokeWidth={1.75} />
+            ) : (
+              <Crown className="w-5 h-5" strokeWidth={1.75} />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
+              {remainingDays !== null && remainingDays <= 0 ? 'Obuna muddati tugagan' : `Premium · ${planLabel}`}
+            </p>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
+              {remainingDays !== null && remainingDays <= 0
+                ? 'Barcha testlarni ishlash uchun obunani yangilang'
+                : remainingDays !== null && remainingDays <= 10
+                ? `Tugashiga ${remainingDays} kun qoldi`
+                : `Muddati: ${profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : '—')}`}
+            </p>
+          </div>
+          {remainingDays !== null && remainingDays <= 10 && (
+            <button
+              type="button"
+              onClick={onOpenReceiptModal}
+              className="shrink-0 min-h-[40px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[13px] transition-colors"
+            >
+              Yangilash
+            </button>
+          )}
+        </section>
       )}
 
-      {/* User Greeting & University Profile Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white p-5 shadow-xl shadow-emerald-600/20">
-        <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 rounded-full bg-orange-400/20 blur-xl pointer-events-none" />
-
-        {/* User Info Header with Avatar, Name, and prominent "Tahrirlash" button */}
-        <div className="relative z-10 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="relative shrink-0">
-              <div className="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl border-2 border-white/30 shadow-inner overflow-hidden flex items-center justify-center p-0.5 ring-2 ring-emerald-400/50">
-                <UserAvatar avatar={profile.avatar} />
-              </div>
-              <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-md border border-white/50">
-                {hasCurrentUserTakenTests ? `#${userRank}` : '-'}
-              </span>
-            </div>
-
-            <div className="min-w-0">
-              <p className="text-[11px] text-emerald-100/80 font-medium">{t.greeting}</p>
-              <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate">
-                {profile.firstName || 'Talaba'} {profile.lastName || ''}
-              </h2>
-              <p className="text-[11px] text-emerald-100/90 font-medium truncate mt-0.5">
-                {profile.academicYear}{t.courseUnit} • {profile.studyType}
-              </p>
-            </div>
+      {/* Hisob, kunlik bonus, xatolar, test yaratish */}
+      <section className={`${card} divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden`}>
+        <div className="flex items-center gap-3 px-4 min-h-[64px]">
+          <Wallet className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">Hisobingiz</p>
+            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
+              {balance.toLocaleString('uz-UZ')} so'm
+            </p>
           </div>
-
-          {/* Prominent "Tahrirlash" Button directly next to user info */}
           <button
             type="button"
             onClick={() => {
               triggerHaptic('light');
-              onOpenEditProfile();
+              onOpenReceiptModal?.();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-md text-white font-bold text-xs shadow-sm transition-all border border-white/25 shrink-0"
-            title="Profilni tahrirlash"
+            className="shrink-0 min-h-[40px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[13px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors"
           >
-            <Edit3 className="w-3.5 h-3.5 text-orange-300" />
-            <span>{t.editBtn || 'Tahrirlash'}</span>
+            To'ldirish
           </button>
         </div>
 
-        {/* Context Badges: Tanlagan OTM, Viloyat, O'zbekiston bo'yicha egallagan o'rni */}
-        <div className="relative z-10 flex flex-wrap items-center gap-1.5 mt-3.5 pt-3 border-t border-white/15 text-[11px]">
-          {/* Tanlangan OTM */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 text-emerald-100 font-semibold max-w-[200px]">
-            <School className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="truncate">{profile.university || 'TATU'}</span>
-          </div>
-
-          {/* Viloyati */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 text-emerald-100 font-semibold">
-            <MapPin className="w-3.5 h-3.5 text-orange-300 shrink-0" />
-            <span className="truncate">{profile.region}</span>
-          </div>
-
-          {/* O'zbekiston bo'yicha o'rni */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-400/20 backdrop-blur-sm border border-amber-300/40 text-amber-200 font-bold ml-auto sm:ml-0">
-            <Trophy className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-            <span>O'zbekistonda: #{userRank}-o'rin</span>
-          </div>
-        </div>
-
-        {/* 3 Statistika Kartochkalari: Coinlar, To'g'ri yechilgan testlar, Eng yaxshi natija */}
-        <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15 text-center">
-          {/* 1. Coinlar balansi */}
-          <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 transition-all ${coinGlow ? 'ring-2 ring-orange-400 scale-105 shadow-lg' : ''}`}>
-            <div className="flex items-center justify-center gap-1 text-orange-300 font-black text-base sm:text-lg">
-              <Coins className={`w-4 h-4 text-orange-300 ${coinGlow ? 'animate-bounce' : ''}`} strokeWidth={1.75} />
-              <span>{profile.coins}</span>
+        {(!isClaimedToday || isDailyDisappearing) && (
+          <div
+            className={`flex items-center gap-3 px-4 min-h-[64px] transition-opacity duration-500 ${
+              isDailyDisappearing ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <Flame className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={1.75} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
+                {t.dailyBonusTitle}
+                <span className="ml-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400 tabular-nums">
+                  {profile.streak} {t.streak}
+                </span>
+              </p>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400">{t.dailyBonusDesc}</p>
             </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5">
-              {t.coins}
-            </p>
+            <button
+              type="button"
+              disabled={isClaimedToday || isCoinFlying}
+              onClick={handleClaimDailyStreak}
+              className="shrink-0 min-h-[40px] px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-50 font-semibold text-[13px] active:bg-slate-200 dark:active:bg-slate-700 disabled:opacity-50 transition-colors"
+            >
+              {isClaimedToday ? t.claimedToday : t.claimDailyBonus}
+            </button>
           </div>
+        )}
 
-          {/* 2. To'g'ri yechilgan testlar / savollar soni */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 text-emerald-200 font-black text-base sm:text-lg">
-              <CheckCircle2 className="w-4 h-4 text-emerald-300" strokeWidth={1.75} />
-              <span>{stats.totalCorrectAnswers > 0 ? stats.totalCorrectAnswers : profile.completedTestsCount}</span>
+        {mistakes.length > 0 && (
+          <button type="button" onClick={() => setActiveTab('results')} className={rowBtn}>
+            <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" strokeWidth={1.75} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
+                {t.mistakesTitle} <span className="text-orange-600 dark:text-orange-400 tabular-nums">({mistakes.length})</span>
+              </p>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400">{t.mistakesDesc}</p>
             </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
-              {stats.totalCorrectAnswers > 0 ? "To'g'ri javoblar" : "Yechilgan test"}
-            </p>
-          </div>
-
-          {/* 3. Eng yaxshi natija */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5">
-            <div className="flex items-center justify-center gap-1 text-amber-300 font-black text-base sm:text-lg">
-              <Zap className="w-4 h-4 text-amber-300" strokeWidth={1.75} />
-              <span>{bestAttemptScore > 0 ? `${bestAttemptScore}/25` : `${stats.scorePoints} ball`}</span>
-            </div>
-            <p className="text-[10px] text-emerald-100 uppercase tracking-wider font-bold mt-0.5 truncate">
-              Eng yaxshi natija
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Active Subscription Badge & Expiration Alert */}
-      {isPaidUser(profile) && (
-        <div className="space-y-2">
-          {/* 10-day Expiration Warning Banner */}
-          {remainingDays !== null && remainingDays <= 10 && remainingDays > 0 && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/70 flex items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-500/30 shrink-0">
-                  <Clock className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-black text-amber-900 dark:text-amber-200">
-                      ⚠️ Obunangiz tugashiga {remainingDays} kun qoldi!
-                    </span>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-500 text-white uppercase tracking-wider">
-                      Eslatma
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-300 truncate mt-0.5">
-                    Cheklovlarsiz test ishlashni davom ettirish uchun obunani yangilang
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenReceiptModal}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-extrabold text-xs shrink-0 shadow-sm transition-all"
-              >
-                Yangilash
-              </button>
-            </div>
-          )}
-
-          {remainingDays !== null && remainingDays <= 0 && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/15 border-2 border-rose-500/70 flex items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center font-black shadow-md shadow-rose-500/30 shrink-0">
-                  <Clock className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-black text-rose-900 dark:text-rose-200 block truncate">
-                    ⌛ Obunangiz muddati tugagan
-                  </span>
-                  <p className="text-[11px] text-rose-700 dark:text-rose-300 truncate mt-0.5">
-                    Barcha testlarni ishlash uchun obunani yangilang
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenReceiptModal}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold text-xs shrink-0 shadow-sm transition-all"
-              >
-                Yangilash
-              </button>
-            </div>
-          )}
-
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/20 border-2 border-amber-500/50 flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black shadow-md shadow-orange-500/30 shrink-0">
-                <Star className="w-5 h-5 fill-amber-100 text-amber-100" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">
-                    {profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik'} Premium obuna faol
-                  </span>
-                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white uppercase tracking-wider">
-                    Faol
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  Muddati: {profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : "Cheksiz")}
-                  {remainingDays !== null && remainingDays > 0 ? ` (${remainingDays} kun qoldi)` : ''}
-                </p>
-              </div>
-            </div>
-            <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl bg-amber-500/10 shrink-0">
-              VIP Kirish
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Wallet Balance & Quick Deposit Card */}
-      <div className="rounded-2xl p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
-            <Wallet className="w-5 h-5" strokeWidth={2} />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block truncate">
-              Hisobingiz:
-            </span>
-            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
-              {(profile.walletBalance ?? profile.balance ?? 0).toLocaleString('uz-UZ')} so'm
-            </div>
-          </div>
-        </div>
+            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
+          </button>
+        )}
 
         <button
           type="button"
           onClick={() => {
             triggerHaptic('light');
-            onOpenReceiptModal?.();
+            onOpenCreateModal();
           }}
-          className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center leading-none gap-1.5 transition-all shrink-0"
+          className={rowBtn}
         >
-          <PlusCircle className="w-4 h-4 shrink-0" />
-          <span>To'ldirish</span>
-        </button>
-      </div>
-
-      {/* Daily Streak & Interactive Bonus Card - Disappears upon claim with animation & hidden today */}
-      {(!isClaimedToday || isDailyDisappearing) && (
-        <div
-          className={`bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 dark:from-orange-500/15 dark:to-amber-500/10 border border-orange-500/20 rounded-2xl p-3.5 flex items-center justify-between transition-all duration-700 ease-in-out ${
-            isDailyDisappearing
-              ? 'opacity-0 -translate-y-4 scale-95 max-h-0 py-0 my-0 border-0 overflow-hidden pointer-events-none'
-              : 'max-h-40 opacity-100'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/30 shrink-0">
-              <Flame className="w-5 h-5 text-white" strokeWidth={1.75} />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t.dailyBonusTitle}
-                </h3>
-                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400">
-                  {profile.streak} {t.streak}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {t.dailyBonusDesc}
-              </p>
-            </div>
+          <PlusCircle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">{t.createTestBtn}</p>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">{t.bulkParserDesc}</p>
           </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
+        </button>
+      </section>
 
-          <button
-            type="button"
-            disabled={isClaimedToday || isCoinFlying}
-            onClick={handleClaimDailyStreak}
-            className={`px-3 py-2 rounded-xl font-bold text-xs shadow-md transition-all transform active:scale-95 flex items-center gap-1 shrink-0 ${
-              isClaimedToday
-                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
-                : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isClaimedToday ? t.claimedToday : t.claimDailyBonus}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Interactive Toast Message */}
       {dailyClaimedMessage && (
-        <div className="p-2.5 rounded-xl bg-emerald-500 text-white text-xs font-bold text-center shadow-lg animate-in fade-in zoom-in-95">
+        <div role="status" className="px-4 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-medium text-center animate-in fade-in">
           {dailyClaimedMessage}
         </div>
       )}
 
-      {/* Ixcham 1-qatorli Motivatsiya Bloki va Yashil Progress-Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-2">
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 truncate">
-            <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="truncate">{motivationText}</span>
-          </div>
-          <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 shrink-0">
-            {progressPercent}%
-          </span>
-        </div>
-        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-xs"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
-
-
-
-      {/* Quick Action Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            setActiveTab('tests');
-          }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-emerald-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
-        >
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.navTests}</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-              {t.testCategoriesPractice}
-            </p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            onOpenCreateModal();
-          }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:border-orange-400 text-left transition-all group active:scale-[0.98] min-h-[96px] flex flex-col justify-between"
-        >
-          <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-            <PlusCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{t.createTestBtn}</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-              {t.bulkParserDesc}
-            </p>
-          </div>
-        </button>
-      </div>
-
-      {/* Mistakes Notice if any */}
-      {mistakes.length > 0 && (
-        <div
-          onClick={() => setActiveTab('results')}
-          className="p-3.5 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 flex items-center justify-between cursor-pointer hover:border-orange-300 transition-colors"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" strokeWidth={1.75} />
-            </div>
-            <div>
-              <h4 className="font-bold text-xs text-orange-950 dark:text-orange-200">
-                {t.mistakesTitle} ({mistakes.length})
-              </h4>
-              <p className="text-[11px] text-orange-700/80 dark:text-orange-300">
-                {t.mistakesDesc}
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-orange-600 dark:text-orange-400" strokeWidth={1.75} />
-        </div>
-      )}
-
-      {/* Recommended Tests - Only shown if active test packages exist */}
-      {testPackages.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-black text-sm text-slate-900 dark:text-white">
-              {t.recommendedTests}
-            </h3>
+      {/* Tavsiya etilgan testlar */}
+      {recommended.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{t.recommendedTests}</h3>
             <button
+              type="button"
               onClick={() => setActiveTab('tests')}
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline flex items-center justify-center leading-none"
+              className="min-h-[40px] px-2 -mr-2 text-[13px] font-semibold text-emerald-700 dark:text-emerald-300"
             >
-              {t.all} &rarr;
+              {t.all}
             </button>
           </div>
-
-          <div className="space-y-2">
-            {testPackages
-              // Parolli yopiq testlar va savolsiz paketlar tavsiyada ko'rsatilmaydi
-              // (ular parol tekshiruvini chetlab o'tib ochilib qolardi)
-              .filter((pkg) => !(pkg.password && !pkg.isPublic) && (pkg.blocks?.[0]?.questions?.length || 0) > 0)
-              .slice(0, 3)
-              .map((pkg) => (
-              <div
+          <div className={`${card} divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden`}>
+            {recommended.map((pkg) => (
+              <button
                 key={pkg.id}
+                type="button"
                 onClick={() => onStartTest(pkg, pkg.blocks[0].id)}
-                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 transition-all active:scale-[0.99] shadow-xs"
+                className={rowBtn}
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/70 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug">
+                <div className="min-w-0 flex-1 py-3">
+                  <p className="text-[15px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
                     {decodeHtmlEntities(pkg.title)}
-                  </h4>
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{decodeHtmlEntities(pkg.university || '')}</span>
-                    {(pkg.semester || pkg.academicYear) && (
-                      <>
-                        <span>•</span>
-                        <span className="font-bold text-amber-600 dark:text-amber-400">
-                          {pkg.semester ? `${pkg.semester}-semestr` : ''}
-                          {pkg.semester && pkg.academicYear ? ' • ' : ''}
-                          {pkg.academicYear ? `${pkg.academicYear}` : ''}
-                        </span>
-                      </>
-                    )}
-                    <span>•</span>
-                    <span>{pkg.blocks.length} {t.blocksCount} ({pkg.totalQuestions} {t.questionsCount})</span>
-                  </div>
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400 truncate">
+                    {[
+                      decodeHtmlEntities(pkg.university || ''),
+                      pkg.semester ? `${pkg.semester}-semestr` : '',
+                      `${pkg.totalQuestions} ${t.questionsCount}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </div>
-              </div>
+                <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
+              </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* 🎉 Voucher Congratulations Modal */}
       {showVoucherCongratsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 text-center p-6 space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-orange-500/30">
-              <Gift className="w-8 h-8 text-slate-950" strokeWidth={2} />
+            <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center mx-auto">
+              <Gift className="w-7 h-7" strokeWidth={1.75} />
             </div>
 
             <div className="space-y-1.5">
               <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                🎉 Tabriklaymiz!
+                Tabriklaymiz!
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                 Sizga <span className="font-bold text-emerald-600 dark:text-emerald-400">20 000 so'mlik</span> boshlang'ich vaucher taqdim etildi. Mablag' hamyoningizga o'tkazildi!
@@ -661,7 +512,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 triggerHaptic('light');
                 setShowVoucherCongratsModal(false);
               }}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-md shadow-emerald-600/25 active:scale-95 transition-all flex items-center justify-center leading-none"
+              className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors"
             >
               Tushundim
             </button>

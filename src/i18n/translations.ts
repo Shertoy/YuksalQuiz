@@ -512,8 +512,8 @@ export const translations: Record<Language, Translations> = {
     blocksCount: 'blok',
     mistakesTitle: 'Xatolar ustida ishlash',
     mistakesDesc: "Noto'g'ri yechilgan savollarni qayta ishlab chiqing",
-    testCategoriesPractice: "5 ta kategoriya bo'yicha mashq",
-    bulkParserDesc: 'Bulk parser (==== va ++++)',
+    testCategoriesPractice: "OTM va fan bo'yicha mashq qiling",
+    bulkParserDesc: "Fayl yoki matndan o'z testingizni qo'shing",
     dailyBonusAlreadyClaimed: 'Bugungi bonus allaqachon olingan. Ertaga yana tashrif buyuring!',
     dailyBonusClaimedSuccess: "Tabriklaymiz! +1 tanga hisobingizga qo'shildi",
 
@@ -851,8 +851,8 @@ export const translations: Record<Language, Translations> = {
     blocksCount: 'бл.',
     mistakesTitle: 'Работа над ошибками',
     mistakesDesc: 'Повторите вопросы, в которых были допущены ошибки',
-    testCategoriesPractice: 'Практика по 5 категориям',
-    bulkParserDesc: 'Массовый парсер (==== и ++++)',
+    testCategoriesPractice: 'Практика по вузам и предметам',
+    bulkParserDesc: 'Добавьте свой тест из файла или текста',
     dailyBonusAlreadyClaimed: 'Сегодняшний бонус уже получен. Заходите завтра!',
     dailyBonusClaimedSuccess: 'Поздравляем! +1 монета добавлена на ваш счет',
 
@@ -1190,8 +1190,8 @@ export const translations: Record<Language, Translations> = {
     blocksCount: 'blocks',
     mistakesTitle: 'Work on Mistakes',
     mistakesDesc: 'Review and retake questions with incorrect answers',
-    testCategoriesPractice: 'Practice across 5 tracks',
-    bulkParserDesc: 'Bulk parser (==== and ++++)',
+    testCategoriesPractice: 'Practice by university and subject',
+    bulkParserDesc: 'Add your own test from a file or text',
     dailyBonusAlreadyClaimed: 'Today\'s bonus is already claimed. Check back tomorrow!',
     dailyBonusClaimedSuccess: 'Congratulations! +1 coin added to your account',
 
