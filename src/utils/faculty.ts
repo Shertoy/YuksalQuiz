@@ -13,17 +13,16 @@ export const OTHER_FACULTY = "Boshqa yo'nalish";
  * u bo'lmasa eski testlardagi department ishlatiladi.
  */
 export function getPackageFaculty(pkg: TestPackage): string {
-  const faculty = String((pkg as any).faculty || '').trim();
-  let raw = faculty;
-  if (!raw) {
-    // Eski testlar: department ko'pincha umumiy toifa ("Menejment va Boshqaruv" kabi), haqiqiy yo'nalish emas.
-    // Umumiy toifa shu OTM ro'yxatida bo'lmasa, yo'nalish sifatida ko'rsatilmaydi.
-    const dep = String(pkg.department || '').trim();
-    const isGeneric = GENERIC_DEPARTMENT_KEYS.has(facultyKey(dep));
-    if (dep && (!isGeneric || isFacultyInList(pkg.university || '', dep))) raw = dep;
-  }
+  // Bazadan yuklanganda faculty bo'sh bo'lsa department qiymati faculty ga ko'chiriladi,
+  // shuning uchun tekshiruv ikkalasiga ham qo'llanadi.
+  const raw = String((pkg as any).faculty || pkg.department || '').trim();
   const clean = decodeHtmlEntities(raw).replace(/\s+/g, ' ').trim();
   if (!clean || clean.toLowerCase() === 'system') return OTHER_FACULTY;
+  // Umumiy toifa ("Menejment va Boshqaruv" kabi) haqiqiy yo'nalish emas:
+  // shu OTM ro'yxatida bo'lmasa, yo'nalish sifatida ko'rsatilmaydi
+  if (GENERIC_DEPARTMENT_KEYS.has(facultyKey(clean)) && !isFacultyInList(pkg.university || '', clean)) {
+    return OTHER_FACULTY;
+  }
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
