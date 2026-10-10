@@ -829,7 +829,7 @@ export const WalletView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
           {/* Card Info Box */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
               <span className="text-slate-500 dark:text-slate-400 font-medium">
                 {t.walletCardHolderLabel} <b className="text-slate-900 dark:text-white">{CARD_HOLDER}</b>
               </span>
@@ -838,25 +838,21 @@ export const WalletView: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
-              <span className="font-mono font-bold text-base sm:text-lg text-slate-900 dark:text-white select-all truncate">
+            <div className="flex items-center justify-between gap-2 pl-3.5 pr-1.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+              <span className="font-mono font-semibold text-[16px] min-[360px]:text-[17px] tracking-[0.02em] tabular-nums whitespace-nowrap text-slate-900 dark:text-white select-all">
                 {CARD_FORMATTED}
               </span>
               <button
                 type="button"
                 onClick={handleCopyCard}
-                className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+                aria-label={copiedCard ? t.walletCardCopied : t.walletCopyCardBtn}
+                title={copiedCard ? t.walletCardCopied : t.walletCopyCardBtn}
+                className="w-11 h-11 rounded-lg text-emerald-700 dark:text-emerald-300 active:bg-emerald-50 dark:active:bg-emerald-950 flex items-center justify-center transition-colors shrink-0"
               >
                 {copiedCard ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
-                    <span className="text-[11px] text-emerald-600 font-bold">{t.walletCardCopied}</span>
-                  </>
+                  <Check className="w-5 h-5" strokeWidth={2.25} />
                 ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    <span className="text-[11px]">{t.walletCopyCardBtn}</span>
-                  </>
+                  <Copy className="w-5 h-5" strokeWidth={1.75} />
                 )}
               </button>
             </div>

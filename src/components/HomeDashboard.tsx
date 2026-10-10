@@ -36,6 +36,7 @@ import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { localDateKey } from '../utils/date';
+import { shortUniversityName } from '../utils/faculty';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -252,7 +253,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
             {profile.academicYear}
             {t.courseUnit}
-            {profile.university ? ` · ${profile.university}` : ''}
+            {profile.university ? ` · ${shortUniversityName(profile.university)}` : ''}
           </p>
         </div>
         <button

@@ -105,16 +105,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Edit3 className="w-4 h-4" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                  {t.editDataTitle || 'Profilni tahrirlash'}
-                </h3>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                  <span>{tr('Tahrirlash', 'Редактирование', 'Editing')}</span>
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              <h3 className="font-semibold text-[15px] leading-snug text-slate-900 dark:text-white">
+                {t.editDataTitle || 'Profilni tahrirlash'}
+              </h3>
+              <p className="text-[12px] leading-snug text-slate-500 dark:text-slate-400">
                 {tr("Ma'lumotlar va avatarni yangilang", 'Обновите данные и аватар', 'Update your details and avatar')}
               </p>
             </div>

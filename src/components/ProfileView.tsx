@@ -77,7 +77,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <h3 className="text-[17px] font-semibold leading-snug text-slate-900 dark:text-slate-50 truncate">
               {profile.firstName || 'Talaba'} {profile.lastName || ''}
             </h3>
-            <p className="text-[13px] text-slate-600 dark:text-slate-300 truncate">{profile.university || '—'}</p>
+            <p className="text-[13px] leading-snug text-slate-600 dark:text-slate-300 line-clamp-2 break-words">{profile.university || '—'}</p>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
               {[`${profile.academicYear}${t.courseUnit}`, profile.studyType, profile.region].filter(Boolean).join(' · ')}
             </p>

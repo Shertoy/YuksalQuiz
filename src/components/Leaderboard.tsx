@@ -6,8 +6,6 @@ import {
   Crown,
   Clock,
   CheckCircle2,
-  MapPin,
-  School,
   Percent,
   Zap,
   Users,
@@ -18,6 +16,13 @@ import { triggerHaptic } from '../utils/telegram';
 import { UserAvatar } from './UserAvatar';
 import { DEFAULT_AVATAR } from '../constants/avatars';
 import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
+
+// Viloyat nomini tugmaga sig'adigan qisqa ko'rinishga keltiradi
+const shortRegion = (region: string | undefined, fallback: string) => {
+  const r = (region || '').replace(/ shahri$/, ' sh.').replace(/ viloyati$/, ' vil.');
+  // Juda uzun nom (masalan, Qoraqalpog'iston) tor ekranda kesiladi — umumiy so'z ko'rsatiladi
+  return r && r.length <= 12 ? r : fallback;
+};
 
 export const Leaderboard: React.FC = () => {
   const {
@@ -185,7 +190,7 @@ export const Leaderboard: React.FC = () => {
     if (metric === 'weekly') {
       return (
         <span className="font-semibold text-xs text-orange-600 dark:text-orange-400">
-          {u.weeklyActiveHours}{t.hoursShort} {t.metricWeekly}
+          {u.weeklyActiveHours}{t.hoursShort} {tr('/ hafta', '/ нед.', '/ week')}
         </span>
       );
     }
@@ -249,108 +254,67 @@ export const Leaderboard: React.FC = () => {
 
       {/* Scope Filters: Respublika | Viloyat | OTM & Metric Tabs */}
       <div className="space-y-2">
-          {/* Scope Filters: Respublika | Viloyat | OTM */}
-          <div className="grid grid-cols-3 p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800 text-[13px] font-semibold">
-            {/* 1. Respublika */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setLeaderboardScope('uzbekistan');
-              }}
-              className={`min-h-[40px] px-1 rounded-lg transition-colors flex items-center justify-center gap-1 ${
- leaderboardScope === 'uzbekistan'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-              <span>{t.scopeUzbekistanShort || 'Respublika'}</span>
-            </button>
-
-            {/* 2. Viloyat */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setLeaderboardScope('region');
-              }}
-              className={`min-h-[40px] px-1 rounded-lg transition-colors flex items-center justify-center gap-1 ${
- leaderboardScope === 'region'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-              <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{profile.region || t.scopeRegionShort}</span>
-            </button>
-
-            {/* 3. OTM */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setLeaderboardScope('otm');
-              }}
-              className={`min-h-[40px] px-1 rounded-lg transition-colors flex items-center justify-center gap-1 ${
- leaderboardScope === 'otm'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-              <School className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{t.scopeOtmShort || 'Mening OTMim'}</span>
-            </button>
+          {/* Hudud: Respublika | Viloyat | OTM */}
+          <div role="tablist" aria-label={tr('Hudud', 'Охват', 'Scope')} className="grid grid-cols-3 p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800 text-[13px] font-semibold">
+            {(
+              [
+                { key: 'uzbekistan', label: t.scopeUzbekistanShort || 'Respublika' },
+                { key: 'region', label: shortRegion(profile.region, t.scopeRegionShort) },
+                { key: 'otm', label: t.scopeOtmShort || 'OTMim' },
+              ] as const
+            ).map((it) => (
+              <button
+                key={it.key}
+                type="button"
+                role="tab"
+                aria-selected={leaderboardScope === it.key}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setLeaderboardScope(it.key);
+                }}
+                className={`min-h-[40px] min-w-0 px-2 rounded-lg transition-colors ${
+                  leaderboardScope === it.key ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]' : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <span className="block truncate">{it.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Metric Sort Tabs */}
-          <div className="flex items-center gap-1 text-[13px] font-medium">
-            {/* 1. Points */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setMetric('correct');
-              }}
-              className={`min-h-[36px] px-3 rounded-full transition-colors flex items-center justify-center gap-1 ${
- metric === 'correct'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-                            <span>{t.metricPoints}</span>
-            </button>
-
-            {/* 2. Percentage & Speed */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setMetric('percentage');
-              }}
-              className={`min-h-[36px] px-3 rounded-full transition-colors flex items-center justify-center gap-1 ${
- metric === 'percentage'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-                            <span>{t.metricAccuracySpeed}</span>
-            </button>
-
-            {/* 3. Weekly Activity */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setMetric('weekly');
-              }}
-              className={`min-h-[36px] px-3 rounded-full transition-colors flex items-center justify-center gap-1 ${
- metric === 'weekly'
- ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 shadow-[0_1px_2px_rgba(28,25,23,0.08)]'
- : 'text-slate-500 dark:text-slate-400'
- }`}
-            >
-                            <span>{t.metricWeekly}</span>
-            </button>
+          {/* Saralash: Ballar | Aniqlik | Faollik */}
+          <div role="tablist" aria-label={tr('Saralash', 'Сортировка', 'Sort by')} className="grid grid-cols-3 border-b border-slate-200 dark:border-slate-800 text-[14px] font-medium">
+            {(
+              [
+                { key: 'correct', label: t.metricPoints },
+                { key: 'percentage', label: t.metricAccuracySpeed },
+                { key: 'weekly', label: t.metricWeekly },
+              ] as const
+            ).map((it) => {
+              const on = metric === it.key;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setMetric(it.key);
+                  }}
+                  className={`relative min-h-[44px] min-w-0 px-1 transition-colors ${
+                    on ? 'text-slate-900 dark:text-slate-50 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <span className="block truncate">{it.label}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`absolute left-3 right-3 -bottom-px h-0.5 rounded-full transition-colors ${
+                      on ? 'bg-emerald-600 dark:bg-emerald-400' : 'bg-transparent'
+                    }`}
+                  />
+                </button>
+              );
+            })}
           </div>
         </div>
 

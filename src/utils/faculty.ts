@@ -65,3 +65,13 @@ export function groupByFaculty(packages: TestPackage[]): FacultyGroup[] {
     return a.name.localeCompare(b.name, 'uz');
   });
 }
+
+/**
+ * Tor joylar uchun OTM nomining qisqa ko'rinishi.
+ * "Toshkent Gumanitar Fanlar Universiteti (TGFU)" → "TGFU". Qavssiz nom o'zgarmaydi.
+ */
+export function shortUniversityName(name?: string | null): string {
+  const n = (name || '').trim();
+  const m = n.match(/\(([^()]{2,12})\)\s*$/);
+  return m ? m[1].trim() : n;
+}
