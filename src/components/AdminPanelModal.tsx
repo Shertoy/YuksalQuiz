@@ -66,8 +66,6 @@ import { triggerHaptic } from '../utils/telegram';
 import {
   TestPackage,
   MainCategory,
-  DepartmentType,
-  DEPARTMENTS,
   UZBEKISTAN_REGIONS,
   Region,
   AnnouncementTargetType,
@@ -114,6 +112,7 @@ import { getUserSubscriptionInfo, UserSubscriptionInfo } from '../utils/subscrip
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
 import { AdminEditQuizModal } from './AdminEditQuizModal';
+import { FacultyPicker } from './FacultyPicker';
 import { AdminFacultyManager } from './AdminFacultyManager';
 import { getGenderSafeAvatar } from '../constants/avatars';
 import {
@@ -517,7 +516,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   // Simple recommended test creator state
   const [testTitle, setTestTitle] = useState('');
   const [testUni, setTestUni] = useState(universities[0] || 'TATU');
-  const [testDept, setTestDept] = useState<DepartmentType>('Axborot Texnologiyalari');
+  const [testFaculty, setTestFaculty] = useState('');
   const [testSemester, setTestSemester] = useState<number>(1);
   const [testAcademicYear, setTestAcademicYear] = useState<string>('2025-2026');
 
@@ -908,13 +907,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   const handleCreateRecommendedTest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!testTitle.trim()) return;
+    if (!testFaculty.trim()) {
+      showNotification("Yo'nalishni tanlang.");
+      return;
+    }
 
     const newPkg: TestPackage = {
       id: 'admin-pkg-' + Date.now(),
       title: testTitle.trim(),
       category: "Oliy Ta'lim (HEMIS)",
       university: testUni,
-      department: testDept,
+      department: testFaculty.trim() as any,
+      faculty: testFaculty.trim(),
       semester: Number(testSemester),
       academicYear: testAcademicYear,
       totalQuestions: 25,
@@ -3740,27 +3744,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     <SearchableUniversitySelect
                       label="OTM:"
                       value={testUni}
-                      onChange={(val) => setTestUni(val)}
+                      onChange={(val) => {
+                        setTestUni(val);
+                        setTestFaculty('');
+                      }}
                       universities={universities}
                       allowCustom={false}
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                       Yo'nalish:
                     </label>
-                    <select
-                      value={testDept}
-                      onChange={(e) => setTestDept(e.target.value as any)}
-                      className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-medium"
-                    >
-                      {DEPARTMENTS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
+                    <FacultyPicker
+                      university={testUni}
+                      value={testFaculty}
+                      onChange={setTestFaculty}
+                      manualHint="Bu yo'nalish ro'yxatda yo'q. Kerak bo'lsa OTMlar bo'limida ro'yxatga qo'shing."
+                    />
                   </div>
                 </div>
 
