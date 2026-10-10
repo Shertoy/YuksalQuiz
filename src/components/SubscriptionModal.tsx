@@ -33,7 +33,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   onOpenDepositModal,
 }) => {
   const { profile, subscriptionPrices, applySubscription } = useQuizStore();
-  const { t } = useTranslation();
+  const { tr } = useTranslation();
+  const SOM = tr("so'm", 'сум', 'UZS');
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanType>('6_months');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -122,13 +123,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>{isSubscribed ? "Obunani Uzaytirish / Tariflar" : "Obuna Bo'lish / Tariflar"}</span>
+                <span>{isSubscribed ? tr('Obunani uzaytirish', 'Продлить подписку', 'Extend subscription') : tr("Obuna bo'lish", 'Оформить подписку', 'Subscribe')}</span>
                 <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                   Premium
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {isSubscribed ? "Mavjud obuna muddatini uzaytirish va yangi reja tanlash" : "Barcha HEMIS va fan testlariga cheksiz kirish huquqi"}
+                {isSubscribed ? tr('Mavjud obuna muddatini uzaytirish va yangi reja tanlash', 'Продлите подписку и выберите новый тариф', 'Extend your subscription and choose a new plan') : tr('Barcha HEMIS va fan testlariga cheksiz kirish huquqi', 'Безлимитный доступ ко всем тестам HEMIS', 'Unlimited access to all HEMIS tests')}
               </p>
             </div>
           </div>
@@ -161,11 +162,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 <div className="min-w-0">
                   <span className="font-semibold truncate block">
                     {isEndingSoon
-                      ? `⚠️ Obunangiz tugashiga ${remainingDays} kun qoldi!`
-                      : `Faol Premium (${remainingDays !== null ? `${remainingDays} kun qoldi` : 'Faol'})`}
+                      ? tr(`Obunangiz tugashiga ${remainingDays} kun qoldi`, `До конца подписки осталось ${remainingDays} дн.`, `${remainingDays} days left on your subscription`)
+                      : `Premium · ${remainingDays !== null ? tr(`${remainingDays} kun qoldi`, `осталось ${remainingDays} дн.`, `${remainingDays} days left`) : tr('faol', 'активна', 'active')}`}
                   </span>
                   <span className="text-[11px] opacity-80 block truncate">
-                    Yangi tanlangan muddat joriy sanangizga qo'shiladi (+uzaytirish)
+                    {tr("Yangi muddat joriy obunangizga qo'shiladi", 'Новый срок добавится к текущей подписке', 'The new period is added to your current one')}
                   </span>
                 </div>
               </div>
@@ -183,10 +184,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               </div>
               <div className="min-w-0">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                  Hisobingiz:
+                  {tr('Hisobingiz:', 'Ваш баланс:', 'Your balance:')}
                 </span>
                 <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                  {currentBalance.toLocaleString('uz-UZ')} so'm
+                  {currentBalance.toLocaleString('uz-UZ')} {SOM}
                 </span>
               </div>
             </div>
@@ -200,7 +201,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 active:scale-95 transition-all shadow-xs shrink-0"
             >
               <PlusCircle className="w-4 h-4 text-white" strokeWidth={1.75} />
-              <span>+ To'ldirish</span>
+              <span>{tr("To'ldirish", 'Пополнить', 'Top up')}</span>
             </button>
           </div>
 
@@ -225,7 +226,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {/* Plan Options */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-              Tarifni Tanlang:
+              {tr('Tarifni tanlang:', 'Выберите тариф:', 'Choose a plan:')}
             </label>
 
             {/* 1. 3 Months */}
@@ -243,20 +244,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
-                    3 Oylik Reja
+                    {tr('3 oylik', '3 месяца', '3 months')}
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    90 kunlik to'liq kirish
+                    {tr("90 kunlik to'liq kirish", 'Полный доступ на 90 дней', 'Full access for 90 days')}
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
                     <span className="line-through text-[11px] text-slate-400 font-semibold block">
-                      {price3M.toLocaleString('uz-UZ')} so'm
+                      {price3M.toLocaleString('uz-UZ')} {SOM}
                     </span>
                   )}
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    {cost3Months.toLocaleString('uz-UZ')} so'm
+                    {cost3Months.toLocaleString('uz-UZ')} {SOM}
                   </span>
                 </div>
               </div>
@@ -275,25 +276,25 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
  }`}
             >
               <span className="absolute -top-2 right-3 text-[11px] font-bold px-2 py-0.2 rounded-full bg-orange-500 text-white shadow-xs">
-                Tavsiya etiladi
+                {tr('Tavsiya etiladi', 'Рекомендуем', 'Recommended')}
               </span>
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
-                    6 Oylik Reja (180 kun)
+                    {tr('6 oylik (180 kun)', '6 месяцев (180 дней)', '6 months (180 days)')}
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Eng ommabop va qulay tarif
+                    {tr('Eng ommabop tarif', 'Самый популярный тариф', 'Most popular plan')}
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
                     <span className="line-through text-[11px] text-slate-400 font-semibold block">
-                      {price6M.toLocaleString('uz-UZ')} so'm
+                      {price6M.toLocaleString('uz-UZ')} {SOM}
                     </span>
                   )}
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    {cost6Months.toLocaleString('uz-UZ')} so'm
+                    {cost6Months.toLocaleString('uz-UZ')} {SOM}
                   </span>
                 </div>
               </div>
@@ -314,20 +315,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
-                    1 Yillik Reja (365 kun)
+                    {tr('1 yillik (365 kun)', '1 год (365 дней)', '1 year (365 days)')}
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Butun o'quv yili uchun cheksiz kirish
+                    {tr("Butun o'quv yili uchun cheksiz kirish", 'Безлимитный доступ на весь учебный год', 'Unlimited access for the whole academic year')}
                   </p>
                 </div>
                 <div className="text-right">
                   {hasVoucher && (
                     <span className="line-through text-[11px] text-slate-400 font-semibold block">
-                      {price1Y.toLocaleString('uz-UZ')} so'm
+                      {price1Y.toLocaleString('uz-UZ')} {SOM}
                     </span>
                   )}
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    {cost1Year.toLocaleString('uz-UZ')} so'm
+                    {cost1Year.toLocaleString('uz-UZ')} {SOM}
                   </span>
                 </div>
               </div>
@@ -339,7 +340,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-[11px] text-emerald-800 dark:text-emerald-200">
               <Ticket className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>
-                20 000 so'm boshlang'ich vaucher chegirmasi avtomatik chegirib berildi!
+                {tr("20 000 so'm boshlang'ich vaucher chegirmasi avtomatik chegirib berildi!", 'Стартовый ваучер на 20 000 сум применён автоматически.', 'Your 20,000 UZS starter voucher was applied automatically.')}
               </span>
             </div>
           )}
@@ -355,8 +356,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 <Check className="w-5 h-5 text-white" strokeWidth={2} />
                 <span>
                   {isSubscribed
-                    ? `Obunani uzaytirish (${planCost.toLocaleString('uz-UZ')} so'm)`
-                    : `Hisobdan to'lash (${planCost.toLocaleString('uz-UZ')} so'm)`}
+                    ? `${tr('Obunani uzaytirish', 'Продлить подписку', 'Extend subscription')} (${planCost.toLocaleString('uz-UZ')} ${SOM})`
+                    : `${tr("Hisobdan to'lash", 'Оплатить с баланса', 'Pay from balance')} (${planCost.toLocaleString('uz-UZ')} ${SOM})`}
                 </span>
               </button>
             ) : (
@@ -370,10 +371,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   className="w-full py-3.5 px-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                   <PlusCircle className="w-5 h-5 text-white" strokeWidth={2} />
-                  <span>Hisobni to'ldirish (+{deficit.toLocaleString('uz-UZ')} so'm kerak)</span>
+                  <span>{tr("Hisobni to'ldirish", 'Пополнить баланс', 'Top up balance')} (+{deficit.toLocaleString('uz-UZ')} {SOM})</span>
                 </button>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 text-center font-medium">
-                  Hisobingizda {currentBalance.toLocaleString('uz-UZ')} so'm bor. Ushbu obunani olish uchun yana {deficit.toLocaleString('uz-UZ')} so'm to'ldiring.
+                  {tr(`Hisobingizda ${currentBalance.toLocaleString('uz-UZ')} so'm bor. Ushbu obunani olish uchun yana ${deficit.toLocaleString('uz-UZ')} so'm to'ldiring.`, `На балансе ${currentBalance.toLocaleString('uz-UZ')} сум. Для этой подписки пополните ещё на ${deficit.toLocaleString('uz-UZ')} сум.`, `Your balance is ${currentBalance.toLocaleString('uz-UZ')} UZS. Top up ${deficit.toLocaleString('uz-UZ')} UZS more for this plan.`)}
                 </p>
               </div>
             )}

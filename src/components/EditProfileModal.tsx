@@ -35,7 +35,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   onClose,
 }) => {
   const { profile, updateProfile, universities } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const [firstName, setFirstName] = useState(profile.firstName || '');
   const [lastName, setLastName] = useState(profile.lastName || '');
@@ -111,11 +111,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 </h3>
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                  <span>Faol rejim</span>
+                  <span>{tr('Tahrirlash', 'Редактирование', 'Editing')}</span>
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                Ma'lumotlar va avatarni yangilang
+                {tr("Ma'lumotlar va avatarni yangilang", 'Обновите данные и аватар', 'Update your details and avatar')}
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onClose();
             }}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors active:scale-95 shrink-0 ml-2"
-            aria-label="Close modal"
+            aria-label={tr('Yopish', 'Закрыть', 'Close')}
           >
             <X className="w-4 h-4" strokeWidth={1.75} />
           </button>
@@ -214,7 +214,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
  ? 'border-orange-500 focus:ring-orange-500'
  : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
  } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
-                placeholder="Ismingiz (2-25 belgi)"
+                placeholder={tr('Ismingiz (2-25 belgi)', 'Имя (2–25 символов)', 'First name (2–25 characters)')}
               />
               {formErrors.firstName && (
                 <p className="text-[11px] text-orange-500 font-semibold mt-1">
@@ -241,7 +241,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
  ? 'border-orange-500 focus:ring-orange-500'
  : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500'
  } text-slate-900 dark:text-white font-medium focus:ring-2 focus:outline-none`}
-                placeholder="Familiyangiz (2-25 belgi)"
+                placeholder={tr('Familiyangiz (2-25 belgi)', 'Фамилия (2–25 символов)', 'Last name (2–25 characters)')}
               />
               {formErrors.lastName && (
                 <p className="text-[11px] text-orange-500 font-semibold mt-1">

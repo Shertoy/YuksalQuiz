@@ -12,7 +12,7 @@ import { validateAndSanitizeName } from '../utils/security';
 
 export const OnboardingModal: React.FC = () => {
   const { profile, registerUser } = useQuizStore();
-  const { t, language, setLanguage } = useTranslation();
+  const { t, tr, language, setLanguage } = useTranslation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -212,7 +212,7 @@ export const OnboardingModal: React.FC = () => {
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-3">
                 <HeartHandshake className="w-3.5 h-3.5 text-emerald-600" strokeWidth={1.75} />
-                <span>YuksalQuiz Platformasi</span>
+                <span>{tr('YuksalQuiz platformasi', 'Платформа YuksalQuiz', 'YuksalQuiz platform')}</span>
               </div>
 
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">
@@ -419,7 +419,7 @@ export const OnboardingModal: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs truncate">{t.statusStudent}</div>
-                        <div className="text-[11px] opacity-75 font-normal truncate">Universitet / Institut</div>
+                        <div className="text-[11px] opacity-75 font-normal truncate">{tr('Universitet / Institut', 'Университет / институт', 'University / institute')}</div>
                       </div>
                     </button>
 
@@ -483,9 +483,9 @@ export const OnboardingModal: React.FC = () => {
                           className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                         >
                           <option value="Kunduzgi">{t.studyKunduzgi}</option>
-                          <option value="Sirtqi">{t.studySirtqi} (5 yil)</option>
+                          <option value="Sirtqi">{t.studySirtqi} ({tr('5 yil', '5 лет', '5 years')})</option>
                           <option value="Kechki">{t.studyKechki}</option>
-                          <option value="Tibbiyot">{t.studyTibbiyot} (6 yil)</option>
+                          <option value="Tibbiyot">{t.studyTibbiyot} ({tr('6 yil', '6 лет', '6 years')})</option>
                         </select>
                       </div>
                       <div>
@@ -606,7 +606,7 @@ export const OnboardingModal: React.FC = () => {
                       htmlFor="ofertaCheckbox"
                       className="text-[11px] text-slate-700 dark:text-slate-300 leading-snug cursor-pointer select-none"
                     >
-                      <span>Men </span>
+                      <span>{tr('Men ', 'Я согласен(на) с условиями ', 'I agree to the ')}</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -615,9 +615,9 @@ export const OnboardingModal: React.FC = () => {
                         }}
                         className="text-emerald-600 dark:text-emerald-400 font-bold underline hover:text-emerald-700 inline"
                       >
-                        Ommaviy oferta
+                        {tr('Ommaviy oferta', 'Публичной оферты', 'Public Offer')}
                       </button>{' '}
-                      <span>shartlariga roziman (Virtual vaucher va bonuslar kartaga yechib olinmaydi).</span>
+                      <span>{tr('shartlariga roziman (Virtual vaucher va bonuslar kartaga yechib olinmaydi).', '(виртуальные ваучеры и бонусы нельзя вывести на карту).', 'terms (virtual vouchers and bonuses cannot be withdrawn to a card).')}</span>
                     </label>
                   </div>
                   {fieldErrors.oferta && (

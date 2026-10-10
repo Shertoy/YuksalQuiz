@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, ShieldCheck, ScrollText } from 'lucide-react';
 import { OFERTA_TITLE, OFERTA_SECTIONS } from '../data/oferta';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface PublicOfferModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
   onClose,
   onAccept,
 }) => {
+  const { tr, language } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -26,10 +28,10 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                Ommaviy Oferta
+                {tr('Ommaviy oferta', 'Публичная оферта', 'Public offer')}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Foydalanuvchi rasmiy shartnomasi
+                {language === 'uz' ? 'Foydalanuvchi rasmiy shartnomasi' : tr('', 'Официальный текст — на узбекском языке', 'Official text — in Uzbek')}
               </p>
             </div>
           </div>
@@ -71,7 +73,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
           <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
             <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
             <p>
-              "YuksalQuiz" platformasida ro'yxatdan o'tish orqali foydalanuvchi yuqoridagi barcha qoidalarni to'liq va so'zsiz qabul qilgan hisoblanadi.
+              {tr("\"YuksalQuiz\" platformasida ro'yxatdan o'tish orqali foydalanuvchi yuqoridagi barcha qoidalarni to'liq va so'zsiz qabul qilgan hisoblanadi.", 'Регистрируясь на платформе «YuksalQuiz», пользователь полностью и безоговорочно принимает все изложенные выше правила.', 'By registering on the "YuksalQuiz" platform, the user fully and unconditionally accepts all of the rules above.')}
             </p>
           </div>
         </div>
@@ -85,7 +87,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
                 onClick={onClose}
                 className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
               >
-                Yopish
+                {tr('Yopish', 'Закрыть', 'Close')}
               </button>
               <button
                 type="button"
@@ -95,7 +97,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
               >
-                Roziman va qabul qilaman
+                {tr('Roziman va qabul qilaman', 'Согласен и принимаю', 'I agree and accept')}
               </button>
             </>
           ) : (
@@ -104,7 +106,7 @@ export const PublicOfferModal: React.FC<PublicOfferModalProps> = ({
               onClick={onClose}
               className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md"
             >
-              Tushundim
+              {tr('Tushundim', 'Понятно', 'Got it')}
             </button>
           )}
         </div>

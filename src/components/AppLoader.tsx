@@ -200,7 +200,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
       {/* Bottom Footer Note */}
       <div className="relative z-10 text-center pb-2">
         <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-          HEMIS • IELTS • TOPIK • SAT • Fanlar
+          HEMIS • IELTS • TOPIK • SAT • {language === 'ru' ? 'Предметы' : language === 'en' ? 'Subjects' : 'Fanlar'}
         </p>
       </div>
     </div>

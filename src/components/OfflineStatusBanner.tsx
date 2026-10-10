@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { WifiOff, Wifi, RefreshCw, X, ShieldCheck } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
+import { useTranslation, trNow } from '../i18n/useTranslation';
 
 export const OfflineStatusBanner: React.FC = () => {
+  const { tr } = useTranslation();
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -15,7 +17,7 @@ export const OfflineStatusBanner: React.FC = () => {
     const handleOnline = () => {
       setIsOnline(true);
       setShowDetailsModal(false);
-      setToastMessage("Internet aloqasi qayta tiklandi!");
+      setToastMessage(trNow('Internet aloqasi qayta tiklandi', 'Подключение восстановлено', 'Connection restored'));
       setShowToast(true);
       triggerHaptic('success');
 
@@ -27,7 +29,7 @@ export const OfflineStatusBanner: React.FC = () => {
 
     const handleOffline = () => {
       setIsOnline(false);
-      setToastMessage("Internet aloqasi uzildi. Oflayn rejim faollashdi.");
+      setToastMessage(trNow('Internet aloqasi uzildi. Oflayn rejim yoqildi.', 'Нет подключения. Включён офлайн-режим.', 'Connection lost. Offline mode is on.'));
       setShowToast(true);
       triggerHaptic('warning');
 
@@ -55,7 +57,7 @@ export const OfflineStatusBanner: React.FC = () => {
       await fetch('/favicon.svg?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
       setIsOnline(true);
       setShowDetailsModal(false);
-      setToastMessage("Internet aloqasi mavjud va faol!");
+      setToastMessage(tr('Internet aloqasi bor', 'Подключение есть', 'You are online'));
       setShowToast(true);
       triggerHaptic('success');
       setTimeout(() => setShowToast(false), 3000);
@@ -85,12 +87,12 @@ export const OfflineStatusBanner: React.FC = () => {
             </span>
             <WifiOff className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span className="text-[11px] font-semibold tracking-wide">
-              Internet aloqasi uzildi — Oflayn rejim faol
+              {tr("Internet yo'q — oflayn rejim", 'Нет интернета — офлайн-режим', 'No internet — offline mode')}
             </span>
           </div>
 
           <span className="text-[11px] bg-black/15 dark:bg-white/20 px-2 py-0.5 rounded-full font-bold">
-            Batafsil &rarr;
+            {tr('Batafsil', 'Подробнее', 'Details')} &rarr;
           </span>
         </div>
       )}
@@ -119,17 +121,17 @@ export const OfflineStatusBanner: React.FC = () => {
             </div>
 
             <h3 className="text-center font-bold text-base text-slate-900 dark:text-white mb-1.5">
-              Internet Aloqasi Yo'q
+              {tr("Internet aloqasi yo'q", 'Нет подключения к интернету', 'No internet connection')}
             </h3>
             <p className="text-center text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-              Qurilmangiz hozirda internet tarmog'iga ulanmagan. YuksalQuiz ilovasi sizning test natijalaringiz va shaxsiy ma'lumotlaringizni xavfsiz holatda saqlab turadi.
+              {tr("Qurilmangiz hozirda internet tarmog'iga ulanmagan. YuksalQuiz ilovasi sizning test natijalaringiz va shaxsiy ma'lumotlaringizni xavfsiz holatda saqlab turadi.", 'Устройство сейчас не подключено к интернету. YuksalQuiz сохраняет ваши результаты и данные на устройстве.', 'Your device is offline. YuksalQuiz keeps your results and data safe on the device.')}
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 text-left mb-4 flex items-center gap-2.5">
               <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" strokeWidth={1.75} />
               <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                <span className="font-bold block">Ma'lumotlar yo'qolmaydi</span>
-                Barcha natijalar qurilma xotirasida (Local Storage) saqlanmoqda.
+                <span className="font-bold block">{tr("Ma'lumotlar yo'qolmaydi", 'Данные не потеряются', 'Your data is safe')}</span>
+                {tr('Barcha natijalar qurilma xotirasida saqlanmoqda.', 'Все результаты сохраняются в памяти устройства.', 'All results are saved on this device.')}
               </div>
             </div>
 
@@ -141,7 +143,7 @@ export const OfflineStatusBanner: React.FC = () => {
                 className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} strokeWidth={1.75} />
-                <span>{isChecking ? "Tekshirilmoqda..." : "Aloqani qayta tekshirish"}</span>
+                <span>{isChecking ? tr('Tekshirilmoqda...', 'Проверка...', 'Checking...') : tr('Aloqani qayta tekshirish', 'Проверить снова', 'Check again')}</span>
               </button>
 
               <button
@@ -149,7 +151,7 @@ export const OfflineStatusBanner: React.FC = () => {
                 onClick={() => setShowDetailsModal(false)}
                 className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
               >
-                Oflayn rejimda davom etish
+                {tr('Oflayn rejimda davom etish', 'Продолжить офлайн', 'Continue offline')}
               </button>
             </div>
           </div>

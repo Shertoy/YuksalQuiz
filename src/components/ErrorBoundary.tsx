@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { trNow } from '../i18n/useTranslation';
 
 interface Props {
   children: ReactNode;
@@ -61,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const errMsg = this.state.error?.message || "Noma'lum xatolik";
+      const errMsg = this.state.error?.message || trNow("Noma'lum xatolik", 'Неизвестная ошибка', 'Unknown error');
       const errName = this.state.error?.name || 'Error';
 
       return (
@@ -73,10 +74,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div className="space-y-1">
               <h2 className="text-base font-black text-white">
-                Kutilmagan xatolik yuz berdi
+                {trNow('Kutilmagan xatolik yuz berdi', 'Произошла непредвиденная ошибка', 'Something went wrong')}
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Dastur komponentida vaqtinchalik xatolik kuzatildi. Quyidagi tugmalar orqali ilovani qayta ishga tushirishingiz mumkin.
+                {trNow('Ilovada vaqtinchalik xatolik yuz berdi. Quyidagi tugmalar orqali ilovani qayta ishga tushirishingiz mumkin.', 'В приложении произошла временная ошибка. Перезапустите его кнопками ниже.', 'The app hit a temporary error. Use the buttons below to restart it.')}
               </p>
             </div>
 
@@ -89,7 +90,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   onClick={this.handleCopyDetails}
                   className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 flex items-center gap-1 font-sans"
                 >
-                  {this.state.copied ? 'Nusxalandi' : 'Nusxa olish'}
+                  {this.state.copied ? trNow('Nusxalandi', 'Скопировано', 'Copied') : trNow('Nusxa olish', 'Копировать', 'Copy')}
                 </button>
               </div>
               <p className="text-[11px] text-slate-300">{errMsg}</p>
@@ -102,11 +103,11 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={() => this.setState({ showDetails: !this.state.showDetails })}
                 className="text-[11px] text-slate-400 hover:text-slate-200 underline font-medium"
               >
-                {this.state.showDetails ? "Texnik tafsilotlarni yashirish ▲" : "Texnik tafsilotlarni ko'rish ▼"}
+                {this.state.showDetails ? trNow('Texnik tafsilotlarni yashirish ▲', 'Скрыть подробности ▲', 'Hide details ▲') : trNow("Texnik tafsilotlarni ko'rish ▼", 'Показать подробности ▼', 'Show details ▼')}
               </button>
               {this.state.showDetails && (
                 <div className="mt-2 p-3 bg-slate-950 rounded-xl border border-slate-800 text-[10px] font-mono text-slate-400 max-h-40 overflow-y-auto whitespace-pre-wrap">
-                  {this.state.error?.stack || this.state.errorInfo?.componentStack || "Qo'shimcha stack ma'lumotlari mavjud emas."}
+                  {this.state.error?.stack || this.state.errorInfo?.componentStack || trNow("Qo'shimcha ma'lumot yo'q.", 'Нет дополнительных данных.', 'No extra details.')}
                 </div>
               )}
             </div>
@@ -119,7 +120,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 <RotateCcw className="w-4 h-4" strokeWidth={1.75} />
-                <span>Sahifani qayta yuklash</span>
+                <span>{trNow('Sahifani qayta yuklash', 'Перезагрузить', 'Reload page')}</span>
               </button>
 
               <button
@@ -127,7 +128,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleHardReset}
                 className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
-                <span>Bosh sahifaga o'tish</span>
+                <span>{trNow("Bosh sahifaga o'tish", 'На главную', 'Go to home')}</span>
               </button>
             </div>
           </div>

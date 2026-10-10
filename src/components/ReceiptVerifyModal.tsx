@@ -41,7 +41,8 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
   onSuccess,
 }) => {
   const { profile, depositBalance } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
+  const SOM = tr("so'm", 'сум', 'UZS');
 
   const QUICK_AMOUNTS = [20000, 40000, 50000, 90000];
 
@@ -137,12 +138,12 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setUploadError("Iltimos, faqat rasm formatidagi kvitansiyani tanlang (JPG, PNG, WEBP).");
+      setUploadError(tr('Faqat rasm tanlang (JPG, PNG, WEBP).', 'Выберите изображение (JPG, PNG, WEBP).', 'Choose an image (JPG, PNG, WEBP).'));
       return;
     }
 
     if (file.size > 25 * 1024 * 1024) {
-      setUploadError("Rasm hajmi juda katta (maksimal 25 MB).");
+      setUploadError(tr('Rasm juda katta (eng ko\'pi 25 MB).', 'Файл слишком большой (макс. 25 МБ).', 'Image is too large (max 25 MB).'));
       return;
     }
 
@@ -205,7 +206,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
 
   const handleVerifyReceipt = async () => {
     if (!selectedFile) {
-      setUploadError("Iltimos, avval to'lov cheki rasmini yuklang.");
+      setUploadError(tr("Avval to'lov chekining rasmini yuklang.", 'Сначала загрузите фото чека.', 'Upload a photo of the receipt first.'));
       triggerHaptic('warning');
       return;
     }
@@ -216,10 +217,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     triggerHaptic('medium');
 
     try {
-      setVerifyStepText("Kvitansiya tasviri tayyorlanmoqda...");
+      setVerifyStepText(tr('Chek tayyorlanmoqda...', 'Подготовка чека...', 'Preparing receipt...'));
       const base64Data = compressedBase64 || (await convertFileToBase64(selectedFile));
 
-      setVerifyStepText("Chek tekshirilmoqda...");
+      setVerifyStepText(tr('Chek tekshirilmoqda...', 'Проверка чека...', 'Checking receipt...'));
 
       // Server Telegram imzosi yoki foydalanuvchi ma'lumotlari orqali foydalanuvchini aniqlaydi
       const apiRes = await apiPost('/api/verify-receipt', {
@@ -231,11 +232,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
         userUsername: profile.username || '',
       });
 
-      setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
+      setVerifyStepText(tr("To'lov ma'lumotlari solishtirilmoqda...", 'Сверка данных платежа...', 'Matching payment details...'));
 
       let data: ReceiptVerificationResult = apiRes.data as ReceiptVerificationResult;
       if (!apiRes.ok && !(apiRes.data as any)?.status) {
-        data = { ok: false, status: 'rejected', message: apiErrorText(apiRes, "Chekni yuborib bo'lmadi.") } as ReceiptVerificationResult;
+        data = { ok: false, status: 'rejected', message: apiErrorText(apiRes, tr("Chekni yuborib bo'lmadi.", 'Не удалось отправить чек.', 'Could not send the receipt.')) } as ReceiptVerificationResult;
       }
 
       setResult(data);
@@ -270,7 +271,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       const fallbackResult: ReceiptVerificationResult = {
         ok: false,
         status: 'rejected',
-        message: "Server bilan aloqa uzildi, chek yuborilmadi. Internetni tekshirib qayta urinib ko'ring.",
+        message: tr(
+          "Server bilan aloqa uzildi, chek yuborilmadi. Internetni tekshirib qayta urinib ko'ring.",
+          'Связь с сервером прервалась, чек не отправлен. Проверьте интернет и попробуйте снова.',
+          'Lost connection to the server; the receipt was not sent. Check your internet and try again.'
+        ),
       } as ReceiptVerificationResult;
       setResult(fallbackResult);
       triggerHaptic('error');
@@ -296,11 +301,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-[16px] text-slate-900 dark:text-slate-50">
-                  Hisobni to'ldirish
+                  {tr("Hisobni to'ldirish", 'Пополнение баланса', 'Top up balance')}
                 </h3>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                P2P chekni avtomatik tekshirish va balansni to'ldirish
+                {tr("Kartaga o'tkazing va chekni yuklang", 'Переведите на карту и загрузите чек', 'Transfer to the card and upload the receipt')}
               </p>
             </div>
           </div>
@@ -322,10 +327,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
           {/* Current Balance Bar */}
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Joriy hisobingiz:
+              {tr('Joriy hisobingiz', 'Текущий баланс', 'Current balance')}:
             </span>
             <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} {SOM}
             </span>
           </div>
 
@@ -337,19 +342,19 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               </div>
               <div>
                 <h4 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Hisobingiz Muvaffaqiyatli To'ldirildi!
+                  {tr("Hisobingiz to'ldirildi", 'Баланс пополнен', 'Balance topped up')}
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  To'lovingiz tasdiqlandi. Balansingizga +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} so'm qo'shildi!
+                  {tr("To'lovingiz tasdiqlandi. Balansingizga qo'shildi", 'Платёж подтверждён. Зачислено', 'Payment confirmed. Added')}: +{(result.amount || selectedAmount).toLocaleString('uz-UZ')} {SOM}
                 </p>
               </div>
 
               <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">
-                  Yangi balansingiz:
+                  {tr('Yangi balans', 'Новый баланс', 'New balance')}:
                 </span>
                 <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+                  {(profile.walletBalance || 0).toLocaleString('uz-UZ')} {SOM}
                 </span>
               </div>
 
@@ -364,7 +369,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 onClick={handleFinishAndContinue}
                 className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <span>Davom Etish</span>
+                <span>{tr('Davom etish', 'Продолжить', 'Continue')}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -396,14 +401,14 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                   className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs text-center flex items-center justify-center gap-2 transition-all shadow-sm"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Telegram Bot orqali tekshirish (@YuksalQuiz_bot)</span>
+                  <span>{tr('Telegram bot orqali kuzatish (@YuksalQuiz_bot)', 'Следить через Telegram-бот (@YuksalQuiz_bot)', 'Track via Telegram bot (@YuksalQuiz_bot)')}</span>
                 </a>
                 <button
                   type="button"
                   onClick={onClose}
                   className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
                 >
-                  Tushundim, yopish
+                  {tr('Tushunarli, yopish', 'Понятно, закрыть', 'Got it, close')}
                 </button>
               </div>
             </div>
@@ -414,7 +419,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
             <div className="p-3.5 rounded-2xl bg-orange-500 text-white text-xs font-bold space-y-1.5 shadow-md animate-in fade-in">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-white" strokeWidth={2} />
-                <span>To'lov Cheki Rad Etildi!</span>
+                <span>{tr('Chek rad etildi', 'Чек отклонён', 'Receipt rejected')}</span>
               </div>
               <p className="font-medium text-[11px] opacity-95">
                 {result.reason || result.message}
@@ -428,9 +433,9 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               {/* Official Card Requisites */}
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500 dark:text-slate-400 text-[13px]">To'lov uchun karta (Humo)</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[13px]">{tr("To'lov uchun karta (Humo)", 'Карта для оплаты (Humo)', 'Card for payment (Humo)')}</span>
                   <span className="text-[12px] font-medium text-emerald-700 dark:text-emerald-300">
-                    0% Komissiya
+                    {tr('0% komissiya', '0% комиссии', '0% fee')}
                   </span>
                 </div>
 
@@ -452,12 +457,12 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     {copiedCard ? (
                       <>
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span className="text-[11px]">Nusxalandi</span>
+                        <span className="text-[11px]">{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" strokeWidth={2} />
-                        <span className="text-[11px]">Nusxa olish</span>
+                        <span className="text-[11px]">{tr('Nusxalash', 'Копировать', 'Copy')}</span>
                       </>
                     )}
                   </button>
@@ -467,7 +472,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               {/* Amount Selection Section */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                  To'ldirish Summasi:
+                  {tr("To'ldirish summasi", 'Сумма пополнения', 'Amount')}:
                 </label>
 
                 {/* Quick Amount Buttons */}
@@ -497,7 +502,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ixtiyoriy summa (masalan: 30000)"
+                      placeholder={tr('Boshqa summa (masalan: 30000)', 'Другая сумма (например: 30000)', 'Other amount (e.g. 30000)')}
                       value={customAmountStr}
                       onChange={handleCustomAmountChange}
                       onFocus={() => setIsCustomMode(true)}
@@ -508,7 +513,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
  }`}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-                      so'm
+                      {SOM}
                     </span>
                   </div>
                 </div>
@@ -517,14 +522,14 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               {/* Receipt File Upload */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                  <span>To'lov chekini yuklang (Click, Payme, Uzum):</span>
+                  <span>{tr("To'lov chekini yuklang (Click, Payme, Uzum)", 'Загрузите чек об оплате (Click, Payme, Uzum)', 'Upload the payment receipt (Click, Payme, Uzum)')}:</span>
                   {selectedFile && (
                     <button
                       type="button"
                       onClick={handleRemoveImage}
                       className="text-[11px] text-red-500 hover:underline font-semibold"
                     >
-                      Boshqa rasm tanlash
+                      {tr('Boshqa rasm tanlash', 'Выбрать другое фото', 'Choose another image')}
                     </button>
                   )}
                 </label>
@@ -547,10 +552,10 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                       <Upload className="w-6 h-6" strokeWidth={1.75} />
                     </div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      Chek rasmini yuklash
+                      {tr('Chek rasmini yuklash', 'Загрузить фото чека', 'Upload receipt photo')}
                     </span>
                     <span className="text-[11px] text-slate-400 mt-0.5">
-                      Galereyadan tanlang yoki kamerada rasmga oling (JPG, PNG)
+                      {tr('Galereyadan tanlang yoki suratga oling (JPG, PNG)', 'Выберите из галереи или сфотографируйте (JPG, PNG)', 'Pick from gallery or take a photo (JPG, PNG)')}
                     </span>
                   </label>
                 ) : (
@@ -559,7 +564,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                       {previewUrl && (
                         <img
                           src={previewUrl}
-                          alt="Kvitansiya cheki"
+                          alt={tr('Chek', 'Чек', 'Receipt')}
                           className="max-h-56 object-contain w-full"
                         />
                       )}
@@ -580,7 +585,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                     {isCompressing && (
                       <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                        <span>Rasm sifati saqlangan holda 300 KB gacha siqilmoqda...</span>
+                        <span>{tr('Rasm siqilmoqda...', 'Сжатие изображения...', 'Compressing image...')}</span>
                       </div>
                     )}
 
@@ -588,7 +593,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                       <div className="flex items-center justify-between text-[11px] px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold shadow-xs">
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                          <span>Hajmi: <b>{formatBytes(compressedSizeBytes)}</b> (≤300 KB siqildi)</span>
+                          <span>{tr('Hajmi', 'Размер', 'Size')}: <b>{formatBytes(compressedSizeBytes)}</b></span>
                         </div>
                         {originalSizeBytes > compressedSizeBytes && (
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -612,12 +617,12 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
                 <div className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>To'lov qanday tekshiriladi</span>
+                  <span>{tr("To'lov qanday tekshiriladi", 'Как проверяется платёж', 'How the payment is checked')}</span>
                 </div>
                 <p>
-                  • Kvitansiya oxirgi 30 daqiqa ichida amalga oshirilgan bo'lishi shart.<br />
-                  • Bir xil chekdan faqat bir marta foydalanish mumkin (Tranzaksiya ID tekshiriladi).<br />
-                  • Karta raqami (9860080382320093) va egasi (Alijonova Xalimaxon) mos kelishi kerak.
+                  • {tr("To'lov oxirgi 30 daqiqa ichida qilingan bo'lishi kerak.", 'Платёж должен быть сделан за последние 30 минут.', 'The payment must be made within the last 30 minutes.')}<br />
+                  • {tr('Bitta chekdan faqat bir marta foydalaniladi.', 'Один чек можно использовать только один раз.', 'Each receipt can be used only once.')}<br />
+                  • {tr('Karta raqami va egasi yuqoridagi bilan mos kelishi kerak.', 'Номер карты и владелец должны совпадать с указанными выше.', 'Card number and holder must match the ones above.')}
                 </p>
               </div>
 
@@ -635,11 +640,11 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
                 {isVerifying ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Tekshirilmoqda...</span>
+                    <span>{tr('Tekshirilmoqda...', 'Проверка...', 'Checking...')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Chekni yuborish</span>
+                    <span>{tr('Chekni yuborish', 'Отправить чек', 'Send receipt')}</span>
                   </>
                 )}
               </button>

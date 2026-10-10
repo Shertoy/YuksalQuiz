@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   Bell,
   X,
@@ -28,12 +29,6 @@ interface NotificationsModalProps {
   onClose: () => void;
 }
 
-const QUICK_SUGGESTIONS = [
-  "Test qanday yaratiladi?",
-  "VIP obuna qanday faollashtiriladi?",
-  "Reyting ballari qanday hisoblanadi?",
-  "To'lov kvitansiyasini qanday yuklayman?",
-];
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
   const {
@@ -41,6 +36,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     announcements,
     markAnnouncementsAsRead,
   } = useQuizStore();
+
+  const { tr } = useTranslation();
+  const QUICK_SUGGESTIONS = [
+    tr('Test qanday yaratiladi?', 'Как создать тест?', 'How do I create a test?'),
+    tr('VIP obuna qanday faollashtiriladi?', 'Как активировать VIP-подписку?', 'How do I activate a VIP subscription?'),
+    tr('Reyting ballari qanday hisoblanadi?', 'Как считаются баллы рейтинга?', 'How are rating points calculated?'),
+    tr("To'lov kvitansiyasini qanday yuklayman?", 'Как загрузить чек об оплате?', 'How do I upload a payment receipt?'),
+  ];
 
   const [activeTab, setActiveTab] = useState<'announcements' | 'support'>('announcements');
 
@@ -149,10 +152,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
           )
         );
       } else {
-        setChatError(data.error || "Xatolik yuz berdi");
+        setChatError(data.error || tr('Xatolik yuz berdi', 'Произошла ошибка', 'Something went wrong'));
       }
     } catch (err: any) {
-      setChatError("Tarmoq xatosi. Iltimos qaytadan urinib ko'ring.");
+      setChatError(tr("Tarmoq xatosi. Iltimos qaytadan urinib ko'ring.", 'Ошибка сети. Попробуйте ещё раз.', 'Network error. Please try again.'));
     } finally {
       setIsSending(false);
     }
@@ -187,15 +190,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             </div>
             <div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>{activeTab === 'announcements' ? 'Bildirishnomalar' : 'AI Yordam & Maslahatchi'}</span>
+                <span>{activeTab === 'announcements' ? tr('Bildirishnomalar', 'Уведомления', 'Notifications') : tr('Yordam', 'Помощь', 'Help')}</span>
                 {activeTab === 'support' && (
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 )}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {activeTab === 'announcements'
-                  ? 'Yangiliklar va rasmiy xabarlar'
-                  : 'Savol bering, AI va Admin doimiy yordamda'}
+                  ? tr('Yangiliklar va rasmiy xabarlar', 'Новости и официальные сообщения', 'News and official messages')
+                  : tr('Savol bering, AI va admin javob beradi', 'Задайте вопрос — ответят AI и админ', 'Ask a question, AI and admin will answer')}
               </p>
             </div>
           </div>
@@ -210,7 +213,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 }}
                 disabled={isLoadingHistory}
                 className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center justify-center leading-none"
-                title="Yangilash"
+                title={tr('Yangilash', 'Обновить', 'Refresh')}
               >
                 <RefreshCw className={`w-4 h-4 ${isLoadingHistory ? 'animate-spin' : ''}`} strokeWidth={1.75} />
               </button>
@@ -244,7 +247,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
  }`}
             >
               <Bell className="w-3.5 h-3.5" />
-              <span>E'lonlar ({userAnnouncements.length})</span>
+              <span>{tr("E'lonlar", 'Объявления', 'Announcements')} ({userAnnouncements.length})</span>
             </button>
 
             <button
@@ -260,7 +263,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
  }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Yordam & Savol</span>
+              <span>{tr('Yordam', 'Помощь', 'Help')}</span>
             </button>
           </div>
         </div>
@@ -272,9 +275,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             {(!userAnnouncements || userAnnouncements.length === 0) ? (
               <div className="text-center py-12 text-slate-400 text-xs">
                 <Bell className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" strokeWidth={1.75} />
-                <p className="font-bold">Hozircha siz uchun bildirishnomalar yo'q</p>
+                <p className="font-bold">{tr("Hozircha siz uchun bildirishnomalar yo'q", 'Пока уведомлений нет', 'No notifications yet')}</p>
                 <p className="text-[11px] mt-0.5 text-slate-400">
-                  Yangi xabar yoki yangiliklar shu yerda aks etadi.
+                  {tr('Yangi xabar yoki yangiliklar shu yerda aks etadi.', 'Новые сообщения и новости появятся здесь.', 'New messages and news will appear here.')}
                 </p>
               </div>
             ) : (
@@ -295,12 +298,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
  }`}
                       >
-                        {item.tag || 'yangilik'}
+                        {item.tag || tr('yangilik', 'новость', 'news')}
                       </span>
 
                       <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center gap-1">
                         {getTargetIcon(item.targetType)}
-                        <span>{item.targetLabel || 'Barchaga'}</span>
+                        <span>{item.targetLabel || tr('Barchaga', 'Всем', 'Everyone')}</span>
                       </span>
                     </div>
 
@@ -334,7 +337,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs"
                         >
                           <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.75} />
-                          <span>Havolani ochish</span>
+                          <span>{tr('Havolani ochish', 'Открыть ссылку', 'Open link')}</span>
                         </a>
                       </div>
                     )}
@@ -347,12 +350,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                       onClick={() => {
                         triggerHaptic('light');
                         setActiveTab('support');
-                        setInputMessage(`"${item.title}" haqida savolim bor edi: `);
+                        setInputMessage(tr(`"${item.title}" haqida savolim bor edi: `, `У меня вопрос о «${item.title}»: `, `I have a question about "${item.title}": `));
                       }}
                       className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 flex items-center gap-1.5 transition-colors py-1"
                     >
                       <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      <span>Javob yozish / Savol berish</span>
+                      <span>{tr('Savol berish', 'Задать вопрос', 'Ask a question')}</span>
                     </button>
                   </div>
                 </div>
@@ -371,10 +374,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 </div>
                 <div className="text-xs space-y-1">
                   <h4 className="font-semibold text-slate-900 dark:text-white">
-                    Yuksal Quiz AI Maslahatchisi
+                    {tr('Yuksal Quiz yordamchisi', 'Помощник Yuksal Quiz', 'Yuksal Quiz assistant')}
                   </h4>
                   <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
-                    Ilova, testlar, vaucher va reyting bo'yicha savollarga sun'iy intellekt darhol javob beradi. To'lov yoki ma'muriy masalalar esa to'g'ridan-to'g'ri administratorga yo'naltiriladi.
+                    {tr("Ilova, testlar, vaucher va reyting bo'yicha savollarga sun'iy intellekt darhol javob beradi. To'lov yoki ma'muriy masalalar esa to'g'ridan-to'g'ri administratorga yo'naltiriladi.", 'На вопросы о приложении, тестах, ваучерах и рейтинге сразу отвечает ИИ. Вопросы об оплате и административные вопросы передаются администратору.', 'AI answers questions about the app, tests, vouchers and rating right away. Payment and admin questions go straight to the administrator.')}
                   </p>
                 </div>
               </div>
@@ -383,7 +386,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               {chatMessages.length === 0 && (
                 <div className="space-y-1.5 pt-2">
                   <p className="text-[11px] font-bold text-slate-400 px-1">
-                    Tezkor savollar:
+                    {tr('Tezkor savollar:', 'Быстрые вопросы:', 'Quick questions:')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {QUICK_SUGGESTIONS.map((sug, idx) => (
@@ -432,12 +435,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                             {msg.status === 'replied_by_admin' || msg.sender === 'admin' ? (
                               <>
                                 <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                <span className="text-blue-600 dark:text-blue-400">Administrator javobi</span>
+                                <span className="text-blue-600 dark:text-blue-400">{tr('Administrator javobi', 'Ответ администратора', 'Admin reply')}</span>
                               </>
                             ) : (
                               <>
                                 <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                <span className="text-emerald-600 dark:text-emerald-400">AI Maslahatchi</span>
+                                <span className="text-emerald-600 dark:text-emerald-400">{tr('AI yordamchi', 'AI-помощник', 'AI assistant')}</span>
                               </>
                             )}
                           </span>
@@ -445,7 +448,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                           {msg.status === 'forwarded_to_admin' && (
                             <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 text-[11px] font-bold flex items-center gap-1 border border-amber-200/60 dark:border-amber-800/60">
                               <Clock className="w-2.5 h-2.5" />
-                              <span>Adminga yo'naltirildi</span>
+                              <span>{tr("Adminga yo'naltirildi", 'Передано админу', 'Sent to admin')}</span>
                             </span>
                           )}
                         </div>
@@ -474,7 +477,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                     <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animationDelay: '150ms' }} />
                     <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animationDelay: '300ms' }} />
                     <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 ml-1">
-                      AI maslahatchi tahlil qilmoqda...
+                      {tr('AI javob tayyorlamoqda...', 'AI готовит ответ...', 'AI is preparing a reply...')}
                     </span>
                   </div>
                 </div>
@@ -496,7 +499,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Savol yoki muammoingizni yozing..."
+                  placeholder={tr('Savol yoki muammoingizni yozing...', 'Опишите вопрос или проблему...', 'Describe your question or issue...')}
                   disabled={isSending}
                   className="flex-1 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
@@ -507,12 +510,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center leading-none gap-1.5 transition-all shadow-md active:scale-95 shrink-0"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Yuborish</span>
+                  <span>{tr('Yuborish', 'Отправить', 'Send')}</span>
                 </button>
               </form>
 
               <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center">
-                💡 To'lov va ma'muriy masalalar avtomatik adminga yo'naltiriladi.
+                {tr("To'lov va ma'muriy masalalar avtomatik adminga yo'naltiriladi.", 'Вопросы об оплате автоматически передаются админу.', 'Payment and admin questions go to the admin automatically.')}
               </p>
             </div>
           </div>
@@ -525,7 +528,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs flex items-center justify-center leading-none ml-auto"
           >
-            Yopish
+            {tr('Yopish', 'Закрыть', 'Close')}
           </button>
         </div>
       </div>

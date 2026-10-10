@@ -34,6 +34,7 @@ import { EditProfileModal } from './components/EditProfileModal';
 import { ReceiptVerifyModal } from './components/ReceiptVerifyModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { PaywallModal } from './components/PaywallModal';
+import { trNow } from './i18n/useTranslation';
 import {
   canUserStartTest,
   recordTestStartAttempt,
@@ -452,20 +453,20 @@ export const App: React.FC = () => {
 
           <div className="space-y-2">
             <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-              Kirish Taqiqlangan
+              {trNow('Kirish taqiqlangan', 'Доступ запрещён', 'Access denied')}
             </span>
             <h1 className="text-xl sm:text-2xl font-bold text-red-500 tracking-tight leading-snug">
-              Qoidabuzarlik sababli hisobingiz bloklangan
+              {trNow('Qoidabuzarlik sababli hisobingiz bloklangan', 'Ваш аккаунт заблокирован за нарушение правил', 'Your account is blocked for breaking the rules')}
             </h1>
             <p className="text-xs text-slate-400 leading-relaxed pt-1">
-              Platforma xavfsizlik va foydalanish qoidalarini buzganlik (soxta kvitansiya yuklash yoki qoidabuzarlik) aniqlanganligi sababli ushbu hisob ma'muriyat tomonidan bloklandi. Barcha testlar va hamyon xizmatlari to'xtatildi.
+              {trNow("Platforma xavfsizlik va foydalanish qoidalarini buzganlik (soxta kvitansiya yuklash yoki qoidabuzarlik) aniqlanganligi sababli ushbu hisob ma'muriyat tomonidan bloklandi. Barcha testlar va hamyon xizmatlari to'xtatildi.", 'Администрация заблокировала аккаунт за нарушение правил платформы (например, загрузку поддельного чека). Тесты и кошелёк отключены.', 'The administration blocked this account for breaking the platform rules (for example, uploading a fake receipt). Tests and the wallet are disabled.')}
             </p>
           </div>
 
           {/* User Details Box */}
           <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-red-500/30 text-left text-xs font-mono space-y-1.5 shadow-inner">
             <div className="flex justify-between text-slate-400">
-              <span>Talaba:</span>
+              <span>{trNow('Talaba:', 'Студент:', 'Student:')}</span>
               <span className="text-white font-bold">{profile.firstName || ''} {profile.lastName || ''}</span>
             </div>
             <div className="flex justify-between text-slate-400">
@@ -474,7 +475,7 @@ export const App: React.FC = () => {
             </div>
             {profile.university && (
               <div className="flex justify-between text-slate-400">
-                <span>OTM:</span>
+                <span>{trNow('OTM:', 'Вуз:', 'University:')}</span>
                 <span className="text-slate-200 truncate max-w-[180px]">{profile.university}</span>
               </div>
             )}
@@ -488,11 +489,11 @@ export const App: React.FC = () => {
             className="w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" />
-            <span>Administratorga murojaat qilish (@Alisherasqadali)</span>
+            <span>{trNow('Administratorga yozish', 'Написать администратору', 'Contact the admin')} (@Alisherasqadali)</span>
           </a>
 
           <p className="text-[11px] text-slate-500">
-            Agar bu xatolik deb hisoblasangiz, Telegram orqali administrator bilan bog'laning.
+            {trNow("Agar bu xatolik deb hisoblasangiz, Telegram orqali administrator bilan bog'laning.", 'Если считаете это ошибкой, свяжитесь с администратором в Telegram.', 'If you think this is a mistake, contact the admin on Telegram.')}
           </p>
         </div>
       </div>

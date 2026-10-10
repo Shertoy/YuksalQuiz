@@ -65,9 +65,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editPackage }) => {
   const { profile, addCustomUniversity, customUniversities, universities } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const isEditing = Boolean(editPackage);
+  const studyTypeLabel = (st: string) =>
+    st === 'Kunduzgi' ? t.studyKunduzgi
+    : st === 'Sirtqi' ? t.studySirtqi
+    : st === 'Kechki' ? t.studyKechki
+    : st === 'Masofaviy' ? tr('Masofaviy', 'Дистанционное', 'Distance')
+    : st;
 
   // Initial questions from editPackage if present
   const initialQuestions: QuizQuestionInput[] = useMemo(() => {
@@ -159,7 +165,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   const [fileTextContent, setFileTextContent] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiLoadingMsg, setAiLoadingMsg] = useState('Hujjat tahlilga tayyorlanmoqda...');
+  const [aiLoadingMsg, setAiLoadingMsg] = useState(tr('Hujjat tahlilga tayyorlanmoqda...', 'Готовим документ к анализу...', 'Preparing the document...'));
 
   // USUL B: Ommaviy matn (Shablon / HEMIS Parser)
   const [bulkText, setBulkText] = useState('');
@@ -215,7 +221,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     if (!selected) return;
 
     if (selected.size > MAX_FILE_SIZE) {
-      setGlobalError("Fayl hajmi 5 MB dan oshmasligi kerak (Maksimal ruxsat: 5 MB).");
+      setGlobalError(tr('Fayl hajmi 5 MB dan oshmasligi kerak.', 'Размер файла не должен превышать 5 МБ.', 'The file must be 5 MB or smaller.'));
       triggerHaptic('error');
       return;
     }
@@ -223,7 +229,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     const validExtensions = ['.docx', '.pdf', '.txt'];
     const hasValidExt = validExtensions.some((ext) => selected.name.toLowerCase().endsWith(ext));
     if (!hasValidExt) {
-      setGlobalError("Faqat .docx (Word), .pdf yoki .txt formatidagi fayllar qabul qilinadi.");
+      setGlobalError(tr('Faqat .docx (Word), .pdf yoki .txt formatidagi fayllar qabul qilinadi.', 'Принимаются только файлы .docx (Word), .pdf или .txt.', 'Only .docx (Word), .pdf or .txt files are accepted.'));
       triggerHaptic('error');
       return;
     }
@@ -237,7 +243,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       setFileBase64(reader.result as string);
     };
     reader.onerror = () => {
-      setGlobalError("Faylni o'qishda xatolik yuz berdi.");
+      setGlobalError(tr("Faylni o'qishda xatolik yuz berdi.", 'Не удалось прочитать файл.', 'Could not read the file.'));
     };
     reader.readAsDataURL(selected);
 
@@ -255,7 +261,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
   const handleParseTxtDirectly = () => {
     if (!fileTextContent.trim()) {
-      setGlobalError(".txt fayli bo'sh yoki o'qib bo'lmadi.");
+      setGlobalError(tr(".txt fayli bo'sh yoki o'qib bo'lmadi.", 'Файл .txt пуст или не читается.', 'The .txt file is empty or unreadable.'));
       triggerHaptic('warning');
       return;
     }
@@ -267,14 +273,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       setCurrentStep(3); // To Preview
       triggerHaptic('success');
     } else {
-      setGlobalError(res.error || ".txt faylidan test savollari aniqlanmadi.");
+      setGlobalError(res.error || tr('.txt faylidan test savollari aniqlanmadi.', 'В файле .txt не найдены вопросы.', 'No questions found in the .txt file.'));
       triggerHaptic('error');
     }
   };
 
   const handleStartAiParsing = async () => {
     if (!fileBase64) {
-      setGlobalError("Iltimos, avval Word (.docx), PDF yoki .txt fayl yuklang.");
+      setGlobalError(tr('Iltimos, avval Word (.docx), PDF yoki .txt fayl yuklang.', 'Сначала загрузите файл Word (.docx), PDF или .txt.', 'Upload a Word (.docx), PDF or .txt file first.'));
       triggerHaptic('warning');
       return;
     }
@@ -284,10 +290,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     triggerHaptic('medium');
 
     const steps = [
-      "Fayl Gemini 1.5 Flash ga yuborilmoqda...",
-      "AI savol matnlari va javob variantlarini ajratmoqda...",
-      "To'g'ri javoblar tekshirilmoqda...",
-      "Natijalar tayyorlanmoqda...",
+      tr('Fayl yuborilmoqda...', 'Отправляем файл...', 'Sending the file...'),
+      tr('Savollar va javob variantlari ajratilmoqda...', 'Выделяем вопросы и варианты ответов...', 'Extracting questions and answers...'),
+      tr("To'g'ri javoblar tekshirilmoqda...", 'Проверяем правильные ответы...', 'Checking the correct answers...'),
+      tr('Natijalar tayyorlanmoqda...', 'Готовим результат...', 'Preparing the result...'),
     ];
 
     let stepIdx = 0;
@@ -311,11 +317,11 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Faylni tahlil qilishda xatolik yuz berdi.");
+        throw new Error(data.error || tr('Faylni tahlil qilishda xatolik yuz berdi.', 'Ошибка при анализе файла.', 'Failed to analyze the file.'));
       }
 
       if (!Array.isArray(data.questions) || data.questions.length === 0) {
-        throw new Error("Hujjatdan test savollari topilmadi. Fayl tarkibini tekshiring.");
+        throw new Error(tr('Hujjatdan test savollari topilmadi. Fayl tarkibini tekshiring.', 'В документе не найдены вопросы. Проверьте содержимое файла.', 'No questions found in the document. Check the file contents.'));
       }
 
       setQuestions(data.questions);
@@ -326,7 +332,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       clearInterval(interval);
       setIsAiLoading(false);
       console.error('AI parsing error:', err);
-      setGlobalError(err?.message || "AI tahlilida kutilmagan xatolik yuz berdi.");
+      setGlobalError(err?.message || tr('AI tahlilida kutilmagan xatolik yuz berdi.', 'Непредвиденная ошибка AI-анализа.', 'Unexpected AI analysis error.'));
       triggerHaptic('error');
     }
   };
@@ -337,7 +343,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
   const handleParseBulkText = () => {
     const trimmed = bulkText.trim();
     if (!trimmed) {
-      setBulkError("Iltimos, test matnini kiriting.");
+      setBulkError(tr('Iltimos, test matnini kiriting.', 'Введите текст теста.', 'Enter the test text.'));
       triggerHaptic('warning');
       return;
     }
@@ -349,7 +355,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       setCurrentStep(3); // To Preview
       triggerHaptic('success');
     } else {
-      setBulkError(res.error || "Format aniqlanmadi. Rasmiy HEMIS (==== va ++++) yoki A, B, C, D formatida kiriting.");
+      setBulkError(res.error || tr('Format aniqlanmadi. Rasmiy HEMIS (==== va ++++) yoki A, B, C, D formatida kiriting.', 'Формат не распознан. Используйте формат HEMIS (==== и ++++) или A, B, C, D.', 'Format not recognized. Use the HEMIS format (==== and ++++) or A, B, C, D.'));
       triggerHaptic('error');
     }
   };
@@ -389,7 +395,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       });
 
     if (valid.length === 0) {
-      setGlobalError("Kamida 1 ta savol matnini kiriting.");
+      setGlobalError(tr('Kamida 1 ta savol matnini kiriting.', 'Введите хотя бы 1 вопрос.', 'Enter at least 1 question.'));
       triggerHaptic('warning');
       return;
     }
@@ -448,7 +454,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     setQuestions((prev) => [
       ...prev,
       {
-        question: `Yangi savol #${prev.length + 1}`,
+        question: `${tr('Yangi savol', 'Новый вопрос', 'New question')} #${prev.length + 1}`,
         options: ['Variant A', 'Variant B', 'Variant C', 'Variant D'],
         correct_answer: 'Variant A',
       },
@@ -475,7 +481,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     }
 
     if (finalQs.length === 0) {
-      setGlobalError("Saqlash uchun kamida 1 ta savol bo'lishi kerak.");
+      setGlobalError(tr("Saqlash uchun kamida 1 ta savol bo'lishi kerak.", 'Для сохранения нужен хотя бы 1 вопрос.', 'You need at least 1 question to save.'));
       return;
     }
 
@@ -516,7 +522,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
       }
     } catch (saveErr: any) {
       console.error('Quiz save error:', saveErr);
-      setGlobalError(saveErr?.message || "Testni saqlashda xatolik yuz berdi.");
+      setGlobalError(saveErr?.message || tr('Testni saqlashda xatolik yuz berdi.', 'Ошибка при сохранении теста.', 'Failed to save the test.'));
       triggerHaptic('error');
     } finally {
       setIsSaving(false);
@@ -535,12 +541,12 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
   const handleTelegramShare = () => {
     const text = encodeURIComponent(
-      `🎯 Yuksal Quiz'da yangi test e'lon qilindi!\n\n` +
-      `📚 Fan: ${title}\n` +
-      `🏫 OTM: ${isCustomUni ? customUniName : university}\n` +
-      `📖 Ta'lim shakli: ${studyType}\n` +
-      `🎓 ${courseYear}-kurs, ${semester}-semestr\n\n` +
-      `Bilimingizni sinab ko'ring:`
+      tr(`🎯 Yuksal Quiz'da yangi test e'lon qilindi!\n\n`, '🎯 В Yuksal Quiz опубликован новый тест!\n\n', '🎯 A new test is live on Yuksal Quiz!\n\n') +
+      `📚 ${tr('Fan', 'Предмет', 'Subject')}: ${title}\n` +
+      `🏫 ${tr('OTM', 'Вуз', 'University')}: ${isCustomUni ? customUniName : university}\n` +
+      `📖 ${tr("Ta'lim shakli", 'Форма обучения', 'Study type')}: ${studyType}\n` +
+      `🎓 ${tr(`${courseYear}-kurs, ${semester}-semestr`, `${courseYear} курс, ${semester} семестр`, `Year ${courseYear}, semester ${semester}`)}\n\n` +
+      tr("Bilimingizni sinab ko'ring:", 'Проверьте свои знания:', 'Test your knowledge:')
     );
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${text}`;
     window.open(tgUrl, '_blank');
@@ -557,10 +563,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{isEditing ? "Testni tahrirlash" : "Yangi Test Yaratish"}</span>
+                <span>{isEditing ? tr('Testni tahrirlash', 'Редактирование теста', 'Edit test') : tr('Yangi test yaratish', 'Новый тест', 'New test')}</span>
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Word, PDF, matn yoki qo'lda kiritish orqali mustaqil test tuzing
+                {tr("Word, PDF, matn yoki qo'lda kiritish orqali test tuzing", 'Создайте тест из Word, PDF, текста или вручную', 'Build a test from Word, PDF, text or by hand')}
               </p>
             </div>
           </div>
@@ -572,10 +578,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 disabled={isSaving}
                 onClick={() => handleSaveAndPublishQuiz()}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md active:scale-95 transition-all disabled:opacity-50"
-                title="O'zgarishlarni saqlash"
+                title={tr("O'zgarishlarni saqlash", 'Сохранить изменения', 'Save changes')}
               >
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                <span>Saqlash</span>
+                <span>{tr('Saqlash', 'Сохранить', 'Save')}</span>
               </button>
             )}
 
@@ -617,7 +623,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   {currentStep > 1 ? <Check className="w-3 h-3 stroke-[2.5]" /> : '1'}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold truncate">1. Pasport</p>
+                  <p className="text-[11px] font-semibold truncate">1. {tr('Pasport', 'Данные', 'Details')}</p>
                 </div>
               </div>
 
@@ -643,7 +649,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   {currentStep > 2 ? <Check className="w-3 h-3 stroke-[2.5]" /> : '2'}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold truncate">2. Savollar</p>
+                  <p className="text-[11px] font-semibold truncate">2. {tr('Savollar', 'Вопросы', 'Questions')}</p>
                 </div>
               </div>
 
@@ -665,7 +671,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   3
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold truncate">3. Preview</p>
+                  <p className="text-[11px] font-semibold truncate">3. {tr("Ko'rib chiqish", 'Проверка', 'Review')}</p>
                 </div>
               </div>
             </div>
@@ -680,7 +686,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             <button
               onClick={() => setGlobalError('')}
               className="text-rose-400 hover:text-rose-600 p-1 rounded-lg transition-colors"
-              title="Yopish"
+              title={tr('Yopish', 'Закрыть', 'Close')}
             >
               <X className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
@@ -696,7 +702,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                <span>Fan nomi</span>
+                <span>{tr('Fan nomi', 'Название предмета', 'Subject name')}</span>
                 <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
@@ -707,7 +713,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     setTitle(e.target.value);
                     if (errors.title) setErrors((prev) => ({ ...prev, title: false }));
                   }}
-                  placeholder="Masalan: Falsafa, Algoritmlar, Mikroiqtisodiyot..."
+                  placeholder={tr('Masalan: Falsafa, Algoritmlar, Mikroiqtisodiyot...', 'Например: Философия, Алгоритмы, Микроэкономика...', 'E.g. Philosophy, Algorithms, Microeconomics...')}
                   className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
  errors.title
  ? 'border-rose-500 focus:ring-rose-500/20'
@@ -716,14 +722,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 />
               </div>
               {errors.title && (
-                <p className="text-[11px] text-rose-500 mt-1 font-semibold">Fan nomini kiritish shart</p>
+                <p className="text-[11px] text-rose-500 mt-1 font-semibold">{tr('Fan nomini kiritish shart', 'Введите название предмета', 'Enter the subject name')}</p>
               )}
             </div>
 
             {/* OTM Tanlash */}
             <div>
               <SearchableUniversitySelect
-                label="OTM (Universitet / Institut)"
+                label={tr('OTM (Universitet / Institut)', 'Вуз (университет / институт)', 'University / institute')}
                 value={university}
                 isCustomSelected={isCustomUni}
                 onChange={(uni) => {
@@ -751,7 +757,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       setCustomUniName(e.target.value);
                       if (errors.university) setErrors((prev) => ({ ...prev, university: false }));
                     }}
-                    placeholder="OTM nomini to'liq yozing (masalan: TGFU, TATU...)"
+                    placeholder={tr("OTM nomini to'liq yozing (masalan: TGFU, TATU...)", 'Полное название вуза (например: TGFU, TATU...)', 'Full university name (e.g. TGFU, TATU...)')}
                     className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs font-semibold text-slate-900 dark:text-white ${
  errors.university
  ? 'border-rose-500'
@@ -759,7 +765,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
                   />
                   {errors.university && (
-                    <p className="text-[11px] text-rose-500 font-semibold">OTM nomini kiriting</p>
+                    <p className="text-[11px] text-rose-500 font-semibold">{tr('OTM nomini kiriting', 'Введите название вуза', 'Enter the university name')}</p>
                   )}
                 </div>
               )}
@@ -769,7 +775,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                <span>Yo'nalish / Fakultet</span>
+                <span>{tr("Yo'nalish / Fakultet", 'Направление / факультет', 'Program / faculty')}</span>
                 <span className="text-rose-500">*</span>
               </label>
               <FacultyPicker
@@ -782,7 +788,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 }}
               />
               {errors.faculty && (
-                <p className="text-xs text-rose-500 mt-1 font-semibold">Yo'nalishni tanlang yoki qo'lda yozing</p>
+                <p className="text-xs text-rose-500 mt-1 font-semibold">{tr("Yo'nalishni tanlang yoki qo'lda yozing", 'Выберите направление или введите вручную', 'Choose a program or type it in')}</p>
               )}
             </div>
 
@@ -791,12 +797,12 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <div className="flex items-center justify-between mb-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                   <School className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                  <span>Ta'lim shakli</span>
+                  <span>{tr("Ta'lim shakli", 'Форма обучения', 'Study type')}</span>
                 </label>
                 {studyType === 'Sirtqi' && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
                     <GraduationCap className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
-                    <span>Sirtqi — 5 kurs / 10 semestr</span>
+                    <span>{tr('Sirtqi — 5 kurs / 10 semestr', 'Заочное — 5 курсов / 10 семестров', 'Part-time — 5 years / 10 semesters')}</span>
                   </span>
                 )}
               </div>
@@ -812,7 +818,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
  }`}
                   >
-                    {st}
+                    {studyTypeLabel(st)}
                   </button>
                 ))}
               </div>
@@ -823,10 +829,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <div className="flex items-center justify-between mb-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                   <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                  <span>Kurs tanlash ({maxCourse} ta kurs)</span>
+                  <span>{tr(`Kurs tanlash (${maxCourse} ta kurs)`, `Курс (всего ${maxCourse})`, `Year (${maxCourse} total)`)}</span>
                 </label>
                 <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  {courseYear}-kurs
+                  {tr(`${courseYear}-kurs`, `${courseYear} курс`, `Year ${courseYear}`)}
                 </span>
               </div>
               <div className={`grid gap-2 ${studyType === 'Sirtqi' ? 'grid-cols-5' : 'grid-cols-4'}`}>
@@ -845,7 +851,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
  }`}
                   >
-                    {k}-kurs
+                    {tr(`${k}-kurs`, `${k} курс`, `Year ${k}`)}
                   </button>
                 ))}
               </div>
@@ -856,10 +862,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <div className="flex items-center justify-between mb-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                   <Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                  <span>Semestr tanlash (1 - {maxSemester})</span>
+                  <span>{tr('Semestr tanlash', 'Семестр', 'Semester')} (1 - {maxSemester})</span>
                 </label>
                 <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  {semester}-semestr
+                  {tr(`${semester}-semestr`, `${semester} семестр`, `Semester ${semester}`)}
                 </span>
               </div>
               <div className={`grid gap-1 ${studyType === 'Sirtqi' ? 'grid-cols-5 sm:grid-cols-10' : 'grid-cols-8'}`}>
@@ -888,7 +894,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             <div className="pt-1">
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" strokeWidth={1.75} />
-                <span>Ko'rinish darajasi</span>
+                <span>{tr("Ko'rinish darajasi", 'Видимость', 'Visibility')}</span>
               </label>
               <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <button
@@ -901,7 +907,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
                 >
                   <Globe className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                  <span>Ommaviy (Barchaga)</span>
+                  <span>{tr('Ommaviy (barchaga)', 'Публичный (всем)', 'Public (everyone)')}</span>
                 </button>
                 <button
                   type="button"
@@ -913,7 +919,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
                 >
                   <LinkIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                  <span>Faqat havola orqali</span>
+                  <span>{tr('Faqat havola orqali', 'Только по ссылке', 'Link only')}</span>
                 </button>
               </div>
             </div>
@@ -928,7 +934,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
                 >
                   <Save className="w-4 h-4 shrink-0" />
-                  <span>{isSaving ? 'Saqlanmoqda...' : "O'zgarishlarni saqlash"}</span>
+                  <span>{isSaving ? tr('Saqlanmoqda...', 'Сохранение...', 'Saving...') : tr("O'zgarishlarni saqlash", 'Сохранить изменения', 'Save changes')}</span>
                 </button>
               )}
               <button
@@ -940,7 +946,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  : 'w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'
  } py-3.5 rounded-2xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-95`}
               >
-                <span>{isEditing ? "Savollarga o'tish" : 'Keyingisi'}</span>
+                <span>{isEditing ? tr("Savollarga o'tish", 'К вопросам', 'Go to questions') : tr('Keyingisi', 'Далее', 'Next')}</span>
                 <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
               </button>
             </div>
@@ -967,7 +973,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
               >
                 <Edit3 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>Donalik kiritish</span>
+                <span>{tr('Bittalab kiritish', 'По одному', 'One by one')}</span>
               </button>
 
               <button
@@ -983,7 +989,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
               >
                 <Layers className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>Barchasini bittada</span>
+                <span>{tr('Barchasini bittada', 'Всё сразу', 'All at once')}</span>
               </button>
             </div>
 
@@ -993,9 +999,9 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
             {topInputMode === 'manual' && (
               <div className="space-y-3">
                 <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between">
-                  <span>Savollarni bittalab kiritish va to'g'ri javobni tanlash</span>
+                  <span>{tr("Savollarni bittalab kiriting va to'g'ri javobni tanlang", 'Вводите вопросы по одному и отмечайте правильный ответ', 'Enter questions one by one and mark the correct answer')}</span>
                   <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                    Jami: {manualQuestions.length} ta
+                    {tr('Jami', 'Всего', 'Total')}: {manualQuestions.length}
                   </span>
                 </div>
 
@@ -1007,14 +1013,14 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                          Savol #{mIdx + 1}
+                          {tr('Savol', 'Вопрос', 'Question')} #{mIdx + 1}
                         </span>
                         {manualQuestions.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveManualQuestion(mIdx)}
                             className="text-slate-400 hover:text-rose-500 p-1 transition-colors"
-                            title="Savolni o'chirish"
+                            title={tr("Savolni o'chirish", 'Удалить вопрос', 'Delete question')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1032,13 +1038,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                             return up;
                           });
                         }}
-                        placeholder="Savol matnini kiriting..."
+                        placeholder={tr('Savol matnini kiriting...', 'Введите текст вопроса...', 'Enter the question...')}
                         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       />
 
                       <div className="space-y-1.5">
                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          Variantlar (To'g'ri javobni tanlash uchun harfni bosing):
+                          {tr("Variantlar (to'g'ri javobni tanlash uchun harfni bosing):", 'Варианты (нажмите на букву, чтобы отметить правильный):', 'Options (tap a letter to mark the correct one):')}
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {mq.options.map((opt, oIdx) => {
@@ -1068,7 +1074,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  ? 'bg-emerald-600 text-white shadow-sm'
  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'
  }`}
-                                  title="To'g'ri javob deb belgilash"
+                                  title={tr("To'g'ri javob deb belgilash", 'Отметить как правильный', 'Mark as correct')}
                                 >
                                   {isCorr ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : letter}
                                 </button>
@@ -1105,7 +1111,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-                  <span>Yangi savol qo'shish</span>
+                  <span>{tr("Yangi savol qo'shish", 'Добавить вопрос', 'Add question')}</span>
                 </button>
 
                 {isEditing ? (
@@ -1117,15 +1123,15 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                       {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      <span>O'zgarishlarni saqlash</span>
+                      <span>{tr("O'zgarishlarni saqlash", 'Сохранить изменения', 'Save changes')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleProceedManualToPreview}
                       className="px-4 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                      title="Ko'rib chiqishga o'tish"
+                      title={tr("Ko'rib chiqishga o'tish", 'Перейти к проверке', 'Go to review')}
                     >
-                      <span>Ko'rib chiqish</span>
+                      <span>{tr("Ko'rib chiqish", 'Проверка', 'Review')}</span>
                       <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                     </button>
                   </div>
@@ -1135,7 +1141,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     onClick={handleProceedManualToPreview}
                     className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
                   >
-                    <span>Ko'rib chiqishga o'tish</span>
+                    <span>{tr("Ko'rib chiqishga o'tish", 'Перейти к проверке', 'Go to review')}</span>
                     <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                   </button>
                 )}
@@ -1163,7 +1169,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
                     >
                       <FileText className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                      <span>Matn ko'rinishida</span>
+                      <span>{tr("Matn ko'rinishida", 'Текстом', 'As text')}</span>
                     </button>
                     <button
                       type="button"
@@ -1178,7 +1184,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  }`}
                     >
                       <Upload className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                      <span>Fayl ko'rinishida</span>
+                      <span>{tr("Fayl ko'rinishida", 'Файлом', 'As a file')}</span>
                     </button>
                   </div>
 
@@ -1193,10 +1199,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           setTimeout(() => setSampleCopied(false), 2000);
                         }}
                         className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1"
-                        title="Rasmiy HEMIS shablon nusxasini olish"
+                        title={tr('Rasmiy HEMIS shablon nusxasini olish', 'Скопировать шаблон HEMIS', 'Copy the HEMIS template')}
                       >
                         {sampleCopied ? <Check className="w-3 h-3 text-emerald-500" strokeWidth={2.5} /> : <Copy className="w-3 h-3" strokeWidth={1.75} />}
-                        <span>{sampleCopied ? "Nusxalandi" : "Shablon nusxalash"}</span>
+                        <span>{sampleCopied ? tr('Nusxalandi', 'Скопировано', 'Copied') : tr('Shablon nusxalash', 'Копировать шаблон', 'Copy template')}</span>
                       </button>
 
                       <button
@@ -1208,7 +1214,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
                       >
                         <FileText className="w-3 h-3 shrink-0" strokeWidth={1.75} />
-                        <span>Namunani joylash</span>
+                        <span>{tr('Namunani joylash', 'Вставить пример', 'Insert sample')}</span>
                       </button>
                     </div>
                   ) : (
@@ -1219,10 +1225,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         triggerHaptic('success');
                       }}
                       className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 flex items-center gap-1"
-                      title="Namunaviy HEMIS test faylini kompyuteringizga yuklab oling"
+                      title={tr('Namunaviy HEMIS test faylini yuklab oling', 'Скачать пример файла HEMIS', 'Download a sample HEMIS file')}
                     >
                       <Download className="w-3 h-3 shrink-0" strokeWidth={1.75} />
-                      <span>Shablon fayl (.txt)</span>
+                      <span>{tr('Shablon fayl (.txt)', 'Файл-шаблон (.txt)', 'Template file (.txt)')}</span>
                     </button>
                   )}
                 </div>
@@ -1234,13 +1240,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       <div className="flex items-center justify-between font-bold">
                         <span className="flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.75} />
-                          <span>Qabul qilinadigan shablon formatlari:</span>
+                          <span>{tr('Qabul qilinadigan formatlar:', 'Поддерживаемые форматы:', 'Supported formats:')}</span>
                         </span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Avtomatik parser</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{tr('Avtomatik', 'Автоматически', 'Automatic')}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        • <b>HEMIS formati</b>: Savollar orasiga <code>++++</code>, variantlar orasiga <code>====</code>, to'g'ri javob oldiga <code>#</code>.<br />
-                        • <b>Standart format</b>: Savol matni, pastidan <code>A) B) C) D)</code> va <code>Javob: B</code> (yoki to'g'ri variant oldiga <code>*</code>).
+                        • <b>{tr('HEMIS formati', 'Формат HEMIS', 'HEMIS format')}</b>: {tr('Savollar orasiga', 'между вопросами', 'between questions')} <code>++++</code>, {tr('variantlar orasiga', 'между вариантами', 'between options')} <code>====</code>, {tr("to'g'ri javob oldiga", 'перед правильным ответом', 'before the correct answer')} <code>#</code>.<br />
+                        • <b>{tr('Standart format', 'Стандартный формат', 'Standard format')}</b>: {tr('Savol matni, pastidan', 'текст вопроса, ниже', 'question text, then')} <code>A) B) C) D)</code> {tr('va', 'и', 'and')} <code>Javob: B</code> ({tr("yoki to'g'ri variant oldiga", 'или перед правильным вариантом', 'or before the correct option')} <code>*</code>).
                       </p>
                     </div>
 
@@ -1251,7 +1257,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         setBulkText(e.target.value);
                         if (bulkError) setBulkError('');
                       }}
-                      placeholder={`Savol matni\n====\n#To'g'ri javob varianti\n====\nNoto'g'ri javob 1\n====\nNoto'g'ri javob 2\n====\nNoto'g'ri javob 3\n++++\n\nKeyingi savol matni...`}
+                      placeholder={tr(`Savol matni\n====\n#To'g'ri javob varianti\n====\nNoto'g'ri javob 1\n====\nNoto'g'ri javob 2\n====\nNoto'g'ri javob 3\n++++\n\nKeyingi savol matni...`, `Текст вопроса\n====\n#Правильный ответ\n====\nНеправильный ответ 1\n====\nНеправильный ответ 2\n====\nНеправильный ответ 3\n++++\n\nСледующий вопрос...`, `Question text\n====\n#Correct answer\n====\nWrong answer 1\n====\nWrong answer 2\n====\nWrong answer 3\n++++\n\nNext question...`)}
                       className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed"
                     />
 
@@ -1266,7 +1272,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           onClick={() => setBulkText('')}
                           className="px-3.5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 font-bold text-xs transition-colors shrink-0 flex items-center justify-center whitespace-nowrap"
                         >
-                          Tozalash
+                          {tr('Tozalash', 'Очистить', 'Clear')}
                         </button>
                       )}
                       <button
@@ -1275,7 +1281,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         className="flex-1 py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
                       >
                         <FileText className="w-4 h-4 shrink-0" />
-                        <span className="whitespace-nowrap">Matnni tahlil qilish</span>
+                        <span className="whitespace-nowrap">{tr('Matnni tahlil qilish', 'Разобрать текст', 'Parse text')}</span>
                         <ArrowRight className="w-4 h-4 shrink-0" />
                       </button>
                     </div>
@@ -1302,10 +1308,10 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           <Upload className="w-6 h-6" />
                         </div>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                          Word (.docx), PDF yoki Matn (.txt) faylini tanlang
+                          {tr('Word (.docx), PDF yoki matn (.txt) faylini tanlang', 'Выберите файл Word (.docx), PDF или текст (.txt)', 'Choose a Word (.docx), PDF or text (.txt) file')}
                         </p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                          Maksimal hajm: 5 MB &bull; .txt fayllar zumda tahlil qilinadi, .docx va .pdf AI orqali
+                          {tr('Maksimal hajm: 5 MB • .txt fayllar zumda tahlil qilinadi, .docx va .pdf AI orqali', 'Максимум 5 МБ • .txt разбирается сразу, .docx и .pdf — через AI', 'Max 5 MB • .txt is parsed instantly, .docx and .pdf via AI')}
                         </p>
                       </div>
                     ) : (
@@ -1319,7 +1325,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                               {file.name}
                             </p>
                             <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB &bull; {file.name.toLowerCase().endsWith('.txt') ? 'Matn formati (zumda tahlil mumkin)' : 'AI tahliliga tayyor'}
+                              {(file.size / 1024 / 1024).toFixed(2)} MB &bull; {file.name.toLowerCase().endsWith('.txt') ? tr('Matn formati (zumda tahlil mumkin)', 'Текст (разбор сразу)', 'Text (instant parse)') : tr('AI tahliliga tayyor', 'Готов к AI-анализу', 'Ready for AI analysis')}
                             </p>
                           </div>
                         </div>
@@ -1333,7 +1339,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                             if (fileInputRef.current) fileInputRef.current.value = '';
                           }}
                           className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
-                          title="O'chirish"
+                          title={tr("O'chirish", 'Удалить', 'Remove')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1345,7 +1351,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                       <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 text-center space-y-2.5">
                         <Loader2 className="w-7 h-7 mx-auto text-emerald-600 animate-spin" />
                         <p className="text-xs font-bold text-slate-900 dark:text-white">
-                          Gemini 1.5 Flash hujjatni o'qimoqda
+                          {tr("AI hujjatni o'qimoqda", 'AI читает документ', 'AI is reading the document')}
                         </p>
                         <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                           {aiLoadingMsg}
@@ -1363,7 +1369,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           className="w-full py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
                           <Zap className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                          <span className="truncate">Shablon orqali zumda tahlil</span>
+                          <span className="truncate">{tr('Shablon orqali zumda tahlil', 'Мгновенно по шаблону', 'Instant template parse')}</span>
                         </button>
 
                         <button
@@ -1373,7 +1379,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                           className="w-full py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                         >
                           <Sparkles className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                          <span className="truncate">AI orqali tahlil</span>
+                          <span className="truncate">{tr('AI orqali tahlil', 'Анализ через AI', 'Analyze with AI')}</span>
                         </button>
                       </div>
                     ) : (
@@ -1384,7 +1390,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                         className="w-full py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 min-w-0"
                       >
                         <Sparkles className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                        <span className="truncate">Gemini AI orqali tahlil qilish</span>
+                        <span className="truncate">{tr('AI orqali tahlil qilish', 'Анализ через AI', 'Analyze with AI')}</span>
                       </button>
                     )}
                   </div>
@@ -1400,7 +1406,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 className="w-full py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>1-qadam (Pasport)ga qaytish</span>
+                <span>{tr('1-qadamga qaytish', 'Назад к шагу 1', 'Back to step 1')}</span>
               </button>
             </div>
           </div>
@@ -1416,11 +1422,11 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-white truncate">{title}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {isCustomUni ? customUniName : university} &bull; {studyType} &bull; {courseYear}-kurs, {semester}-semestr &bull; {faculty}
+                  {isCustomUni ? customUniName : university} &bull; {studyTypeLabel(studyType)} &bull; {tr(`${courseYear}-kurs, ${semester}-semestr`, `${courseYear} курс, ${semester} семестр`, `Year ${courseYear}, semester ${semester}`)} &bull; {faculty}
                 </p>
               </div>
               <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-xs shrink-0">
-                {questions.length} ta savol
+                {tr(`${questions.length} ta savol`, `${questions.length} вопр.`, `${questions.length} questions`)}
               </span>
             </div>
 
@@ -1433,13 +1439,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                      Savol #{qIdx + 1}
+                      {tr('Savol', 'Вопрос', 'Question')} #{qIdx + 1}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemovePreviewQuestion(qIdx)}
                       className="text-slate-400 hover:text-rose-500 transition-colors p-1"
-                      title="Savolni o'chirish"
+                      title={tr("Savolni o'chirish", 'Удалить вопрос', 'Delete question')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1451,13 +1457,13 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                     value={q.question}
                     onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
                     className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                    placeholder="Savol matni..."
+                    placeholder={tr('Savol matni...', 'Текст вопроса...', 'Question text...')}
                   />
 
                   {/* Variantlar */}
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                      Variantlar (To'g'ri javobni tanlash uchun harfni bosing):
+                      {tr("Variantlar (to'g'ri javobni tanlash uchun harfni bosing):", 'Варианты (нажмите на букву, чтобы отметить правильный):', 'Options (tap a letter to mark the correct one):')}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {q.options.map((opt, optIdx) => {
@@ -1481,7 +1487,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
  ? 'bg-emerald-600 text-white shadow-sm'
  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-emerald-100 dark:hover:bg-emerald-950 hover:text-emerald-600'
  }`}
-                              title="To'g'ri javob deb belgilash"
+                              title={tr("To'g'ri javob deb belgilash", 'Отметить как правильный', 'Mark as correct')}
                             >
                               {isCorrect ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : letter}
                             </button>
@@ -1508,7 +1514,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Yangi savol qo'shish</span>
+              <span>{tr("Yangi savol qo'shish", 'Добавить вопрос', 'Add question')}</span>
             </button>
 
             {/* "Testni saqlash va e'lon qilish" Tugmasi */}
@@ -1521,12 +1527,12 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  <span>Bazada saqlanmoqda...</span>
+                  <span>{tr('Saqlanmoqda...', 'Сохранение...', 'Saving...')}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{isEditing ? "O'zgarishlarni saqlash" : "Testni saqlash va e'lon qilish"}</span>
+                  <span>{isEditing ? tr("O'zgarishlarni saqlash", 'Сохранить изменения', 'Save changes') : tr("Testni saqlash va e'lon qilish", 'Сохранить и опубликовать', 'Save and publish')}</span>
                 </>
               )}
             </button>
@@ -1539,7 +1545,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 className="py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-                <span>Pasportni tahrirlash</span>
+                <span>{tr("Ma'lumotlarni tahrirlash", 'Изменить данные', 'Edit details')}</span>
               </button>
 
               <span className="text-slate-300 dark:text-slate-700">&bull;</span>
@@ -1550,7 +1556,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 className="py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-                <span>Savollar usuliga qaytish</span>
+                <span>{tr('Savollarga qaytish', 'Назад к вопросам', 'Back to questions')}</span>
               </button>
             </div>
           </div>
@@ -1567,17 +1573,17 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Test muvaffaqiyatli e'lon qilindi!
+                {tr("Test e'lon qilindi", 'Тест опубликован', 'Test published')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                "{title}" testi bazaga yozildi. Kursdoshlar va talabalar bilan ulashing:
+                {tr(`"${title}" testi saqlandi. Kursdoshlaringiz bilan ulashing:`, `Тест «${title}» сохранён. Поделитесь с однокурсниками:`, `"${title}" is saved. Share it with your classmates:`)}
               </p>
             </div>
 
             {/* Ulashish havolasi */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5 text-left">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                <span>Telegram orqali ulashish havolasi:</span>
+                <span>{tr('Ulashish havolasi:', 'Ссылка для отправки:', 'Share link:')}</span>
                 <span className="text-emerald-600 font-semibold">Yuksal Quiz Bot</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
@@ -1595,12 +1601,12 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                   {isCopied ? (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Nusxalandi!</span>
+                      <span>{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Nusxa olish</span>
+                      <span>{tr('Nusxa olish', 'Копировать', 'Copy')}</span>
                     </>
                   )}
                 </button>
@@ -1615,7 +1621,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 className="py-3 px-4 rounded-xl bg-[#229ED9] hover:bg-[#1e8bc0] text-white font-semibold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Telegramda yuborish</span>
+                <span>{tr('Telegramda yuborish', 'Отправить в Telegram', 'Send on Telegram')}</span>
               </button>
 
               <button
@@ -1626,7 +1632,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
                 }}
                 className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors"
               >
-                <span>Yopish</span>
+                <span>{tr('Yopish', 'Закрыть', 'Close')}</span>
               </button>
             </div>
           </div>

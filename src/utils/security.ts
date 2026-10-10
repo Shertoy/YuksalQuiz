@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { trNow } from '../i18n/useTranslation';
 
 /**
  * Anti-Tampering, Anti-Cheat & Disaster Recovery Security Suite for YuksalQuiz
@@ -117,7 +118,7 @@ export function validateAndSanitizeName(rawName: string): {
   error?: string;
 } {
   if (!rawName || typeof rawName !== 'string') {
-    return { isValid: false, sanitized: '', error: "Maydon to'ldirilishi shart" };
+    return { isValid: false, sanitized: '', error: trNow("Maydon to'ldirilishi shart", 'Обязательное поле', 'This field is required') };
   }
 
   // 1. Strip HTML tags, script injections, and unescape entities
@@ -134,7 +135,7 @@ export function validateAndSanitizeName(rawName: string): {
     return {
       isValid: false,
       sanitized: clean,
-      error: "Kamida 2 ta harfdan iborat bo'lishi kerak",
+      error: trNow("Kamida 2 ta harfdan iborat bo'lishi kerak", 'Минимум 2 буквы', 'At least 2 letters'),
     };
   }
 
