@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FacultyPicker } from './FacultyPicker';
 import { createPortal } from 'react-dom';
 import { useQuizStore, deduplicateUniversities } from '../store/useQuizStore';
 import { TestPackage, TOP_UNIVERSITIES, StudyType } from '../types';
@@ -460,6 +461,11 @@ export const AdminEditQuizModal: React.FC<AdminEditQuizModalProps> = ({
                 onChange={(e) => setFaculty(e.target.value)}
                 placeholder="Masalan: Dasturiy injiniring, Iqtisodiyot..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+              <FacultyPicker
+                university={isOtherUni ? customUniInput : university}
+                value={faculty}
+                onChange={setFaculty}
               />
             </div>
 

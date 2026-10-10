@@ -113,6 +113,7 @@ import {
 import { getUserSubscriptionInfo, UserSubscriptionInfo } from '../utils/subscriptionUtils';
 import { sendTargetedAnnouncement, BroadcastResult } from '../services/notificationService';
 import { SearchableUniversitySelect } from './SearchableUniversitySelect';
+import { AdminEditQuizModal } from './AdminEditQuizModal';
 import { getGenderSafeAvatar } from '../constants/avatars';
 import {
   PaymentRecord,
@@ -521,6 +522,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   // Admin test management state
   const [adminTestSearch, setAdminTestSearch] = useState('');
+  // Admin tahrirlayotgan test (savollar, javoblar, yo'nalish va boshqalar)
+  const [adminEditingTest, setAdminEditingTest] = useState<TestPackage | null>(null);
   const [adminTestCategoryFilter, setAdminTestCategoryFilter] = useState<string>('all');
   const [deletingTestPkg, setDeletingTestPkg] = useState<TestPackage | null>(null);
   const [isDeletingTest, setIsDeletingTest] = useState(false);
@@ -3913,15 +3916,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           </div>
                         </div>
 
-                        <div className="shrink-0 flex items-center gap-1">
+                        <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerHaptic('light');
+                              setAdminEditingTest(pkg);
+                            }}
+                            className="px-2.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition-colors flex items-center justify-center gap-1 active:scale-95 border border-emerald-200 dark:border-emerald-800/60"
+                            title="Testni tahrirlash: nomi, OTM, yo'nalish, savollar va javoblar"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            <span className="text-xs">Tahrirlash</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteTestByAdmin(pkg)}
-                            className="px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/50 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 font-bold text-xs transition-colors flex items-center gap-1 active:scale-95 border border-orange-200 dark:border-orange-800/60"
+                            className="px-2.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/50 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 font-bold text-xs transition-colors flex items-center justify-center gap-1 active:scale-95 border border-orange-200 dark:border-orange-800/60"
                             title="Admin sifatida testni o'chirish"
                           >
                             <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-                            <span className="text-[11px]">O'chirish</span>
+                            <span className="text-xs">O'chirish</span>
                           </button>
                         </div>
                       </div>
@@ -4677,6 +4692,18 @@ END $$;`}</pre>
             </div>
           </div>
         )}
+      {/* Testni tahrirlash oynasi (admin) */}
+      {adminEditingTest && (
+        <AdminEditQuizModal
+          quiz={adminEditingTest}
+          isOpen={Boolean(adminEditingTest)}
+          onClose={() => setAdminEditingTest(null)}
+          onSaved={() => {
+            fetchCloudTests().catch(() => {});
+            showNotification("Test yangilandi.");
+          }}
+        />
+      )}
       </div>
     </div>
   );
