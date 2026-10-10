@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { resetTestsNavigation } from '../utils/testsNav';
 import { useTranslation } from '../i18n/useTranslation';
 import { TabType } from '../types';
 import { triggerHaptic } from '../utils/telegram';
@@ -49,6 +50,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
               aria-current={isActive ? 'page' : undefined}
               onClick={() => {
                 triggerHaptic('selection');
+                if (item.id === 'tests') resetTestsNavigation();
                 setActiveTab(item.id);
                 onTabSelect?.(item.id);
               }}

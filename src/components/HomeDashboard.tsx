@@ -5,7 +5,6 @@ import {
   Coins,
   Flame,
   Award,
-  BookOpen,
   PlusCircle,
   AlertTriangle,
   ArrowRight,
@@ -22,21 +21,17 @@ import {
   Trophy,
   CheckCircle2,
   Zap,
-  Wallet,
   Gift,
   Star,
-  Clock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerHaptic } from '../utils/telegram';
-import { getGenderSafeAvatar } from '../constants/avatars';
-import { isPaidUser, getSubscriptionRemainingDays } from '../services/paywallService';
-import { TestPackage, LeaderboardUser } from '../types';
+import { TestPackage } from '../types';
 import { decodeHtmlEntities } from '../utils/security';
 import { UserAvatar } from './UserAvatar';
-import { calculateUserRatingStats, compareLeaderboardUsers } from '../utils/ratingUtils';
 import { localDateKey } from '../utils/date';
 import { shortUniversityName } from '../utils/faculty';
+import { resetTestsNavigation } from '../utils/testsNav';
 
 interface HomeDashboardProps {
   onStartTest: (pkg: TestPackage, blockId: string) => void;
@@ -49,7 +44,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onStartTest,
   onOpenCreateModal,
   onOpenEditProfile,
-  onOpenReceiptModal,
 }) => {
   const {
     profile,
@@ -57,8 +51,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     mistakes,
     setActiveTab,
     checkDailyStreak,
-    testAttempts,
-    leaderboard,
     claimVoucherDirectly,
     syncUserWithDatabase,
   } = useQuizStore();
@@ -74,83 +66,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [coinGlow, setCoinGlow] = useState(false);
   const [isDailyDisappearing, setIsDailyDisappearing] = useState(false);
   const [isVoucherDismissed, setIsVoucherDismissed] = useState(false);
-
-  // Compute rating stats and ranking
-  const stats = calculateUserRatingStats(testAttempts);
-  const remainingDays = getSubscriptionRemainingDays(profile);
-
-  const cleanProfileId = (profile.id || '').replace(/^lead_/, '');
-  const currentUserEntry: LeaderboardUser = {
-    id: cleanProfileId,
-    name: `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim() || 'Talaba',
-    region: profile.region,
-    university: profile.university || 'TATU',
-    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
-    gender: profile.gender,
-    academicYear: profile.academicYear,
-    coins: profile.coins,
-    testsCompleted: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
-    correctAnswersCount: stats.totalCorrectAnswers,
-    scorePoints: stats.scorePoints,
-    totalQuestionsAttempted: stats.totalQuestionsAttempted,
-    accuracyPercentage: stats.accuracyPercentage,
-    bestTime: stats.bestTimeFormatted,
-    bestTimeSeconds: stats.bestTimeSeconds,
-    totalTimeSpentSeconds: stats.totalTimeSpentSeconds,
-    totalTimeSpentFormatted: stats.totalTimeSpentFormatted,
-    weeklyActiveHours: 12.0,
-    isCurrentUser: true,
-  };
-
-  const allUsers: LeaderboardUser[] = [
-    ...leaderboard.filter((u) => (u.id || '').replace(/^lead_/, '') !== cleanProfileId),
-    currentUserEntry,
-  ].sort((a, b) => compareLeaderboardUsers(a, b, 'correct'));
-
-  const userRank = Math.max(1, allUsers.findIndex((u) => u.id === cleanProfileId) + 1);
-
-  const hasCurrentUserTakenTests =
-    stats.totalCorrectAnswers > 0 ||
-    (profile.completedTestsCount || 0) > 0 ||
-    (stats.scorePoints || 0) > 0;
-
-  // Compact motivation calculation: Next rank progress
-  const isRankOne = userRank === 1;
-  let testsRemaining = 1;
-  let progressPercent = 100;
-  let motivationText = '';
-
-  if (!hasCurrentUserTakenTests) {
-    progressPercent = 0;
-    motivationText = tr("Reytingda o'rin egallash uchun birinchi testingizni yeching", 'Решите первый тест, чтобы попасть в рейтинг', 'Complete your first test to enter the leaderboard');
-  } else if (isRankOne) {
-    progressPercent = 100;
-    motivationText = tr("Siz 1-o'rindasiz. O'rningizni saqlab qoling", 'Вы на 1-м месте. Удержите позицию', "You're in 1st place. Keep it up");
-  } else {
-    const aheadUser = allUsers[userRank - 2];
-    const aheadUserTests =
-      aheadUser?.correctAnswersCount ??
-      (aheadUser?.scorePoints ? Math.floor(aheadUser.scorePoints / 4) : 0);
-    const currentUserTests = stats.totalCorrectAnswers;
-    const diff = aheadUserTests - currentUserTests;
-    testsRemaining = Math.max(1, diff > 0 ? diff : 1);
-
-    if (aheadUserTests > 0) {
-      progressPercent = Math.min(99, Math.max(0, Math.round((currentUserTests / aheadUserTests) * 100)));
-    } else {
-      progressPercent = currentUserTests > 0 ? 100 : 0;
-    }
-
-    motivationText = tr(
-      `Keyingi o'ringa chiqish uchun yana ${testsRemaining} ta to'g'ri javob kerak`,
-      `До следующего места нужно ещё ${testsRemaining} правильных ответов`,
-      `${testsRemaining} more correct answers to reach the next place`
-    );
-  }
-
-  const bestAttemptScore = (testAttempts || []).length > 0
-    ? Math.max(...(testAttempts || []).map((a) => a.score))
-    : 0;
 
   // Check if claimed today (24h lockout)
   const today = localDateKey();
@@ -222,13 +137,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     setIsVoucherClaiming(false);
   };
 
-  const balance = profile.walletBalance ?? profile.balance ?? 0;
-  const planLabel =
-    profile.subscriptionPlan === '1_year'
-      ? tr('1 yillik', '1 год', '1 year')
-      : profile.subscriptionPlan === '6_months'
-      ? tr('6 oylik', '6 месяцев', '6 months')
-      : tr('3 oylik', '3 месяца', '3 months');
   const recommended = testPackages
     // Parolli yopiq testlar va savolsiz paketlar tavsiyada ko'rsatilmaydi
     .filter((pkg) => !(pkg.password && !pkg.isPublic) && (pkg.blocks?.[0]?.questions?.length || 0) > 0)
@@ -269,131 +177,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </button>
       </section>
 
-      {/* Asosiy harakat */}
-      <section className={`${card} p-4`}>
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{tr('Mashqni boshlang', 'Начните практику', 'Start practicing')}</h3>
-        <p className="mt-1 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
-          {tr(
-            "OTM, yo'nalish va fanni tanlang. Har blokda 25 ta savol, javob darhol ko'rsatiladi.",
-            'Выберите вуз, направление и предмет. В каждом блоке 25 вопросов, ответ виден сразу.',
-            'Choose a university, faculty and subject. Each block has 25 questions with instant feedback.'
-          )}
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('light');
-            setActiveTab('tests');
-          }}
-          className="mt-4 w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors"
-        >
-          <BookOpen className="w-5 h-5" strokeWidth={1.75} />
-          <span>{tr("Testlarni ko'rish", 'Открыть тесты', 'Browse tests')}</span>
-        </button>
-      </section>
-
-      {/* Natijalar */}
-      <section className={`${card} p-4`}>
-        <div className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800 text-center">
-          <div className="px-1">
-            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {hasCurrentUserTakenTests ? `#${userRank}` : '—'}
-            </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr("Reytingdagi o'rin", 'Место в рейтинге', 'Rank')}</div>
-          </div>
-          <div className="px-1">
-            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {stats.totalCorrectAnswers}
-            </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr("To'g'ri javob", 'Верных ответов', 'Correct answers')}</div>
-          </div>
-          <div className="px-1">
-            <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {bestAttemptScore > 0 ? `${bestAttemptScore}/25` : '—'}
-            </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr('Eng yaxshi natija', 'Лучший результат', 'Best score')}</div>
-          </div>
-        </div>
-        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-[13px] text-slate-600 dark:text-slate-300">{motivationText}</p>
-            <span className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-300 tabular-nums shrink-0">
-              {progressPercent}%
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-emerald-600 dark:bg-emerald-400 transition-[width] duration-500 ease-[var(--ease-out)]"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Obuna holati */}
-      {isPaidUser(profile) && (
-        <section className={`${card} p-4 flex items-center gap-3`}>
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
- remainingDays !== null && remainingDays <= 0
- ? 'bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-300'
- : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
- }`}
-          >
-            {remainingDays !== null && remainingDays <= 10 ? (
-              <Clock className="w-5 h-5" strokeWidth={1.75} />
-            ) : (
-              <Crown className="w-5 h-5" strokeWidth={1.75} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
-              {remainingDays !== null && remainingDays <= 0
-                ? tr('Obuna muddati tugagan', 'Срок подписки истёк', 'Subscription expired')
-                : `Premium · ${planLabel}`}
-            </p>
-            <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
-              {remainingDays !== null && remainingDays <= 0
-                ? tr('Barcha testlarni ishlash uchun obunani yangilang', 'Продлите подписку, чтобы решать все тесты', 'Renew to access all tests')
-                : remainingDays !== null && remainingDays <= 10
-                ? tr(`Tugashiga ${remainingDays} kun qoldi`, `Осталось ${remainingDays} дн.`, `${remainingDays} days left`)
-                : `${tr('Muddati', 'Действует до', 'Valid until')}: ${profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : '—')}`}
-            </p>
-          </div>
-          {remainingDays !== null && remainingDays <= 10 && (
-            <button
-              type="button"
-              onClick={onOpenReceiptModal}
-              className="shrink-0 min-h-[40px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[13px] transition-colors"
-            >
-              {tr('Yangilash', 'Продлить', 'Renew')}
-            </button>
-          )}
-        </section>
-      )}
-
-      {/* Hisob, kunlik bonus, xatolar, test yaratish */}
+      {/* Kunlik bonus, xatolar, test yaratish */}
       <section className={`${card} divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden`}>
-        <div className="flex items-center gap-3 px-4 min-h-[64px]">
-          <Wallet className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-slate-500 dark:text-slate-400">{tr('Hisobingiz', 'Ваш баланс', 'Your balance')}</p>
-            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
-              {balance.toLocaleString('uz-UZ')} {tr("so'm", 'сум', 'UZS')}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              onOpenReceiptModal?.();
-            }}
-            className="shrink-0 min-h-[40px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[13px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors"
-          >
-            {tr("To'ldirish", 'Пополнить', 'Top up')}
-          </button>
-        </div>
-
         {(!isClaimedToday || isDailyDisappearing) && (
           <div
             className={`flex items-center gap-3 px-4 min-h-[64px] transition-opacity duration-500 ${
@@ -464,7 +249,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{t.recommendedTests}</h3>
             <button
               type="button"
-              onClick={() => setActiveTab('tests')}
+              onClick={() => {
+                resetTestsNavigation();
+                setActiveTab('tests');
+              }}
               className="min-h-[40px] px-2 -mr-2 text-[13px] font-semibold text-emerald-700 dark:text-emerald-300"
             >
               {t.all}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuizStore, useIsAdmin, normalizeUniversityKey } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
+import { TESTS_ROOT_EVENT } from '../utils/testsNav';
 import { AdminEditQuizModal } from './AdminEditQuizModal';
 import {
   Search,
@@ -61,7 +62,8 @@ export const TestList: React.FC<TestListProps> = ({
   const { t, tr } = useTranslation();
   const isAdmin = useIsAdmin();
 
-  // Oxirgi tanlangan (yoki profildagi) universitet eslab qolinadi: har testdan keyin qayta tanlash shart emas
+  // Test tugagach ro'yxatga qaytilganda oxirgi tanlangan OTM eslab qolinadi.
+  // Menyudan "Testlar" bosilganda esa bo'lim boshidan ochiladi (resetTestsNavigation).
   const [selectedUniversity, setSelectedUniversityState] = useState<string | null>(() => {
     const hasTests = (name?: string | null) => {
       if (!name) return false;
@@ -73,7 +75,6 @@ export const TestList: React.FC<TestListProps> = ({
       last = localStorage.getItem('yuksal_last_university');
     } catch {}
     if (hasTests(last)) return last;
-    if (hasTests(profile?.university)) return profile.university as string;
     return null;
   });
   const setSelectedUniversity = (name: string | null) => {
@@ -103,6 +104,20 @@ export const TestList: React.FC<TestListProps> = ({
     } catch {}
   };
   const [searchQuery, setSearchQuery] = useState('');
+  // Menyudagi "Testlar" qayta bosilsa — bo'lim boshiga qaytish
+  useEffect(() => {
+    const toRoot = () => {
+      setSelectedUniversityState(null);
+      setSelectedFacultyState(null);
+      setSearchQuery('');
+      setOnlyMyTests(false);
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
+    };
+    window.addEventListener(TESTS_ROOT_EVENT, toRoot);
+    return () => window.removeEventListener(TESTS_ROOT_EVENT, toRoot);
+  }, []);
   const [onlyMyTests, setOnlyMyTests] = useState(false);
   const [adminEditingQuiz, setAdminEditingQuiz] = useState<TestPackage | null>(null);
   const [passwordModalPkg, setPasswordModalPkg] = useState<TestPackage | null>(null);
