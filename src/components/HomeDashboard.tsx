@@ -6,7 +6,7 @@ import {
   Flame,
   Award,
   PlusCircle,
-  AlertTriangle,
+  RotateCcw,
   ArrowRight,
   Sparkles,
   Ticket,
@@ -144,7 +144,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const card = 'rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
   const rowBtn =
-    'w-full flex items-center gap-3 px-4 min-h-[64px] text-left transition-colors active:bg-slate-50 dark:active:bg-slate-800/60';
+    'w-full flex items-center gap-3 px-4 py-3 min-h-[64px] text-left transition-colors active:bg-slate-50 dark:active:bg-slate-800/60';
 
   return (
     <div className="space-y-5 pb-4">
@@ -181,7 +181,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <section className={`${card} divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden`}>
         {(!isClaimedToday || isDailyDisappearing) && (
           <div
-            className={`flex items-center gap-3 px-4 min-h-[64px] transition-opacity duration-500 ${
+            className={`flex items-center gap-3 px-4 py-3 min-h-[64px] transition-opacity duration-500 ${
  isDailyDisappearing ? 'opacity-0' : 'opacity-100'
  }`}
           >
@@ -207,14 +207,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         )}
 
         {mistakes.length > 0 && (
-          <button type="button" onClick={() => setActiveTab('results')} className={rowBtn}>
-            <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" strokeWidth={1.75} />
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              setActiveTab('results');
+            }}
+            className={rowBtn}
+          >
+            <RotateCcw className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
-                {t.mistakesTitle} <span className="text-orange-600 dark:text-orange-400 tabular-nums">({mistakes.length})</span>
-              </p>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400">{t.mistakesDesc}</p>
+              <p className="text-[15px] font-semibold leading-snug text-slate-900 dark:text-slate-50">{t.mistakesTitle}</p>
+              <p className="mt-0.5 text-[13px] leading-snug text-slate-500 dark:text-slate-400">{t.mistakesDesc}</p>
             </div>
+            <span
+              className="shrink-0 min-w-[28px] h-6 px-2 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-[12px] font-semibold tabular-nums flex items-center justify-center"
+              aria-label={tr(`${mistakes.length} ta xato`, `${mistakes.length} ошибок`, `${mistakes.length} mistakes`)}
+            >
+              {mistakes.length > 99 ? '99+' : mistakes.length}
+            </span>
             <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
           </button>
         )}
@@ -266,7 +277,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 onClick={() => onStartTest(pkg, pkg.blocks[0].id)}
                 className={rowBtn}
               >
-                <div className="min-w-0 flex-1 py-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
                     {decodeHtmlEntities(pkg.title)}
                   </p>
