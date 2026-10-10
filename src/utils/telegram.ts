@@ -96,7 +96,7 @@ export function syncTelegramTheme(theme: 'dark' | 'light'): void {
   const tg = getTelegramWebApp();
   if (tg) {
     const isDark = theme === 'dark';
-    const hex = isDark ? '#020617' : '#f8fafc';
+    const hex = isDark ? '#0c0a09' : '#fafaf9';
     if (lastSyncedTelegramHex === hex) {
       return; // Already synchronized, do not trigger redundant native events
     }

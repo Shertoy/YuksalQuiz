@@ -127,7 +127,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({ isFadingOut = false }) => 
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col justify-between p-6 bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-white transition-opacity duration-500 ease-in-out ${
+      className={`fixed inset-0 z-50 flex flex-col justify-between p-6 bg-slate-50 dark:bg-[#0c0a09] text-slate-900 dark:text-white transition-opacity duration-500 ease-in-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >

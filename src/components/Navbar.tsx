@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuizStore } from '../store/useQuizStore';
-import { useTranslation } from '../i18n/useTranslation';
-import { Language } from '../i18n/translations';
-import { ShieldAlert, Globe, Bell, Check, Lock, Volume2, VolumeX, Moon, Sun } from 'lucide-react';
+import { ShieldAlert, Bell } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
 import { isAnnouncementForUser } from '../utils/announcements';
 
@@ -11,7 +9,7 @@ interface NavbarProps {
   onOpenAdminLogin?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdminLogin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications }) => {
   const {
     tamperDetected,
     resetTamperWarning,
@@ -20,13 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
     announcements,
     readAnnouncementIds,
     markAnnouncementsAsRead,
-    soundEnabled,
-    toggleSound,
-    theme,
-    setTheme,
   } = useQuizStore();
-  const { language, setLanguage } = useTranslation();
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
   // Compute unread announcements count for current user
   const unreadAnnouncements = (announcements || []).filter(
@@ -34,12 +26,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
   );
   const unreadCount = unreadAnnouncements.length;
 
-
-  const handleLanguageChange = (lang: Language) => {
-    triggerHaptic('selection');
-    setLanguage(lang);
-    setIsLangMenuOpen(false);
-  };
 
   const handleOpenNotifications = () => {
     triggerHaptic('light');
@@ -50,160 +36,53 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenAdmin
   return (
     <>
       {tamperDetected && (
-        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-slate-950 shrink-0" />
-            <span>Xavfsizlik ogohlantirishi: Mahalliy xotirada ruxsatsiz o'zgarish aniqlandi va profil tiklandi.</span>
+        <div role="alert" className="bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100 border-b border-amber-200 dark:border-amber-900 px-4 py-2.5 text-xs font-medium">
+          <div className="max-w-md mx-auto flex items-center gap-3">
+            <ShieldAlert className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+            <span className="flex-1">Profil ma'lumotlarida o'zgarish aniqlandi va ular tiklandi.</span>
+            <button
+              type="button"
+              onClick={resetTamperWarning}
+              className="shrink-0 min-h-[32px] px-3 rounded-lg bg-amber-900 dark:bg-amber-200 text-white dark:text-amber-950 font-bold"
+            >
+              Tushunarli
+            </button>
           </div>
-          <button
-            onClick={resetTamperWarning}
-            className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded font-bold hover:bg-slate-800"
-          >
-            OK
-          </button>
         </div>
       )}
 
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/85 dark:bg-[#030712]/85 border-b border-slate-200/80 dark:border-slate-800/80 px-4 py-3 transition-colors">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          {/* Clean Modern Logo & Brand */}
+      <header className="sticky top-0 z-40 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4">
+        <div className="max-w-md mx-auto h-14 flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
               triggerHaptic('light');
               setActiveTab('home');
             }}
-            className="flex items-center gap-2.5 text-left focus:outline-none group active:scale-95 transition-transform"
+            className="flex items-center gap-2.5 min-h-[44px] -ml-1 pl-1 pr-2 rounded-xl text-left active:opacity-70 transition-opacity"
+            aria-label="YuksalQuiz — bosh sahifa"
           >
-            <img
-              src="/logo.svg"
-              alt="YuksalQuiz"
-              className="w-8 h-8 rounded-xl shadow-md shadow-emerald-500/25 object-contain"
-            />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-black text-base tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-orange-500 bg-clip-text text-transparent dark:from-emerald-400 dark:via-teal-300 dark:to-orange-400">
-                  YuksalQuiz
-                </h1>
-              </div>
-            </div>
+            <img src="/logo.svg" alt="" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-extrabold text-[17px] tracking-[-0.02em] text-slate-900 dark:text-slate-50">
+              Yuksal<span className="text-emerald-700 dark:text-emerald-300">Quiz</span>
+            </span>
           </button>
 
-          {/* Clean Controls: Language + Notifications + Admin */}
-          <div className="flex items-center gap-2">
-            {/* Sound Toggle */}
+          {onOpenNotifications && (
             <button
               type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                toggleSound();
-              }}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
-              title={soundEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
-              aria-label="Sound toggle"
+              onClick={handleOpenNotifications}
+              className="relative w-11 h-11 -mr-1.5 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 active:bg-slate-200/70 dark:active:bg-slate-800 transition-colors"
+              aria-label={unreadCount > 0 ? `Bildirishnomalar, ${unreadCount} ta yangi` : 'Bildirishnomalar'}
             >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-              ) : (
-                <VolumeX className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
+              <Bell className="w-[22px] h-[22px]" strokeWidth={1.75} />
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 min-w-[16px] h-4 px-1 rounded-full bg-orange-600 text-white font-bold text-[10px] leading-4 text-center ring-2 ring-slate-50 dark:ring-slate-950 tabular-nums">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
             </button>
-
-            {/* Light / Dark Mode Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                setTheme(theme === 'dark' ? 'light' : 'dark');
-              }}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors"
-              title={theme === 'dark' ? "Kunduzgi rejim (Yorug')" : "Tungi rejim (Qorong'i)"}
-              aria-label="Theme toggle"
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
-              ) : (
-                <Moon className="w-4 h-4 text-slate-700" strokeWidth={1.75} />
-              )}
-            </button>
-
-            {/* Language Switcher Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('light');
-                  setIsLangMenuOpen(!isLangMenuOpen);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
-                title="Tilni o'zgartirish"
-              >
-                <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                <span className="uppercase text-[11px] font-black">{language}</span>
-              </button>
-
-              {/* Language Dropdown Menu */}
-              {isLangMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsLangMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-1.5 z-50 w-28 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95">
-                    {(['uz', 'ru', 'en'] as Language[]).map((lang) => (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => handleLanguageChange(lang)}
-                        className={`w-full px-3 py-1.5 text-left text-xs font-bold flex items-center justify-between transition-colors ${
-                          language === lang
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <span>{lang === 'uz' ? "O'zbek" : lang === 'ru' ? 'Русский' : 'English'}</span>
-                        {language === lang && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Notifications Trigger */}
-            {onOpenNotifications && (
-              <button
-                type="button"
-                onClick={handleOpenNotifications}
-                className="p-2 rounded-xl text-slate-600 hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-400 bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-slate-700/80 transition-colors relative"
-                title="Bildirishnomalar va Yangiliklar"
-                aria-label="Notifications"
-              >
-                <Bell className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-3.5 px-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[9px] flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-in zoom-in-75">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Admin Access Button (Available on both Mobile & Desktop) */}
-            {onOpenAdminLogin && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('light');
-                  onOpenAdminLogin();
-                }}
-                className="flex p-2 rounded-xl text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700/80 transition-colors"
-                title="Admin Paneli"
-                aria-label="Admin Login"
-              >
-                <Lock className="w-4 h-4 text-slate-400 hover:text-emerald-500" strokeWidth={1.75} />
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </header>
     </>

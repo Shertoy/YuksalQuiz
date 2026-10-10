@@ -500,7 +500,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-hidden bg-slate-50/80 dark:bg-[#030712]/90 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative">
+    <div className="h-full w-full overflow-hidden bg-slate-50/80 dark:bg-[#0c0a09]/90 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative">
       {/* Fon animatsiyasi: test paytida va kuchsiz qurilmalarda o'chiriladi */}
       {!activeTestPkg && !reduceBgMotion && <ParticleBackground />}
 
