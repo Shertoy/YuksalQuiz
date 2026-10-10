@@ -17,7 +17,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
   scope,
 }) => {
   const { profile, leaderboard, testAttempts, leaderboardScope } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const activeScope = scope || leaderboardScope;
   const stats = calculateUserRatingStats(testAttempts);
@@ -83,10 +83,10 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   if (!hasCurrentUserTakenTests) {
     progressPercent = 0;
-    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching!";
+    motivationText = tr("Reytingda o'rin egallash uchun birinchi testingizni yeching", 'Решите первый тест, чтобы попасть в рейтинг', 'Complete your first test to enter the leaderboard');
   } else if (userRank === 1) {
     progressPercent = 100;
-    motivationText = t.youAreLeading || "Siz peshqadamsiz! O'rningizni saqlab qoling";
+    motivationText = t.youAreLeading || tr("Siz 1-o'rindasiz. O'rningizni saqlab qoling", 'Вы на 1-м месте. Удержите позицию', "You're in 1st place. Keep it up");
   } else {
     const aheadUser = sortedUsers[userRank - 2];
     const aheadUserTests =
@@ -129,7 +129,7 @@ export const UserRankProgressCard: React.FC<UserRankProgressCardProps> = ({
 
   const fullName = `${profile.firstName || 'Talaba'} ${profile.lastName || ''}`.trim();
   const locationText = `${t.uzbekistanCountry || "O'zbekiston"} — ${profile.region}`;
-  const universityName = profile.university || "OTM talabasi emas";
+  const universityName = profile.university || tr('OTM tanlanmagan', 'Вуз не выбран', 'No university');
 
   return (
     <div

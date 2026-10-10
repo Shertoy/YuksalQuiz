@@ -17,7 +17,7 @@ export interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
   const { activeTab, setActiveTab } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const navItems: NavItem[] = [
     { id: 'home', labelKey: 'navHome', icon: Home },
@@ -33,7 +33,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onTabSelect }) => {
 
   return (
     <nav
-      aria-label="Asosiy menyu"
+      aria-label={tr('Asosiy menyu', 'Главное меню', 'Main menu')}
       className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 pb-safe"
     >
       <div className="max-w-md mx-auto px-2 pt-1.5 pb-1 flex items-stretch justify-around">

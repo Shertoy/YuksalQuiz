@@ -61,7 +61,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     claimVoucherDirectly,
     syncUserWithDatabase,
   } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   // Majburiy ravishda sahifa ochilganda keshga qaramasdan bazadan eng so'nggi ma'lumotlarni olish
   useEffect(() => {
@@ -121,10 +121,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   if (!hasCurrentUserTakenTests) {
     progressPercent = 0;
-    motivationText = "Reytingda o'rin egallash uchun birinchi testingizni yeching!";
+    motivationText = tr("Reytingda o'rin egallash uchun birinchi testingizni yeching", 'Решите первый тест, чтобы попасть в рейтинг', 'Complete your first test to enter the leaderboard');
   } else if (isRankOne) {
     progressPercent = 100;
-    motivationText = "Siz 1-o'rinda peshqadamsiz! O'rningizni saqlab qoling";
+    motivationText = tr("Siz 1-o'rindasiz. O'rningizni saqlab qoling", 'Вы на 1-м месте. Удержите позицию', "You're in 1st place. Keep it up");
   } else {
     const aheadUser = allUsers[userRank - 2];
     const aheadUserTests =
@@ -140,7 +140,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       progressPercent = currentUserTests > 0 ? 100 : 0;
     }
 
-    motivationText = `Keyingi o'ringa chiqish uchun ${testsRemaining} ta to'g'ri test qoldi`;
+    motivationText = tr(
+      `Keyingi o'ringa chiqish uchun yana ${testsRemaining} ta to'g'ri javob kerak`,
+      `До следующего места нужно ещё ${testsRemaining} правильных ответов`,
+      `${testsRemaining} more correct answers to reach the next place`
+    );
   }
 
   const bestAttemptScore = (testAttempts || []).length > 0
@@ -219,7 +223,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const balance = profile.walletBalance ?? profile.balance ?? 0;
   const planLabel =
-    profile.subscriptionPlan === '1_year' ? '1 yillik' : profile.subscriptionPlan === '6_months' ? '6 oylik' : '3 oylik';
+    profile.subscriptionPlan === '1_year'
+      ? tr('1 yillik', '1 год', '1 year')
+      : profile.subscriptionPlan === '6_months'
+      ? tr('6 oylik', '6 месяцев', '6 months')
+      : tr('3 oylik', '3 месяца', '3 months');
   const recommended = testPackages
     // Parolli yopiq testlar va savolsiz paketlar tavsiyada ko'rsatilmaydi
     .filter((pkg) => !(pkg.password && !pkg.isPublic) && (pkg.blocks?.[0]?.questions?.length || 0) > 0)
@@ -254,7 +262,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             onOpenEditProfile();
           }}
           className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800 transition-colors"
-          aria-label="Profilni tahrirlash"
+          aria-label={tr('Profilni tahrirlash', 'Редактировать профиль', 'Edit profile')}
         >
           <Edit3 className="w-5 h-5" strokeWidth={1.75} />
         </button>
@@ -262,9 +270,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* Asosiy harakat */}
       <section className={`${card} p-4`}>
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">Mashqni boshlang</h3>
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{tr('Mashqni boshlang', 'Начните практику', 'Start practicing')}</h3>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
-          OTM, yo'nalish va fanni tanlang. Har blokda 25 ta savol, javob darhol ko'rsatiladi.
+          {tr(
+            "OTM, yo'nalish va fanni tanlang. Har blokda 25 ta savol, javob darhol ko'rsatiladi.",
+            'Выберите вуз, направление и предмет. В каждом блоке 25 вопросов, ответ виден сразу.',
+            'Choose a university, faculty and subject. Each block has 25 questions with instant feedback.'
+          )}
         </p>
         <button
           type="button"
@@ -275,7 +287,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           className="mt-4 w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors"
         >
           <BookOpen className="w-5 h-5" strokeWidth={1.75} />
-          <span>Testlarni ko'rish</span>
+          <span>{tr("Testlarni ko'rish", 'Открыть тесты', 'Browse tests')}</span>
         </button>
       </section>
 
@@ -286,19 +298,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
               {hasCurrentUserTakenTests ? `#${userRank}` : '—'}
             </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">Reytingdagi o'rin</div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr("Reytingdagi o'rin", 'Место в рейтинге', 'Rank')}</div>
           </div>
           <div className="px-1">
             <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
               {stats.totalCorrectAnswers}
             </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">To'g'ri javob</div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr("To'g'ri javob", 'Верных ответов', 'Correct answers')}</div>
           </div>
           <div className="px-1">
             <div className="text-xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
               {bestAttemptScore > 0 ? `${bestAttemptScore}/25` : '—'}
             </div>
-            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">Eng yaxshi natija</div>
+            <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{tr('Eng yaxshi natija', 'Лучший результат', 'Best score')}</div>
           </div>
         </div>
         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
@@ -335,14 +347,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">
-              {remainingDays !== null && remainingDays <= 0 ? 'Obuna muddati tugagan' : `Premium · ${planLabel}`}
+              {remainingDays !== null && remainingDays <= 0
+                ? tr('Obuna muddati tugagan', 'Срок подписки истёк', 'Subscription expired')
+                : `Premium · ${planLabel}`}
             </p>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
               {remainingDays !== null && remainingDays <= 0
-                ? 'Barcha testlarni ishlash uchun obunani yangilang'
+                ? tr('Barcha testlarni ishlash uchun obunani yangilang', 'Продлите подписку, чтобы решать все тесты', 'Renew to access all tests')
                 : remainingDays !== null && remainingDays <= 10
-                ? `Tugashiga ${remainingDays} kun qoldi`
-                : `Muddati: ${profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : '—')}`}
+                ? tr(`Tugashiga ${remainingDays} kun qoldi`, `Осталось ${remainingDays} дн.`, `${remainingDays} days left`)
+                : `${tr('Muddati', 'Действует до', 'Valid until')}: ${profile.subscriptionExpiry || (profile.paid_until ? profile.paid_until.split('T')[0] : '—')}`}
             </p>
           </div>
           {remainingDays !== null && remainingDays <= 10 && (
@@ -351,7 +365,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               onClick={onOpenReceiptModal}
               className="shrink-0 min-h-[40px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[13px] transition-colors"
             >
-              Yangilash
+              {tr('Yangilash', 'Продлить', 'Renew')}
             </button>
           )}
         </section>
@@ -362,9 +376,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="flex items-center gap-3 px-4 min-h-[64px]">
           <Wallet className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-slate-500 dark:text-slate-400">Hisobingiz</p>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">{tr('Hisobingiz', 'Ваш баланс', 'Your balance')}</p>
             <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
-              {balance.toLocaleString('uz-UZ')} so'm
+              {balance.toLocaleString('uz-UZ')} {tr("so'm", 'сум', 'UZS')}
             </p>
           </div>
           <button
@@ -375,7 +389,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             }}
             className="shrink-0 min-h-[40px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[13px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors"
           >
-            To'ldirish
+            {tr("To'ldirish", 'Пополнить', 'Top up')}
           </button>
         </div>
 
@@ -470,7 +484,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400 truncate">
                     {[
                       decodeHtmlEntities(pkg.university || ''),
-                      pkg.semester ? `${pkg.semester}-semestr` : '',
+                      pkg.semester ? tr(`${pkg.semester}-semestr`, `${pkg.semester}-й семестр`, `Semester ${pkg.semester}`) : '',
                       `${pkg.totalQuestions} ${t.questionsCount}`,
                     ]
                       .filter(Boolean)
@@ -494,16 +508,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             <div className="space-y-1.5">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Tabriklaymiz!
+                {tr('Tabriklaymiz!', 'Поздравляем!', 'Congratulations!')}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                Sizga <span className="font-bold text-emerald-600 dark:text-emerald-400">20 000 so'mlik</span> boshlang'ich vaucher taqdim etildi. Mablag' hamyoningizga o'tkazildi!
+                {tr(
+                  "Sizga 20 000 so'mlik boshlang'ich vaucher berildi. Mablag' hamyoningizga o'tkazildi.",
+                  'Вам начислен стартовый ваучер на 20 000 сум. Средства зачислены на баланс.',
+                  'You received a 20,000 UZS starter voucher. It has been added to your wallet.'
+                )}
               </p>
             </div>
 
             <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Joriy hisobingiz: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm</span>
+              <span>{tr('Joriy hisobingiz', 'Текущий баланс', 'Current balance')}: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} {tr("so'm", 'сум', 'UZS')}</span>
             </div>
 
             <button
@@ -514,7 +532,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               }}
               className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors"
             >
-              Tushundim
+              {tr('Tushunarli', 'Понятно', 'Got it')}
             </button>
           </div>
         </div>

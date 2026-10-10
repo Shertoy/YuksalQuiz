@@ -44,7 +44,8 @@ export const WalletView: React.FC = () => {
     transactions,
     refreshBalance,
   } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
+  const SOM = tr("so'm", 'сум', 'UZS');
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copiedCard, setCopiedCard] = useState(false);
@@ -128,7 +129,11 @@ export const WalletView: React.FC = () => {
           soundFX.playError();
           setFeedback({
             type: 'error',
-            message: "Administrator to'lov kvitansiyasini rad etdi. Iltimos, haqiqiy chekni yuklang.",
+            message: tr(
+            "Administrator chekni rad etdi. Haqiqiy to'lov chekini yuklang.",
+            'Администратор отклонил чек. Загрузите настоящий чек об оплате.',
+            'The admin rejected the receipt. Please upload a real payment receipt.'
+          ),
           });
           return;
         }
@@ -277,7 +282,7 @@ export const WalletView: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setUploadError("Faqat rasm formatidagi kvitansiyalar qabul qilinadi (JPG, PNG, WebP)");
+      setUploadError(tr('Faqat rasm qabul qilinadi (JPG, PNG, WebP)', 'Принимаются только изображения (JPG, PNG, WebP)', 'Only images are accepted (JPG, PNG, WebP)'));
       triggerHaptic('error');
       return;
     }
@@ -318,7 +323,7 @@ export const WalletView: React.FC = () => {
 
   const handleSendReceipt = async () => {
     if (!selectedFile) {
-      setUploadError("Iltimos, avval to'lov kvitansiyasi rasmini tanlang.");
+      setUploadError(tr("Avval to'lov chekining rasmini tanlang.", 'Сначала выберите фото чека.', 'Choose a photo of the receipt first.'));
       triggerHaptic('warning');
       return;
     }
@@ -328,7 +333,7 @@ export const WalletView: React.FC = () => {
     triggerHaptic('medium');
 
     try {
-      setVerifyStepText("Kvitansiya tayyorlanmoqda...");
+      setVerifyStepText(tr('Chek tayyorlanmoqda...', 'Подготовка чека...', 'Preparing receipt...'));
       let base64Data = compressedBase64;
       if (!base64Data) {
         base64Data = await new Promise<string>((resolve, reject) => {
@@ -339,7 +344,7 @@ export const WalletView: React.FC = () => {
         });
       }
 
-      setVerifyStepText("Gemini AI tahlil qilmoqda...");
+      setVerifyStepText(tr('Chek tekshirilmoqda...', 'Проверка чека...', 'Checking receipt...'));
 
       // Server Telegram imzosi yoki foydalanuvchi ma'lumotlari orqali foydalanuvchini aniqlaydi
       const apiRes = await apiPost('/api/verify-receipt', {
@@ -350,13 +355,13 @@ export const WalletView: React.FC = () => {
         userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
         userUsername: profile.username || '',
       });
-      setVerifyStepText("Anti-cheat va tranzaksiya tekshirilmoqda...");
+      setVerifyStepText(tr("To'lov ma'lumotlari solishtirilmoqda...", 'Сверка данных платежа...', 'Matching payment details...'));
       const data: any = apiRes.data;
 
       if (!apiRes.ok && !data.status) {
         triggerHaptic('error');
         soundFX.playError();
-        setUploadError(apiErrorText(apiRes, "Chekni yuborib bo'lmadi. Qayta urinib ko'ring."));
+        setUploadError(apiErrorText(apiRes, tr("Chekni yuborib bo'lmadi. Qayta urinib ko'ring.", 'Не удалось отправить чек. Попробуйте ещё раз.', 'Could not send the receipt. Try again.')));
         return;
       }
 
@@ -379,7 +384,11 @@ export const WalletView: React.FC = () => {
         setSuccessPopupMessage("✅ Hisobingiz muvaffaqiyatli to'ldirildi!");
         setFeedback({
           type: 'success',
-          message: `To'lov muvaffaqiyatli tasdiqlandi! Balansingizga +${creditedAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
+          message: tr(
+            `To'lov tasdiqlandi. Balansingizga +${creditedAmount.toLocaleString('uz-UZ')} so'm qo'shildi.`,
+            `Платёж подтверждён. На баланс зачислено +${creditedAmount.toLocaleString('uz-UZ')} сум.`,
+            `Payment confirmed. +${creditedAmount.toLocaleString('uz-UZ')} UZS added to your balance.`
+          ),
         });
 
         handleClearSelectedFile();
@@ -390,18 +399,28 @@ export const WalletView: React.FC = () => {
         triggerHaptic('warning');
         setFeedback({
           type: 'success',
-          message: data.message || "Chek qabul qilindi va admin ko'rigiga yo'naltirildi. Tez orada balansingizga qo'shiladi.",
+          message:
+              data.message ||
+              tr(
+                "Chek qabul qilindi va admin ko'rigiga yuborildi. Tez orada balansingizga qo'shiladi.",
+                'Чек принят и отправлен на проверку. Скоро средства поступят на баланс.',
+                'Receipt received and sent for review. Funds will be added soon.'
+              ),
         });
         handleClearSelectedFile();
       } else {
         triggerHaptic('error');
         soundFX.playError();
-        setUploadError(data.message || data.reason || "Kvitansiya tasdiqlanmadi. Iltimos, haqiqiy to'lov chekini yuklang.");
+        setUploadError(
+          data.message ||
+            data.reason ||
+            tr("Chek tasdiqlanmadi. Haqiqiy to'lov chekini yuklang.", 'Чек не подтверждён. Загрузите настоящий чек.', 'Receipt not confirmed. Upload a real payment receipt.')
+        );
       }
     } catch (err: any) {
       console.error('Verify receipt exception:', err);
       triggerHaptic('error');
-      setUploadError("Server bilan bog'lanishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
+      setUploadError(tr("Server bilan aloqa yo'q. Qayta urinib ko'ring.", 'Нет связи с сервером. Попробуйте ещё раз.', 'Cannot reach the server. Try again.'));
     } finally {
       setIsVerifying(false);
       setVerifyStepText('');
@@ -462,8 +481,14 @@ export const WalletView: React.FC = () => {
           <div className="flex items-center gap-2.5 min-w-0">
             
             <div className="min-w-0">
-              <p className="font-semibold truncate">Kvitansiya tekshirilmoqda...</p>
-              <p className="text-[12px] opacity-80">Odatda bir necha daqiqa davom etadi. Sahifani yopsangiz ham tekshiruv davom etadi.</p>
+              <p className="font-semibold truncate">{tr('Chek tekshirilmoqda...', 'Чек проверяется...', 'Receipt is being checked...')}</p>
+              <p className="text-[12px] opacity-80">
+                {tr(
+                  'Odatda bir necha daqiqa davom etadi. Sahifani yopsangiz ham tekshiruv davom etadi.',
+                  'Обычно занимает несколько минут. Проверка продолжится, даже если закрыть страницу.',
+                  'Usually takes a few minutes. It continues even if you close the page.'
+                )}
+              </p>
             </div>
           </div>
           <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-amber-500" />
@@ -482,7 +507,7 @@ export const WalletView: React.FC = () => {
               {t.walletBalanceTitle}
             </span>
             <div className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50 tabular-nums">
-              {currentBalance.toLocaleString('uz-UZ')} so'm
+              {currentBalance.toLocaleString('uz-UZ')} {SOM}
             </div>
           </div>
           <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
@@ -536,10 +561,10 @@ export const WalletView: React.FC = () => {
         <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1.5 truncate">
-              <span>Takliflar: {refCount} ta • {refEarnings.toLocaleString('uz-UZ')} so'm</span>
+              <span>{tr('Takliflar', 'Приглашения', 'Invites')}: {refCount} · {refEarnings.toLocaleString('uz-UZ')} {SOM}</span>
             </div>
             <span className="text-[12px] text-slate-500 dark:text-slate-400 block mt-0.5">
-              Har bir do'st uchun 1 000 so'm
+              {tr("Har bir do'st uchun 1 000 so'm", 'За каждого друга 1 000 сум', '1,000 UZS per friend')}
             </span>
           </div>
 
@@ -551,12 +576,12 @@ export const WalletView: React.FC = () => {
             {copiedRef ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
-                <span>Nusxalandi</span>
+                <span>{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>Havolani nusxalash</span>
+                <span>{tr('Havolani nusxalash', 'Копировать ссылку', 'Copy link')}</span>
               </>
             )}
           </button>
@@ -594,16 +619,20 @@ export const WalletView: React.FC = () => {
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" strokeWidth={1.75} />
               <div className="leading-relaxed">
                 <span className="font-semibold block text-[14px]">
-                  Obunangiz tugashiga {remainingDays} kun qoldi
+                  {tr(`Obunangiz tugashiga ${remainingDays} kun qoldi`, `До конца подписки ${remainingDays} дн.`, `${remainingDays} days left on your subscription`)}
                 </span>
                 <span className="text-[13px] opacity-90 mt-0.5 block">
-                  Barcha testlarga to'siqsiz kirishni davom ettirish uchun hamyon mablag'ingizdan foydalanib muddatni hoziroq uzaytirishingiz mumkin.
+                  {tr(
+                    "Testlarga uzluksiz kirish uchun hamyondagi mablag' bilan muddatni hozir uzaytirishingiz mumkin.",
+                    'Чтобы доступ не прерывался, продлите подписку с баланса прямо сейчас.',
+                    'Renew now from your balance to keep uninterrupted access.'
+                  )}
                 </span>
               </div>
             </div>
           )}
 
-          <p className="text-[13px] text-slate-600 dark:text-slate-300">Barcha testlarga cheklovsiz kirish yoqilgan.</p>
+          <p className="text-[13px] text-slate-600 dark:text-slate-300">{tr('Barcha testlarga cheklovsiz kirish yoqilgan.', 'Открыт неограниченный доступ ко всем тестам.', 'Unlimited access to all tests is on.')}</p>
 
           {/* Extend button */}
           <button
@@ -615,7 +644,7 @@ export const WalletView: React.FC = () => {
             className="w-full min-h-[44px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 flex items-center justify-center gap-2 text-[14px] font-semibold text-slate-800 dark:text-slate-100"
           >
             <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-            <span>{showExtendPlans ? "Tariflarni yashirish" : "Obunani uzaytirish"}</span>
+            <span>{showExtendPlans ? tr('Tariflarni yashirish', 'Скрыть тарифы', 'Hide plans') : tr('Obunani uzaytirish', 'Продлить подписку', 'Renew subscription')}</span>
           </button>
         </div>
       )}
@@ -625,12 +654,12 @@ export const WalletView: React.FC = () => {
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-[15px] text-slate-900 dark:text-slate-50">
-              {isPaidUser(profile) ? "Obunani uzaytirish" : "Obuna tariflari"}
+              {isPaidUser(profile) ? tr('Obunani uzaytirish', 'Продление подписки', 'Renew subscription') : tr('Obuna tariflari', 'Тарифы подписки', 'Subscription plans')}
             </h3>
           </div>
           {hasVoucher && (
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-              -20 000 vaucher chegirmasi bilan
+              {tr('-20 000 vaucher chegirmasi bilan', 'со скидкой по ваучеру -20 000', 'with -20,000 voucher discount')}
             </span>
           )}
         </div>
@@ -640,24 +669,24 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                {isPaidUser(profile) ? "3 Oylik (+90 kun qo'shiladi)" : "3 Oylik Reja"}
+                {isPaidUser(profile) ? tr("+90 kun qo'shiladi", '+90 дней', '+90 days') : tr('90 kun', '90 дней', '90 days')}
               </span>
               <h4 className="font-semibold text-[16px] text-slate-900 dark:text-slate-50 mt-1">
-                3 oylik Premium
+                {tr('3 oylik Premium', 'Premium на 3 месяца', 'Premium · 3 months')}
               </h4>
               <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Oraliq va yakuniy nazoratlarga tezkor tayyorgarlik kursi (90 kun)
+                {tr('Oraliq va yakuniy nazoratlarga tayyorgarlik', 'Подготовка к промежуточным и итоговым контролям', 'Prep for midterm and final exams')}
               </p>
             </div>
 
             <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
-                  {price3M.toLocaleString('uz-UZ')} so'm
+                  {price3M.toLocaleString('uz-UZ')} {SOM}
                 </span>
               )}
               <span className="text-[17px] font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                {cost3M.toLocaleString('uz-UZ')} so'm
+                {cost3M.toLocaleString('uz-UZ')} {SOM}
               </span>
             </div>
           </div>
@@ -669,8 +698,8 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('3_months')}
                 className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors flex items-center justify-center gap-1.5"
               >
-                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
-                <span className="text-[11px] opacity-80">({cost3M.toLocaleString('uz-UZ')} so'm)</span>
+                <span>{isPaidUser(profile) ? tr('Obunani uzaytirish', 'Продлить', 'Renew') : tr('Obunani yoqish', 'Оформить', 'Subscribe')}</span>
+                <span className="text-[11px] opacity-80">({cost3M.toLocaleString('uz-UZ')} {SOM})</span>
               </button>
             ) : (
               <button
@@ -679,7 +708,7 @@ export const WalletView: React.FC = () => {
                 className="w-full min-h-[48px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[14px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>Hisobni to'ldirish: yana {deficit3M.toLocaleString('uz-UZ')} so'm</span>
+                <span>{tr("Hisobni to'ldirish: yana", 'Пополнить: не хватает', 'Top up: need')} {deficit3M.toLocaleString('uz-UZ')} {SOM}</span>
               </button>
             )}
           </div>
@@ -690,24 +719,24 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="inline-block text-[12px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                {isPaidUser(profile) ? "Tavsiya etiladi (+180 kun qo'shiladi)" : "Tavsiya etiladi (6 oy)"}
+                {tr('Tavsiya etiladi', 'Рекомендуем', 'Recommended')}
               </span>
               <h4 className="font-semibold text-[16px] text-slate-900 dark:text-slate-50 mt-1">
-                6 oylik Premium
+                {tr('6 oylik Premium', 'Premium на 6 месяцев', 'Premium · 6 months')}
               </h4>
               <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Barcha fanlar, HEMIS va sertifikat testlari bazasi (180 kun)
+                {tr('Barcha fanlar va HEMIS testlari, 180 kun', 'Все предметы и тесты HEMIS, 180 дней', 'All subjects and HEMIS tests, 180 days')}
               </p>
             </div>
 
             <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
-                  {price6M.toLocaleString('uz-UZ')} so'm
+                  {price6M.toLocaleString('uz-UZ')} {SOM}
                 </span>
               )}
               <span className="text-[17px] font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                {cost6M.toLocaleString('uz-UZ')} so'm
+                {cost6M.toLocaleString('uz-UZ')} {SOM}
               </span>
             </div>
           </div>
@@ -719,8 +748,8 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('6_months')}
                 className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors flex items-center justify-center gap-1.5"
               >
-                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
-                <span className="text-[11px] opacity-80">({cost6M.toLocaleString('uz-UZ')} so'm)</span>
+                <span>{isPaidUser(profile) ? tr('Obunani uzaytirish', 'Продлить', 'Renew') : tr('Obunani yoqish', 'Оформить', 'Subscribe')}</span>
+                <span className="text-[11px] opacity-80">({cost6M.toLocaleString('uz-UZ')} {SOM})</span>
               </button>
             ) : (
               <button
@@ -729,7 +758,7 @@ export const WalletView: React.FC = () => {
                 className="w-full min-h-[48px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[14px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>Hisobni to'ldirish: yana {deficit6M.toLocaleString('uz-UZ')} so'm</span>
+                <span>{tr("Hisobni to'ldirish: yana", 'Пополнить: не хватает', 'Top up: need')} {deficit6M.toLocaleString('uz-UZ')} {SOM}</span>
               </button>
             )}
           </div>
@@ -740,24 +769,24 @@ export const WalletView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                {isPaidUser(profile) ? "1 Yil (+365 kun qo'shiladi)" : "To'liq 1 Yil (365 kun)"}
+                {isPaidUser(profile) ? tr("+365 kun qo'shiladi", '+365 дней', '+365 days') : tr('365 kun', '365 дней', '365 days')}
               </span>
               <h4 className="font-semibold text-[16px] text-slate-900 dark:text-slate-50 mt-1">
-                1 yillik Premium
+                {tr('1 yillik Premium', 'Premium на 1 год', 'Premium · 1 year')}
               </h4>
               <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Butun o'quv yili uchun cheksiz to'liq kafolatlangan kirish
+                {tr("Butun o'quv yili uchun to'liq kirish", 'Полный доступ на весь учебный год', 'Full access for the whole academic year')}
               </p>
             </div>
 
             <div className="text-right shrink-0">
               {hasVoucher && (
                 <span className="line-through text-xs text-slate-400 font-semibold block">
-                  {price1Y.toLocaleString('uz-UZ')} so'm
+                  {price1Y.toLocaleString('uz-UZ')} {SOM}
                 </span>
               )}
               <span className="text-[17px] font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                {cost1Y.toLocaleString('uz-UZ')} so'm
+                {cost1Y.toLocaleString('uz-UZ')} {SOM}
               </span>
             </div>
           </div>
@@ -769,8 +798,8 @@ export const WalletView: React.FC = () => {
                 onClick={() => handleSubscribe('1_year')}
                 className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] transition-colors flex items-center justify-center gap-1.5"
               >
-                <span>{isPaidUser(profile) ? "Obunani uzaytirish" : "Obunani yoqish"}</span>
-                <span className="text-[11px] opacity-80">({cost1Y.toLocaleString('uz-UZ')} so'm)</span>
+                <span>{isPaidUser(profile) ? tr('Obunani uzaytirish', 'Продлить', 'Renew') : tr('Obunani yoqish', 'Оформить', 'Subscribe')}</span>
+                <span className="text-[11px] opacity-80">({cost1Y.toLocaleString('uz-UZ')} {SOM})</span>
               </button>
             ) : (
               <button
@@ -779,7 +808,7 @@ export const WalletView: React.FC = () => {
                 className="w-full min-h-[48px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[14px] active:bg-emerald-50 dark:active:bg-emerald-950 transition-colors flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                <span>Hisobni to'ldirish: yana {deficit1Y.toLocaleString('uz-UZ')} so'm</span>
+                <span>{tr("Hisobni to'ldirish: yana", 'Пополнить: не хватает', 'Top up: need')} {deficit1Y.toLocaleString('uz-UZ')} {SOM}</span>
               </button>
             )}
           </div>
@@ -883,7 +912,7 @@ export const WalletView: React.FC = () => {
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     {isCompressing
-                      ? "Siqilmoqda..."
+                      ? tr('Siqilmoqda...', 'Сжатие...', 'Compressing...')
                       : `Hajmi: ${formatBytes(compressedSize || selectedFile.size)}`}
                   </p>
                 </div>
@@ -914,7 +943,7 @@ export const WalletView: React.FC = () => {
           {isVerifying && (
             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
               <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-emerald-600" strokeWidth={2} />
-              <span>{verifyStepText || "Gemini AI kvitansiyani tekshirmoqda..."}</span>
+              <span>{verifyStepText || tr('Chek tekshirilmoqda...', 'Проверка чека...', 'Checking receipt...')}</span>
             </div>
           )}
 
@@ -928,7 +957,7 @@ export const WalletView: React.FC = () => {
             {isVerifying ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-white" strokeWidth={2} />
-                <span>Tekshirilmoqda...</span>
+                <span>{tr('Tekshirilmoqda...', 'Проверка...', 'Checking...')}</span>
               </>
             ) : (
               <>
@@ -954,10 +983,10 @@ export const WalletView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                    Tranzaksiyalar Tarixi
+                    {tr('Amallar tarixi', 'История операций', 'Transaction history')}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Barcha to'lovlar va mukofotlar
+                    {tr("Barcha to'lovlar va mukofotlar", 'Все платежи и бонусы', 'All payments and rewards')}
                   </p>
                 </div>
               </div>
@@ -1005,7 +1034,7 @@ export const WalletView: React.FC = () => {
               {(!transactions || transactions.length === 0) ? (
                 <div className="text-center py-12 text-slate-400 text-xs">
                   <History className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-700" strokeWidth={1.75} />
-                  <p className="font-bold">Tranzaksiyalar mavjud emas</p>
+                  <p className="font-bold">{tr("Hozircha amallar yo'q", 'Операций пока нет', 'No transactions yet')}</p>
                 </div>
               ) : (
                 (() => {
@@ -1017,7 +1046,7 @@ export const WalletView: React.FC = () => {
                   if (filtered.length === 0) {
                     return (
                       <div className="text-center py-8 text-slate-400 text-xs font-medium">
-                        Tanlangan toifada tranzaksiyalar topilmadi
+                        {tr('Bu toifada amallar topilmadi', 'В этой категории операций нет', 'No transactions in this category')}
                       </div>
                     );
                   }
@@ -1121,11 +1150,11 @@ export const WalletView: React.FC = () => {
                 {successPopupMessage}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                To'lovingiz administrator tomonidan tasdiqlandi. Hamyon balansingiz yangilandi!
+                {tr("To'lovingiz tasdiqlandi. Balansingiz yangilandi.", 'Платёж подтверждён. Баланс обновлён.', 'Your payment was confirmed. Balance updated.')}
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300">
-              Joriy balans: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+              {tr('Joriy balans', 'Текущий баланс', 'Current balance')}: {(profile.walletBalance || 0).toLocaleString('uz-UZ')} {SOM}
             </div>
             <button
               type="button"
@@ -1135,7 +1164,7 @@ export const WalletView: React.FC = () => {
               }}
               className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md transition-all active:scale-95"
             >
-              Ajoyib, tushunarli!
+              {tr('Tushunarli', 'Понятно', 'Got it')}
             </button>
           </div>
         </div>

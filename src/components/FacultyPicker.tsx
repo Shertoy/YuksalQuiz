@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { PenLine, Check } from 'lucide-react';
 import { facultyKey } from '../utils/faculty';
 import { triggerHaptic } from '../utils/telegram';
+import { useTranslation } from '../i18n/useTranslation';
 import { useFacultyStore, getUniversityFaculties, loadFaculties } from '../services/facultyService';
 
 interface FacultyPickerProps {
@@ -25,8 +26,16 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
   value,
   onChange,
   hasError,
-  manualHint = "Bu yo'nalish ro'yxatda yo'q. Test saqlangach, admin tekshirib ro'yxatga qo'shadi.",
+  manualHint,
 }) => {
+  const { tr } = useTranslation();
+  const hint =
+    manualHint ||
+    tr(
+      "Bu yo'nalish ro'yxatda yo'q. Test saqlangach, admin tekshirib ro'yxatga qo'shadi.",
+      'Этого направления нет в списке. После сохранения теста админ проверит и добавит его.',
+      'This faculty is not in the list. After you save the test, an admin will review and add it.'
+    );
   const overrides = useFacultyStore((s) => s.overrides);
   const loaded = useFacultyStore((s) => s.loaded);
   const [expanded, setExpanded] = useState(false);
@@ -50,7 +59,7 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
 
   if (!university.trim()) {
     return (
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Avval OTMni tanlang, keyin yo'nalish chiqadi.</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tr("Avval OTMni tanlang, keyin yo'nalish chiqadi.", 'Сначала выберите вуз — затем появятся направления.', 'Choose a university first to see its faculties.')}</p>
     );
   }
 
@@ -108,7 +117,7 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
  }`}
           >
             <PenLine className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-            <span>Ro'yxatda yo'q — qo'lda yozish</span>
+            <span>{tr("Ro'yxatda yo'q — qo'lda yozish", 'Нет в списке — ввести вручную', 'Not listed — type it in')}</span>
           </button>
         </div>
       )}
@@ -117,7 +126,11 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
         <div className="space-y-1.5">
           {list.length === 0 && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Bu OTM uchun yo'nalishlar ro'yxati hali kiritilmagan. Yo'nalish nomini yozing.
+              {tr(
+                "Bu OTM uchun yo'nalishlar ro'yxati hali kiritilmagan. Yo'nalish nomini yozing.",
+                'Для этого вуза список направлений ещё не добавлен. Введите название направления.',
+                'No faculty list for this university yet. Type the faculty name.'
+              )}
             </p>
           )}
           <div className="relative">
@@ -127,14 +140,14 @@ export const FacultyPicker: React.FC<FacultyPickerProps> = ({
               value={inList ? '' : value}
               autoFocus={list.length > 0}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="Yo'nalish nomini aniq yozing, masalan: Tarix"
+              placeholder={tr("Yo'nalish nomini aniq yozing, masalan: Tarix", 'Точное название, например: История', 'Exact name, e.g. History')}
               className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30 ${
  hasError ? 'border-rose-500' : 'border-rose-300 dark:border-rose-800'
  }`}
             />
           </div>
           {value.trim() && !inList && (
-            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{manualHint}</p>
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{hint}</p>
           )}
         </div>
       )}

@@ -48,7 +48,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     theme,
     setTheme,
   } = useQuizStore();
-  const { t, language, setLanguage } = useTranslation();
+  const { t, tr, language, setLanguage } = useTranslation();
   const [showOfertaModal, setShowOfertaModal] = useState(false);
 
   const card = 'rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
@@ -127,9 +127,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             }}
             className="min-w-0 flex-1 text-left py-2"
           >
-            <span className="block text-[13px] text-slate-500 dark:text-slate-400">Hisobingiz</span>
+            <span className="block text-[13px] text-slate-500 dark:text-slate-400">{tr('Hisobingiz', 'Ваш баланс', 'Your balance')}</span>
             <span className="block text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
-              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} so'm
+              {(profile.walletBalance || 0).toLocaleString('uz-UZ')} {tr("so'm", 'сум', 'UZS')}
             </span>
           </button>
           <button
@@ -140,7 +140,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             }}
             className="shrink-0 min-h-[40px] px-4 rounded-xl border border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 font-semibold text-[13px] active:bg-emerald-50 dark:active:bg-emerald-950"
           >
-            To'ldirish
+            {tr("To'ldirish", 'Пополнить', 'Top up')}
           </button>
         </div>
         <button

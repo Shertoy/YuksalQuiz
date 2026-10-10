@@ -28,7 +28,7 @@ export const Leaderboard: React.FC = () => {
     setLeaderboardScope,
     universities,
   } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   // Metric filter: 'correct' (Reyting ballari) | 'percentage' (Aniqlik foizi & Tezlik) | 'weekly' (Haftalik faollar)
   const [metric, setMetric] = useState<'correct' | 'percentage' | 'weekly'>('correct');
@@ -209,7 +209,7 @@ export const Leaderboard: React.FC = () => {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50">{t.navRating}</h2>
-          <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">Eng yaxshi 20 talaba</p>
+          <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">{tr('Eng yaxshi 20 talaba', 'Топ-20 студентов', 'Top 20 students')}</p>
         </div>
         <button
           type="button"
@@ -219,7 +219,7 @@ export const Leaderboard: React.FC = () => {
             syncLeaderboard();
           }}
           className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800"
-          aria-label="Reytingni yangilash"
+          aria-label={tr('Reytingni yangilash', 'Обновить рейтинг', 'Refresh leaderboard')}
         >
           <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
         </button>

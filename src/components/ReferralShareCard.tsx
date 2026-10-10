@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Share2, Copy, Check, Users, Coins, Sparkles, Gift } from 'lucide-react';
 import { generateReferralLink, triggerTelegramNativeShare, triggerHaptic } from '../utils/telegram';
 import { useQuizStore } from '../store/useQuizStore';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface ReferralShareCardProps {
   userId?: string;
@@ -9,6 +10,7 @@ interface ReferralShareCardProps {
 
 export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) => {
   const { profile } = useQuizStore();
+  const { tr } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
     triggerHaptic('medium');
     const success = triggerTelegramNativeShare(inviteLink);
     if (!success) {
-      setToastMessage('Havola nusxalandi, do\'stlaringizga yuboring!');
+      setToastMessage(tr("Havola nusxalandi, do'stlaringizga yuboring.", 'Ссылка скопирована, отправьте её друзьям.', 'Link copied — send it to your friends.'));
       setTimeout(() => setToastMessage(null), 3000);
     }
   };
@@ -64,12 +66,12 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-[15px] leading-tight">
-              Telegram Referal Tizimi
+              {tr("Do'stlarni taklif qiling", 'Пригласите друзей', 'Invite friends')}
             </h3>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-              Har bir taklif uchun{' '}
+              {tr('Har bir taklif uchun', 'За каждого друга', 'For each invite')}{' '}
               <span className="font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                +1 000 so'm
+                +1 000 {tr("so'm", 'сум', 'UZS')}
               </span>
             </p>
           </div>
@@ -95,17 +97,17 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
             <span>{referralCount} ta</span>
           </div>
           <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Taklif qilingan do'stlar soni
+            {tr("Taklif qilingan do'stlar", 'Приглашено друзей', 'Friends invited')}
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-center gap-1 text-base font-semibold text-slate-900 dark:text-slate-50 whitespace-nowrap tabular-nums">
             <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={1.75} />
-            <span className="whitespace-nowrap">{referralEarnings.toLocaleString('uz-UZ')} so'm</span>
+            <span className="whitespace-nowrap">{referralEarnings.toLocaleString('uz-UZ')} {tr("so'm", 'сум', 'UZS')}</span>
           </div>
           <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Referaldan ishlangan mablag'
+            {tr('Takliflardan tushgan', 'Заработано', 'Earned')}
           </p>
         </div>
       </div>
@@ -113,7 +115,7 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
       {/* Invite Link Readonly Display with Copy Icon */}
       <div className="space-y-1.5">
         <label className="text-[13px] font-medium text-slate-600 dark:text-slate-300 block">
-          Shaxsiy taklif havolangiz:
+          {tr('Shaxsiy taklif havolangiz', 'Ваша ссылка-приглашение', 'Your invite link')}
         </label>
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl p-1.5 pl-3 border border-slate-200 dark:border-slate-700">
           <span className="text-[13px] text-slate-700 dark:text-slate-200 truncate flex-1 select-all">
@@ -123,17 +125,17 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
             type="button"
             onClick={handleCopyLink}
             className="min-h-[36px] px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50 font-semibold text-[13px] flex items-center gap-1 shrink-0"
-            title="Nusxalash"
+            title={tr('Nusxalash', 'Копировать', 'Copy')}
           >
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
-                <span className="text-emerald-700 dark:text-emerald-300">Nusxalandi</span>
+                <span className="text-emerald-700 dark:text-emerald-300">{tr('Nusxalandi', 'Скопировано', 'Copied')}</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>Nusxalash</span>
+                <span>{tr('Nusxalash', 'Копировать', 'Copy')}</span>
               </>
             )}
           </button>
@@ -148,14 +150,20 @@ export const ReferralShareCard: React.FC<ReferralShareCardProps> = ({ userId }) 
           className="w-full min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors"
         >
           <Share2 className="w-4 h-4" strokeWidth={1.75} />
-          <span>Do'stlarni taklif qilish (+1 000 so'm)</span>
+          <span>{tr("Do'stlarni taklif qilish", 'Пригласить друзей', 'Invite friends')}</span>
         </button>
       </div>
 
       {/* Informative footer */}
       <div className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1 opacity-90">
         <Sparkles className="w-3 h-3 text-amber-600" strokeWidth={1.75} />
-        <span>Do'stlaringiz ilovaga qo'shilganda hisobingizga avtomatik +1 000 so'm qo'shiladi!</span>
+        <span>
+          {tr(
+            "Do'stingiz ilovaga qo'shilganda hisobingizga +1 000 so'm tushadi.",
+            'Когда друг присоединится, вам начислят +1 000 сум.',
+            'You get +1,000 UZS when a friend joins.'
+          )}
+        </span>
       </div>
     </div>
   );

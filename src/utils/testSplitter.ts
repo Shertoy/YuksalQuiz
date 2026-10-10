@@ -1,3 +1,4 @@
+import { trNow } from '../i18n/useTranslation';
 import { Question, TestBlock } from '../types';
 
 /**
@@ -92,6 +93,18 @@ export function getUnlockRequirementsMessage(
   nextBlockTitle?: string
 ): string {
   const diff = Math.max(1, passingScore - userScore);
-  const nextTarget = nextBlockTitle ? `'${nextBlockTitle}' ni` : 'keyingi testni';
-  return `Sizning natijangiz yetarli emas. '${blockTitle}' da yana ${diff} ta to'g'ri javob to'plang va ${nextTarget} oching.`;
+  const cur = localizeBlockTitle(blockTitle);
+  const next = nextBlockTitle ? localizeBlockTitle(nextBlockTitle) : '';
+  return trNow(
+    `Natija yetarli emas. "${cur}" blokida yana ${diff} ta to'g'ri javob to'plang va ${next ? `"${next}" blokini` : 'keyingi blokni'} oching.`,
+    `Результата недостаточно. Наберите ещё ${diff} правильных ответов в блоке «${cur}», чтобы открыть ${next ? `«${next}»` : 'следующий блок'}.`,
+    `Not enough to pass. Get ${diff} more correct answers in "${cur}" to unlock ${next ? `"${next}"` : 'the next block'}.`
+  );
+}
+
+/** "1-qism" kabi blok nomlarini joriy tilga moslash (boshqa nomlar o'zgarmaydi) */
+export function localizeBlockTitle(title: string): string {
+  const m = String(title || '').trim().match(/^(\d+)-qism$/i);
+  if (!m) return title;
+  return trNow(`${m[1]}-qism`, `Часть ${m[1]}`, `Part ${m[1]}`);
 }

@@ -636,7 +636,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: "Sozlamalar",
     soundEffectsTitle: "Ovoz effektlari",
     soundEffectsDesc: "To'g'ri va xato javob tovushlari",
-    vibrationTitle: "Vibratsiya (Haptic feedback)",
+    vibrationTitle: "Vibratsiya",
     vibrationDesc: "Telegram WebApp tebranish signallari",
 
     semesterLabel: 'Semestr',
@@ -975,7 +975,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: 'Настройки',
     soundEffectsTitle: 'Звуковые эффекты',
     soundEffectsDesc: 'Звуки правильных и неверных ответов',
-    vibrationTitle: 'Вибрация (Haptic feedback)',
+    vibrationTitle: 'Вибрация',
     vibrationDesc: 'Тактильный отклик Telegram WebApp',
 
     semesterLabel: 'Семестр',
@@ -1314,7 +1314,7 @@ export const translations: Record<Language, Translations> = {
     settingsTitle: 'Settings',
     soundEffectsTitle: 'Sound Effects',
     soundEffectsDesc: 'Chimes and buzzers for answers',
-    vibrationTitle: 'Vibration (Haptic feedback)',
+    vibrationTitle: 'Vibration',
     vibrationDesc: 'Telegram WebApp tactile feedback',
 
     semesterLabel: 'Semester',

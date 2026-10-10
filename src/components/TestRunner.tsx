@@ -5,6 +5,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { Clock, CheckCircle2, X, ChevronRight } from 'lucide-react';
 import { triggerHaptic, soundFX, useTelegramBackButton, useTestClosingConfirmation } from '../utils/telegram';
 import { decodeHtmlEntities } from '../utils/security';
+import { localizeBlockTitle } from '../utils/testSplitter';
 
 /**
  * Fisher-Yates algorithm to shuffle options client-side uniformly.
@@ -47,7 +48,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   onCancel,
 }) => {
   const { recordTestAttempt } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const block = testPackage.blocks.find((b) => b.id === blockId) || testPackage.blocks[0];
 
@@ -230,14 +231,14 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
         <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
           <X className="w-6 h-6" strokeWidth={1.75} />
         </div>
-        <p className="font-bold text-sm text-slate-800 dark:text-slate-100">Bu blokda hali savollar yo'q</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Boshqa blokni tanlang yoki keyinroq qayta urinib ko'ring.</p>
+        <p className="font-bold text-sm text-slate-800 dark:text-slate-100">{tr("Bu blokda hali savollar yo'q", 'В этом блоке пока нет вопросов', 'This block has no questions yet')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{tr("Boshqa blokni tanlang yoki keyinroq qayta urinib ko'ring.", 'Выберите другой блок или попробуйте позже.', 'Choose another block or try again later.')}</p>
         <button
           type="button"
           onClick={onCancel}
           className="mt-2 px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm active:scale-[0.98]"
         >
-          Orqaga
+          {tr('Orqaga', 'Назад', 'Back')}
         </button>
       </div>
     );
@@ -251,18 +252,18 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           <button
             type="button"
             onClick={() => setShowConfirmCancel(true)}
-            aria-label="Testdan chiqish"
+            aria-label={tr('Testdan chiqish', 'Выйти из теста', 'Exit test')}
             className="w-11 h-11 -ml-2 shrink-0 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800"
           >
             <X className="w-5 h-5" strokeWidth={1.75} />
           </button>
           <div className="min-w-0 flex-1">
             <h3 className="text-[14px] font-semibold text-slate-900 dark:text-slate-50 truncate">{testPackage.title}</h3>
-            <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{block.title}</p>
+            <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{localizeBlockTitle(block.title)}</p>
           </div>
           <div
             role="timer"
-            aria-label="Qolgan vaqt"
+            aria-label={tr('Qolgan vaqt', 'Оставшееся время', 'Time left')}
             className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[13px] font-semibold tabular-nums ${
               secondsRemaining < 60
                 ? 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
@@ -301,7 +302,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             {decodeHtmlEntities(currentQ.text)}
           </h3>
 
-          <div className="space-y-2.5" role="radiogroup" aria-label="Javob variantlari">
+          <div className="space-y-2.5" role="radiogroup" aria-label={tr('Javob variantlari', 'Варианты ответа', 'Answer options')}>
             {currentQ.options.map((opt, optIdx) => {
               const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
               const isSelected = currentAnswer === optIdx;

@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { TestPackage, TestBlock } from '../types';
 import { triggerHaptic, useTelegramBackButton } from '../utils/telegram';
-import { groupByFaculty, facultyKey, getPackageFaculty } from '../utils/faculty';
-import { getUnlockRequirementsMessage } from '../utils/testSplitter';
+import { groupByFaculty, facultyKey, getPackageFaculty, OTHER_FACULTY } from '../utils/faculty';
+import { getUnlockRequirementsMessage, localizeBlockTitle } from '../utils/testSplitter';
 import { fetchCloudTests, deleteTestFromCloud } from '../services/testSyncService';
 import { decodeHtmlEntities } from '../utils/security';
 import { isBlockUnlocked } from '../utils/progressUtils';
@@ -58,7 +58,7 @@ export const TestList: React.FC<TestListProps> = ({
   onOpenReceiptModal,
 }) => {
   const { testPackages, profile, testAttempts, deleteTestPackage } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
   const isAdmin = useIsAdmin();
 
   // Oxirgi tanlangan (yoki profildagi) universitet eslab qolinadi: har testdan keyin qayta tanlash shart emas
@@ -121,7 +121,7 @@ export const TestList: React.FC<TestListProps> = ({
         setSyncError(res.message);
       }
     } catch (err: any) {
-      setSyncError(err?.message || 'Tarmoq xatosi');
+      setSyncError(err?.message || tr('Tarmoq xatosi', 'Ошибка сети', 'Network error'));
     } finally {
       setIsSyncing(false);
     }
@@ -444,8 +444,8 @@ export const TestList: React.FC<TestListProps> = ({
   const renderTestCard = (pkg: TestPackage) => {
     const meta = [
       pkg.department ? decodeHtmlEntities(pkg.department) : '',
-      pkg.course_year ? `${pkg.course_year}-kurs` : '',
-      pkg.semester ? `${pkg.semester}-semestr` : '',
+      pkg.course_year ? tr(`${pkg.course_year}-kurs`, `${pkg.course_year}-й курс`, `Year ${pkg.course_year}`) : '',
+      pkg.semester ? tr(`${pkg.semester}-semestr`, `${pkg.semester}-й семестр`, `Semester ${pkg.semester}`) : '',
       `${pkg.totalQuestions} ${t.questionsCount}`,
     ].filter(Boolean);
 
@@ -486,7 +486,7 @@ export const TestList: React.FC<TestListProps> = ({
                   setAdminEditingQuiz(pkg);
                 }}
                 className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
-                aria-label="Testni tahrirlash"
+                aria-label={tr('Testni tahrirlash', 'Редактировать тест', 'Edit test')}
               >
                 <Edit3 className="w-[18px] h-[18px]" strokeWidth={1.75} />
               </button>
@@ -497,7 +497,7 @@ export const TestList: React.FC<TestListProps> = ({
                   handleDeleteTest(pkg);
                 }}
                 className="w-10 h-10 flex items-center justify-center rounded-xl text-orange-600 dark:text-orange-400 active:bg-orange-50 dark:active:bg-orange-950"
-                aria-label="Testni o'chirish"
+                aria-label={tr("Testni o'chirish", 'Удалить тест', 'Delete test')}
               >
                 <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.75} />
               </button>
@@ -528,11 +528,11 @@ export const TestList: React.FC<TestListProps> = ({
             let status: React.ReactNode;
             if (isLocked) status = <span className="text-slate-400 dark:text-slate-500">{t.lockedStatus}</span>;
             else if (isLimitReached)
-              status = <span className="text-orange-600 dark:text-orange-400 font-medium">Bugungi limit tugadi</span>;
+              status = <span className="text-orange-600 dark:text-orange-400 font-medium">{tr('Bugungi limit tugadi', 'Лимит на сегодня исчерпан', "Today's limit reached")}</span>;
             else if (maxScore > 0)
               status = (
                 <span className={isPassed ? 'text-emerald-700 dark:text-emerald-300 font-medium' : ''}>
-                  Natija: {maxScore}/{qTotal}
+                  {tr('Natija', 'Результат', 'Score')}: {maxScore}/{qTotal}
                 </span>
               );
             else status = <span>{qTotal} {t.questionsCount}</span>;
@@ -542,7 +542,7 @@ export const TestList: React.FC<TestListProps> = ({
                 key={block.id}
                 type="button"
                 onClick={() => handleTestClick(pkg, block)}
-                aria-label={`${decodeHtmlEntities(block.title)}${isLocked ? `, ${t.lockedStatus}` : ''}`}
+                aria-label={`${localizeBlockTitle(decodeHtmlEntities(block.title))}${isLocked ? `, ${t.lockedStatus}` : ''}`}
                 className={`min-h-[64px] px-3 py-2.5 rounded-xl border text-left flex flex-col justify-between gap-1 transition-colors ${
  isLocked
  ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
@@ -557,7 +557,7 @@ export const TestList: React.FC<TestListProps> = ({
  isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-50'
  }`}
                   >
-                    {decodeHtmlEntities(block.title)}
+                    {localizeBlockTitle(decodeHtmlEntities(block.title))}
                   </span>
                   {isLocked || isLimitReached ? (
                     <Lock className="w-4 h-4 text-slate-400 shrink-0" strokeWidth={1.75} />
@@ -594,24 +594,28 @@ export const TestList: React.FC<TestListProps> = ({
             className="-ml-2 min-h-[40px] px-2 inline-flex items-center gap-1 text-[14px] font-medium text-emerald-700 dark:text-emerald-300"
           >
             <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-            <span>{backToFaculties ? "Yo'nalishlar" : 'Barcha OTMlar'}</span>
+            <span>
+              {backToFaculties
+                ? tr("Yo'nalishlar", 'Направления', 'Faculties')
+                : tr('Barcha OTMlar', 'Все вузы', 'All universities')}
+            </span>
           </button>
           <h2 className="mt-1 text-xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50">
             {decodeHtmlEntities(selectedUniversity || '')}
           </h2>
           <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">
             {activeFaculty && !searchQuery.trim()
-              ? `${activeFaculty.name} · ${visibleUniTests.length} ta test`
+              ? `${activeFaculty.name === OTHER_FACULTY ? tr("Boshqa yo'nalish", 'Другое направление', 'Other faculty') : activeFaculty.name} · ${visibleUniTests.length} ${tr('ta test', 'тестов', 'tests')}`
               : showFacultyList
-              ? `Yo'nalishni tanlang · ${facultyGroups.length} ta`
-              : `${visibleUniTests.length} ta test`}
+              ? `${tr("Yo'nalishni tanlang", 'Выберите направление', 'Choose a faculty')} · ${facultyGroups.length}`
+              : `${visibleUniTests.length} ${tr('ta test', 'тестов', 'tests')}`}
           </p>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50">{t.navTests}</h2>
-            <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">OTMni tanlang, keyin fanni</p>
+            <p className="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">{tr('OTMni tanlang, keyin fanni', 'Выберите вуз, затем предмет', 'Choose a university, then a subject')}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -623,7 +627,7 @@ export const TestList: React.FC<TestListProps> = ({
                 triggerHaptic('success');
               }}
               className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 active:bg-slate-200/70 dark:active:bg-slate-800"
-              aria-label="Testlarni yangilash"
+              aria-label={tr('Testlarni yangilash', 'Обновить тесты', 'Refresh tests')}
             >
               <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
             </button>
@@ -701,8 +705,12 @@ export const TestList: React.FC<TestListProps> = ({
           enterKeyHint="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={selectedUniversity ? "Fan yoki yo'nalishni qidiring" : 'OTM yoki fan nomini qidiring'}
-          aria-label="Qidirish"
+          placeholder={
+            selectedUniversity
+              ? tr("Fan yoki yo'nalishni qidiring", 'Поиск предмета или направления', 'Search subject or faculty')
+              : tr('OTM yoki fan nomini qidiring', 'Поиск вуза или предмета', 'Search university or subject')
+          }
+          aria-label={tr('Qidirish', 'Поиск', 'Search')}
           className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[15px] text-slate-900 dark:text-slate-50 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400"
         />
       </div>
@@ -718,7 +726,7 @@ export const TestList: React.FC<TestListProps> = ({
           {searchQuery.trim() && matchingSearchTests.length > 0 && (
             <div className="space-y-3">
               <p className="px-1 text-[13px] font-medium text-slate-500 dark:text-slate-400">
-                Topilgan testlar: {matchingSearchTests.length}
+                {tr('Topilgan testlar', 'Найдено тестов', 'Tests found')}: {matchingSearchTests.length}
               </p>
               {matchingSearchTests.map((pkg) => renderTestCard(pkg))}
             </div>
@@ -726,10 +734,12 @@ export const TestList: React.FC<TestListProps> = ({
 
           {universityCatalog.length === 0 && matchingSearchTests.length === 0 ? (
             emptyState(
-              searchQuery.trim() ? 'Hech narsa topilmadi' : 'Hozircha testlar yo\'q',
               searchQuery.trim()
-                ? "Boshqa so'z bilan qidirib ko'ring."
-                : "Birinchi bo'lib o'z testingizni qo'shing.",
+                ? tr('Hech narsa topilmadi', 'Ничего не найдено', 'Nothing found')
+                : tr("Hozircha testlar yo'q", 'Пока нет тестов', 'No tests yet'),
+              searchQuery.trim()
+                ? tr("Boshqa so'z bilan qidirib ko'ring.", 'Попробуйте другой запрос.', 'Try a different search.')
+                : tr("Birinchi bo'lib o'z testingizni qo'shing.", 'Добавьте свой тест первым.', 'Be the first to add a test.'),
               <School className="w-6 h-6" strokeWidth={1.75} />,
               !searchQuery.trim()
             )
@@ -738,7 +748,7 @@ export const TestList: React.FC<TestListProps> = ({
               <div className="space-y-2">
                 {searchQuery.trim() && matchingSearchTests.length > 0 && (
                   <p className="px-1 text-[13px] font-medium text-slate-500 dark:text-slate-400">
-                    OTMlar: {universityCatalog.length}
+                    {tr('OTMlar', 'Вузы', 'Universities')}: {universityCatalog.length}
                   </p>
                 )}
                 <div className={`${listCard} divide-y divide-slate-200 dark:divide-slate-800 overflow-hidden`}>
@@ -760,7 +770,7 @@ export const TestList: React.FC<TestListProps> = ({
                           {decodeHtmlEntities(item.name)}
                         </span>
                         <span className="block mt-0.5 text-[13px] text-slate-500 dark:text-slate-400 tabular-nums">
-                          {item.testCount} ta test
+                          {item.testCount} {tr('ta test', 'тестов', 'tests')}
                         </span>
                       </span>
                       <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
@@ -775,8 +785,8 @@ export const TestList: React.FC<TestListProps> = ({
         <div className="space-y-3">
           {testsForSelectedUni.length === 0 ? (
             emptyState(
-              'Bu OTMda testlar topilmadi',
-              "Qidiruv so'zini o'zgartiring yoki shu OTM uchun test qo'shing.",
+              tr('Bu OTMda testlar topilmadi', 'В этом вузе тестов нет', 'No tests for this university'),
+              tr("Qidiruv so'zini o'zgartiring yoki shu OTM uchun test qo'shing.", 'Измените запрос или добавьте тест для этого вуза.', 'Change the search or add a test for this university.'),
               <BookOpen className="w-6 h-6" strokeWidth={1.75} />
             )
           ) : showFacultyList ? (
@@ -794,10 +804,10 @@ export const TestList: React.FC<TestListProps> = ({
                   <GraduationCap className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" strokeWidth={1.75} />
                   <span className="min-w-0 flex-1 py-3">
                     <span className="block text-[15px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
-                      {g.name}
+                      {g.name === OTHER_FACULTY ? tr("Boshqa yo'nalish", 'Другое направление', 'Other faculty') : g.name}
                     </span>
                     <span className="block mt-0.5 text-[13px] text-slate-500 dark:text-slate-400 tabular-nums">
-                      {g.testCount} ta test
+                      {g.testCount} {tr('ta test', 'тестов', 'tests')}
                     </span>
                   </span>
                   <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" strokeWidth={1.75} />
@@ -819,7 +829,7 @@ export const TestList: React.FC<TestListProps> = ({
             </div>
 
             <h3 className="font-semibold text-base text-slate-900 dark:text-white mb-2">
-              {lockExplanation.blockTitle} ({t.lockedStatus})
+              {localizeBlockTitle(lockExplanation.blockTitle)} ({t.lockedStatus})
             </h3>
 
             <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed mb-5">

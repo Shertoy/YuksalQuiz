@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { useTranslation } from '../i18n/useTranslation';
+import { localizeBlockTitle } from '../utils/testSplitter';
 import {
   CheckSquare,
   AlertTriangle,
@@ -38,13 +39,13 @@ export const ResultsAndMistakes: React.FC = () => {
     setActiveTab,
     setLeaderboardScope,
   } = useQuizStore();
-  const { t } = useTranslation();
+  const { t, tr } = useTranslation();
 
   const [activeTab, setSubTab] = useState<'mistakes' | 'history'>('mistakes');
 
   // Compute stats based on latest attempt per unique block (4 points per correct answer)
   const stats = calculateUserRatingStats(testAttempts);
-  const totalAttempts = Math.max(testAttempts.length, profile.completedTestsCount);
+  const totalAttempts = Math.max(testAttempts.length, profile.completedTestsCount || 0);
   const totalCorrect = stats.totalCorrectAnswers;
 
   // Best score (e.g. 25/25)
@@ -53,12 +54,10 @@ export const ResultsAndMistakes: React.FC = () => {
     : null;
   const bestScoreDisplay = bestAttempt
     ? `${bestAttempt.score}/${bestAttempt.totalQuestions}`
-    : totalAttempts > 0
-    ? '25/25'
-    : '0/25';
+    : '—';
 
   // Fastest completion time (e.g. 03:45)
-  const fastestDisplay = stats.bestTimeFormatted || '03:45';
+  const fastestDisplay = stats.bestTimeFormatted || '—';
 
   // Compute 2 Large Rank Action Cards
   const currentUserEntry = {
@@ -179,7 +178,7 @@ export const ResultsAndMistakes: React.FC = () => {
           <span>{t.myProgress}</span>
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Shaxsiy ko'rsatkichlaringiz, viloyat va respublika reytingi
+          {tr("Shaxsiy ko'rsatkichlaringiz va reytingdagi o'rningiz", 'Ваши показатели и место в рейтинге', 'Your stats and leaderboard position')}
         </p>
       </div>
 
@@ -192,10 +191,10 @@ export const ResultsAndMistakes: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-              Jami urinish
+              {tr('Jami urinish', 'Всего попыток', 'Attempts')}
             </span>
             <span className="text-base font-bold text-slate-900 dark:text-white">
-              {totalAttempts} ta
+              {totalAttempts}
             </span>
           </div>
         </div>
@@ -207,13 +206,13 @@ export const ResultsAndMistakes: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-              Reyting bali
+              {tr('Reyting bali', 'Рейтинговые баллы', 'Rating points')}
             </span>
             <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-              {stats.scorePoints.toLocaleString('uz-UZ')} ball
+              {stats.scorePoints.toLocaleString('uz-UZ')} {tr('ball', 'баллов', 'pts')}
             </span>
             <span className="text-[11px] text-slate-400 block font-medium">
-              {stats.totalCorrectAnswers} ta to'g'ri
+              {stats.totalCorrectAnswers} {tr("ta to'g'ri", 'верных', 'correct')}
             </span>
           </div>
         </div>
@@ -225,7 +224,7 @@ export const ResultsAndMistakes: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-              Eng yaxshi natija
+              {tr('Eng yaxshi natija', 'Лучший результат', 'Best score')}
             </span>
             <span className="text-base font-bold text-slate-900 dark:text-white">
               {bestScoreDisplay}
@@ -240,7 +239,7 @@ export const ResultsAndMistakes: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-              Eng yaxshi vaqt
+              {tr('Eng yaxshi vaqt', 'Лучшее время', 'Best time')}
             </span>
             <span className="text-base font-bold text-slate-900 dark:text-white font-mono">
               {fastestDisplay}
@@ -266,15 +265,15 @@ export const ResultsAndMistakes: React.FC = () => {
 
           <div>
             <div className="text-2xl font-bold tracking-tight text-white mb-0.5">
-              {regionRank}-o'rin
+              {tr(`${regionRank}-o'rin`, `${regionRank}-е место`, `#${regionRank}`)}
             </div>
             <p className="text-[11px] text-emerald-100/80 font-medium">
-              ({regionTotal} ishtirokchidan)
+              {tr(`${regionTotal} ishtirokchidan`, `из ${regionTotal} участников`, `of ${regionTotal} participants`)}
             </p>
           </div>
 
           <div className="mt-3 pt-2 border-t border-emerald-500/40 flex items-center justify-between text-[11px] font-bold text-emerald-100">
-            <span>Viloyat reytingi</span>
+            <span>{tr('Viloyat reytingi', 'Рейтинг региона', 'Regional ranking')}</span>
             <ArrowRight className="w-3 h-3" strokeWidth={1.75} />
           </div>
         </div>
@@ -287,22 +286,22 @@ export const ResultsAndMistakes: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-amber-100 text-[11px] font-bold">
               <Trophy className="w-3.5 h-3.5" strokeWidth={1.75} />
-              <span>O'zbekiston</span>
+              <span>{tr("O'zbekiston", 'Узбекистан', 'Uzbekistan')}</span>
             </div>
             <ChevronRight className="w-4 h-4 text-amber-200 group-hover:translate-x-0.5 transition-transform" strokeWidth={1.75} />
           </div>
 
           <div>
             <div className="text-2xl font-bold tracking-tight text-white mb-0.5">
-              {uzbRank}-o'rin
+              {tr(`${uzbRank}-o'rin`, `${uzbRank}-е место`, `#${uzbRank}`)}
             </div>
             <p className="text-[11px] text-amber-100/80 font-medium">
-              ({uzbTotal} ishtirokchidan)
+              {tr(`${uzbTotal} ishtirokchidan`, `из ${uzbTotal} участников`, `of ${uzbTotal} participants`)}
             </p>
           </div>
 
           <div className="mt-3 pt-2 border-t border-amber-400/40 flex items-center justify-between text-[11px] font-bold text-amber-100">
-            <span>Respublika reytingi</span>
+            <span>{tr('Respublika reytingi', 'Рейтинг по стране', 'National ranking')}</span>
             <ArrowRight className="w-3 h-3" strokeWidth={1.75} />
           </div>
         </div>
@@ -322,7 +321,7 @@ export const ResultsAndMistakes: React.FC = () => {
  }`}
         >
           <AlertTriangle className="w-3.5 h-3.5 text-orange-500" strokeWidth={1.75} />
-          <span>Mening Xatolarim</span>
+          <span>{tr('Mening xatolarim', 'Мои ошибки', 'My mistakes')}</span>
           {mistakes.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[11px]">
               {mistakes.length}
@@ -342,7 +341,7 @@ export const ResultsAndMistakes: React.FC = () => {
  }`}
         >
           <CheckSquare className="w-3.5 h-3.5 text-emerald-500" strokeWidth={1.75} />
-          <span>Natijalar Tarixi</span>
+          <span>{tr('Natijalar tarixi', 'История результатов', 'Results history')}</span>
           <span className="text-[11px] text-slate-400">({testAttempts.length})</span>
         </button>
       </div>
@@ -360,10 +359,10 @@ export const ResultsAndMistakes: React.FC = () => {
                     </span>
                     <div>
                       <h3 className="font-semibold text-xs text-slate-900 dark:text-white">
-                        Xatolar ustida mashq
+                        {tr('Xatolar ustida mashq', 'Работа над ошибками', 'Mistakes practice')}
                       </h3>
                       <p className="text-[11px] text-slate-400">
-                        Savol {practiceSession.currentIndex + 1} / {practiceSession.questions.length}
+                        {tr('Savol', 'Вопрос', 'Question')} {practiceSession.currentIndex + 1} / {practiceSession.questions.length}
                       </p>
                     </div>
                   </div>
@@ -438,14 +437,14 @@ export const ResultsAndMistakes: React.FC = () => {
                     onClick={handlePracticeCheck}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-40"
                   >
-                    Tekshirish
+                    {tr('Tekshirish', 'Проверить', 'Check')}
                   </button>
                 ) : (
                   <button
                     onClick={handlePracticeNext}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
                   >
-                    <span>Keyingi savol</span>
+                    <span>{tr('Keyingi savol', 'Следующий вопрос', 'Next question')}</span>
                     <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
                   </button>
                 )}
@@ -457,17 +456,21 @@ export const ResultsAndMistakes: React.FC = () => {
                   <Sparkles className="w-7 h-7" strokeWidth={1.75} />
                 </div>
                 <h3 className="font-semibold text-base text-slate-900 dark:text-white mb-1">
-                  Mashq yakunlandi!
+                  {tr('Mashq yakunlandi', 'Практика завершена', 'Practice complete')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                  Siz {practiceSession.questions.length} tadan {practiceSession.correctCount} tasini to'g'ri bajardingiz.
+                  {tr(
+                    `${practiceSession.questions.length} ta savoldan ${practiceSession.correctCount} tasiga to'g'ri javob berdingiz.`,
+                    `Верно: ${practiceSession.correctCount} из ${practiceSession.questions.length}.`,
+                    `${practiceSession.correctCount} of ${practiceSession.questions.length} correct.`
+                  )}
                 </p>
 
                 <button
                   onClick={() => setPracticeSession(null)}
                   className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
                 >
-                  Tugash
+                  {tr('Tugatish', 'Завершить', 'Finish')}
                 </button>
               </div>
             )}
@@ -484,24 +487,24 @@ export const ResultsAndMistakes: React.FC = () => {
                 <Sparkles className="w-6 h-6" strokeWidth={1.75} />
               </div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                Xatolar mavjud emas!
+                {tr("Xatolar yo'q", 'Ошибок нет', 'No mistakes')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-                Siz barcha savollarni to'g'ri yechdingiz yoki hali yangi xato qilmadingiz. Ajoyib natija!
+                {tr('Hozircha xato qilmagansiz. Testlarni yechishda davom eting.', 'Пока ошибок нет. Продолжайте решать тесты.', 'No mistakes so far. Keep practicing.')}
               </p>
             </div>
           ) : (
             <div>
               <div className="flex items-center justify-between mb-3 px-1">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  Jami xatolar: {mistakes.length} ta
+                  {tr('Jami xatolar', 'Всего ошибок', 'Total mistakes')}: {mistakes.length}
                 </span>
                 <button
                   onClick={startMistakesPractice}
                   className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span>Xatolar ustida ishlash</span>
+                  <span>{tr('Xatolar ustida ishlash', 'Работа над ошибками', 'Practice mistakes')}</span>
                 </button>
               </div>
 
@@ -513,10 +516,10 @@ export const ResultsAndMistakes: React.FC = () => {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-slate-400">
-                        {decodeHtmlEntities(m.testPackageTitle)} • {decodeHtmlEntities(m.blockTitle)}
+                        {decodeHtmlEntities(m.testPackageTitle)} • {localizeBlockTitle(decodeHtmlEntities(m.blockTitle))}
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-[11px] font-bold">
-                        {m.failCount} marta xato
+                        {tr(`${m.failCount} marta xato`, `ошибок: ${m.failCount}`, `${m.failCount}× wrong`)}
                       </span>
                     </div>
 
@@ -525,7 +528,7 @@ export const ResultsAndMistakes: React.FC = () => {
                     </h4>
 
                     <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200">
-                      <span className="font-bold">To'g'ri javob: </span>
+                      <span className="font-bold">{tr("To'g'ri javob", 'Правильный ответ', 'Correct answer')}: </span>
                       <span>{decodeHtmlEntities(m.question.options[m.question.correctOptionIndex])}</span>
                     </div>
                   </div>
@@ -545,10 +548,10 @@ export const ResultsAndMistakes: React.FC = () => {
                 <BarChart2 className="w-7 h-7" strokeWidth={1.75} />
               </div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                Hali testlar topshirilmadi
+                {tr('Hali testlar yechilmagan', 'Тесты ещё не пройдены', 'No tests taken yet')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Testlar bo'limiga o'ting va ilk natijangizni qayd eting
+                {tr("Testlar bo'limiga o'tib, birinchi testni yeching", 'Откройте раздел тестов и решите первый тест', 'Open Tests and take your first test')}
               </p>
             </div>
           ) : (
@@ -562,14 +565,14 @@ export const ResultsAndMistakes: React.FC = () => {
                     {decodeHtmlEntities(att.testPackageTitle)}
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {decodeHtmlEntities(att.blockTitle)} • {att.completedAt.split('T')[0]}
+                    {localizeBlockTitle(decodeHtmlEntities(att.blockTitle))} • {att.completedAt.split('T')[0]}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      +{att.score * 4} ball
+                      +{att.score * 4} {tr('ball', 'баллов', 'pts')}
                     </span>
                     <span className="block text-[11px] text-slate-400 font-medium">
                       {att.score} / {att.totalQuestions} ({att.percentage}%)

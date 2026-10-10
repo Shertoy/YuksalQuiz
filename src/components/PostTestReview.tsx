@@ -19,7 +19,8 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/telegram';
-import { getUnlockRequirementsMessage } from '../utils/testSplitter';
+import { getUnlockRequirementsMessage, localizeBlockTitle } from '../utils/testSplitter';
+import { useTranslation } from '../i18n/useTranslation';
 import { decodeHtmlEntities } from '../utils/security';
 
 interface PostTestReviewProps {
@@ -42,6 +43,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
   onStartNextBlock,
 }) => {
   const { setActiveTab } = useQuizStore();
+  const { tr } = useTranslation();
   const [reviewIndex, setReviewIndex] = useState(0);
 
   const currentBlockIndex = testPackage.blocks.findIndex(
@@ -88,13 +90,15 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               isPassed ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'
             }`}
           >
-            {isPassed ? "Blokdan o'tdingiz" : "O'tish uchun yetarli emas"}
+            {isPassed
+              ? tr("Blokdan o'tdingiz", 'Блок пройден', 'Block passed')
+              : tr("O'tish uchun yetarli emas", 'Недостаточно для прохождения', 'Not enough to pass')}
           </span>
         </div>
         <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-50">
           {decodeHtmlEntities(attempt.testPackageTitle)}
         </h2>
-        <p className="text-[13px] text-slate-500 dark:text-slate-400">{decodeHtmlEntities(attempt.blockTitle)}</p>
+        <p className="text-[13px] text-slate-500 dark:text-slate-400">{localizeBlockTitle(decodeHtmlEntities(attempt.blockTitle))}</p>
 
         <div className="mt-5 flex items-end gap-3">
           <span className="text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-slate-50 tabular-nums leading-none">
@@ -109,17 +113,17 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800 border-t border-slate-200 dark:border-slate-800 pt-3 text-center">
           <div>
             <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">+{attempt.score * 4}</div>
-            <div className="text-[12px] text-slate-500 dark:text-slate-400">Ball</div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">{tr('Ball', 'Баллы', 'Points')}</div>
           </div>
           <div>
             <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">{passingScore}</div>
-            <div className="text-[12px] text-slate-500 dark:text-slate-400">O'tish chegarasi</div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">{tr("O'tish chegarasi", 'Проходной балл', 'Pass mark')}</div>
           </div>
           <div>
             <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
               {formatTime(attempt.timeSpentSeconds)}
             </div>
-            <div className="text-[12px] text-slate-500 dark:text-slate-400">Vaqt</div>
+            <div className="text-[12px] text-slate-500 dark:text-slate-400">{tr('Vaqt', 'Время', 'Time')}</div>
           </div>
         </div>
 
@@ -127,8 +131,8 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
           <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-950 px-3 py-2.5 text-[13px] font-medium text-amber-800 dark:text-amber-200">
             <Coins className="w-4 h-4 shrink-0" strokeWidth={1.75} />
             <span>
-              {isPerfect && '+1 tanga: 100% natija. '}
-              {isBonusPart && "+5 tanga: 4–6-qism bonusi."}
+              {isPerfect && tr('+1 tanga: 100% natija. ', '+1 монета: результат 100%. ', '+1 coin: 100% score. ')}
+              {isBonusPart && tr('+5 tanga: 4–6-qism bonusi.', '+5 монет: бонус за части 4–6.', '+5 coins: parts 4–6 bonus.')}
             </span>
           </div>
         )}
@@ -139,7 +143,11 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
           </p>
         ) : unlockedNext ? (
           <p className="mt-4 text-[13px] leading-relaxed text-emerald-700 dark:text-emerald-300 font-medium">
-            "{nextBlockTitle || 'Keyingi qism'}" ochildi.
+            {tr(
+              `"${localizeBlockTitle(nextBlockTitle || '') || 'Keyingi qism'}" ochildi.`,
+              `«${localizeBlockTitle(nextBlockTitle || '') || 'Следующая часть'}» открыта.`,
+              `"${localizeBlockTitle(nextBlockTitle || '') || 'Next part'}" is unlocked.`
+            )}
           </p>
         ) : null}
       </section>
@@ -156,7 +164,13 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             }}
             className="w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors"
           >
-            <span>{decodeHtmlEntities(nextBlock.title)}ni boshlash</span>
+            <span>
+              {tr(
+                `${localizeBlockTitle(decodeHtmlEntities(nextBlock.title))}ni boshlash`,
+                `Начать: ${localizeBlockTitle(decodeHtmlEntities(nextBlock.title))}`,
+                `Start ${localizeBlockTitle(decodeHtmlEntities(nextBlock.title))}`
+              )}
+            </span>
             <ArrowRight className="w-5 h-5" strokeWidth={2} />
           </button>
         ) : (
@@ -169,7 +183,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
             className="w-full min-h-[48px] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors"
           >
             <RotateCcw className="w-5 h-5" strokeWidth={1.75} />
-            <span>Qayta yechish</span>
+            <span>{tr('Qayta yechish', 'Пройти заново', 'Retake')}</span>
           </button>
         )}
         <div className="grid grid-cols-2 gap-2">
@@ -182,7 +196,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               }}
               className="min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-[14px] active:bg-slate-200 dark:active:bg-slate-700"
             >
-              Qayta yechish
+              {tr('Qayta yechish', 'Пройти заново', 'Retake')}
             </button>
           )}
           <button
@@ -195,7 +209,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
               isPassed && nextBlock ? '' : 'col-span-2'
             }`}
           >
-            Testlarga qaytish
+            {tr('Testlarga qaytish', 'К тестам', 'Back to tests')}
           </button>
         </div>
         <button
@@ -208,14 +222,14 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
           className="w-full min-h-[44px] text-[14px] font-medium text-emerald-700 dark:text-emerald-300 inline-flex items-center justify-center gap-1.5"
         >
           <Trophy className="w-4 h-4" strokeWidth={1.75} />
-          <span>Reytingdagi o'rnim</span>
+          <span>{tr("Reytingdagi o'rnim", 'Моё место в рейтинге', 'My rank')}</span>
         </button>
       </div>
 
       {/* Savollar tahlili */}
       <section className={`${card} p-5`}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">Savollar tahlili</h3>
+          <h3 className="text-[15px] font-semibold text-slate-900 dark:text-slate-50">{tr('Savollar tahlili', 'Разбор вопросов', 'Question review')}</h3>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -225,7 +239,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                 setReviewIndex((prev) => Math.max(0, prev - 1));
               }}
               className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 disabled:opacity-30"
-              aria-label="Oldingi savol"
+              aria-label={tr('Oldingi savol', 'Предыдущий вопрос', 'Previous question')}
             >
               <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
             </button>
@@ -244,7 +258,7 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                 setReviewIndex((prev) => Math.min(total - 1, prev + 1));
               }}
               className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 disabled:opacity-30"
-              aria-label="Keyingi savol"
+              aria-label={tr('Keyingi savol', 'Следующий вопрос', 'Next question')}
             >
               <ArrowRight className="w-5 h-5" strokeWidth={1.75} />
             </button>
@@ -252,13 +266,13 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
         </div>
 
         {/* Savollar xaritasi */}
-        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Savollar">
+        <div className="mt-3 flex flex-wrap gap-1.5" aria-label={tr('Savollar', 'Вопросы', 'Questions')}>
           {attempt.userAnswers.map((ans, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setReviewIndex(i)}
-              aria-label={`${i + 1}-savol, ${ans.isCorrect ? "to'g'ri" : 'xato'}`}
+              aria-label={`${i + 1}: ${ans.isCorrect ? tr("to'g'ri", 'верно', 'correct') : tr('xato', 'неверно', 'wrong')}`}
               className={`w-8 h-8 rounded-lg text-[12px] font-semibold tabular-nums transition-colors ${
                 i === reviewIndex
                   ? 'bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900'
@@ -295,22 +309,22 @@ export const PostTestReview: React.FC<PostTestReviewProps> = ({
                 </span>
                 <span className="flex-1 leading-relaxed">{decodeHtmlEntities(opt)}</span>
                 {isCorrectAnswer && (
-                  <span className="shrink-0 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">To'g'ri</span>
+                  <span className="shrink-0 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">{tr("To'g'ri", 'Верно', 'Correct')}</span>
                 )}
                 {isUserSelection && !currentAnswer.isCorrect && (
-                  <span className="shrink-0 text-[12px] font-semibold text-orange-700 dark:text-orange-300">Sizning javob</span>
+                  <span className="shrink-0 text-[12px] font-semibold text-orange-700 dark:text-orange-300">{tr('Sizning javobingiz', 'Ваш ответ', 'Your answer')}</span>
                 )}
               </div>
             );
           })}
           {currentAnswer.selectedOption < 0 && (
-            <p className="text-[13px] text-slate-500 dark:text-slate-400">Bu savolga javob berilmagan.</p>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">{tr('Bu savolga javob berilmagan.', 'На этот вопрос нет ответа.', 'This question was not answered.')}</p>
           )}
         </div>
 
         {currentAnswer.explanation && (
           <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-[14px] leading-relaxed text-slate-700 dark:text-slate-200">
-            <span className="block text-[12px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Izoh</span>
+            <span className="block text-[12px] font-semibold text-slate-500 dark:text-slate-400 mb-1">{tr('Izoh', 'Пояснение', 'Explanation')}</span>
             {decodeHtmlEntities(currentAnswer.explanation)}
           </div>
         )}
