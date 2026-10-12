@@ -524,25 +524,33 @@ export const useQuizStore = create<QuizState>()(
               ? state.profile.subscriptionEnd
               : undefined;
             const finalIsSub = Boolean(finalSubEnd);
-            return {
-              profile: {
-                ...state.profile,
-                balance: nextBal,
-                walletBalance: nextBal,
-                telegram_id: targetTgId,
-                ...(finalIsSub && finalSubEnd
-                  ? {
-                      isSubscribed: true,
-                      has_paid: true,
-                      subscriptionEnd: finalSubEnd,
-                      paid_until: finalSubEnd,
-                      subscriptionExpiry: finalSubEnd.split('T')[0],
-                      subscriptionPlan: hasFutureSub ? normPlan : state.profile.subscriptionPlan || '3_months',
-                      subscriptionTier: hasFutureSub ? normPlan : state.profile.subscriptionTier || '3_months',
-                    }
-                  : {}),
-              },
+            const nextProfile = {
+              ...state.profile,
+              balance: nextBal,
+              walletBalance: nextBal,
+              telegram_id: targetTgId,
+              ...(finalIsSub && finalSubEnd
+                ? {
+                    isSubscribed: true,
+                    has_paid: true,
+                    subscriptionEnd: finalSubEnd,
+                    paid_until: finalSubEnd,
+                    subscriptionExpiry: finalSubEnd.split('T')[0],
+                    subscriptionPlan: hasFutureSub ? normPlan : state.profile.subscriptionPlan || '3_months',
+                    subscriptionTier: hasFutureSub ? normPlan : state.profile.subscriptionTier || '3_months',
+                  }
+                : {}),
             };
+            nextProfile.checksum = generateIntegritySignature({
+              userId: nextProfile.id,
+              coins: nextProfile.coins,
+              completedTestsCount: nextProfile.completedTestsCount,
+              streak: nextProfile.streak,
+              lastLoginDate: nextProfile.lastLoginDate,
+              walletBalance: nextProfile.walletBalance,
+              voucherBalance: nextProfile.voucherBalance,
+            });
+            return { profile: nextProfile };
           });
         };
 
@@ -606,11 +614,13 @@ export const useQuizStore = create<QuizState>()(
           let subEnd: string | null = null;
           let subPlan: string | null = null;
           let gotData = false;
+          let serverConfirmedUser = false;
 
           const r = await apiPost('/api/wallet', { action: 'me', clientUserId: rawId });
           if (r.ok && r.data?.ok) {
             const d: any = r.data;
             gotData = true;
+            serverConfirmedUser = Boolean(d.userFound || d.userId);
             srvBalance = Number(d.balance || 0);
             isBlocked = Boolean(d.isBlocked);
             voucherClaimed = Boolean(d.voucherClaimed);
@@ -629,10 +639,14 @@ export const useQuizStore = create<QuizState>()(
             }
           } else if (r.data?.reason === 'blocked') {
             gotData = true;
+            serverConfirmedUser = true;
             isBlocked = true;
             srvBalance = Number(currentProfile.walletBalance || 0);
-          } else if (supabase) {
-            // Telegram tashqarisida (brauzer): users jadvalidagi barcha mos qatorlarni o'qiymiz
+          }
+
+          // Agar /api/wallet javob bermagan bo'lsa (brauzer yoki muddati o'tgan initData)
+          // YOKI serverda foydalanuvchi qatori hali topilmagan bo'lsa — Supabase dan barcha mos qatorlarni tekshiramiz
+          if (supabase && (!gotData || (!serverConfirmedUser && !subEnd))) {
             const orParts = new Set<string>([
               `telegram_id.eq.${resolvedId}`,
               `id.eq.${resolvedId}`,
@@ -660,13 +674,15 @@ export const useQuizStore = create<QuizState>()(
               const primaryRow = rows.find((u) => u.id === rawId) || rows[0];
               const maxBal = rows.reduce((acc, u) => Math.max(acc, Number(u.balance ?? u.wallet_balance ?? 0)), 0);
               const primaryBal = Number(primaryRow.balance ?? primaryRow.wallet_balance ?? 0);
-              srvBalance = primaryBal > 0 ? primaryBal : maxBal;
-              isBlocked = rows.some((u) => Boolean(u.is_blocked));
-              voucherClaimed = rows.some((u) => Boolean(u.voucher_claimed));
-              referralCount = Math.max(...rows.map((u) => Number(u.referral_count || 0)), 0);
-              srvTgId = rows.map((u) => u.telegram_id).find(Boolean) || srvTgId;
+              srvBalance = Math.max(srvBalance, primaryBal > 0 ? primaryBal : maxBal);
+              isBlocked = isBlocked || rows.some((u) => Boolean(u.is_blocked));
+              voucherClaimed = voucherClaimed || rows.some((u) => Boolean(u.voucher_claimed));
+              referralCount = Math.max(referralCount, ...rows.map((u) => Number(u.referral_count || 0)), 0);
+              srvTgId =
+                rows.map((u) => u.telegram_id).find((t) => t && /^\d+$/.test(String(t))) ||
+                srvTgId;
 
-              let bestEndMs = 0;
+              let bestEndMs = subEnd ? new Date(subEnd).getTime() : 0;
               for (const u of rows) {
                 const end = u.subscription_end || u.paid_until || null;
                 if (end) {
@@ -742,6 +758,18 @@ export const useQuizStore = create<QuizState>()(
 
           if (!gotData) return null;
 
+          // Agar serverda foydalanuvchi qatori hali topilmagan bo'lsa yoki fallback rejimda bo'lsak,
+          // foydalanuvchining mavjud kelajakdagi faol obunasini o'chirib yubormaymiz
+          const curProfile = get().profile;
+          if (!subEnd && !serverConfirmedUser) {
+            const localEnd = curProfile.subscriptionEnd || curProfile.paid_until || null;
+            const localEndMs = localEnd ? new Date(localEnd).getTime() : 0;
+            if (!Number.isNaN(localEndMs) && localEndMs > Date.now()) {
+              subEnd = new Date(localEndMs).toISOString();
+              subPlan = normPlanName(curProfile.subscriptionPlan || curProfile.subscriptionTier);
+            }
+          }
+
           const numBalance = srvBalance;
           const isSubscribed = Boolean(subEnd && new Date(subEnd) > new Date());
           const activeTier: any = isSubscribed ? normPlanName(subPlan) : 'none';
@@ -771,7 +799,6 @@ export const useQuizStore = create<QuizState>()(
             }
           }
 
-          const curProfile = get().profile;
           const nextPlan = isSubscribed ? activeTier : 'none';
           const nextExpiry = activeEnd ? String(activeEnd).split('T')[0] : undefined;
           const nextEnd = activeEnd ? String(activeEnd) : undefined;
@@ -792,8 +819,8 @@ export const useQuizStore = create<QuizState>()(
             curProfile.telegram_id === nextTgId;
 
           if (!isIdentical) {
-            set((state) => ({
-              profile: {
+            set((state) => {
+              const nextProfile = {
                 ...state.profile,
                 balance: numBalance,
                 walletBalance: numBalance,
@@ -810,8 +837,18 @@ export const useQuizStore = create<QuizState>()(
                 paid_until: nextEnd,
                 referralCount,
                 telegram_id: nextTgId,
-              },
-            }));
+              };
+              nextProfile.checksum = generateIntegritySignature({
+                userId: nextProfile.id,
+                coins: nextProfile.coins,
+                completedTestsCount: nextProfile.completedTestsCount,
+                streak: nextProfile.streak,
+                lastLoginDate: nextProfile.lastLoginDate,
+                walletBalance: nextProfile.walletBalance,
+                voucherBalance: nextProfile.voucherBalance,
+              });
+              return { profile: nextProfile };
+            });
           }
 
           return numBalance;
@@ -1677,7 +1714,7 @@ export const useQuizStore = create<QuizState>()(
 
         // Obuna faqat server orqali sotib olinadi: balans va muddatni server hisoblaydi.
         // Server rad etsa, telefonda hech narsa o'zgarmaydi.
-        const r = await apiPost('/api/wallet', { action: 'purchase', plan });
+        const r = await apiPost('/api/wallet', { action: 'purchase', plan, clientUserId: profile.id });
         if (!r.ok || !r.data?.ok) {
           triggerHaptic('error');
           // Server balansini qayta o'qib, ekrandagi raqamni to'g'rilaymiz
@@ -1806,12 +1843,16 @@ export const useQuizStore = create<QuizState>()(
             ? '6 oylik'
             : '1 yillik';
 
+        const endIso = expiryDate.toISOString();
         const updatedProfile: UserProfile = {
           ...profile,
+          isSubscribed: true,
           has_paid: true,
-          paid_until: expiryDate.toISOString(),
+          paid_until: endIso,
+          subscriptionEnd: endIso,
           subscriptionPlan: data.plan,
-          subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+          subscriptionTier: data.plan,
+          subscriptionExpiry: endIso.split('T')[0],
         };
 
         updatedProfile.checksum = generateIntegritySignature({

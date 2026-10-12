@@ -342,12 +342,12 @@ export async function triggerReceiptsCleanup(): Promise<any> {
 let walletMeInflight: Promise<any | null> | null = null;
 let walletMeCache: { at: number; data: any } | null = null;
 
-async function fetchWalletMe(): Promise<any | null> {
+async function fetchWalletMe(clientUserId?: string): Promise<any | null> {
   if (walletMeCache && Date.now() - walletMeCache.at < 1500) return walletMeCache.data;
   if (walletMeInflight) return walletMeInflight;
   walletMeInflight = (async () => {
     try {
-      const r = await apiPost('/api/wallet', { action: 'me' });
+      const r = await apiPost('/api/wallet', { action: 'me', ...(clientUserId ? { clientUserId } : {}) });
       if (r.ok && r.data?.ok) {
         walletMeCache = { at: Date.now(), data: r.data };
         return r.data;
@@ -380,7 +380,7 @@ export async function fetchLatestUserBalance(userId: string): Promise<number | n
  */
 export async function fetchUserLatestPendingPayment(userId: string): Promise<PaymentRecord | null> {
   if (!userId) return null;
-  const me = await fetchWalletMe();
+  const me = await fetchWalletMe(userId);
   const pending = (me?.payments || []).find((p: any) => p.status === 'pending' || p.status === 'pending_manual');
   return pending ? (pending as PaymentRecord) : null;
 }

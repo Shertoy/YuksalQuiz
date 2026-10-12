@@ -76,6 +76,87 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true, payments: out });
     }
 
+    const computeNewSubscriptionEnd = (existingEnd: string | null | undefined, plan: string): string => {
+      const curMs = existingEnd ? new Date(existingEnd).getTime() : 0;
+      const baseMs = !Number.isNaN(curMs) && curMs > Date.now() ? curMs : Date.now();
+      const d = new Date(baseMs);
+      if (plan === '1_year') d.setFullYear(d.getFullYear() + 1);
+      else if (plan === '6_months') d.setMonth(d.getMonth() + 6);
+      else d.setMonth(d.getMonth() + 3);
+      return d.toISOString();
+    };
+
+    const ensureUserRowExists = async (rawIdInput: string) => {
+      let row = await findUserRow(db, rawIdInput);
+      if (row) return row;
+      const cId = cleanId(rawIdInput);
+      const isNum = /^\d+$/.test(cId);
+      const newId = isNum ? (rawIdInput.startsWith('tg_') ? rawIdInput : `tg_${cId}`) : rawIdInput || cId;
+      await db.from('users').upsert(
+        {
+          id: newId,
+          telegram_id: isNum ? cId : null,
+          balance: 0,
+          wallet_balance: 0,
+          has_paid: false,
+          is_subscribed: false,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      return await findUserRow(db, rawIdInput);
+    };
+
+    const applyDirectSubscription = async (
+      uRow: any,
+      plan: string,
+      priceAmount: number
+    ): Promise<string | null> => {
+      if (!uRow || !['3_months', '6_months', '1_year'].includes(plan)) return null;
+      const existingEnd = uRow.subscription_end || uRow.paid_until || null;
+      const newEndIso = computeNewSubscriptionEnd(existingEnd, plan);
+      const targetRowIds: string[] =
+        Array.isArray(uRow._rowIds) && uRow._rowIds.length > 0 ? uRow._rowIds : [uRow.id];
+
+      const { error: upErr } = await db
+        .from('users')
+        .update({
+          subscription_tier: plan,
+          subscription_end: newEndIso,
+          paid_until: newEndIso,
+          has_paid: true,
+          is_subscribed: true,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', targetRowIds);
+
+      if (upErr) {
+        // Fallback if is_subscribed or subscription_tier column is missing on older schema
+        const { error: fbErr } = await db
+          .from('users')
+          .update({
+            subscription_end: newEndIso,
+            paid_until: newEndIso,
+            has_paid: true,
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', targetRowIds);
+        if (fbErr) throw fbErr;
+      }
+
+      // Tarix uchun subscriptions jadvaliga yozib qo'yamiz (ustun farqi bo'lsa asosiy operatsiyani to'xtatmaydi)
+      try {
+        await db.from('subscriptions').insert({
+          user_id: uRow.id,
+          plan_name: plan,
+          price: Math.max(0, priceAmount || 0),
+          expires_at: newEndIso,
+        });
+      } catch {}
+
+      return newEndIso;
+    };
+
     if (action === 'approve') {
       const paymentId = String(req.body?.paymentId || '');
       const plan = req.body?.plan || null;
@@ -99,32 +180,14 @@ export default async function handler(req: any, res: any) {
 
       let subEnd: string | null = null;
       if (plan) {
-        const uRow = await findUserRow(db, data.user_id);
-        const tryIds = Array.from(new Set([uRow?.id, data.user_id, `tg_${data.user_id}`, cleanId(data.user_id)].filter(Boolean)));
-        for (const pid of tryIds) {
-          const r = await db.rpc('admin_credit', { p_user: pid, p_amount: 0, p_actor: actor, p_plan: plan });
-          if (!r.error && r.data?.ok) {
-            subEnd = (r.data as any)?.subscription_end || null;
-            break;
-          }
-        }
-        if (subEnd && Array.isArray(uRow?._rowIds) && uRow._rowIds.length > 0) {
-          await db
-            .from('users')
-            .update({
-              subscription_tier: plan,
-              subscription_end: subEnd,
-              paid_until: subEnd,
-              has_paid: true,
-              is_subscribed: true,
-              updated_at: new Date().toISOString(),
-            })
-            .in('id', uRow._rowIds);
+        const uRow = await ensureUserRowExists(String(data.user_id || ''));
+        if (uRow) {
+          subEnd = await applyDirectSubscription(uRow, String(plan), Number(data.amount || 0));
         }
       }
 
       const msgParts = [`Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm qo'shildi`];
-      if (plan) msgParts.push('obunangiz faollashtirildi');
+      if (plan && subEnd) msgParts.push('obunangiz faollashtirildi');
       await tgSend(data.user_id, `To'lovingiz tasdiqlandi. ${msgParts.join(' va ')}.`);
       return res.status(200).json({ ...data, subscription_end: subEnd });
     }
@@ -157,83 +220,114 @@ export default async function handler(req: any, res: any) {
     if (action === 'credit') {
       const rawUserId = String(req.body?.userId || '').trim();
       const userId = cleanId(rawUserId);
-      const plan = req.body?.plan || null;
+      const plan = req.body?.plan ? String(req.body.plan).trim() : null;
       const mode = String(req.body?.mode || 'add_funds');
       let amount = Math.round(Number(req.body?.amount || 0));
       if (!userId) return res.status(400).json({ ok: false, error: 'userId kerak' });
 
-      const uRow = await findUserRow(db, rawUserId);
+      if (plan && !['3_months', '6_months', '1_year'].includes(plan)) {
+        return res.status(400).json({ ok: false, error: "Tarif noto'g'ri" });
+      }
+
+      const uRow = await ensureUserRowExists(rawUserId);
+      if (!uRow) {
+        return res.status(404).json({ ok: false, error: 'Talaba bazadan topilmadi' });
+      }
+
+      const targetRowIds: string[] =
+        Array.isArray(uRow._rowIds) && uRow._rowIds.length > 0 ? uRow._rowIds : [uRow.id];
+      let newBalance = Number(uRow.balance ?? uRow.wallet_balance ?? 0);
 
       // "Balansni belgilash": joriy balans bilan farq hisoblanadi va shu farq yoziladi
       if (mode === 'set_balance') {
         if (amount < 0) return res.status(400).json({ ok: false, error: "Balans manfiy bo'lishi mumkin emas" });
-        if (!uRow) return res.status(404).json({ ok: false, error: 'Talaba topilmadi' });
         const cur = Number(uRow.balance ?? uRow.wallet_balance ?? 0);
         const delta = amount - cur;
         if (delta !== 0) {
-          const { error: chErr } = await db.rpc('_wallet_change', {
+          const { data: chData, error: chErr } = await db.rpc('_wallet_change', {
             p_user: uRow.id,
             p_amount: delta,
             p_type: 'admin_set_balance',
             p_ref: actor,
             p_note: `Admin balansni ${amount} qilib belgiladi`,
           });
-          if (chErr) throw chErr;
+          if (chErr) {
+            const { error: dirErr } = await db
+              .from('users')
+              .update({ balance: amount, wallet_balance: amount, updated_at: new Date().toISOString() })
+              .in('id', targetRowIds);
+            if (dirErr) throw dirErr;
+          } else if (chData !== null && chData !== undefined) {
+            newBalance = Number(chData);
+          }
+        }
+        newBalance = amount;
+        if (targetRowIds.length > 1) {
+          await db
+            .from('users')
+            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
+            .in('id', targetRowIds);
         }
         amount = 0;
         if (!plan) {
           const tgTarget = uRow.telegram_id || userId;
-          await tgSend(tgTarget, `Administrator hisobingiz balansini ${Number(req.body?.amount || 0).toLocaleString('uz-UZ')} so'm qilib belgiladi.`);
-          return res.status(200).json({ ok: true, new_balance: Number(req.body?.amount || 0) });
+          await tgSend(
+            tgTarget,
+            `Administrator hisobingiz balansini ${newBalance.toLocaleString('uz-UZ')} so'm qilib belgiladi.`
+          );
+          return res.status(200).json({ ok: true, user_id: uRow.id, new_balance: newBalance });
         }
       }
 
       if (!amount && !plan) return res.status(400).json({ ok: false, error: 'Summa yoki tarif kerak' });
 
-      // Topilgan uRow.id, tg_ prefiksli ID va oddiy ID bilan sinab ko'ramiz
-      let data: any = null;
-      let error: any = null;
-
-      const tryIds = Array.from(new Set([uRow?.id, `tg_${userId}`, userId, rawUserId].filter(Boolean)));
-      for (const pid of tryIds) {
-        const r = await db.rpc('admin_credit', {
-          p_user: pid,
+      if (amount !== 0) {
+        const { data: chData, error: chErr } = await db.rpc('_wallet_change', {
+          p_user: uRow.id,
           p_amount: amount,
-          p_actor: actor,
-          p_plan: plan,
+          p_type: 'admin_credit',
+          p_ref: actor,
+          p_note: 'Admin tomonidan',
         });
-        if (!r.error && r.data?.ok) {
-          data = r.data;
-          break;
+        if (!chErr && chData !== null && chData !== undefined) {
+          newBalance = Number(chData);
+        } else {
+          newBalance = Math.max(0, Number(uRow.balance ?? uRow.wallet_balance ?? 0) + amount);
+          const { error: dirErr } = await db
+            .from('users')
+            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
+            .in('id', targetRowIds);
+          if (dirErr) {
+            console.error('admin credit direct balance update error:', dirErr);
+            return res.status(500).json({ ok: false, error: "Balansni yangilab bo'lmadi." });
+          }
         }
-        error = r.error || r.data;
+        if (targetRowIds.length > 1) {
+          await db
+            .from('users')
+            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
+            .in('id', targetRowIds);
+        }
       }
 
-      if (!data?.ok) {
-        console.error('admin_credit error:', error);
-        return res.status(500).json({ ok: false, error: "Bazaga yozib bo'lmadi. Migratsiyalar ishga tushirilganini tekshiring." });
-      }
-
-      if (plan && data?.subscription_end && Array.isArray(uRow?._rowIds) && uRow._rowIds.length > 0) {
-        await db
-          .from('users')
-          .update({
-            subscription_tier: plan,
-            subscription_end: data.subscription_end,
-            paid_until: data.subscription_end,
-            has_paid: true,
-            is_subscribed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .in('id', uRow._rowIds);
+      let subEnd: string | null = uRow.subscription_end || uRow.paid_until || null;
+      if (plan) {
+        subEnd = await applyDirectSubscription(uRow, plan, amount);
       }
 
       const parts: string[] = [];
       if (amount) parts.push(`hisobingizga ${amount.toLocaleString('uz-UZ')} so'm qo'shildi`);
       if (plan) parts.push('obunangiz faollashtirildi');
-      const tgTarget = uRow?.telegram_id || userId;
-      await tgSend(tgTarget, `Administrator tomonidan ${parts.join(' va ')}.`);
-      return res.status(200).json(data);
+      const tgTarget = uRow.telegram_id || userId;
+      if (parts.length > 0) {
+        await tgSend(tgTarget, `Administrator tomonidan ${parts.join(' va ')}.`);
+      }
+      return res.status(200).json({
+        ok: true,
+        user_id: uRow.id,
+        new_balance: newBalance,
+        subscription_end: subEnd,
+      });
     }
 
     if (action === 'set_prices') {

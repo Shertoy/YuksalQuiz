@@ -145,9 +145,11 @@ export const TestList: React.FC<TestListProps> = ({
   // Automatically sync with cloud on mount and when window regains focus
   useEffect(() => {
     handleSyncTests();
+    useQuizStore.getState().syncUser().catch(() => {});
 
     const handleFocus = () => {
       fetchCloudTests().catch(() => {});
+      useQuizStore.getState().syncUser().catch(() => {});
     };
 
     window.addEventListener('focus', handleFocus);

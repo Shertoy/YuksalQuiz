@@ -1,7 +1,7 @@
 import { getSupabase, getSupabaseConfig } from './supabase';
 import { TestPackage, LeaderboardUser, UserProfile, Announcement, Question, StudyType, Gender } from '../types';
 import { useQuizStore, deduplicateUniversities, normalizeUniversityKey } from '../store/useQuizStore';
-import { decodeHtmlEntities, cleanTelegramId } from '../utils/security';
+import { decodeHtmlEntities, cleanTelegramId, generateIntegritySignature } from '../utils/security';
 import { reconcilePackageWithProgress } from '../utils/progressUtils';
 import { UserRatingStats } from '../utils/ratingUtils';
 import { getGenderSafeAvatar } from '../constants/avatars';
@@ -1041,8 +1041,8 @@ export function setupRealtimeTestSubscription(
 
             if ((rawBal !== undefined && rawBal !== null) || voucherClaimed !== undefined || hasFutureSub) {
               const cloudBalance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : undefined;
-              useQuizStore.setState((s) => ({
-                profile: {
+              useQuizStore.setState((s) => {
+                const nextProfile = {
                   ...s.profile,
                   ...(cloudBalance !== undefined ? { walletBalance: cloudBalance, balance: cloudBalance } : {}),
                   ...(voucherClaimed !== undefined ? { voucher_claimed: voucherClaimed, voucherClaimed } : {}),
@@ -1058,8 +1058,18 @@ export function setupRealtimeTestSubscription(
                       }
                     : {}),
                   telegram_id: rowTgId || cleanProfId,
-                },
-              }));
+                };
+                nextProfile.checksum = generateIntegritySignature({
+                  userId: nextProfile.id,
+                  coins: nextProfile.coins,
+                  completedTestsCount: nextProfile.completedTestsCount,
+                  streak: nextProfile.streak,
+                  lastLoginDate: nextProfile.lastLoginDate,
+                  walletBalance: nextProfile.walletBalance,
+                  voucherBalance: nextProfile.voucherBalance,
+                });
+                return { profile: nextProfile };
+              });
             }
           }
         }
@@ -1296,13 +1306,22 @@ export async function syncUserProfileToCloud(
   const hasActiveSub = !Number.isNaN(subEndMs) && subEndMs > Date.now();
   const posBalance = Math.max(profile.walletBalance || 0, profile.balance || 0);
 
+  const webAppTgId = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  const candidateTgId = String(
+    webAppTgId ||
+      profile.telegram_id ||
+      profile.telegramId ||
+      String(profile.id).replace(/^tg_/, '').replace(/^user_/, '')
+  ).trim();
+  const validNumericTgId = /^\d+$/.test(candidateTgId) ? candidateTgId : undefined;
+
   const userRowForUsersTable: Record<string, any> = {
     id: profile.id,
     full_name: fullName,
     avatar_url: getGenderSafeAvatar(profile.avatar, profile.gender),
     university,
     region,
-    telegram_id: profile.telegram_id || profile.telegramId || String(profile.id).replace(/^tg_/, '').replace(/^user_/, ''),
+    ...(validNumericTgId ? { telegram_id: validNumericTgId } : {}),
     ...(posBalance > 0 ? { balance: posBalance } : {}),
     ...(profile.voucher_claimed || profile.voucherClaimed ? { voucher_claimed: true } : {}),
     ...(hasActiveSub && subEndVal

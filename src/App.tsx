@@ -354,7 +354,7 @@ export const App: React.FC = () => {
   }, [activeTab]);
 
   // Handlers for test flow
-  const handleStartTest = (pkg: TestPackage, blockId: string) => {
+  const handleStartTest = async (pkg: TestPackage, blockId: string) => {
     // 1. Agar foydalanuvchi to'lov qilgan bo'lsa (user.has_paid === true yoki obuna faol) -> cheklovsiz testga kiritsin
     if (isPaidUser(profile)) {
       setReviewState(null);
@@ -366,8 +366,18 @@ export const App: React.FC = () => {
     // 2. Bepul foydalanuvchi: bugungi kunda ushbu test necha marta topshirilganini hisoblang
     const check = canUserStartTest(profile, pkg.id, blockId, testAttempts);
 
-    // Agar foydalanuvchi 3-marta boshlamoqchi bo'lsa (bugun 2 martadan kam bo'lmasa) -> test ochilmasin va ogohlantirish modali chiqsin
+    // Agar foydalanuvchi 3-marta boshlamoqchi bo'lsa (bugun 2 martadan kam bo'lmasa) ->
+    // avval bazadan eng so'nggi obuna holatini tekshiramiz (masalan, yangi obuna yoqilgan bo'lsa)
     if (!check.allowed) {
+      await useQuizStore.getState().syncUser().catch(() => {});
+      const latestProfile = useQuizStore.getState().profile;
+      if (isPaidUser(latestProfile)) {
+        setReviewState(null);
+        setActiveTestPkg(pkg);
+        setActiveBlockId(blockId);
+        return;
+      }
+
       triggerHaptic('warning');
       const block = pkg.blocks.find((b) => b.id === blockId) || pkg.blocks[0];
       setPaywallTargetTest({

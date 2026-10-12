@@ -52,8 +52,8 @@ export function validateTelegramInitData(initData: string, botToken: string): Te
     const authDateStr = searchParams.get('auth_date');
     const authDate = authDateStr ? parseInt(authDateStr, 10) : 0;
     const now = Math.floor(Date.now() / 1000);
-    if (!authDate || now - authDate > 86400) {
-      return { isValid: false, error: 'initData has expired (max 24 hours allowed)' };
+    if (!authDate || now - authDate > 7 * 86400) {
+      return { isValid: false, error: 'initData has expired (max 7 days allowed)' };
     }
 
     const userStr = searchParams.get('user');
@@ -385,6 +385,20 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
   const resolvedTgId =
     list.map((r) => r.telegram_id).find((t) => t && /^\d+$/.test(String(t))) ||
     (/^\d+$/.test(c) ? c : primary.telegram_id || null);
+
+  // Agar haqiqiy raqamli Telegram ID aniqlangan bo'lsa, user-xxx kabi qatorlarga ham shu telegram_id ni bog'lab qo'yamiz
+  if (resolvedTgId && /^\d+$/.test(String(resolvedTgId))) {
+    const rowsMissingTg = list.filter((r) => String(r.telegram_id || '') !== String(resolvedTgId));
+    if (rowsMissingTg.length > 0) {
+      await db
+        .from('users')
+        .update({ telegram_id: String(resolvedTgId) })
+        .in(
+          'id',
+          rowsMissingTg.map((r) => r.id)
+        );
+    }
+  }
 
   // Agar faol obuna topilgan bo'lsa va ba'zi dublikat qatorlarda u yo'q bo'lsa yoki subscription_tier='free' bo'lsa,
   // barcha tegishli qatorlarni avtomatik ravishda sinxronlab qo'yamiz
