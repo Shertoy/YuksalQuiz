@@ -24,17 +24,36 @@ export function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseExpiryMs(raw?: string | null): number | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(s)
+    ? new Date(`${s}T23:59:59.999`).getTime()
+    : new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 /**
  * Checks whether user has an active paid account or subscription
  */
 export function isPaidUser(profile?: UserProfile | null): boolean {
   if (!profile) return false;
-  // Obuna faqat tugash sanasi kelajakda bo'lsa faol. Sana serverdan keladi (syncUser).
-  // has_paid / subscriptionTier bayroqlari muddat tugagandan keyin ham qolib ketishi mumkin.
   const end = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
-  if (!end) return false;
-  const t = new Date(end).getTime();
-  return !Number.isNaN(t) && t > Date.now();
+  const t = parseExpiryMs(end);
+  if (t !== null) {
+    return t > Date.now();
+  }
+  return Boolean(
+    profile.isSubscribed ||
+      profile.has_paid ||
+      (profile.subscriptionPlan &&
+        profile.subscriptionPlan !== 'none' &&
+        (profile.subscriptionPlan as string) !== 'free') ||
+      (profile.subscriptionTier &&
+        profile.subscriptionTier !== 'none' &&
+        (profile.subscriptionTier as string) !== 'free')
+  );
 }
 
 /**
@@ -44,10 +63,9 @@ export function isPaidUser(profile?: UserProfile | null): boolean {
 export function getSubscriptionRemainingDays(profile?: UserProfile | null): number | null {
   if (!profile) return null;
   const expiryStr = profile.subscriptionEnd || profile.paid_until || profile.subscriptionExpiry;
-  if (!expiryStr) return null;
-  const expiryDate = new Date(expiryStr);
-  if (isNaN(expiryDate.getTime())) return null;
-  const diffMs = expiryDate.getTime() - Date.now();
+  const t = parseExpiryMs(expiryStr);
+  if (t === null) return null;
+  const diffMs = t - Date.now();
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
@@ -122,8 +140,10 @@ export function getTodayAttemptsCount(
   const testKey = getTestKey(pkgId, blockId);
   const localMap = getLocalDailyAttempts(today);
 
-  // Started count from localStorage
-  const localCount = localMap[testKey] ?? localMap[pkgId] ?? 0;
+  // Started count from localStorage (har bir blok alohida hisoblanadi; 1-qism ishlanganda 2-qism yopilib qolmasin)
+  const localCount = blockId && blockId.trim()
+    ? (localMap[testKey] ?? 0)
+    : (localMap[pkgId] ?? 0);
 
   // Completed count from testAttempts
   let completedCount = 0;
@@ -194,8 +214,7 @@ export function recordTestStartAttempt(
 
   const localMap = getLocalDailyAttempts(today);
   localMap[testKey] = nextCount;
-  if (blockId) {
-    // Also mark package level if only 1 block or general package check
+  if (!blockId || !blockId.trim()) {
     localMap[pkgId] = Math.max(localMap[pkgId] || 0, nextCount);
   }
 

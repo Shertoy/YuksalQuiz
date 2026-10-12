@@ -6,6 +6,7 @@ import {
   adminAccessProblem,
   cleanId,
   tgSend,
+  findUserRow,
 } from './_lib/common.js';
 
 /**
@@ -98,14 +99,27 @@ export default async function handler(req: any, res: any) {
 
       let subEnd: string | null = null;
       if (plan) {
-        // tg_ prefiksli va oddiy ID bilan sinab ko'ramiz
-        const tryIds = [data.user_id, `tg_${data.user_id}`, cleanId(data.user_id)];
+        const uRow = await findUserRow(db, data.user_id);
+        const tryIds = Array.from(new Set([uRow?.id, data.user_id, `tg_${data.user_id}`, cleanId(data.user_id)].filter(Boolean)));
         for (const pid of tryIds) {
           const r = await db.rpc('admin_credit', { p_user: pid, p_amount: 0, p_actor: actor, p_plan: plan });
           if (!r.error && r.data?.ok) {
             subEnd = (r.data as any)?.subscription_end || null;
             break;
           }
+        }
+        if (subEnd && Array.isArray(uRow?._rowIds) && uRow._rowIds.length > 0) {
+          await db
+            .from('users')
+            .update({
+              subscription_tier: plan,
+              subscription_end: subEnd,
+              paid_until: subEnd,
+              has_paid: true,
+              is_subscribed: true,
+              updated_at: new Date().toISOString(),
+            })
+            .in('id', uRow._rowIds);
         }
       }
 
@@ -141,28 +155,24 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'credit') {
-      const userId = cleanId(req.body?.userId);
+      const rawUserId = String(req.body?.userId || '').trim();
+      const userId = cleanId(rawUserId);
       const plan = req.body?.plan || null;
       const mode = String(req.body?.mode || 'add_funds');
       let amount = Math.round(Number(req.body?.amount || 0));
       if (!userId) return res.status(400).json({ ok: false, error: 'userId kerak' });
 
+      const uRow = await findUserRow(db, rawUserId);
+
       // "Balansni belgilash": joriy balans bilan farq hisoblanadi va shu farq yoziladi
       if (mode === 'set_balance') {
         if (amount < 0) return res.status(400).json({ ok: false, error: "Balans manfiy bo'lishi mumkin emas" });
-        const { data: rows } = await db
-          .from('users')
-          .select('id, balance, wallet_balance')
-          .or(`id.eq.${userId},id.eq.tg_${userId},telegram_id.eq.${userId}`)
-          .order('created_at', { ascending: true })
-          .limit(1);
-        const row = Array.isArray(rows) ? rows[0] : null;
-        if (!row) return res.status(404).json({ ok: false, error: 'Talaba topilmadi' });
-        const cur = Number(row.balance ?? row.wallet_balance ?? 0);
+        if (!uRow) return res.status(404).json({ ok: false, error: 'Talaba topilmadi' });
+        const cur = Number(uRow.balance ?? uRow.wallet_balance ?? 0);
         const delta = amount - cur;
         if (delta !== 0) {
           const { error: chErr } = await db.rpc('_wallet_change', {
-            p_user: row.id,
+            p_user: uRow.id,
             p_amount: delta,
             p_type: 'admin_set_balance',
             p_ref: actor,
@@ -172,18 +182,19 @@ export default async function handler(req: any, res: any) {
         }
         amount = 0;
         if (!plan) {
-          await tgSend(userId, `Administrator hisobingiz balansini ${Number(req.body?.amount || 0).toLocaleString('uz-UZ')} so'm qilib belgiladi.`);
+          const tgTarget = uRow.telegram_id || userId;
+          await tgSend(tgTarget, `Administrator hisobingiz balansini ${Number(req.body?.amount || 0).toLocaleString('uz-UZ')} so'm qilib belgiladi.`);
           return res.status(200).json({ ok: true, new_balance: Number(req.body?.amount || 0) });
         }
       }
 
       if (!amount && !plan) return res.status(400).json({ ok: false, error: 'Summa yoki tarif kerak' });
 
-      // tg_ prefiksli ID bilan sinab ko'ramiz, keyin oddiy ID bilan
+      // Topilgan uRow.id, tg_ prefiksli ID va oddiy ID bilan sinab ko'ramiz
       let data: any = null;
       let error: any = null;
 
-      const tryIds = [`tg_${userId}`, userId];
+      const tryIds = Array.from(new Set([uRow?.id, `tg_${userId}`, userId, rawUserId].filter(Boolean)));
       for (const pid of tryIds) {
         const r = await db.rpc('admin_credit', {
           p_user: pid,
@@ -203,10 +214,25 @@ export default async function handler(req: any, res: any) {
         return res.status(500).json({ ok: false, error: "Bazaga yozib bo'lmadi. Migratsiyalar ishga tushirilganini tekshiring." });
       }
 
+      if (plan && data?.subscription_end && Array.isArray(uRow?._rowIds) && uRow._rowIds.length > 0) {
+        await db
+          .from('users')
+          .update({
+            subscription_tier: plan,
+            subscription_end: data.subscription_end,
+            paid_until: data.subscription_end,
+            has_paid: true,
+            is_subscribed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', uRow._rowIds);
+      }
+
       const parts: string[] = [];
       if (amount) parts.push(`hisobingizga ${amount.toLocaleString('uz-UZ')} so'm qo'shildi`);
       if (plan) parts.push('obunangiz faollashtirildi');
-      await tgSend(userId, `Administrator tomonidan ${parts.join(' va ')}.`);
+      const tgTarget = uRow?.telegram_id || userId;
+      await tgSend(tgTarget, `Administrator tomonidan ${parts.join(' va ')}.`);
       return res.status(200).json(data);
     }
 

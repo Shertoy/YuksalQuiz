@@ -497,6 +497,55 @@ export const useQuizStore = create<QuizState>()(
 
         const targetTgId = currentProfile.telegram_id || cleanId;
 
+        const applyRealtimeUserRow = (row: any) => {
+          if (!row) return;
+          const newBal = row.balance ?? row.wallet_balance;
+          const endCandidate = row.subscription_end || row.paid_until || null;
+          const endMs = endCandidate ? new Date(endCandidate).getTime() : 0;
+          const hasFutureSub = !Number.isNaN(endMs) && endMs > Date.now();
+          const rawTier = String(row.subscription_tier || '').trim();
+          const normPlan: any =
+            rawTier === '3_months' || rawTier === '6_months' || rawTier === '1_year'
+              ? rawTier
+              : '3_months';
+
+          set((state) => {
+            const nextBal =
+              typeof newBal !== 'undefined' && newBal !== null
+                ? Number(newBal)
+                : state.profile.walletBalance;
+            const curEndMs = state.profile.subscriptionEnd
+              ? new Date(state.profile.subscriptionEnd).getTime()
+              : 0;
+            const keepExistingSub = !hasFutureSub && !Number.isNaN(curEndMs) && curEndMs > Date.now();
+            const finalSubEnd = hasFutureSub
+              ? String(endCandidate)
+              : keepExistingSub
+              ? state.profile.subscriptionEnd
+              : undefined;
+            const finalIsSub = Boolean(finalSubEnd);
+            return {
+              profile: {
+                ...state.profile,
+                balance: nextBal,
+                walletBalance: nextBal,
+                telegram_id: targetTgId,
+                ...(finalIsSub && finalSubEnd
+                  ? {
+                      isSubscribed: true,
+                      has_paid: true,
+                      subscriptionEnd: finalSubEnd,
+                      paid_until: finalSubEnd,
+                      subscriptionExpiry: finalSubEnd.split('T')[0],
+                      subscriptionPlan: hasFutureSub ? normPlan : state.profile.subscriptionPlan || '3_months',
+                      subscriptionTier: hasFutureSub ? normPlan : state.profile.subscriptionTier || '3_months',
+                    }
+                  : {}),
+              },
+            };
+          });
+        };
+
         const channel = supabase
           .channel(`user-balance-${targetTgId}`)
           .on(
@@ -507,20 +556,7 @@ export const useQuizStore = create<QuizState>()(
               table: 'users',
               filter: `telegram_id=eq.${targetTgId}`,
             },
-            (payload: any) => {
-              const newBal = payload.new?.balance ?? payload.new?.wallet_balance;
-              if (typeof newBal !== 'undefined' && newBal !== null) {
-                const numBal = Number(newBal);
-                set((state) => ({
-                  profile: {
-                    ...state.profile,
-                    balance: numBal,
-                    walletBalance: numBal,
-                    telegram_id: targetTgId,
-                  },
-                }));
-              }
-            }
+            (payload: any) => applyRealtimeUserRow(payload.new)
           )
           .on(
             'postgres_changes',
@@ -530,20 +566,7 @@ export const useQuizStore = create<QuizState>()(
               table: 'users',
               filter: `id=eq.${rawId}`,
             },
-            (payload: any) => {
-              const newBal = payload.new?.balance ?? payload.new?.wallet_balance;
-              if (typeof newBal !== 'undefined' && newBal !== null) {
-                const numBal = Number(newBal);
-                set((state) => ({
-                  profile: {
-                    ...state.profile,
-                    balance: numBal,
-                    walletBalance: numBal,
-                    telegram_id: targetTgId,
-                  },
-                }));
-              }
-            }
+            (payload: any) => applyRealtimeUserRow(payload.new)
           )
           .subscribe();
 
@@ -568,10 +591,13 @@ export const useQuizStore = create<QuizState>()(
         if (!resolvedId) return null;
 
         const tgPrefixed = `tg_${resolvedId}`;
+        const normPlanName = (p: unknown): '3_months' | '6_months' | '1_year' => {
+          const s = String(p || '').trim();
+          if (s === '3_months' || s === '6_months' || s === '1_year') return s;
+          return '3_months';
+        };
 
         try {
-          // Balans, obuna va blok holati FAQAT serverdan olinadi.
-          // Telefondagi qiymat, test_packages yoki to'lovlar yig'indisi hisobga olinmaydi.
           let srvBalance = 0;
           let isBlocked = false;
           let voucherClaimed = Boolean(currentProfile.voucher_claimed);
@@ -581,7 +607,7 @@ export const useQuizStore = create<QuizState>()(
           let subPlan: string | null = null;
           let gotData = false;
 
-          const r = await apiPost('/api/wallet', { action: 'me' });
+          const r = await apiPost('/api/wallet', { action: 'me', clientUserId: rawId });
           if (r.ok && r.data?.ok) {
             const d: any = r.data;
             gotData = true;
@@ -591,7 +617,7 @@ export const useQuizStore = create<QuizState>()(
             referralCount = Number(d.referralCount || 0);
             srvTgId = d.telegramId || srvTgId;
             subEnd = d.subscription?.active ? d.subscription?.end || null : null;
-            subPlan = d.subscription?.active ? d.subscription?.plan || null : null;
+            subPlan = d.subscription?.active ? normPlanName(d.subscription?.plan) : null;
             if (d.prices) {
               set({
                 subscriptionPrices: {
@@ -606,26 +632,110 @@ export const useQuizStore = create<QuizState>()(
             isBlocked = true;
             srvBalance = Number(currentProfile.walletBalance || 0);
           } else if (supabase) {
-            // Telegram tashqarisida (brauzer): users jadvalini faqat o'qiymiz.
-            // Bu ustunlarni brauzer o'zgartira olmaydi (bazadagi himoya trigger'i).
-            const { data: dbUser } = await supabase
+            // Telegram tashqarisida (brauzer): users jadvalidagi barcha mos qatorlarni o'qiymiz
+            const orParts = new Set<string>([
+              `telegram_id.eq.${resolvedId}`,
+              `id.eq.${resolvedId}`,
+              `id.eq.${tgPrefixed}`,
+            ]);
+            if (rawId && rawId !== resolvedId) {
+              orParts.add(`id.eq.${rawId}`);
+              orParts.add(`telegram_id.eq.${rawId}`);
+            }
+            if (cleanId && cleanId !== resolvedId) {
+              orParts.add(`id.eq.${cleanId}`);
+              orParts.add(`id.eq.tg_${cleanId}`);
+              orParts.add(`telegram_id.eq.${cleanId}`);
+            }
+
+            const { data: dbUsers } = await supabase
               .from('users')
-              .select('balance, wallet_balance, is_blocked, voucher_claimed, referral_count, telegram_id, subscription_end, paid_until, subscription_tier')
-              .or(`telegram_id.eq.${resolvedId},id.eq.${resolvedId},id.eq.${tgPrefixed}${rawId && rawId !== resolvedId ? `,id.eq.${rawId}` : ''}`)
-              .order('created_at', { ascending: true })
-              .limit(1)
-              .maybeSingle();
-            if (dbUser) {
+              .select('id, balance, wallet_balance, is_blocked, voucher_claimed, referral_count, telegram_id, subscription_end, paid_until, subscription_tier')
+              .or(Array.from(orParts).join(','))
+              .order('created_at', { ascending: true });
+
+            const rows: any[] = Array.isArray(dbUsers) ? dbUsers : dbUsers ? [dbUsers] : [];
+            if (rows.length > 0) {
               gotData = true;
-              srvBalance = Number(dbUser.balance ?? dbUser.wallet_balance ?? 0);
-              isBlocked = Boolean(dbUser.is_blocked);
-              voucherClaimed = Boolean(dbUser.voucher_claimed);
-              referralCount = Number(dbUser.referral_count || 0);
-              srvTgId = dbUser.telegram_id || srvTgId;
-              const end = dbUser.subscription_end || dbUser.paid_until || null;
-              if (end && new Date(end) > new Date()) {
-                subEnd = end;
-                subPlan = dbUser.subscription_tier || null;
+              const primaryRow = rows.find((u) => u.id === rawId) || rows[0];
+              const maxBal = rows.reduce((acc, u) => Math.max(acc, Number(u.balance ?? u.wallet_balance ?? 0)), 0);
+              const primaryBal = Number(primaryRow.balance ?? primaryRow.wallet_balance ?? 0);
+              srvBalance = primaryBal > 0 ? primaryBal : maxBal;
+              isBlocked = rows.some((u) => Boolean(u.is_blocked));
+              voucherClaimed = rows.some((u) => Boolean(u.voucher_claimed));
+              referralCount = Math.max(...rows.map((u) => Number(u.referral_count || 0)), 0);
+              srvTgId = rows.map((u) => u.telegram_id).find(Boolean) || srvTgId;
+
+              let bestEndMs = 0;
+              for (const u of rows) {
+                const end = u.subscription_end || u.paid_until || null;
+                if (end) {
+                  const t = new Date(end).getTime();
+                  if (!Number.isNaN(t) && t > bestEndMs) {
+                    bestEndMs = t;
+                    subEnd = new Date(t).toISOString();
+                    subPlan = normPlanName(u.subscription_tier);
+                  }
+                }
+              }
+
+              // Agar users qatorlarida faol obuna chiqmasa, subscriptions va AdminCredit ni ham tekshiramiz
+              const nowMs = Date.now();
+              if (bestEndMs <= nowMs) {
+                const candidateIds = Array.from(
+                  new Set(
+                    rows
+                      .flatMap((u) => [u.id, u.telegram_id])
+                      .concat([rawId, cleanId, resolvedId, tgPrefixed])
+                      .filter(Boolean)
+                      .map((x) => String(x))
+                  )
+                );
+                try {
+                  const { data: subRows } = await supabase
+                    .from('subscriptions')
+                    .select('plan, plan_name, expires_at, status')
+                    .in('user_id', candidateIds)
+                    .order('expires_at', { ascending: false })
+                    .limit(5);
+                  if (Array.isArray(subRows)) {
+                    for (const s of subRows) {
+                      const t = s?.expires_at ? new Date(s.expires_at).getTime() : 0;
+                      if (!Number.isNaN(t) && t > bestEndMs && s.status !== 'expired') {
+                        bestEndMs = t;
+                        subEnd = new Date(t).toISOString();
+                        subPlan = normPlanName(s.plan || s.plan_name);
+                      }
+                    }
+                  }
+                } catch {}
+
+                try {
+                  const { data: admRows } = await supabase
+                    .from('test_packages')
+                    .select('author_id, blocks, created_at')
+                    .eq('category', 'AdminCredit')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                  if (Array.isArray(admRows)) {
+                    const lowSet = new Set(candidateIds.map((x) => x.toLowerCase()));
+                    for (const a of admRows) {
+                      const b0 = Array.isArray(a?.blocks) && a.blocks[0] ? a.blocks[0] : null;
+                      const cands = [a?.author_id, b0?.user_id, b0?.clean_id]
+                        .filter(Boolean)
+                        .map((x) => String(x).toLowerCase());
+                      if (cands.some((c) => lowSet.has(c))) {
+                        const exp = b0?.expiry || b0?.subscription_end || b0?.paid_until;
+                        const t = exp ? new Date(exp).getTime() : 0;
+                        if (!Number.isNaN(t) && t > bestEndMs) {
+                          bestEndMs = t;
+                          subEnd = new Date(t).toISOString();
+                          subPlan = normPlanName(b0?.plan);
+                        }
+                      }
+                    }
+                  }
+                } catch {}
               }
             }
           }
@@ -634,7 +744,7 @@ export const useQuizStore = create<QuizState>()(
 
           const numBalance = srvBalance;
           const isSubscribed = Boolean(subEnd && new Date(subEnd) > new Date());
-          const activeTier: any = isSubscribed ? subPlan || '3_months' : 'none';
+          const activeTier: any = isSubscribed ? normPlanName(subPlan) : 'none';
           const activeEnd = isSubscribed ? subEnd : undefined;
 
           // 10 kunlik obuna tugashi eslatmasi (in-app bildirishnoma)

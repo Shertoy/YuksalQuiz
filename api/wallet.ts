@@ -5,6 +5,7 @@ import {
   cleanId,
   tgSend,
   findUserRow,
+  normalizeSubscriptionPlan,
   BOT_TOKEN,
   getAdminIds,
   escapeHtml,
@@ -38,7 +39,8 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const userRow = await findUserRow(db, user.id);
+  const clientUserId = String(req.body?.clientUserId || '').trim();
+  const userRow = await findUserRow(db, user.id, clientUserId);
   if (userRow?.is_blocked) {
     return res.status(403).json({ ok: false, reason: 'blocked', error: 'Hisobingiz bloklangan' });
   }
@@ -199,11 +201,18 @@ export default async function handler(req: any, res: any) {
       (prices || []).forEach((p: any) => (map[p.key] = Number(p.value)));
       const end = userRow?.subscription_end || userRow?.paid_until || null;
       const active = end ? new Date(end) > new Date() : false;
+      const activePlan = active ? normalizeSubscriptionPlan(userRow?.subscription_tier, true) : null;
       // Talabaning o'z hamyon tarixi (brauzer payments/wallet_transactions ni bevosita o'qiy olmaydi)
       let history: any[] = [];
       let payments: any[] = [];
       if (userRow?.id) {
-        const ids = Array.from(new Set([userRow.id, cleanId(userRow.id), `tg_${cleanId(userRow.id)}`]));
+        const ids = Array.from(
+          new Set(
+            (Array.isArray(userRow._matchedIds) && userRow._matchedIds.length
+              ? userRow._matchedIds
+              : [userRow.id, cleanId(userRow.id), `tg_${cleanId(userRow.id)}`]) as string[]
+          )
+        );
         const [{ data: tx }, { data: pays }] = await Promise.all([
           db
             .from('wallet_transactions')
@@ -233,7 +242,7 @@ export default async function handler(req: any, res: any) {
         payments,
         subscription: {
           active,
-          plan: active ? userRow?.subscription_tier || null : null,
+          plan: activePlan,
           end: active ? end : null,
         },
         prices: {
@@ -287,6 +296,22 @@ export default async function handler(req: any, res: any) {
           error: "Obunani yoqib bo'lmadi. Pulingiz yechilmadi. Admin xabardor qilindi, tez orada tuzatiladi.",
         });
       }
+
+      // Agar shu foydalanuvchining users jadvalida bir nechta qatori bo'lsa, hammasida obuna muddatini sinxronlaymiz
+      if (data?.ok && data?.subscription_end && Array.isArray(userRow._rowIds) && userRow._rowIds.length > 0) {
+        await db
+          .from('users')
+          .update({
+            subscription_tier: plan,
+            subscription_end: data.subscription_end,
+            paid_until: data.subscription_end,
+            has_paid: true,
+            is_subscribed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', userRow._rowIds);
+      }
+
       return res.status(data?.ok ? 200 : 400).json(data);
     }
 

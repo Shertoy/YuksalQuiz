@@ -1030,13 +1030,33 @@ export function setupRealtimeTestSubscription(
             }
             const rawBal = newRow.balance !== undefined ? newRow.balance : newRow.wallet_balance;
             const voucherClaimed = newRow.voucher_claimed !== undefined ? Boolean(newRow.voucher_claimed) : undefined;
-            if ((rawBal !== undefined && rawBal !== null) || voucherClaimed !== undefined) {
+            const rowEnd = newRow.subscription_end || newRow.paid_until || null;
+            const rowEndMs = rowEnd ? new Date(rowEnd).getTime() : 0;
+            const hasFutureSub = !Number.isNaN(rowEndMs) && rowEndMs > Date.now();
+            const rawTier = String(newRow.subscription_tier || '').trim();
+            const normPlan: any =
+              rawTier === '3_months' || rawTier === '6_months' || rawTier === '1_year'
+                ? rawTier
+                : '3_months';
+
+            if ((rawBal !== undefined && rawBal !== null) || voucherClaimed !== undefined || hasFutureSub) {
               const cloudBalance = rawBal !== undefined && rawBal !== null ? Number(rawBal) : undefined;
               useQuizStore.setState((s) => ({
                 profile: {
                   ...s.profile,
                   ...(cloudBalance !== undefined ? { walletBalance: cloudBalance, balance: cloudBalance } : {}),
                   ...(voucherClaimed !== undefined ? { voucher_claimed: voucherClaimed, voucherClaimed } : {}),
+                  ...(hasFutureSub && rowEnd
+                    ? {
+                        isSubscribed: true,
+                        has_paid: true,
+                        subscriptionEnd: String(rowEnd),
+                        paid_until: String(rowEnd),
+                        subscriptionExpiry: String(rowEnd).split('T')[0],
+                        subscriptionPlan: normPlan,
+                        subscriptionTier: normPlan,
+                      }
+                    : {}),
                   telegram_id: rowTgId || cleanProfId,
                 },
               }));
@@ -1269,17 +1289,30 @@ export async function syncUserProfileToCloud(
   };
 
   // 1. Primary: Direct upsert to public.users table!
-  const userRowForUsersTable = {
+  // Eslatma: has_paid / paid_until / balance faqat ijobiy (faol) bo'lsagina yuboriladi,
+  // aks holda test ishlagandan keyin bazadagi faol obuna null/false bilan ustidan yozilib ketmasin.
+  const subEndVal = profile.paid_until || profile.subscriptionEnd || null;
+  const subEndMs = subEndVal ? new Date(subEndVal).getTime() : 0;
+  const hasActiveSub = !Number.isNaN(subEndMs) && subEndMs > Date.now();
+  const posBalance = Math.max(profile.walletBalance || 0, profile.balance || 0);
+
+  const userRowForUsersTable: Record<string, any> = {
     id: profile.id,
     full_name: fullName,
     avatar_url: getGenderSafeAvatar(profile.avatar, profile.gender),
     university,
     region,
     telegram_id: profile.telegram_id || profile.telegramId || String(profile.id).replace(/^tg_/, '').replace(/^user_/, ''),
-    balance: Math.max(profile.walletBalance || 0, profile.balance || 0),
-    voucher_claimed: Boolean(profile.voucher_claimed || profile.voucherClaimed),
-    has_paid: Boolean(profile.has_paid || profile.isSubscribed),
-    paid_until: profile.paid_until || profile.subscriptionEnd || null,
+    ...(posBalance > 0 ? { balance: posBalance } : {}),
+    ...(profile.voucher_claimed || profile.voucherClaimed ? { voucher_claimed: true } : {}),
+    ...(hasActiveSub && subEndVal
+      ? {
+          has_paid: true,
+          is_subscribed: true,
+          paid_until: subEndVal,
+          subscription_end: subEndVal,
+        }
+      : {}),
     total_tests: Math.max(profile.completedTestsCount || 0, stats.uniqueBlocksCount || 0),
     correct_answers: stats.totalCorrectAnswers || 0,
     total_score: stats.scorePoints || 0,
