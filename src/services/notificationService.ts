@@ -1,4 +1,4 @@
-import { getTelegramInitData } from './api';
+import { apiPost } from './api';
 import { Announcement, AnnouncementTargetType, Region, LeaderboardUser } from '../types';
 import { useQuizStore } from '../store/useQuizStore';
 import { publishAnnouncementToCloud } from './testSyncService';
@@ -153,57 +153,44 @@ export async function sendTargetedAnnouncement(
     };
   }
 
-  // Dispatch to /api/broadcast (or fallback to /api/bot)
-  try {
-    const res = await fetch('/api/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': getTelegramInitData() },
-      body: JSON.stringify({
-        chatIds: targetIds,
-        title: payload.title,
-        message: payload.message,
-        link: payload.link,
-      }),
+  // /api/broadcast ga 150 tadan bo'lib yuboriladi (bitta so'rov vaqt chegarasidan oshmasligi uchun).
+  // apiPost Telegram imzosi va (brauzerda) admin kalitini qo'shadi.
+  const CHUNK = 150;
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  for (let i = 0; i < targetIds.length; i += CHUNK) {
+    const chunk = targetIds.slice(i, i + CHUNK);
+    const r = await apiPost('/api/broadcast', {
+      chatIds: chunk,
+      title: payload.title,
+      message: payload.message,
+      link: payload.link,
     });
-
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        success: true,
-        inAppSaved: true,
-        telegramBroadcast: {
-          totalTargeted: targetIds.length,
-          sent: data.results?.sent || 0,
-          failed: data.results?.failed || 0,
-          errors: data.results?.errors || [],
-        },
-        message: `Xabarnoma yuborildi! Mini App'ga joylandi va Telegram orqali ${data.results?.sent || 0} ta talabaga yetkazildi.`,
-      };
+    const d: any = r.data || {};
+    if (r.ok && d.results) {
+      sent += Number(d.results.sent || 0);
+      failed += Number(d.results.failed || 0);
+      errors.push(...(Array.isArray(d.results.errors) ? d.results.errors : []));
     } else {
-      const errData = await res.json().catch(() => ({}));
-      return {
-        success: true,
-        inAppSaved: true,
-        telegramBroadcast: {
-          totalTargeted: targetIds.length,
-          sent: 0,
-          failed: targetIds.length,
-          errors: [errData.error || `Server xatosi: ${res.status}`],
-        },
-        message: `Bildirishnoma ilovada saqlandi, ammo Telegram bot serverida xatolik yuz berdi (${errData.error || res.statusText}).`,
-      };
+      failed += chunk.length;
+      errors.push(d.error || `Server xatosi: ${r.status}`);
+      if (r.status === 401 || r.status === 403) break;
     }
-  } catch (err: any) {
-    return {
-      success: true,
-      inAppSaved: true,
-      telegramBroadcast: {
-        totalTargeted: targetIds.length,
-        sent: 0,
-        failed: targetIds.length,
-        errors: [err?.message || 'Tarmoq xatosi'],
-      },
-      message: `Bildirishnoma ilovada saqlandi. Telegram API so'rovida tarmoq uzilishi: ${err?.message || 'aloqa yo\'q'}.`,
-    };
   }
+
+  return {
+    success: true,
+    inAppSaved: true,
+    telegramBroadcast: {
+      totalTargeted: targetIds.length,
+      sent,
+      failed: Math.max(failed, targetIds.length - sent),
+      errors: errors.slice(0, 50),
+    },
+    message:
+      sent > 0
+        ? `Xabarnoma yuborildi! Mini App'ga joylandi va Telegram orqali ${sent} ta talabaga yetkazildi.`
+        : `Bildirishnoma ilovada saqlandi, ammo Telegram orqali yuborilmadi (${errors[0] || 'xatolik'}).`,
+  };
 }

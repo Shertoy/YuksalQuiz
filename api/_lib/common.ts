@@ -52,8 +52,9 @@ export function validateTelegramInitData(initData: string, botToken: string): Te
     const authDateStr = searchParams.get('auth_date');
     const authDate = authDateStr ? parseInt(authDateStr, 10) : 0;
     const now = Math.floor(Date.now() / 1000);
-    if (!authDate || now - authDate > 7 * 86400) {
-      return { isValid: false, error: 'initData has expired (max 7 days allowed)' };
+    // Imzo 48 soat amal qiladi; kelajakdagi sana (soat noto'g'ri yoki soxta) qabul qilinmaydi
+    if (!authDate || now - authDate > 2 * 86400 || authDate - now > 300) {
+      return { isValid: false, error: 'initData has expired' };
     }
 
     const userStr = searchParams.get('user');
@@ -139,6 +140,8 @@ export interface VerifiedUser {
   lastName: string;
   username: string;
   isAdmin?: boolean;
+  /** Telegram orqali emas, brauzerdagi admin kaliti bilan kirgan */
+  viaKey?: boolean;
 }
 
 /**
@@ -159,7 +162,7 @@ function verifyAdminBrowserKey(req: any): VerifiedUser | null {
   if (!crypto.timingSafeEqual(a, b)) return null;
   const adminId = getPrimaryAdminId();
   if (!adminId) return null;
-  return { id: adminId, firstName: 'Admin', lastName: '', username: 'admin', isAdmin: true };
+  return { id: adminId, firstName: 'Admin', lastName: '', username: 'admin', isAdmin: true, viaKey: true };
 }
 
 export function verifyRequestUser(req: any): VerifiedUser | null {
@@ -237,21 +240,27 @@ export function normalizeSubscriptionPlan(plan: unknown, isActive = true): strin
   return isActive ? '3_months' : null;
 }
 
-export async function findUserRow(db: any, anyId: string, extraId?: string) {
+/**
+ * Foydalanuvchi qatorini topadi.
+ *
+ * XAVFSIZLIK: qidiruv FAQAT berilgan bitta identifikator bo'yicha (server tekshirgan Telegram ID
+ * yoki admin kiritgan ID). Brauzer yuborgan qo'shimcha ID lar qabul qilinmaydi va boshqa qatorlarning
+ * telegram_id si bu yerda hech qachon qayta yozilmaydi — aks holda bir talaba boshqasining hisobiga
+ * "ulanib" olishi mumkin edi.
+ *
+ * Qator shu foydalanuvchiga tegishli deb hisoblanadi, agar:
+ *  - qator ID si shu foydalanuvchiniki bo'lsa (123, tg_123), yoki
+ *  - qatorda telegram_id = 123 bo'lsa va qator ID si boshqa Telegram foydalanuvchisiniki bo'lmasa
+ *    (masalan, ilova Telegram'dan tashqarida ochilganda yaratilgan "user_..." qatori).
+ */
+export async function findUserRow(db: any, anyId: string) {
   const c = cleanId(anyId);
   const raw = String(anyId || '').trim();
-  const extraRaw = String(extraId || '').trim();
-  const extraClean = cleanId(extraRaw);
 
   const safeId = (s: string) => /^[a-zA-Z0-9_-]{1,80}$/.test(s);
-  const conds = new Set<string>();
-  for (const val of [c, raw, extraRaw, extraClean]) {
-    if (!val || !safeId(val)) continue;
-    conds.add(`id.eq.${val}`);
-    conds.add(`id.eq.tg_${val}`);
-    conds.add(`telegram_id.eq.${val}`);
-  }
-  if (!conds.size) return null;
+  if (!c || !safeId(c)) return null;
+  const conds = new Set<string>([`id.eq.${c}`, `id.eq.tg_${c}`, `telegram_id.eq.${c}`]);
+  if (raw && raw !== c && safeId(raw)) conds.add(`id.eq.${raw}`);
 
   const { data: rows } = await db
     .from('users')
@@ -259,30 +268,16 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
     .or(Array.from(conds).join(','))
     .order('created_at', { ascending: true });
 
-  const list: any[] = Array.isArray(rows) ? rows : rows ? [rows] : [];
+  const all: any[] = Array.isArray(rows) ? rows : rows ? [rows] : [];
+  const belongs = (r: any) => {
+    const rid = cleanId(r?.id);
+    if (rid === c || String(r?.id || '') === raw) return true;
+    // Boshqa Telegram foydalanuvchisining qatori (tg_999 yoki 999) — telegram_id mos bo'lsa ham olinmaydi
+    if (/^\d+$/.test(rid) && rid !== c) return false;
+    return cleanId(r?.telegram_id) === c;
+  };
+  const list = all.filter(belongs);
   if (!list.length) return null;
-
-  // Agar topilgan qatorlarda telegram_id bo'lsa va u orqali yana boshqa dublikat qatorlar bo'lsa, ularni ham qo'shamiz
-  const tgIds = Array.from(
-    new Set(
-      list
-        .map((r) => cleanId(r.telegram_id))
-        .filter((t) => t && safeId(t) && t !== c && t !== extraClean)
-    )
-  );
-  if (tgIds.length > 0) {
-    const extraConds = tgIds.flatMap((t) => [`id.eq.${t}`, `id.eq.tg_${t}`, `telegram_id.eq.${t}`]);
-    const { data: moreRows } = await db.from('users').select('*').or(extraConds.join(','));
-    if (Array.isArray(moreRows)) {
-      const seen = new Set(list.map((r) => r.id));
-      for (const mr of moreRows) {
-        if (mr?.id && !seen.has(mr.id)) {
-          seen.add(mr.id);
-          list.push(mr);
-        }
-      }
-    }
-  }
 
   const nowMs = Date.now();
   let bestEndMs = 0;
@@ -304,13 +299,13 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
   const allIds = Array.from(
     new Set(
       list
-        .flatMap((r) => [r.id, cleanId(r.id), `tg_${cleanId(r.id)}`, r.telegram_id, cleanId(r.telegram_id)])
-        .concat([c, raw, extraRaw, extraClean])
+        .flatMap((r) => [r.id, cleanId(r.id)])
+        .concat([c, `tg_${c}`])
         .filter((x): x is string => Boolean(x) && safeId(String(x)))
     )
   );
 
-  // Agar users qatorlarida faol obuna topilmagan bo'lsa, subscriptions va AdminCredit jadvallarini ham tekshiramiz
+  // users qatorlarida faol obuna topilmasa, subscriptions va AdminCredit yozuvlari ham tekshiriladi
   if (bestEndMs <= nowMs && allIds.length > 0) {
     try {
       const { data: subRows } = await db
@@ -336,24 +331,18 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
         .from('test_packages')
         .select('author_id, blocks, created_at')
         .eq('category', 'AdminCredit')
+        .in('author_id', allIds)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(20);
       if (Array.isArray(admRows)) {
-        const idSet = new Set(allIds.map((x) => x.toLowerCase()));
         for (const a of admRows) {
           const b0 = Array.isArray(a?.blocks) && a.blocks[0] ? a.blocks[0] : null;
-          const candidates = [a?.author_id, b0?.user_id, b0?.clean_id]
-            .filter(Boolean)
-            .flatMap((x) => [String(x), cleanId(String(x))])
-            .map((x) => x.toLowerCase());
-          if (candidates.some((cand) => idSet.has(cand))) {
-            const exp = b0?.expiry || b0?.subscription_end || b0?.paid_until;
-            const t = exp ? new Date(exp).getTime() : 0;
-            if (!Number.isNaN(t) && t > bestEndMs) {
-              bestEndMs = t;
-              bestEndIso = new Date(t).toISOString();
-              bestPlan = normalizeSubscriptionPlan(b0?.plan, t > nowMs);
-            }
+          const exp = b0?.expiry || b0?.subscription_end || b0?.paid_until;
+          const t = exp ? new Date(exp).getTime() : 0;
+          if (!Number.isNaN(t) && t > bestEndMs) {
+            bestEndMs = t;
+            bestEndIso = new Date(t).toISOString();
+            bestPlan = normalizeSubscriptionPlan(b0?.plan, t > nowMs);
           }
         }
       }
@@ -361,47 +350,22 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
   }
 
   const hasActiveSub = bestEndMs > nowMs && Boolean(bestEndIso);
+  const bal = (r: any) => Number(r?.balance ?? r?.wallet_balance ?? 0);
 
-  // Asosiy qatorni tanlash: extraRaw mos kelsa, yoki faol obunasi bor qator, yoki eng ko'p balansli qator
+  // Asosiy qator: pul turgan qator (ko'rsatilgan balans va yechiladigan balans bir xil bo'lsin),
+  // bo'lmasa tg_ qatori, bo'lmasa eng eski qator
+  const richest = list.reduce((best, cur) => (bal(cur) > bal(best) ? cur : best), list[0]);
   const primary =
-    (extraRaw && list.find((r) => r.id === extraRaw)) ||
-    list.find((r) => {
-      const e = r.subscription_end || r.paid_until;
-      return e && new Date(e).getTime() > nowMs;
-    }) ||
-    list.reduce((best, cur) => {
-      const bBal = Number(best?.balance ?? best?.wallet_balance ?? 0);
-      const cBal = Number(cur?.balance ?? cur?.wallet_balance ?? 0);
-      return cBal > bBal ? cur : best;
-    }, list[0]);
+    (bal(richest) > 0 && richest) ||
+    list.find((r) => r.id === `tg_${c}`) ||
+    list.find((r) => r.id === c) ||
+    list[0];
 
-  const maxBalance = list.reduce((acc, r) => {
-    const b = Number(r.balance ?? r.wallet_balance ?? 0);
-    return b > acc ? b : acc;
-  }, Number(primary.balance ?? primary.wallet_balance ?? 0));
+  const resolvedTgId = /^\d+$/.test(c)
+    ? c
+    : list.map((r) => r.telegram_id).find((t) => t && /^\d+$/.test(String(t))) || null;
 
-  const primaryBalance = Number(primary.balance ?? primary.wallet_balance ?? 0);
-  const resolvedBalance = primaryBalance > 0 ? primaryBalance : maxBalance;
-  const resolvedTgId =
-    list.map((r) => r.telegram_id).find((t) => t && /^\d+$/.test(String(t))) ||
-    (/^\d+$/.test(c) ? c : primary.telegram_id || null);
-
-  // Agar haqiqiy raqamli Telegram ID aniqlangan bo'lsa, user-xxx kabi qatorlarga ham shu telegram_id ni bog'lab qo'yamiz
-  if (resolvedTgId && /^\d+$/.test(String(resolvedTgId))) {
-    const rowsMissingTg = list.filter((r) => String(r.telegram_id || '') !== String(resolvedTgId));
-    if (rowsMissingTg.length > 0) {
-      await db
-        .from('users')
-        .update({ telegram_id: String(resolvedTgId) })
-        .in(
-          'id',
-          rowsMissingTg.map((r) => r.id)
-        );
-    }
-  }
-
-  // Agar faol obuna topilgan bo'lsa va ba'zi dublikat qatorlarda u yo'q bo'lsa yoki subscription_tier='free' bo'lsa,
-  // barcha tegishli qatorlarni avtomatik ravishda sinxronlab qo'yamiz
+  // Faol obuna topilgan bo'lsa, FAQAT shu foydalanuvchiga tegishli qatorlarda sanani tenglashtiramiz
   if (hasActiveSub && bestEndIso) {
     const normTier = normalizeSubscriptionPlan(bestPlan, true) || '3_months';
     const rowsNeedingHeal = list.filter((r) => {
@@ -416,7 +380,6 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
       );
     });
     if (rowsNeedingHeal.length > 0) {
-      const healIds = rowsNeedingHeal.map((r) => r.id);
       await db
         .from('users')
         .update({
@@ -425,17 +388,19 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
           subscription_end: bestEndIso,
           paid_until: bestEndIso,
           subscription_tier: normTier,
-          ...(resolvedTgId ? { telegram_id: resolvedTgId } : {}),
         })
-        .in('id', healIds);
+        .in(
+          'id',
+          rowsNeedingHeal.map((r) => r.id)
+        );
     }
   }
 
   return {
     ...primary,
     telegram_id: resolvedTgId,
-    balance: resolvedBalance,
-    wallet_balance: resolvedBalance,
+    balance: bal(primary),
+    wallet_balance: bal(primary),
     has_paid: hasActiveSub ? true : Boolean(primary.has_paid),
     is_subscribed: hasActiveSub ? true : Boolean(primary.is_subscribed),
     subscription_end: hasActiveSub ? bestEndIso : primary.subscription_end || primary.paid_until || null,
@@ -450,6 +415,27 @@ export async function findUserRow(db: any, anyId: string, extraId?: string) {
     _matchedIds: allIds,
     _rowIds: list.map((r) => r.id),
   };
+}
+
+/**
+ * So'rovlar sonini cheklash (barcha serverless nusxalar uchun umumiy, bazada saqlanadi).
+ * true = ruxsat. Jadval hali yaratilmagan bo'lsa, cheklov o'tkazib yuboriladi (lekin autentifikatsiya baribir shart).
+ */
+export async function rateLimit(db: any, key: string, max: number, windowSec: number): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - windowSec * 1000).toISOString();
+    const { count, error } = await db
+      .from('api_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('key', key)
+      .gte('created_at', since);
+    if (error) return true;
+    if ((count || 0) >= max) return false;
+    await db.from('api_usage').insert({ key });
+    return true;
+  } catch {
+    return true;
+  }
 }
 
 export const GEMINI_MODELS: string[] = (

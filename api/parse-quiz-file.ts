@@ -1,4 +1,4 @@
-import { GEMINI_MODELS } from './_lib/common.js';
+import { GEMINI_MODELS, verifyRequestUser, getServiceClient, rateLimit, cleanId, setCors } from './_lib/common.js';
 // @ts-ignore
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
@@ -20,14 +20,7 @@ interface ParsedQuizQuestion {
 }
 
 export default async function handler(req: any, res: any) {
-  // CORS setup
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  setCors(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -35,6 +28,23 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Faqat POST so\'rovlari qabul qilinadi.' });
+  }
+
+  // Gemini kvotasi pul turadi: faqat Telegram orqali kirgan foydalanuvchi va soatiga 15 ta fayl
+  const caller = verifyRequestUser(req);
+  if (!caller) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized', error: 'Ilovani Telegram ichida oching.' });
+  }
+  try {
+    const allowed = await rateLimit(getServiceClient(), `parse:${cleanId(caller.id)}`, 15, 3600);
+    if (!allowed) {
+      return res.status(429).json({ ok: false, error: "Bir soatda juda ko'p fayl yuborildi. Keyinroq urinib ko'ring." });
+    }
+  } catch {
+    /* cheklov ishlamasa ham autentifikatsiya talab qilinadi */
+  }
+  if (typeof req.body?.rawText === 'string' && req.body.rawText.length > 400_000) {
+    return res.status(413).json({ ok: false, error: 'Matn juda katta.' });
   }
 
   try {
@@ -285,10 +295,10 @@ Hech qanday izoh, markdown kodi yoki qo'shimcha matn yozmang. Faqat toza JSON qa
       questions: sanitized,
     });
   } catch (error: any) {
-    console.error('parse-quiz-file handler error:', error);
+    console.error('parse-quiz-file handler error:', error?.message);
     return res.status(500).json({
       ok: false,
-      error: error?.message || 'Kutilmagan server xatoligi yuz berdi.',
+      error: "Faylni tahlil qilib bo'lmadi. Fayl tarkibini tekshirib, qayta urinib ko'ring.",
     });
   }
 }

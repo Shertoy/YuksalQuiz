@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
+import { getTelegramInitData } from '../services/api';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   Bell,
@@ -66,7 +67,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     setIsLoadingHistory(true);
     setChatError(null);
     try {
-      const res = await fetch(`/api/support-chat?userId=${encodeURIComponent(profile.id)}`);
+      const res = await fetch('/api/support-chat', { headers: { 'X-Telegram-Init-Data': getTelegramInitData() } });
       const data = await res.json();
       if (data.ok && Array.isArray(data.messages)) {
         setChatMessages(data.messages);
@@ -125,13 +126,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     try {
       const res = await fetch('/api/support-chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.id,
-          userName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba',
-          userUsername: profile.username || '',
-          message: text,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': getTelegramInitData() },
+        body: JSON.stringify({ message: text }),
       });
 
       const data = await res.json();

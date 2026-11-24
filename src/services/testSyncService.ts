@@ -1089,26 +1089,18 @@ export function setupRealtimeTestSubscription(
  * Checks whether user is blocked or has updated balance in Supabase
  */
 export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocked: boolean; balance?: number; voucherClaimed?: boolean }> {
-  const supabase = getSupabase();
-  if (!supabase || !userId) return { isBlocked: false };
-  const cleanId = String(userId).replace(/^tg_/, '').replace(/^user_/, '').trim();
-  const rawId = String(userId).trim();
-  const tgId = `tg_${cleanId}`;
+  if (!userId) return { isBlocked: false };
+  // Server foydalanuvchini Telegram imzosi bo'yicha aniqlaydi (users jadvalini brauzer o'qimaydi)
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('is_blocked, balance, voucher_claimed')
-      .or(`id.eq.${rawId},id.eq.${cleanId},id.eq.${tgId},telegram_id.eq.${cleanId},telegram_id.eq.${rawId}`)
-      .limit(1)
-      .maybeSingle();
-
-    if (!error && data) {
-      const isBlocked = Boolean(data.is_blocked);
-      const balance = Number(data.balance ?? 0);
-      const voucherClaimed = Boolean(data.voucher_claimed);
-      if (isBlocked) {
-        useQuizStore.getState().setUserBlocked(true);
-      }
+    const r = await apiPost('/api/wallet', { action: 'me' });
+    const d: any = r.data || {};
+    const isBlocked = d.reason === 'blocked' || Boolean(d.isBlocked);
+    if (isBlocked) {
+      useQuizStore.getState().setUserBlocked(true);
+      return { isBlocked: true };
+    }
+    if (r.ok && d.ok) {
+      const voucherClaimed = Boolean(d.voucherClaimed);
       if (voucherClaimed) {
         useQuizStore.setState((s) => ({
           profile: {
@@ -1118,7 +1110,7 @@ export async function checkUserBlockedStatus(userId: string): Promise<{ isBlocke
           },
         }));
       }
-      return { isBlocked, balance, voucherClaimed };
+      return { isBlocked: false, balance: Number(d.balance ?? 0), voucherClaimed };
     }
   } catch (err) {
     console.warn('checkUserBlockedStatus error:', err);
@@ -1262,142 +1254,74 @@ function mapRowToLeaderboardUser(row: any): LeaderboardUser {
 }
 
 /**
- * Pushes real registered user rating progress to Supabase leaderboard.
- * Direct write into public.users, with multi-layer fallback.
+ * Profilni serverga yuboradi (ism, OTM, viloyat, avatar, til).
+ * Reyting ballarini server o'zi hisoblaydi — telefon yuborgan ballarga ishonilmaydi.
+ * Pul va obuna maydonlari bu yerda umuman yuborilmaydi.
  */
+function profilePayload(profile: UserProfile, extra: Record<string, any> = {}) {
+  return {
+    firstName: profile.firstName || '',
+    lastName: profile.lastName || '',
+    gender: profile.gender || 'male',
+    region: profile.region || 'Toshkent shahri',
+    university: (profile.university || '').trim() || 'OTM talabasi emas',
+    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
+    academicYear: profile.academicYear || 1,
+    coins: profile.coins || 0,
+    registeredAt: profile.registeredAt || profile.lastLoginDate || new Date().toISOString(),
+    ...extra,
+  };
+}
+
 export async function syncUserProfileToCloud(
   profile: UserProfile,
-  stats: UserRatingStats
+  _stats?: UserRatingStats,
+  extra: Record<string, any> = {}
 ): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase || !profile || !profile.id) return;
-
-  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Talaba';
-  const university = (profile.university || '').trim() || 'OTM talabasi emas';
-  const region = profile.region || 'Toshkent shahri';
-
-  const userRatingObject = {
-    id: profile.id,
-    name: fullName,
-    gender: profile.gender || 'male',
-    region,
-    university,
-    avatar: getGenderSafeAvatar(profile.avatar, profile.gender),
-    academic_year: profile.academicYear || 1,
-    coins: profile.coins || 0,
-    tests_completed: Math.max(profile.completedTestsCount, stats.uniqueBlocksCount),
-    correct_answers_count: stats.totalCorrectAnswers,
-    score_points: stats.scorePoints,
-    total_questions_attempted: stats.totalQuestionsAttempted,
-    accuracy_percentage: stats.accuracyPercentage,
-    best_time: stats.bestTimeFormatted,
-    best_time_seconds: stats.bestTimeSeconds,
-    total_time_spent_seconds: stats.totalTimeSpentSeconds,
-    total_time_spent_formatted: stats.totalTimeSpentFormatted,
-    registered_at: profile.registeredAt || profile.lastLoginDate || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  // 1. Primary: Direct upsert to public.users table!
-  // Eslatma: has_paid / paid_until / balance faqat ijobiy (faol) bo'lsagina yuboriladi,
-  // aks holda test ishlagandan keyin bazadagi faol obuna null/false bilan ustidan yozilib ketmasin.
-  const subEndVal = profile.paid_until || profile.subscriptionEnd || null;
-  const subEndMs = subEndVal ? new Date(subEndVal).getTime() : 0;
-  const hasActiveSub = !Number.isNaN(subEndMs) && subEndMs > Date.now();
-  const posBalance = Math.max(profile.walletBalance || 0, profile.balance || 0);
-
-  const webAppTgId = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  const candidateTgId = String(
-    webAppTgId ||
-      profile.telegram_id ||
-      profile.telegramId ||
-      String(profile.id).replace(/^tg_/, '').replace(/^user_/, '')
-  ).trim();
-  const validNumericTgId = /^\d+$/.test(candidateTgId) ? candidateTgId : undefined;
-
-  const userRowForUsersTable: Record<string, any> = {
-    id: profile.id,
-    full_name: fullName,
-    avatar_url: getGenderSafeAvatar(profile.avatar, profile.gender),
-    university,
-    region,
-    ...(validNumericTgId ? { telegram_id: validNumericTgId } : {}),
-    ...(posBalance > 0 ? { balance: posBalance } : {}),
-    ...(profile.voucher_claimed || profile.voucherClaimed ? { voucher_claimed: true } : {}),
-    ...(hasActiveSub && subEndVal
-      ? {
-          has_paid: true,
-          is_subscribed: true,
-          paid_until: subEndVal,
-          subscription_end: subEndVal,
-        }
-      : {}),
-    total_tests: Math.max(profile.completedTestsCount || 0, stats.uniqueBlocksCount || 0),
-    correct_answers: stats.totalCorrectAnswers || 0,
-    total_score: stats.scorePoints || 0,
-    total_time: stats.totalTimeSpentSeconds || 0,
-    best_score: stats.scorePoints || 0,
-    updated_at: new Date().toISOString(),
-  };
-
+  if (!profile || !profile.id) return;
   try {
-    // avatar va gender ustunlari ham yoziladi (admin ro'yxati to'g'ri rasm va jinsni ko'rsatishi uchun).
-    // Eski bazada bu ustunlar bo'lmasa, avvalgi ko'rinishda qayta yoziladi.
-    const { error: fullErr } = await supabase.from('users').upsert(
-      { ...userRowForUsersTable, avatar: userRowForUsersTable.avatar_url, gender: profile.gender || 'male' },
-      { onConflict: 'id' }
-    );
-    if (fullErr) {
-      await supabase.from('users').upsert(userRowForUsersTable, { onConflict: 'id' });
-    }
-  } catch (err) {
-    console.warn('users table upsert warning:', err);
-  }
-
-  // 2. Reyting qatorlari (test_packages lead_, leaderboard_users) — server orqali
-  try {
-    await apiPost('/api/content', { action: 'sync_profile', rating: userRatingObject });
+    await apiPost('/api/content', { action: 'sync_profile', profile: profilePayload(profile, extra) });
   } catch (err) {
     console.warn('sync_profile warning:', err);
   }
 }
 
+/** Faqat tilni saqlash (boshqa maydonlarga tegmaydi) */
+export async function syncLanguageToCloud(language: string): Promise<void> {
+  try {
+    await apiPost('/api/content', { action: 'sync_profile', profile: { language } });
+  } catch {}
+}
+
 /**
- * Pushes test completion results directly to Supabase's `users` and `test_results` tables.
+ * Blok natijasini serverga yuboradi. Server javoblarni test_packages dagi to'g'ri javoblar bilan
+ * o'zi tekshiradi va reytingni yangilaydi. Variantlar aralashtirilgani uchun tanlangan variant MATNI yuboriladi.
  */
 export async function syncTestAttemptToCloud(
   profile: UserProfile,
-  stats: UserRatingStats,
+  _stats: UserRatingStats,
   attempt: any
 ): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase || !profile || !profile.id) return;
-
-  // 1. Upsert users rating and progress into `users` table
-  await syncUserProfileToCloud(profile, stats);
-
-  // 2. Direct insert into `test_results` table
+  if (!profile || !profile.id || !attempt?.testPackageId) return;
   try {
-    const testResultRow = {
-      id: attempt.id || `res_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      user_id: profile.id,
-      test_package_id: attempt.testPackageId || '',
-      test_title: attempt.testPackageTitle || '',
-      block_id: attempt.blockId || '',
-      block_title: attempt.blockTitle || '',
-      score: Number(attempt.score) || 0,
-      total_questions: Number(attempt.totalQuestions) || 0,
-      percentage: Number(attempt.percentage) || 0,
-      time_spent_seconds: Number(attempt.timeSpentSeconds) || 0,
-      total_time: Number(attempt.timeSpentSeconds) || 0,
-      is_passed: Boolean(attempt.isPassed),
-      user_answers: attempt.userAnswers || [],
-      created_at: attempt.completedAt || new Date().toISOString(),
-    };
-
-    await supabase.from('test_results').upsert(testResultRow, { onConflict: 'id' });
+    const answers = (Array.isArray(attempt.userAnswers) ? attempt.userAnswers : []).map((a: any) => {
+      const sel = Number(a?.selectedOption);
+      const opts: any[] = Array.isArray(a?.options) ? a.options : [];
+      return {
+        questionId: String(a?.questionId ?? ''),
+        selectedText: sel >= 0 && sel < opts.length ? String(opts[sel]) : '',
+      };
+    });
+    await apiPost('/api/content', {
+      action: 'record_attempt',
+      testPackageId: attempt.testPackageId,
+      blockId: attempt.blockId || '',
+      answers,
+      timeSpentSeconds: Number(attempt.timeSpentSeconds) || 0,
+      profile: profilePayload(profile),
+    });
   } catch (err) {
-    console.warn('test_results table upsert error:', err);
+    console.warn('record_attempt warning:', err);
   }
 }
 
@@ -1416,30 +1340,12 @@ export async function fetchCloudLeaderboard(): Promise<LeaderboardUser[]> {
     let usersData: any[] | null = null;
     let usersErr: any = null;
 
-    // Supabase query: faqat kamida 1 ta test ishlagan (total_tests > 0 yoki correct_answers > 0) talabalar TOP 20
-    const res1 = await supabase
-      .from('users')
-      .select('*')
-      .or('total_tests.gt.0,correct_answers.gt.0,tests_completed.gt.0')
-      .order('total_score', { ascending: false })
-      .order('correct_answers', { ascending: false })
-      .order('total_time', { ascending: true })
-      .limit(20);
-
-    if (!res1.error && res1.data) {
-      usersData = res1.data;
+    // Reyting ro'yxati server orqali (users jadvalida balans va Telegram ID bor, brauzer uni o'qimaydi)
+    const lr = await apiPost('/api/content', { action: 'leaderboard' });
+    if (lr.ok && Array.isArray(lr.data?.users)) {
+      usersData = lr.data.users;
     } else {
-      // Fallback agar 'total_tests' ustuni eski bazalarda hali qo'shilmagan bo'lsa
-      const res2 = await supabase
-        .from('users')
-        .select('*')
-        .or('correct_answers.gt.0,tests_completed.gt.0')
-        .order('total_score', { ascending: false })
-        .order('correct_answers', { ascending: false })
-        .order('total_time', { ascending: true })
-        .limit(20);
-      usersData = res2.data;
-      usersErr = res2.error;
+      usersErr = { message: lr.data?.error || 'leaderboard unavailable' };
     }
 
     if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
@@ -1589,13 +1495,14 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
   const supabase = getSupabase();
   const userMap = new Map<string, LeaderboardUser>();
 
+  // Talabalar ro'yxati va faol obunalar faqat admin API orqali (brauzer users jadvalini o'qiy olmaydi)
+  let adminSubs: any[] = [];
   if (supabase) {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1000);
+      const r = await apiPost('/api/admin', { action: 'list_users' });
+      const data: any[] | null = r.ok && Array.isArray(r.data?.users) ? r.data.users : null;
+      const error: any = r.ok ? null : { message: r.data?.error || `status ${r.status}` };
+      adminSubs = Array.isArray(r.data?.subscriptions) ? r.data.subscriptions : [];
 
       if (!error && data && Array.isArray(data)) {
         for (const row of data) {
@@ -1709,9 +1616,7 @@ export async function fetchAdminUsersList(): Promise<LeaderboardUser[]> {
 
     // 5. subscriptions jadvalidan faol obunalarni sinxronlashtirish
     try {
-      const { data: subs } = await supabase
-        .from('subscriptions')
-        .select('*');
+      const subs = adminSubs;
 
       if (subs && Array.isArray(subs)) {
         const now = new Date();

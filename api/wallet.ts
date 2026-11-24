@@ -39,8 +39,8 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const clientUserId = String(req.body?.clientUserId || '').trim();
-  const userRow = await findUserRow(db, user.id, clientUserId);
+  // Faqat Telegram imzosi bilan tasdiqlangan ID. Brauzer yuborgan boshqa ID lar e'tiborga olinmaydi.
+  const userRow = await findUserRow(db, user.id);
   if (userRow?.is_blocked) {
     return res.status(403).json({ ok: false, reason: 'blocked', error: 'Hisobingiz bloklangan' });
   }
@@ -278,118 +278,26 @@ export default async function handler(req: any, res: any) {
         return res.status(404).json({ ok: false, reason: 'user_not_found', error: "Avval ro'yxatdan o'ting" });
       }
 
-      let data: any = null;
-      const { data: rpcData, error } = await db.rpc('purchase_subscription', {
+      // Pul yechish va obuna yozish bitta atomar baza funksiyasida. Xato bo'lsa hech narsa o'zgarmaydi:
+      // balansni to'g'ridan-to'g'ri yozadigan zaxira yo'l olib tashlandi.
+      const { data, error } = await db.rpc('purchase_subscription', {
         p_user: userRow.id,
         p_plan: plan,
       });
-
-      if (!error && rpcData) {
-        data = rpcData;
-      } else {
-        // Agar bazada purchase_subscription funksiyasi eski subscriptions jadvali ustunlari sababli xato bersa,
-        // service_role orqali xavfsiz bevosita yechib va obunani yoqib beramiz.
-        const priceKey =
-          plan === '3_months' ? 'price_3_months' : plan === '6_months' ? 'price_6_months' : 'price_1_year';
-        const defaultPrice = plan === '3_months' ? 35000 : plan === '6_months' ? 60000 : 100000;
-        const { data: settingRow } = await db
-          .from('app_settings')
-          .select('value')
-          .eq('key', priceKey)
-          .maybeSingle();
-        const price = Number(settingRow?.value) > 0 ? Number(settingRow.value) : defaultPrice;
-        const curBal = Number(userRow.balance ?? userRow.wallet_balance ?? 0);
-
-        if (curBal < price) {
-          return res.status(400).json({
-            ok: false,
-            reason: 'insufficient_funds',
-            balance: curBal,
-            required: price,
-          });
-        }
-
-        const targetRowIds: string[] =
-          Array.isArray(userRow._rowIds) && userRow._rowIds.length > 0 ? userRow._rowIds : [userRow.id];
-        let newBal = curBal - price;
-
-        const { data: chData, error: chErr } = await db.rpc('_wallet_change', {
-          p_user: userRow.id,
-          p_amount: -price,
-          p_type: 'subscription_purchase',
-          p_ref: plan,
-          p_note: `Obuna xaridi: ${plan}`,
+      if (error || !data) {
+        console.error('purchase_subscription error:', error?.message);
+        return res.status(500).json({
+          ok: false,
+          reason: 'purchase_failed',
+          error: "Obunani yoqib bo'lmadi. Hisobingizdan pul yechilmadi. Birozdan so'ng qayta urinib ko'ring.",
         });
-
-        if (!chErr && chData !== null && chData !== undefined) {
-          newBal = Number(chData);
-        } else if (chErr && String(chErr.message || '').includes('INSUFFICIENT_FUNDS')) {
-          return res.status(400).json({
-            ok: false,
-            reason: 'insufficient_funds',
-            balance: curBal,
-            required: price,
-          });
-        }
-
-        const existingEnd = userRow.subscription_end || userRow.paid_until || null;
-        const curMs = existingEnd ? new Date(existingEnd).getTime() : 0;
-        const baseMs = !Number.isNaN(curMs) && curMs > Date.now() ? curMs : Date.now();
-        const dEnd = new Date(baseMs);
-        if (plan === '1_year') dEnd.setFullYear(dEnd.getFullYear() + 1);
-        else if (plan === '6_months') dEnd.setMonth(dEnd.getMonth() + 6);
-        else dEnd.setMonth(dEnd.getMonth() + 3);
-        const newEndIso = dEnd.toISOString();
-
-        const { error: upErr } = await db
-          .from('users')
-          .update({
-            balance: newBal,
-            wallet_balance: newBal,
-            subscription_tier: plan,
-            subscription_end: newEndIso,
-            paid_until: newEndIso,
-            has_paid: true,
-            is_subscribed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .in('id', targetRowIds);
-
-        if (upErr) {
-          console.error('purchase direct fallback error:', upErr);
-          return res.status(500).json({
-            ok: false,
-            reason: 'purchase_failed',
-            error: "Obunani yoqib bo'lmadi. Qayta urinib ko'ring.",
-          });
-        }
-
-        try {
-          await db.from('subscriptions').insert({
-            user_id: userRow.id,
-            plan_name: plan,
-            price,
-            expires_at: newEndIso,
-          });
-        } catch {}
-
-        data = {
-          ok: true,
-          new_balance: newBal,
-          subscription_end: newEndIso,
-          plan,
-          price,
-        };
       }
 
-      // Agar shu foydalanuvchining users jadvalida bir nechta qatori bo'lsa, hammasida obuna muddatini sinxronlaymiz
-      if (data?.ok && data?.subscription_end && Array.isArray(userRow._rowIds) && userRow._rowIds.length > 0) {
+      // Shu foydalanuvchining boshqa qatorlarida ham obuna muddatini tenglashtiramiz (balansga tegilmaydi)
+      if (data?.ok && data?.subscription_end && Array.isArray(userRow._rowIds) && userRow._rowIds.length > 1) {
         await db
           .from('users')
           .update({
-            ...(typeof data.new_balance === 'number'
-              ? { balance: data.new_balance, wallet_balance: data.new_balance }
-              : {}),
             subscription_tier: plan,
             subscription_end: data.subscription_end,
             paid_until: data.subscription_end,

@@ -522,7 +522,12 @@ export default async function handler(req: any, res: any) {
     // Pulga tegadigan admin amallari FAQAT Telegram imzolagan so'rovda bajariladi.
     // Secret o'rnatilmagan bo'lsa admin amallari yopiq (soxta so'rov bilan pul qo'shib bo'lmasin).
     // /start kabi oddiy javoblar secretsiz ham ishlayveradi.
-    const trusted = Boolean(secret) && headerSecret === secret;
+    const trusted =
+      Boolean(secret) &&
+      crypto.timingSafeEqual(
+        crypto.createHash('sha256').update(headerSecret).digest(),
+        crypto.createHash('sha256').update(secret).digest()
+      );
 
     // 1. Admin tugmalari (Callback queries)
     if (update.callback_query) {

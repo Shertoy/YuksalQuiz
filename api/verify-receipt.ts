@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { findUserRow } from './_lib/common.js';
 
 /**
  * Chek (kvitansiya) tekshiruvi API (YuksalQuiz).
@@ -177,18 +178,6 @@ function verifyRequestUser(req: any) {
 
   // Faqat Telegram imzosi bilan tasdiqlangan foydalanuvchi. Body/header dagi userId yoki admin kalitiga ishonilmaydi.
   return null;
-}
-
-async function findUserRow(db: any, anyId: string) {
-  const c = cleanId(anyId);
-  const { data } = await db
-    .from('users')
-    .select('*')
-    .or(`id.eq.${c},id.eq.tg_${c},telegram_id.eq.${c}`)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return data as any;
 }
 
 /**
@@ -502,6 +491,7 @@ export default async function handler(req: any, res: any) {
     );
     // Avval rad etilgan chek qayta yuborilsa (masalan, aniqroq rasm bilan) admin qo'lda ko'radi
     let resubmittedAfterReject = false;
+    let autoLimitHit = false;
 
     const safeName = escapeHtml(fullName);
     const safeUser = escapeHtml(user.username || 'mavjud_emas');
@@ -552,6 +542,30 @@ export default async function handler(req: any, res: any) {
           reason: 'duplicate',
           message: "Bu to'lov cheki allaqachon tizimda ro'yxatdan o'tgan.",
         });
+      }
+    }
+
+    // Avtomatik tasdiqlash chegarasi: sutkada 2 ta chek va jami AUTO_APPROVE_MAX so'mgacha.
+    // Undan ortig'i (soxta chek bilan ketma-ket pul olish urinishi) admin tekshiruviga o'tadi.
+    if (autoOk) {
+      try {
+        const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+        const { data: recentAuto } = await db
+          .from('payments')
+          .select('amount')
+          .in('user_id', [user.id, `tg_${user.id}`, userKey])
+          .eq('status', 'auto_approved')
+          .gte('created_at', dayAgo)
+          .limit(20);
+        const list: any[] = recentAuto || [];
+        const sum = list.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+        if (list.length >= 2 || sum + paid > AUTO_APPROVE_MAX) {
+          autoOk = false;
+          autoLimitHit = true;
+        }
+      } catch {
+        autoOk = false;
+        autoLimitHit = true;
       }
     }
 
@@ -652,6 +666,7 @@ export default async function handler(req: any, res: any) {
       if (!cardOk && !nameOk) reasons.push('Qabul qiluvchi rekvizitga mos emas');
       if (tooOld) reasons.push(`Chek ${MAX_RECEIPT_AGE_HOURS} soatdan eski`);
     }
+    if (autoLimitHit) reasons.push("Sutkalik avtomatik tasdiqlash chegarasi to'ldi (2 ta chek yoki summa chegarasi)");
     const reasonText = reasons.join('. ') || "Qo'lda tekshirish kerak";
 
     if (resubmittedAfterReject) reasons.unshift('Bu tranzaksiya avval rad etilgan edi, talaba qayta yubordi');

@@ -39,6 +39,26 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true, admin: true, id: actor });
     }
 
+    // Admin paneli uchun talabalar ro'yxati (brauzer users jadvalini endi o'zi o'qiy olmaydi)
+    if (action === 'list_users') {
+      const { data: users, error } = await db
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(2000);
+      if (error) throw error;
+      let subscriptions: any[] = [];
+      try {
+        const { data: subs } = await db
+          .from('subscriptions')
+          .select('*')
+          .gt('expires_at', new Date().toISOString())
+          .limit(5000);
+        subscriptions = subs || [];
+      } catch {}
+      return res.status(200).json({ ok: true, users: users || [], subscriptions });
+    }
+
     if (action === 'list_payments') {
       const { data: pays, error } = await db
         .from('payments')
@@ -178,18 +198,50 @@ export default async function handler(req: any, res: any) {
       if (error) throw error;
       if (!data?.ok) return res.status(409).json(data);
 
+      // Tarif bilan tasdiqlash: chek summasi balansga tushadi va o'sha zahoti tarif narxi
+      // balansdan yechiladi (bitta atomar funksiya). Avval obuna bepul yoqilib, pul ham qolardi.
       let subEnd: string | null = null;
-      if (plan) {
-        const uRow = await ensureUserRowExists(String(data.user_id || ''));
+      let planNote = '';
+      let newBalance = Number(data.new_balance ?? 0);
+      if (plan && ['3_months', '6_months', '1_year'].includes(String(plan))) {
+        const uRow = await findUserRow(db, String(data.user_id || ''));
         if (uRow) {
-          subEnd = await applyDirectSubscription(uRow, String(plan), Number(data.amount || 0));
+          const { data: buy, error: buyErr } = await db.rpc('purchase_subscription', {
+            p_user: uRow.id,
+            p_plan: String(plan),
+          });
+          if (!buyErr && buy?.ok) {
+            subEnd = buy.subscription_end || null;
+            newBalance = Number(buy.new_balance ?? newBalance);
+            if (subEnd && Array.isArray(uRow._rowIds) && uRow._rowIds.length > 1) {
+              await db
+                .from('users')
+                .update({
+                  subscription_tier: String(plan),
+                  subscription_end: subEnd,
+                  paid_until: subEnd,
+                  has_paid: true,
+                  is_subscribed: true,
+                  updated_at: new Date().toISOString(),
+                })
+                .in('id', uRow._rowIds);
+            }
+          } else if (buy?.reason === 'insufficient_balance') {
+            planNote = `Obuna yoqilmadi: balans yetmaydi (yana ${Number(buy.missing || 0).toLocaleString('uz-UZ')} so'm kerak). Pul hisobda qoldi.`;
+          } else {
+            planNote = "Obuna yoqilmadi (server xatosi). Pul hisobda qoldi, talaba o'zi sotib olishi mumkin.";
+            console.error('approve+plan purchase error:', buyErr?.message || buy?.reason);
+          }
+        } else {
+          planNote = 'Obuna yoqilmadi: talaba qatori topilmadi. Pul hisobda qoldi.';
         }
       }
 
-      const msgParts = [`Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm qo'shildi`];
-      if (plan && subEnd) msgParts.push('obunangiz faollashtirildi');
-      await tgSend(data.user_id, `To'lovingiz tasdiqlandi. ${msgParts.join(' va ')}.`);
-      return res.status(200).json({ ...data, subscription_end: subEnd });
+      const msg = subEnd
+        ? `To'lovingiz tasdiqlandi. Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm tushdi va obunangiz faollashtirildi.`
+        : `To'lovingiz tasdiqlandi. Hisobingizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm qo'shildi.`;
+      await tgSend(data.user_id, msg);
+      return res.status(200).json({ ...data, new_balance: newBalance, subscription_end: subEnd, plan_note: planNote || null });
     }
 
     if (action === 'reject') {
@@ -234,8 +286,6 @@ export default async function handler(req: any, res: any) {
         return res.status(404).json({ ok: false, error: 'Talaba bazadan topilmadi' });
       }
 
-      const targetRowIds: string[] =
-        Array.isArray(uRow._rowIds) && uRow._rowIds.length > 0 ? uRow._rowIds : [uRow.id];
       let newBalance = Number(uRow.balance ?? uRow.wallet_balance ?? 0);
 
       // "Balansni belgilash": joriy balans bilan farq hisoblanadi va shu farq yoziladi
@@ -252,21 +302,12 @@ export default async function handler(req: any, res: any) {
             p_note: `Admin balansni ${amount} qilib belgiladi`,
           });
           if (chErr) {
-            const { error: dirErr } = await db
-              .from('users')
-              .update({ balance: amount, wallet_balance: amount, updated_at: new Date().toISOString() })
-              .in('id', targetRowIds);
-            if (dirErr) throw dirErr;
-          } else if (chData !== null && chData !== undefined) {
-            newBalance = Number(chData);
+            console.error('admin set_balance error:', chErr.message);
+            return res.status(500).json({ ok: false, error: "Balansni o'zgartirib bo'lmadi. Hech narsa o'zgarmadi." });
           }
-        }
-        newBalance = amount;
-        if (targetRowIds.length > 1) {
-          await db
-            .from('users')
-            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
-            .in('id', targetRowIds);
+          newBalance = Number(chData ?? amount);
+        } else {
+          newBalance = amount;
         }
         amount = 0;
         if (!plan) {
@@ -289,25 +330,17 @@ export default async function handler(req: any, res: any) {
           p_ref: actor,
           p_note: 'Admin tomonidan',
         });
-        if (!chErr && chData !== null && chData !== undefined) {
-          newBalance = Number(chData);
-        } else {
-          newBalance = Math.max(0, Number(uRow.balance ?? uRow.wallet_balance ?? 0) + amount);
-          const { error: dirErr } = await db
-            .from('users')
-            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
-            .in('id', targetRowIds);
-          if (dirErr) {
-            console.error('admin credit direct balance update error:', dirErr);
-            return res.status(500).json({ ok: false, error: "Balansni yangilab bo'lmadi." });
-          }
+        if (chErr || chData === null || chData === undefined) {
+          console.error('admin credit error:', chErr?.message);
+          const insufficient = /insufficient_balance/i.test(String(chErr?.message || ''));
+          return res.status(insufficient ? 400 : 500).json({
+            ok: false,
+            error: insufficient
+              ? "Balansda buncha mablag' yo'q, ayirib bo'lmadi."
+              : "Balansni yangilab bo'lmadi. Hech narsa o'zgarmadi.",
+          });
         }
-        if (targetRowIds.length > 1) {
-          await db
-            .from('users')
-            .update({ balance: newBalance, wallet_balance: newBalance, updated_at: new Date().toISOString() })
-            .in('id', targetRowIds);
-        }
+        newBalance = Number(chData);
       }
 
       let subEnd: string | null = uRow.subscription_end || uRow.paid_until || null;
@@ -396,6 +429,9 @@ export default async function handler(req: any, res: any) {
     if (action === 'set_blocked') {
       const userId = cleanId(req.body?.userId);
       const blocked = Boolean(req.body?.blocked);
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(userId)) {
+        return res.status(400).json({ ok: false, error: "Talaba ID noto'g'ri" });
+      }
       const { error } = await db
         .from('users')
         .update({ is_blocked: blocked, updated_at: new Date().toISOString() })

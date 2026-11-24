@@ -390,6 +390,19 @@ export const App: React.FC = () => {
       return;
     }
 
+    // Server ham kunlik chegarani tekshiradi (telefon xotirasi tozalangan bo'lsa ham).
+    // Server javob bermasa (internet yo'q) — telefondagi tekshiruv bilan davom etiladi.
+    try {
+      const srv = await apiPost('/api/content', { action: 'start_block', testPackageId: pkg.id, blockId });
+      if (srv.ok && srv.data?.allowed === false) {
+        triggerHaptic('warning');
+        const block = pkg.blocks.find((b) => b.id === blockId) || pkg.blocks[0];
+        setPaywallTargetTest({ pkg, blockId, title: pkg.title, blockTitle: block?.title });
+        setIsPaywallModalOpen(true);
+        return;
+      }
+    } catch {}
+
     // Agar ushbu test bugun 2 martadan kam ishlangan bo'lsa -> testga ruxsat berilsin va urinish soni oshirilsin
     triggerHaptic('light');
     recordTestStartAttempt(pkg.id, blockId, testAttempts);

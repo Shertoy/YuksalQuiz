@@ -1,8 +1,18 @@
-import { BOT_TOKEN, getServiceClient, getPrimaryAdminId, GEMINI_MODELS } from './_lib/common.js';
+import {
+  BOT_TOKEN,
+  getServiceClient,
+  getAdminIds,
+  GEMINI_MODELS,
+  verifyRequestUser,
+  isAdminId,
+  cleanId,
+  rateLimit,
+  setCors,
+  findUserRow,
+} from './_lib/common.js';
 
-const ADMIN_TELEGRAM_ID = getPrimaryAdminId();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const supabase = getServiceClient();
+const MAX_MESSAGE_LENGTH = 2000;
 
 function escapeHtml(text: string): string {
   if (!text) return '';
@@ -37,43 +47,40 @@ async function sendTelegramMessage(chatId: string | number, text: string, replyM
 }
 
 export default async function handler(req: any, res: any) {
-  // CORS configuration
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
+  setCors(res);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // 1. GET: Fetch chat history for a specific user
+  // Faqat Telegram imzosi tasdiqlangan foydalanuvchi: boshqa odam nomidan yozib/o'qib bo'lmaydi
+  const caller = verifyRequestUser(req);
+  if (!caller) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized', error: 'Ilovani Telegram ichida oching.' });
+  }
+  const supabase = getServiceClient();
+  const callerClean = cleanId(caller.id);
+
+  // 1. GET: faqat o'z yozishmalari (admin ?userId= bilan istalgan talabanikini ko'ra oladi)
   if (req.method === 'GET') {
     try {
-      const userId = req.query.user_id || req.query.userId;
-      if (!userId) {
-        return res.status(400).json({ ok: false, error: 'user_id talab qilinadi' });
-      }
-
+      const asked = cleanId(String(req.query?.user_id || req.query?.userId || ''));
+      const target = isAdminId(caller.id) && /^[A-Za-z0-9_-]{1,80}$/.test(asked) ? asked : callerClean;
       const { data, error } = await supabase
         .from('support_messages')
         .select('*')
-        .eq('user_id', String(userId))
+        .in('user_id', [target, `tg_${target}`])
         .order('created_at', { ascending: true })
         .limit(100);
 
       if (error) {
-        // Table may not have been created yet or RLS error
-        return res.status(200).json({ ok: true, messages: [] });
+        console.error('support-chat GET error:', error.message);
+        return res.status(500).json({ ok: false, error: "Yozishmalarni yuklab bo'lmadi." });
       }
-
       return res.status(200).json({ ok: true, messages: data || [] });
     } catch (err: any) {
-      console.error('support-chat GET error:', err);
-      return res.status(200).json({ ok: true, messages: [] });
+      console.error('support-chat GET error:', err?.message);
+      return res.status(500).json({ ok: false, error: "Yozishmalarni yuklab bo'lmadi." });
     }
   }
 
@@ -82,15 +89,31 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { userId, userName, userUsername, message } = req.body || {};
+    const { message } = req.body || {};
 
-    if (!message || !message.trim()) {
+    if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ ok: false, error: 'Savol matni kiritilmagan.' });
     }
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return res.status(400).json({ ok: false, error: `Xabar ${MAX_MESSAGE_LENGTH} belgidan oshmasin.` });
+    }
 
-    const cleanUserId = String(userId || 'guest').trim();
-    const cleanUserName = String(userName || 'Talaba').trim();
-    const cleanUsername = String(userUsername || '').replace(/^@/, '').trim();
+    const userRow = await findUserRow(supabase, caller.id);
+    if (userRow?.is_blocked) {
+      return res.status(403).json({ ok: false, reason: 'blocked', error: 'Hisobingiz bloklangan' });
+    }
+
+    // Spamdan himoya: 10 daqiqada 8 ta, sutkada 40 ta xabar
+    const okShort = await rateLimit(supabase, `support:${callerClean}:10m`, 8, 600);
+    const okDay = okShort && (await rateLimit(supabase, `support:${callerClean}:1d`, 40, 86400));
+    if (!okShort || !okDay) {
+      return res.status(429).json({ ok: false, error: "Juda ko'p xabar yuborildi. Birozdan so'ng qayta yozing." });
+    }
+
+    // Kim yozayotgani faqat tasdiqlangan Telegram ma'lumotidan olinadi
+    const cleanUserId = callerClean;
+    const cleanUserName = `${caller.firstName} ${caller.lastName}`.trim() || 'Talaba';
+    const cleanUsername = String(caller.username || '').replace(/^@/, '').trim();
     const cleanMessage = String(message).trim();
 
     // 2. Prepare Gemini System Prompt
@@ -237,7 +260,7 @@ MUHIM: Javobing FAQAT va FAQAT yuqoridagi toza JSON formatida bo'lsin. Hech qand
       const adminCaption =
         "📩 <b>Yangi murojaat (Adminga yo'naltirildi)</b>\n\n" +
         `👤 Talaba: ${escapeHtml(cleanUserName)} (@${escapeHtml(cleanUsername) || 'mavjud_emas'})\n` +
-        `🆔 Telegram ID: <code>${cleanUserId}</code>\n` +
+        `🆔 Telegram ID: <code>${escapeHtml(cleanUserId)}</code>\n` +
         `❓ Savol matni: ${escapeHtml(cleanMessage)}\n` +
         `⏰ Vaqt: ${tashkentTime}`;
 
@@ -250,8 +273,10 @@ MUHIM: Javobing FAQAT va FAQAT yuqoridagi toza JSON formatida bo'lsin. Hech qand
         ],
       };
 
-      // Send to Admin
-      await sendTelegramMessage(ADMIN_TELEGRAM_ID, adminCaption, replyMarkup);
+      // Barcha adminlarga
+      for (const adminId of Array.from(new Set(getAdminIds()))) {
+        await sendTelegramMessage(adminId, adminCaption, replyMarkup);
+      }
     }
 
     return res.status(200).json({
@@ -263,10 +288,10 @@ MUHIM: Javobing FAQAT va FAQAT yuqoridagi toza JSON formatida bo'lsin. Hech qand
       created_at: savedRow?.created_at || new Date().toISOString(),
     });
   } catch (err: any) {
-    console.error('Unhandled support-chat error:', err);
+    console.error('Unhandled support-chat error:', err?.message);
     return res.status(500).json({
       ok: false,
-      error: err?.message || 'Server xatosi',
+      error: 'Server xatosi',
       reply: "Hurmatli foydalanuvchi, xatolik yuz berdi. Tez orada administrator siz bilan bog'lanadi.",
     });
   }

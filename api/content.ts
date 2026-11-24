@@ -5,7 +5,32 @@ import {
   isAdminId,
   cleanId,
   findUserRow,
+  rateLimit,
 } from './_lib/common.js';
+import {
+  cleanProfileInput,
+  computeAggregate,
+  gradeAndRecordAttempt,
+  writeRating,
+  writeUserProfile,
+} from './_lib/rating.js';
+
+/** Eski ilova versiyasi yuborgan "rating" obyektidan faqat profil maydonlarini olamiz (ballar emas) */
+function legacyRatingToProfile(r: any) {
+  if (!r || typeof r !== 'object') return {};
+  const parts = String(r.name || '').trim().split(/\s+/);
+  return {
+    firstName: parts[0] || undefined,
+    lastName: parts.slice(1).join(' ') || undefined,
+    gender: r.gender,
+    region: r.region,
+    university: r.university,
+    avatar: r.avatar,
+    academicYear: r.academic_year,
+    coins: r.coins,
+    registeredAt: r.registered_at,
+  };
+}
 
 /**
  * Testlar, OTMlar, e'lonlar va reyting qatorlarini saqlash uchun xavfsiz API.
@@ -86,6 +111,52 @@ export default async function handler(req: any, res: any) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST kerak' });
+
+  // Reyting ro'yxati ommaviy: faqat ochiq maydonlar qaytariladi (balans, obuna, Telegram ID yo'q)
+  if (String(req.body?.action || '') === 'leaderboard') {
+    try {
+      const db = getServiceClient();
+      const { data, error } = await db
+        .from('users')
+        .select('*')
+        .or('total_tests.gt.0,correct_answers.gt.0,tests_completed.gt.0')
+        .order('total_score', { ascending: false })
+        .order('correct_answers', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const rows = (data || [])
+        .filter((u: any) => !u.is_blocked)
+        .map((u: any) => ({
+          id: /^\d+$/.test(cleanId(u.id)) ? `tg_${cleanId(u.id)}` : String(u.id),
+          full_name: u.full_name || u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || null,
+          name: u.name || null,
+          first_name: u.first_name || null,
+          last_name: u.last_name || null,
+          avatar: u.avatar || null,
+          avatar_url: u.avatar_url || null,
+          gender: u.gender || null,
+          university: u.university || null,
+          region: u.region || null,
+          academic_year: u.academic_year || null,
+          total_tests: u.total_tests ?? null,
+          tests_completed: u.tests_completed ?? null,
+          correct_answers: u.correct_answers ?? null,
+          correct_answers_count: u.correct_answers_count ?? null,
+          total_score: u.total_score ?? null,
+          score_points: u.score_points ?? null,
+          total_time: u.total_time ?? null,
+          total_time_spent_seconds: u.total_time_spent_seconds ?? null,
+          accuracy_percentage: u.accuracy_percentage ?? null,
+          coins: u.coins ?? null,
+          created_at: u.created_at || null,
+          updated_at: u.updated_at || null,
+        }));
+      return res.status(200).json({ ok: true, users: rows });
+    } catch (e: any) {
+      console.warn('leaderboard read:', e?.message);
+      return res.status(200).json({ ok: true, users: [] });
+    }
+  }
 
   const caller = verifyRequestUser(req);
   if (!caller) {
@@ -399,98 +470,67 @@ export default async function handler(req: any, res: any) {
     }
 
     // ------------------------------------------------------------
-    // sync_profile — reyting qatori (faqat o'zi uchun)
+    // sync_profile — profil (ism, OTM, avatar, til) va reyting.
+    // Reyting ballari telefondan QABUL QILINMAYDI: server o'zi saqlagan natijalardan hisoblaydi.
     // ------------------------------------------------------------
     if (action === 'sync_profile') {
-      const r = req.body?.rating || {};
-      const profileId = str(r.id, 80);
-      // Brauzerdagi admin kaliti bilan kirgan admin boshqa qurilmadagi profilni yozmasin
-      if (!sameUser(profileId, caller.id)) {
-        return res.status(403).json({ ok: false, reason: 'forbidden', error: "Faqat o'z profilingizni yangilay olasiz." });
+      // Brauzerdagi admin kaliti bilan kirilganda boshqa qurilmadagi profil admin qatoriga yozilmasin
+      if (caller.viaKey) return res.status(200).json({ ok: true, skipped: true });
+      const p = cleanProfileInput(req.body?.profile || legacyRatingToProfile(req.body?.rating));
+      const agg = await computeAggregate(db, caller.id);
+      const rating = await writeRating(db, caller, p, agg);
+      await writeUserProfile(db, caller, p, {
+        tests: rating.tests_completed,
+        correct: rating.correct_answers_count,
+        score: rating.score_points,
+        time: rating.total_time_spent_seconds,
+      });
+      return res.status(200).json({ ok: true, rating });
+    }
+
+    // ------------------------------------------------------------
+    // start_block — bepul foydalanuvchining kunlik chegarasi serverda ham hisoblanadi
+    // (telefon xotirasini tozalab cheklovni chetlab o'tib bo'lmasin)
+    // ------------------------------------------------------------
+    if (action === 'start_block') {
+      if (caller.viaKey || admin) return res.status(200).json({ ok: true, allowed: true, paid: true });
+      const pkgId = str(req.body?.testPackageId, 160);
+      const blockId = str(req.body?.blockId, 160) || 'all';
+      if (!pkgId) return res.status(400).json({ ok: false, error: 'testPackageId kerak' });
+      const userRow = await findUserRow(db, caller.id);
+      const end = userRow?.subscription_end || userRow?.paid_until || null;
+      if (end && new Date(end).getTime() > Date.now()) {
+        return res.status(200).json({ ok: true, allowed: true, paid: true });
       }
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' });
+      const key = `block:${cleanId(caller.id)}:${pkgId}:${blockId}:${today}`.slice(0, 400);
+      const allowed = await rateLimit(db, key, 1, 2 * 86400);
+      return res.status(200).json({ ok: true, allowed, paid: false, reason: allowed ? null : 'daily_limit' });
+    }
 
-      // Faqat reyting maydonlari: balans va obuna bu yerda yozilmaydi
-      const rating = {
-        id: profileId,
-        name: str(r.name, 120) || 'Talaba',
-        gender: r.gender === 'female' ? 'female' : 'male',
-        region: str(r.region, 120),
-        university: str(r.university, 300),
-        avatar: str(r.avatar, 300),
-        academic_year: num(r.academic_year, 1),
-        coins: Math.max(0, num(r.coins)),
-        tests_completed: Math.max(0, num(r.tests_completed)),
-        correct_answers_count: Math.max(0, num(r.correct_answers_count)),
-        score_points: Math.max(0, num(r.score_points)),
-        total_questions_attempted: Math.max(0, num(r.total_questions_attempted)),
-        accuracy_percentage: Math.min(100, Math.max(0, num(r.accuracy_percentage))),
-        best_time: str(r.best_time, 20),
-        best_time_seconds: Math.max(0, num(r.best_time_seconds)),
-        total_time_spent_seconds: Math.max(0, num(r.total_time_spent_seconds)),
-        total_time_spent_formatted: str(r.total_time_spent_formatted, 30),
-        registered_at: str(r.registered_at, 40),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await db.from('test_packages').upsert(
-        {
-          id: `lead_${profileId}`,
-          title: rating.name,
-          category: 'LeaderboardUser',
-          university: rating.university,
-          department: rating.region,
-          author_id: profileId,
-          author_name: rating.name,
-          total_questions: rating.score_points,
-          blocks: [rating],
-          is_public: false,
-          is_community_created: false,
-        },
-        { onConflict: 'id' }
-      );
-      if (error) console.warn('lead row upsert:', error.message);
-
-      try {
-        await db.from('leaderboard_users').upsert(rating, { onConflict: 'id' });
-      } catch {
-        /* jadval bo'lmasligi mumkin */
-      }
-
-      // Eski umumiy ro'yxat (zaxira manba)
-      try {
-        const { data: cur } = await db
-          .from('test_packages')
-          .select('blocks')
-          .eq('id', '__system_leaderboard_sync__')
-          .maybeSingle();
-        let list: any[] = Array.isArray(cur?.blocks) ? [...cur.blocks] : [];
-        const idx = list.findIndex((u: any) => sameUser(u?.id, profileId));
-        if (idx >= 0) list[idx] = rating;
-        else list.push(rating);
-        list.sort((a: any, b: any) => {
-          const d = (b.score_points || 0) - (a.score_points || 0);
-          if (d !== 0) return d;
-          return (a.total_time_spent_seconds || 180) - (b.total_time_spent_seconds || 180);
-        });
-        list = list.slice(0, 100);
-        await db.from('test_packages').upsert(
-          {
-            id: '__system_leaderboard_sync__',
-            title: 'Leaderboard Sync Store',
-            category: 'System',
-            university: 'YuksalQuiz System',
-            department: 'Leaderboard',
-            is_public: false,
-            blocks: list,
-            author_id: 'system',
-          },
-          { onConflict: 'id' }
-        );
-      } catch {
-        /* zaxira — muhim emas */
-      }
-
-      return res.status(200).json({ ok: true });
+    // ------------------------------------------------------------
+    // record_attempt — blok natijasini serverda tekshirib saqlash va reytingni yangilash
+    // ------------------------------------------------------------
+    if (action === 'record_attempt') {
+      if (caller.viaKey) return res.status(200).json({ ok: true, skipped: true });
+      const r = await gradeAndRecordAttempt(db, caller.id, {
+        testPackageId: req.body?.testPackageId,
+        blockId: req.body?.blockId,
+        blockIndex: req.body?.blockIndex,
+        answers: req.body?.answers,
+        timeSpentSeconds: req.body?.timeSpentSeconds,
+      });
+      if (!r.ok) return res.status(r.reason === 'bad_input' ? 400 : 404).json({ ok: false, reason: r.reason });
+      const p = cleanProfileInput(req.body?.profile);
+      const agg = await computeAggregate(db, caller.id);
+      const rating = await writeRating(db, caller, p, agg);
+      await writeUserProfile(db, caller, p, {
+        tests: rating.tests_completed,
+        correct: rating.correct_answers_count,
+        score: rating.score_points,
+        time: rating.total_time_spent_seconds,
+      });
+      return res.status(200).json({ ok: true, score: r.score, total: r.total, rating });
     }
 
     return res.status(400).json({ ok: false, error: "Noma'lum action" });

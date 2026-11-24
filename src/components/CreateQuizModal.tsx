@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useQuizStore } from '../store/useQuizStore';
 import { FacultyPicker } from './FacultyPicker';
 import { requestFaculty } from '../services/facultyService';
+import { getTelegramInitData } from '../services/api';
 import { useTranslation } from '../i18n/useTranslation';
 import {
   TOP_UNIVERSITIES,
@@ -305,7 +306,7 @@ export const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ onClose, editP
     try {
       const response = await fetch('/api/parse-quiz-file', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': getTelegramInitData() },
         body: JSON.stringify({
           fileBase64,
           fileName: file?.name || '',

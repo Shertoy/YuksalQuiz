@@ -1,4 +1,7 @@
-import { BOT_TOKEN, WEBAPP_URL, verifyRequestUser, isAdminId } from './_lib/common.js';
+import { BOT_TOKEN, WEBAPP_URL, verifyRequestUser, isAdminId, setCors } from './_lib/common.js';
+
+const MAX_IDS_PER_REQUEST = 150;
+const CONCURRENCY = 20;
 
 function escapeHtml(text: string): string {
   if (!text) return '';
@@ -11,14 +14,7 @@ function escapeHtml(text: string): string {
 }
 
 export default async function handler(req: any, res: any) {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, X-Telegram-Init-Data'
-  );
+  setCors(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -44,6 +40,9 @@ export default async function handler(req: any, res: any) {
     });
   }
 
+  if (Array.isArray(chatIds) && chatIds.length > MAX_IDS_PER_REQUEST) {
+    return res.status(400).json({ ok: false, error: `Bir so'rovda ${MAX_IDS_PER_REQUEST} tadan ko'p ID yubormang` });
+  }
   if (!Array.isArray(chatIds) || chatIds.length === 0) {
     return res.status(400).json({
       ok: false,
@@ -63,7 +62,7 @@ export default async function handler(req: any, res: any) {
   const textContent = `${headerTitle}${bodyText}`;
 
   const inlineKeyboard: any[] = [];
-  if (link && link.trim()) {
+  if (typeof link === 'string' && /^https?:\/\/\S+$/i.test(link.trim())) {
     inlineKeyboard.push([
       {
         text: '🔗 Havolani ochish',
@@ -78,14 +77,13 @@ export default async function handler(req: any, res: any) {
     },
   ]);
 
-  for (const rawId of chatIds) {
+  const sendOne = async (rawId: any) => {
     const cleanId = String(rawId).replace(/^tg_/, '').replace(/^user_/, '').trim();
     if (!/^\d+$/.test(cleanId)) {
       results.failed++;
-      results.errors.push(`Chat ${rawId}: Raqamli Telegram ID emas`);
-      continue;
+      results.errors.push(`Chat ${String(rawId).slice(0, 40)}: Raqamli Telegram ID emas`);
+      return;
     }
-
     try {
       const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
@@ -94,24 +92,30 @@ export default async function handler(req: any, res: any) {
           chat_id: cleanId,
           text: textContent,
           parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: inlineKeyboard,
-          },
+          reply_markup: { inline_keyboard: inlineKeyboard },
         }),
       });
-
-      const data = await resp.json();
+      const data: any = await resp.json();
       if (data.ok) {
         results.sent++;
       } else {
         results.failed++;
         results.errors.push(`Chat ${cleanId}: ${data.description || 'Xatolik'}`);
       }
-    } catch (err: any) {
+    } catch {
       results.failed++;
-      results.errors.push(`Chat ${cleanId}: ${err?.message || 'Tarmoq xatosi'}`);
+      results.errors.push(`Chat ${cleanId}: Tarmoq xatosi`);
     }
+  };
+
+  // Telegram cheklovi ~30 xabar/soniya: 20 tadan parallel guruhlab, guruhlar orasida 1 soniya
+  const unique = Array.from(new Set(chatIds.map((x: any) => String(x))));
+  for (let i = 0; i < unique.length; i += CONCURRENCY) {
+    await Promise.all(unique.slice(i, i + CONCURRENCY).map(sendOne));
+    if (i + CONCURRENCY < unique.length) await new Promise((r) => setTimeout(r, 1000));
   }
+  results.total = unique.length;
+  results.errors = results.errors.slice(0, 50);
 
   return res.status(200).json({
     ok: true,

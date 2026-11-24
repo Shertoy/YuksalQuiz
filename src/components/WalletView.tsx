@@ -30,7 +30,6 @@ import { isPaidUser, getSubscriptionRemainingDays } from '../services/paywallSer
 import { SubscriptionPlanType, TransactionType } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
 import {
-  uploadReceiptToStorage,
   recordReceiptPayment,
   fetchUserLatestPendingPayment,
   checkPaymentStatus,

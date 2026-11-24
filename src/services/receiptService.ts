@@ -36,84 +36,6 @@ export interface PaymentRecord {
 }
 
 /**
- * Upload compressed receipt image to Supabase Storage "receipts" bucket.
- */
-export async function uploadReceiptToStorage(
-  userId: string,
-  blobOrFile: Blob | File
-): Promise<ReceiptUploadResult | null> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return null;
-  }
-
-  try {
-    const timestamp = Date.now();
-    const randomHex = Math.random().toString(36).substring(2, 8);
-    const cleanUserId = (userId || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filePath = `${cleanUserId}/${timestamp}_${randomHex}.jpg`;
-
-    const { error } = await supabase.storage
-      .from('receipts')
-      .upload(filePath, blobOrFile, {
-        contentType: 'image/jpeg',
-        upsert: false,
-      });
-
-    if (error) {
-      console.warn('Supabase Storage upload warning:', error.message);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('receipts')
-      .getPublicUrl(filePath);
-
-    return {
-      path: filePath,
-      publicUrl: urlData?.publicUrl || filePath,
-    };
-  } catch (err: any) {
-    console.warn('Failed to upload receipt image to Supabase Storage:', err);
-    return null;
-  }
-}
-
-/**
- * Ensure user exists in 'users' table so foreign keys in payments table never fail.
- */
-export async function ensureUserInSupabase(user: {
-  id: string;
-  fullName: string;
-  username?: string;
-  university?: string;
-}): Promise<boolean> {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-
-  try {
-    const { error } = await supabase.from('users').upsert(
-      {
-        id: user.id,
-        full_name: (user.fullName || 'Talaba').trim(),
-        username: user.username || null,
-        university: user.university || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
-    if (error) {
-      console.warn('ensureUserInSupabase error:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('ensureUserInSupabase exception:', err);
-    return false;
-  }
-}
-
-/**
  * Eski funksiya. To'lov yozuvini endi faqat server (/api/verify-receipt) yaratadi,
  * chunki brauzerdan 'payments' jadvaliga yozish xavfsizlik uchun yopilgan.
  * Chaqiruvlar buzilmasligi uchun saqlab qo'yilgan.
@@ -259,7 +181,9 @@ export async function approveReceiptPayment(
     return {
       success: true,
       newBalance: Number(d.new_balance || 0),
-      message: `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.`,
+      message: d.subscription_end
+        ? `To'lov tasdiqlandi: +${Number(d.amount).toLocaleString('uz-UZ')} so'm tushdi va tarif narxi yechilib, obuna yoqildi.`
+        : `To'lov tasdiqlandi! +${Number(d.amount).toLocaleString('uz-UZ')} so'm hisobga qo'shildi.${d.plan_note ? ' ' + d.plan_note : ''}`,
     };
   }
   return { success: false, newBalance: 0, message: adminReasonText(d) || apiErrorText(r, 'Tasdiqlab bo\'lmadi') };
@@ -342,12 +266,12 @@ export async function triggerReceiptsCleanup(): Promise<any> {
 let walletMeInflight: Promise<any | null> | null = null;
 let walletMeCache: { at: number; data: any } | null = null;
 
-async function fetchWalletMe(clientUserId?: string): Promise<any | null> {
+async function fetchWalletMe(_clientUserId?: string): Promise<any | null> {
   if (walletMeCache && Date.now() - walletMeCache.at < 1500) return walletMeCache.data;
   if (walletMeInflight) return walletMeInflight;
   walletMeInflight = (async () => {
     try {
-      const r = await apiPost('/api/wallet', { action: 'me', ...(clientUserId ? { clientUserId } : {}) });
+      const r = await apiPost('/api/wallet', { action: 'me' });
       if (r.ok && r.data?.ok) {
         walletMeCache = { at: Date.now(), data: r.data };
         return r.data;

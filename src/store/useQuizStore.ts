@@ -616,7 +616,7 @@ export const useQuizStore = create<QuizState>()(
           let gotData = false;
           let serverConfirmedUser = false;
 
-          const r = await apiPost('/api/wallet', { action: 'me', clientUserId: rawId });
+          const r = await apiPost('/api/wallet', { action: 'me' });
           if (r.ok && r.data?.ok) {
             const d: any = r.data;
             gotData = true;
@@ -644,117 +644,8 @@ export const useQuizStore = create<QuizState>()(
             srvBalance = Number(currentProfile.walletBalance || 0);
           }
 
-          // Agar /api/wallet javob bermagan bo'lsa (brauzer yoki muddati o'tgan initData)
-          // YOKI serverda foydalanuvchi qatori hali topilmagan bo'lsa — Supabase dan barcha mos qatorlarni tekshiramiz
-          if (supabase && (!gotData || (!serverConfirmedUser && !subEnd))) {
-            const orParts = new Set<string>([
-              `telegram_id.eq.${resolvedId}`,
-              `id.eq.${resolvedId}`,
-              `id.eq.${tgPrefixed}`,
-            ]);
-            if (rawId && rawId !== resolvedId) {
-              orParts.add(`id.eq.${rawId}`);
-              orParts.add(`telegram_id.eq.${rawId}`);
-            }
-            if (cleanId && cleanId !== resolvedId) {
-              orParts.add(`id.eq.${cleanId}`);
-              orParts.add(`id.eq.tg_${cleanId}`);
-              orParts.add(`telegram_id.eq.${cleanId}`);
-            }
-
-            const { data: dbUsers } = await supabase
-              .from('users')
-              .select('id, balance, wallet_balance, is_blocked, voucher_claimed, referral_count, telegram_id, subscription_end, paid_until, subscription_tier')
-              .or(Array.from(orParts).join(','))
-              .order('created_at', { ascending: true });
-
-            const rows: any[] = Array.isArray(dbUsers) ? dbUsers : dbUsers ? [dbUsers] : [];
-            if (rows.length > 0) {
-              gotData = true;
-              const primaryRow = rows.find((u) => u.id === rawId) || rows[0];
-              const maxBal = rows.reduce((acc, u) => Math.max(acc, Number(u.balance ?? u.wallet_balance ?? 0)), 0);
-              const primaryBal = Number(primaryRow.balance ?? primaryRow.wallet_balance ?? 0);
-              srvBalance = Math.max(srvBalance, primaryBal > 0 ? primaryBal : maxBal);
-              isBlocked = isBlocked || rows.some((u) => Boolean(u.is_blocked));
-              voucherClaimed = voucherClaimed || rows.some((u) => Boolean(u.voucher_claimed));
-              referralCount = Math.max(referralCount, ...rows.map((u) => Number(u.referral_count || 0)), 0);
-              srvTgId =
-                rows.map((u) => u.telegram_id).find((t) => t && /^\d+$/.test(String(t))) ||
-                srvTgId;
-
-              let bestEndMs = subEnd ? new Date(subEnd).getTime() : 0;
-              for (const u of rows) {
-                const end = u.subscription_end || u.paid_until || null;
-                if (end) {
-                  const t = new Date(end).getTime();
-                  if (!Number.isNaN(t) && t > bestEndMs) {
-                    bestEndMs = t;
-                    subEnd = new Date(t).toISOString();
-                    subPlan = normPlanName(u.subscription_tier);
-                  }
-                }
-              }
-
-              // Agar users qatorlarida faol obuna chiqmasa, subscriptions va AdminCredit ni ham tekshiramiz
-              const nowMs = Date.now();
-              if (bestEndMs <= nowMs) {
-                const candidateIds = Array.from(
-                  new Set(
-                    rows
-                      .flatMap((u) => [u.id, u.telegram_id])
-                      .concat([rawId, cleanId, resolvedId, tgPrefixed])
-                      .filter(Boolean)
-                      .map((x) => String(x))
-                  )
-                );
-                try {
-                  const { data: subRows } = await supabase
-                    .from('subscriptions')
-                    .select('plan, plan_name, expires_at, status')
-                    .in('user_id', candidateIds)
-                    .order('expires_at', { ascending: false })
-                    .limit(5);
-                  if (Array.isArray(subRows)) {
-                    for (const s of subRows) {
-                      const t = s?.expires_at ? new Date(s.expires_at).getTime() : 0;
-                      if (!Number.isNaN(t) && t > bestEndMs && s.status !== 'expired') {
-                        bestEndMs = t;
-                        subEnd = new Date(t).toISOString();
-                        subPlan = normPlanName(s.plan || s.plan_name);
-                      }
-                    }
-                  }
-                } catch {}
-
-                try {
-                  const { data: admRows } = await supabase
-                    .from('test_packages')
-                    .select('author_id, blocks, created_at')
-                    .eq('category', 'AdminCredit')
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-                  if (Array.isArray(admRows)) {
-                    const lowSet = new Set(candidateIds.map((x) => x.toLowerCase()));
-                    for (const a of admRows) {
-                      const b0 = Array.isArray(a?.blocks) && a.blocks[0] ? a.blocks[0] : null;
-                      const cands = [a?.author_id, b0?.user_id, b0?.clean_id]
-                        .filter(Boolean)
-                        .map((x) => String(x).toLowerCase());
-                      if (cands.some((c) => lowSet.has(c))) {
-                        const exp = b0?.expiry || b0?.subscription_end || b0?.paid_until;
-                        const t = exp ? new Date(exp).getTime() : 0;
-                        if (!Number.isNaN(t) && t > bestEndMs) {
-                          bestEndMs = t;
-                          subEnd = new Date(t).toISOString();
-                          subPlan = normPlanName(b0?.plan);
-                        }
-                      }
-                    }
-                  }
-                } catch {}
-              }
-            }
-          }
+          // Balans va obuna faqat serverdan (/api/wallet). Brauzer users/subscriptions jadvallarini
+          // to'g'ridan-to'g'ri o'qiy olmaydi (bazada yopilgan), shuning uchun bu yerda zaxira so'rov yo'q.
 
           if (!gotData) return null;
 
@@ -1086,17 +977,8 @@ export const useQuizStore = create<QuizState>()(
         set({ language });
         const { profile } = get();
         if (profile?.id) {
-          import('../services/supabase')
-            .then(async ({ getSupabase }) => {
-              const supabase = getSupabase();
-              if (supabase) {
-                try {
-                  await supabase
-                    .from('users')
-                    .upsert({ id: profile.id, language, updated_at: new Date().toISOString() });
-                } catch {}
-              }
-            })
+          import('../services/testSyncService')
+            .then(({ syncLanguageToCloud }) => syncLanguageToCloud(language))
             .catch(() => {});
         }
       },
@@ -1714,7 +1596,7 @@ export const useQuizStore = create<QuizState>()(
 
         // Obuna faqat server orqali sotib olinadi: balans va muddatni server hisoblaydi.
         // Server rad etsa, telefonda hech narsa o'zgarmaydi.
-        const r = await apiPost('/api/wallet', { action: 'purchase', plan, clientUserId: profile.id });
+        const r = await apiPost('/api/wallet', { action: 'purchase', plan });
         if (!r.ok || !r.data?.ok) {
           triggerHaptic('error');
           // Server balansini qayta o'qib, ekrandagi raqamni to'g'rilaymiz

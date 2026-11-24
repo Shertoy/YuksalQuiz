@@ -26,7 +26,7 @@ import { apiPost, apiErrorText } from '../services/api';
 import { triggerHaptic, soundFX, getTelegramWebApp } from '../utils/telegram';
 import { ReceiptVerificationResult } from '../types';
 import { compressReceiptImage, formatBytes } from '../utils/imageCompressor';
-import { uploadReceiptToStorage, recordReceiptPayment } from '../services/receiptService';
+import { recordReceiptPayment } from '../services/receiptService';
 
 interface ReceiptVerifyModalProps {
   isOpen: boolean;
@@ -60,7 +60,6 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
   const [compressedBase64, setCompressedBase64] = useState<string | null>(null);
   const [originalSizeBytes, setOriginalSizeBytes] = useState<number>(0);
   const [compressedSizeBytes, setCompressedSizeBytes] = useState<number>(0);
-  const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const [verifyStepText, setVerifyStepText] = useState('');
   const [result, setResult] = useState<ReceiptVerificationResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -94,7 +93,6 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     setCompressedBase64(null);
     setOriginalSizeBytes(0);
     setCompressedSizeBytes(0);
-    setUploadedReceiptUrl(null);
     setVerifyStepText('');
     setResult(null);
     setUploadError(null);
@@ -162,12 +160,7 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
       setCompressedSizeBytes(comp.compressedSize);
       setPreviewUrl(comp.base64);
 
-      // 2. Siqilgan kvitansiyani Supabase Storage 'receipts' bucketiga yuklash
-      uploadReceiptToStorage(profile.id, comp.blob).then((res) => {
-        if (res?.publicUrl) {
-          setUploadedReceiptUrl(res.publicUrl);
-        }
-      });
+      // Chek omborga faqat "Yuborish" bosilganda server tomonidan yuklanadi (tanlashning o'zida emas)
     } catch (err: any) {
       console.warn('Receipt compression error:', err);
       setSelectedFile(file);
@@ -190,7 +183,6 @@ export const ReceiptVerifyModal: React.FC<ReceiptVerifyModalProps> = ({
     setCompressedBase64(null);
     setOriginalSizeBytes(0);
     setCompressedSizeBytes(0);
-    setUploadedReceiptUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setResult(null);
     triggerHaptic('light');
